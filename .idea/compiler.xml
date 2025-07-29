@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="brushing-common" />
+        <module name="brushing-generator" />
+        <module name="brushing-system" />
+        <module name="brushing-admin" />
+        <module name="brushing-quartz" />
+        <module name="brushing-framework" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="brushing" options="-parameters" />
+      <module name="brushing-admin" options="-parameters" />
+      <module name="brushing-common" options="-parameters" />
+      <module name="brushing-framework" options="-parameters" />
+      <module name="brushing-generator" options="-parameters" />
+      <module name="brushing-quartz" options="-parameters" />
+      <module name="brushing-system" options="-parameters" />
+    </option>
+  </component>
+</project>
