@@ -125,7 +125,7 @@ springdoc:
     - group: 'default'
       display-name: '测试模块'
       paths-to-match: '/**'
-      packages-to-scan: com.brushing.web.controller.tool
+      packages-to-scan: com.brushing.api.controller
 
 # 防止XSS攻击
 xss:

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderMemberLevelMapper">
+    
+    <resultMap type="OrderMemberLevel" id="OrderMemberLevelResult">
+        <result property="id"    column="id"    />
+        <result property="icon"    column="icon"    />
+        <result property="nameZh"    column="name_zh"    />
+        <result property="nameEn"    column="name_en"    />
+        <result property="price"    column="price"    />
+        <result property="autoUpgradeInviteCount"    column="auto_upgrade_invite_count"    />
+        <result property="commissionRatio"    column="commission_ratio"    />
+        <result property="streakCommissionRatio"    column="streak_commission_ratio"    />
+        <result property="minBalance"    column="min_balance"    />
+        <result property="orderCount"    column="order_count"    />
+        <result property="withdrawCount"    column="withdraw_count"    />
+        <result property="withdrawLimit"    column="withdraw_limit"    />
+        <result property="minWithdrawAmount"    column="min_withdraw_amount"    />
+        <result property="maxWithdrawAmount"    column="max_withdraw_amount"    />
+        <result property="withdrawFee"    column="withdraw_fee"    />
+        <result property="withdrawOrderPerDay"    column="withdraw_order_per_day"    />
+        <result property="descriptionZh"    column="description_zh"    />
+        <result property="descriptionEn"    column="description_en"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectOrderMemberLevelVo">
+        select id, icon, name_zh, name_en, price, auto_upgrade_invite_count, commission_ratio, streak_commission_ratio, min_balance, order_count, withdraw_count, withdraw_limit, min_withdraw_amount, max_withdraw_amount, withdraw_fee, withdraw_order_per_day, description_zh, description_en, create_time from order_member_level
+    </sql>
+
+    <select id="selectOrderMemberLevelList" parameterType="OrderMemberLevel" resultMap="OrderMemberLevelResult">
+        <include refid="selectOrderMemberLevelVo"/>
+        <where>  
+            <if test="icon != null  and icon != ''"> and icon = #{icon}</if>
+            <if test="nameZh != null  and nameZh != ''"> and name_zh = #{nameZh}</if>
+            <if test="nameEn != null  and nameEn != ''"> and name_en = #{nameEn}</if>
+            <if test="price != null "> and price = #{price}</if>
+            <if test="autoUpgradeInviteCount != null "> and auto_upgrade_invite_count = #{autoUpgradeInviteCount}</if>
+            <if test="commissionRatio != null "> and commission_ratio = #{commissionRatio}</if>
+            <if test="streakCommissionRatio != null "> and streak_commission_ratio = #{streakCommissionRatio}</if>
+            <if test="minBalance != null "> and min_balance = #{minBalance}</if>
+            <if test="orderCount != null "> and order_count = #{orderCount}</if>
+            <if test="withdrawCount != null "> and withdraw_count = #{withdrawCount}</if>
+            <if test="withdrawLimit != null "> and withdraw_limit = #{withdrawLimit}</if>
+            <if test="minWithdrawAmount != null "> and min_withdraw_amount = #{minWithdrawAmount}</if>
+            <if test="maxWithdrawAmount != null "> and max_withdraw_amount = #{maxWithdrawAmount}</if>
+            <if test="withdrawFee != null "> and withdraw_fee = #{withdrawFee}</if>
+            <if test="withdrawOrderPerDay != null "> and withdraw_order_per_day = #{withdrawOrderPerDay}</if>
+            <if test="descriptionZh != null  and descriptionZh != ''"> and description_zh = #{descriptionZh}</if>
+            <if test="descriptionEn != null  and descriptionEn != ''"> and description_en = #{descriptionEn}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderMemberLevelById" parameterType="Long" resultMap="OrderMemberLevelResult">
+        <include refid="selectOrderMemberLevelVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderMemberLevel" parameterType="OrderMemberLevel" useGeneratedKeys="true" keyProperty="id">
+        insert into order_member_level
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="icon != null">icon,</if>
+            <if test="nameZh != null">name_zh,</if>
+            <if test="nameEn != null">name_en,</if>
+            <if test="price != null">price,</if>
+            <if test="autoUpgradeInviteCount != null">auto_upgrade_invite_count,</if>
+            <if test="commissionRatio != null">commission_ratio,</if>
+            <if test="streakCommissionRatio != null">streak_commission_ratio,</if>
+            <if test="minBalance != null">min_balance,</if>
+            <if test="orderCount != null">order_count,</if>
+            <if test="withdrawCount != null">withdraw_count,</if>
+            <if test="withdrawLimit != null">withdraw_limit,</if>
+            <if test="minWithdrawAmount != null">min_withdraw_amount,</if>
+            <if test="maxWithdrawAmount != null">max_withdraw_amount,</if>
+            <if test="withdrawFee != null">withdraw_fee,</if>
+            <if test="withdrawOrderPerDay != null">withdraw_order_per_day,</if>
+            <if test="descriptionZh != null">description_zh,</if>
+            <if test="descriptionEn != null">description_en,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="icon != null">#{icon},</if>
+            <if test="nameZh != null">#{nameZh},</if>
+            <if test="nameEn != null">#{nameEn},</if>
+            <if test="price != null">#{price},</if>
+            <if test="autoUpgradeInviteCount != null">#{autoUpgradeInviteCount},</if>
+            <if test="commissionRatio != null">#{commissionRatio},</if>
+            <if test="streakCommissionRatio != null">#{streakCommissionRatio},</if>
+            <if test="minBalance != null">#{minBalance},</if>
+            <if test="orderCount != null">#{orderCount},</if>
+            <if test="withdrawCount != null">#{withdrawCount},</if>
+            <if test="withdrawLimit != null">#{withdrawLimit},</if>
+            <if test="minWithdrawAmount != null">#{minWithdrawAmount},</if>
+            <if test="maxWithdrawAmount != null">#{maxWithdrawAmount},</if>
+            <if test="withdrawFee != null">#{withdrawFee},</if>
+            <if test="withdrawOrderPerDay != null">#{withdrawOrderPerDay},</if>
+            <if test="descriptionZh != null">#{descriptionZh},</if>
+            <if test="descriptionEn != null">#{descriptionEn},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderMemberLevel" parameterType="OrderMemberLevel">
+        update order_member_level
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="nameZh != null">name_zh = #{nameZh},</if>
+            <if test="nameEn != null">name_en = #{nameEn},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="autoUpgradeInviteCount != null">auto_upgrade_invite_count = #{autoUpgradeInviteCount},</if>
+            <if test="commissionRatio != null">commission_ratio = #{commissionRatio},</if>
+            <if test="streakCommissionRatio != null">streak_commission_ratio = #{streakCommissionRatio},</if>
+            <if test="minBalance != null">min_balance = #{minBalance},</if>
+            <if test="orderCount != null">order_count = #{orderCount},</if>
+            <if test="withdrawCount != null">withdraw_count = #{withdrawCount},</if>
+            <if test="withdrawLimit != null">withdraw_limit = #{withdrawLimit},</if>
+            <if test="minWithdrawAmount != null">min_withdraw_amount = #{minWithdrawAmount},</if>
+            <if test="maxWithdrawAmount != null">max_withdraw_amount = #{maxWithdrawAmount},</if>
+            <if test="withdrawFee != null">withdraw_fee = #{withdrawFee},</if>
+            <if test="withdrawOrderPerDay != null">withdraw_order_per_day = #{withdrawOrderPerDay},</if>
+            <if test="descriptionZh != null">description_zh = #{descriptionZh},</if>
+            <if test="descriptionEn != null">description_en = #{descriptionEn},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderMemberLevelById" parameterType="Long">
+        delete from order_member_level where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderMemberLevelByIds" parameterType="String">
+        delete from order_member_level where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

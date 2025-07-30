@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderMemberUserMapper">
+    
+    <resultMap type="OrderMemberUser" id="OrderMemberUserResult">
+        <result property="id"    column="id"    />
+        <result property="username"    column="username"    />
+        <result property="phone"    column="phone"    />
+        <result property="password"    column="password"    />
+        <result property="tradePassword"    column="trade_password"    />
+        <result property="parentId"    column="parent_id"    />
+        <result property="ancestors"    column="ancestors"    />
+        <result property="email"    column="email"    />
+        <result property="creditScore"    column="credit_score"    />
+        <result property="balance"    column="balance"    />
+        <result property="frozenBalance"    column="frozen_balance"    />
+        <result property="totalBalance"    column="total_balance"    />
+        <result property="inviteCode"    column="invite_code"    />
+        <result property="registerIp"    column="register_ip"    />
+        <result property="lastLoginTime"    column="last_login_time"    />
+        <result property="accountStatus"    column="account_status"    />
+        <result property="tradeStatus"    column="trade_status"    />
+        <result property="withdrawStatus"    column="withdraw_status"    />
+        <result property="realNameStatus"    column="real_name_status"    />
+        <result property="realName"    column="real_name"    />
+        <result property="idCardNumber"    column="id_card_number"    />
+        <result property="idCardFront"    column="id_card_front"    />
+        <result property="idCardBack"    column="id_card_back"    />
+        <result property="withdrawName"    column="withdraw_name"    />
+        <result property="withdrawAddress"    column="withdraw_address"    />
+        <result property="withdrawType"    column="withdraw_type"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="isReal"    column="is_real"    />
+    </resultMap>
+
+    <sql id="selectOrderMemberUserVo">
+        select id, username, phone, password, trade_password, parent_id, ancestors, email, credit_score, balance, frozen_balance, total_balance, invite_code, register_ip, last_login_time, account_status, trade_status, withdraw_status, real_name_status, real_name, id_card_number, id_card_front, id_card_back, withdraw_name, withdraw_address, withdraw_type, create_time, remark, is_real from order_member_user
+    </sql>
+
+    <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserVo"/>
+        <where>  
+            <if test="username != null  and username != ''"> and username like concat('%', #{username}, '%')</if>
+            <if test="phone != null  and phone != ''"> and phone = #{phone}</if>
+            <if test="password != null  and password != ''"> and password = #{password}</if>
+            <if test="tradePassword != null  and tradePassword != ''"> and trade_password = #{tradePassword}</if>
+            <if test="parentId != null "> and parent_id = #{parentId}</if>
+            <if test="ancestors != null  and ancestors != ''"> and ancestors = #{ancestors}</if>
+            <if test="email != null  and email != ''"> and email = #{email}</if>
+            <if test="creditScore != null "> and credit_score = #{creditScore}</if>
+            <if test="balance != null "> and balance = #{balance}</if>
+            <if test="frozenBalance != null "> and frozen_balance = #{frozenBalance}</if>
+            <if test="totalBalance != null "> and total_balance = #{totalBalance}</if>
+            <if test="inviteCode != null  and inviteCode != ''"> and invite_code = #{inviteCode}</if>
+            <if test="registerIp != null  and registerIp != ''"> and register_ip = #{registerIp}</if>
+            <if test="lastLoginTime != null "> and last_login_time = #{lastLoginTime}</if>
+            <if test="accountStatus != null  and accountStatus != ''"> and account_status = #{accountStatus}</if>
+            <if test="tradeStatus != null  and tradeStatus != ''"> and trade_status = #{tradeStatus}</if>
+            <if test="withdrawStatus != null  and withdrawStatus != ''"> and withdraw_status = #{withdrawStatus}</if>
+            <if test="realNameStatus != null  and realNameStatus != ''"> and real_name_status = #{realNameStatus}</if>
+            <if test="realName != null  and realName != ''"> and real_name like concat('%', #{realName}, '%')</if>
+            <if test="idCardNumber != null  and idCardNumber != ''"> and id_card_number = #{idCardNumber}</if>
+            <if test="idCardFront != null  and idCardFront != ''"> and id_card_front = #{idCardFront}</if>
+            <if test="idCardBack != null  and idCardBack != ''"> and id_card_back = #{idCardBack}</if>
+            <if test="withdrawName != null  and withdrawName != ''"> and withdraw_name like concat('%', #{withdrawName}, '%')</if>
+            <if test="withdrawAddress != null  and withdrawAddress != ''"> and withdraw_address = #{withdrawAddress}</if>
+            <if test="withdrawType != null  and withdrawType != ''"> and withdraw_type = #{withdrawType}</if>
+            <if test="isReal != null  and isReal != ''"> and is_real = #{isReal}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderMemberUserById" parameterType="Long" resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectOrderMemberUserByInCode" parameterType="String" resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserVo"/>
+        where invite_code = #{inviteCode}
+    </select>
+
+    <select id="findByUsername" parameterType="String" resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserVo"/>
+        where username = #{username}
+    </select>
+
+    <insert id="insertOrderMemberUser" parameterType="OrderMemberUser" useGeneratedKeys="true" keyProperty="id">
+        insert into order_member_user
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="username != null and username != ''">username,</if>
+            <if test="phone != null and phone != ''">phone,</if>
+            <if test="password != null and password != ''">password,</if>
+            <if test="tradePassword != null and tradePassword != ''">trade_password,</if>
+            <if test="parentId != null">parent_id,</if>
+            <if test="ancestors != null">ancestors,</if>
+            <if test="email != null">email,</if>
+            <if test="creditScore != null">credit_score,</if>
+            <if test="balance != null">balance,</if>
+            <if test="frozenBalance != null">frozen_balance,</if>
+            <if test="totalBalance != null">total_balance,</if>
+            <if test="inviteCode != null">invite_code,</if>
+            <if test="registerIp != null">register_ip,</if>
+            <if test="lastLoginTime != null">last_login_time,</if>
+            <if test="accountStatus != null">account_status,</if>
+            <if test="tradeStatus != null">trade_status,</if>
+            <if test="withdrawStatus != null">withdraw_status,</if>
+            <if test="realNameStatus != null">real_name_status,</if>
+            <if test="realName != null">real_name,</if>
+            <if test="idCardNumber != null">id_card_number,</if>
+            <if test="idCardFront != null">id_card_front,</if>
+            <if test="idCardBack != null">id_card_back,</if>
+            <if test="withdrawName != null">withdraw_name,</if>
+            <if test="withdrawAddress != null">withdraw_address,</if>
+            <if test="withdrawType != null">withdraw_type,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="isReal != null">is_real,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="username != null and username != ''">#{username},</if>
+            <if test="phone != null and phone != ''">#{phone},</if>
+            <if test="password != null and password != ''">#{password},</if>
+            <if test="tradePassword != null and tradePassword != ''">#{tradePassword},</if>
+            <if test="parentId != null">#{parentId},</if>
+            <if test="ancestors != null">#{ancestors},</if>
+            <if test="email != null">#{email},</if>
+            <if test="creditScore != null">#{creditScore},</if>
+            <if test="balance != null">#{balance},</if>
+            <if test="frozenBalance != null">#{frozenBalance},</if>
+            <if test="totalBalance != null">#{totalBalance},</if>
+            <if test="inviteCode != null">#{inviteCode},</if>
+            <if test="registerIp != null">#{registerIp},</if>
+            <if test="lastLoginTime != null">#{lastLoginTime},</if>
+            <if test="accountStatus != null">#{accountStatus},</if>
+            <if test="tradeStatus != null">#{tradeStatus},</if>
+            <if test="withdrawStatus != null">#{withdrawStatus},</if>
+            <if test="realNameStatus != null">#{realNameStatus},</if>
+            <if test="realName != null">#{realName},</if>
+            <if test="idCardNumber != null">#{idCardNumber},</if>
+            <if test="idCardFront != null">#{idCardFront},</if>
+            <if test="idCardBack != null">#{idCardBack},</if>
+            <if test="withdrawName != null">#{withdrawName},</if>
+            <if test="withdrawAddress != null">#{withdrawAddress},</if>
+            <if test="withdrawType != null">#{withdrawType},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="isReal != null">#{isReal},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderMemberUser" parameterType="OrderMemberUser">
+        update order_member_user
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="username != null and username != ''">username = #{username},</if>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="password != null and password != ''">password = #{password},</if>
+            <if test="tradePassword != null and tradePassword != ''">trade_password = #{tradePassword},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="ancestors != null">ancestors = #{ancestors},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="creditScore != null">credit_score = #{creditScore},</if>
+            <if test="balance != null">balance = #{balance},</if>
+            <if test="frozenBalance != null">frozen_balance = #{frozenBalance},</if>
+            <if test="totalBalance != null">total_balance = #{totalBalance},</if>
+            <if test="inviteCode != null">invite_code = #{inviteCode},</if>
+            <if test="registerIp != null">register_ip = #{registerIp},</if>
+            <if test="lastLoginTime != null">last_login_time = #{lastLoginTime},</if>
+            <if test="accountStatus != null">account_status = #{accountStatus},</if>
+            <if test="tradeStatus != null">trade_status = #{tradeStatus},</if>
+            <if test="withdrawStatus != null">withdraw_status = #{withdrawStatus},</if>
+            <if test="realNameStatus != null">real_name_status = #{realNameStatus},</if>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="idCardNumber != null">id_card_number = #{idCardNumber},</if>
+            <if test="idCardFront != null">id_card_front = #{idCardFront},</if>
+            <if test="idCardBack != null">id_card_back = #{idCardBack},</if>
+            <if test="withdrawName != null">withdraw_name = #{withdrawName},</if>
+            <if test="withdrawAddress != null">withdraw_address = #{withdrawAddress},</if>
+            <if test="withdrawType != null">withdraw_type = #{withdrawType},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="isReal != null">is_real = #{isReal},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderMemberUserById" parameterType="Long">
+        delete from order_member_user where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderMemberUserByIds" parameterType="String">
+        delete from order_member_user where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

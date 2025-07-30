@@ -8,10 +8,11 @@
         <outputRelativeToContentRoot value="true" />
         <module name="brushing-common" />
         <module name="brushing-generator" />
-        <module name="brushing-system" />
-        <module name="brushing-admin" />
         <module name="brushing-quartz" />
         <module name="brushing-framework" />
+        <module name="brushing-member" />
+        <module name="brushing-system" />
+        <module name="brushing-admin" />
       </profile>
     </annotationProcessing>
   </component>
@@ -22,6 +23,7 @@
       <module name="brushing-common" options="-parameters" />
       <module name="brushing-framework" options="-parameters" />
       <module name="brushing-generator" options="-parameters" />
+      <module name="brushing-member" options="-parameters" />
       <module name="brushing-quartz" options="-parameters" />
       <module name="brushing-system" options="-parameters" />
     </option>

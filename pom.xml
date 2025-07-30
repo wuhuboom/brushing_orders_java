@@ -10,7 +10,7 @@
 
     <name>brushing</name>
     <url>http://fastbuild.run</url>
-    <description>若依管理系统</description>
+    <description>管理系统</description>
     
     <properties>
         <brushing.version>3.9.0</brushing.version>
@@ -185,6 +185,11 @@
                 <version>${brushing.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.brushing</groupId>
+                <artifactId>brushing-member</artifactId>
+                <version>${brushing.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -195,6 +200,7 @@
         <module>brushing-quartz</module>
         <module>brushing-generator</module>
         <module>brushing-common</module>
+        <module>brushing-member</module>
     </modules>
     <packaging>pom</packaging>
 

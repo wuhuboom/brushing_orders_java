@@ -59,6 +59,10 @@
             <artifactId>brushing-system</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.brushing</groupId>
+            <artifactId>brushing-member</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
