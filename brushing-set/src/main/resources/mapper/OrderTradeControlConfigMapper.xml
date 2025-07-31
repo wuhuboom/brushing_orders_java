@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.set.mapper.OrderTradeControlConfigMapper">
+    
+    <resultMap type="OrderTradeControlConfig" id="OrderTradeControlConfigResult">
+        <result property="id"    column="id"    />
+        <result property="withdrawEnabled"    column="withdraw_enabled"    />
+        <result property="minUserBalance"    column="min_user_balance"    />
+        <result property="minWithdrawCreditScore"    column="min_withdraw_credit_score"    />
+        <result property="minWithdrawAmount"    column="min_withdraw_amount"    />
+        <result property="maxWithdrawAmount"    column="max_withdraw_amount"    />
+        <result property="dailyWithdrawLimit"    column="daily_withdraw_limit"    />
+        <result property="withdrawFeePercent"    column="withdraw_fee_percent"    />
+        <result property="level1CommissionPercent"    column="level_1_commission_percent"    />
+        <result property="level2CommissionPercent"    column="level_2_commission_percent"    />
+        <result property="level3CommissionPercent"    column="level_3_commission_percent"    />
+        <result property="level4CommissionPercent"    column="level_4_commission_percent"    />
+        <result property="level5CommissionPercent"    column="level_5_commission_percent"    />
+        <result property="tradeRangePercentMin"    column="trade_range_percent_min"    />
+        <result property="tradeRangePercentMax"    column="trade_range_percent_max"    />
+        <result property="rechargeTimeStart"    column="recharge_time_start"    />
+        <result property="rechargeTimeEnd"    column="recharge_time_end"    />
+        <result property="withdrawTimeStart"    column="withdraw_time_start"    />
+        <result property="withdrawTimeEnd"    column="withdraw_time_end"    />
+        <result property="orderTimeStart"    column="order_time_start"    />
+        <result property="orderTimeEnd"    column="order_time_end"    />
+        <result property="workTimeStart"    column="work_time_start"    />
+        <result property="workTimeEnd"    column="work_time_end"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectOrderTradeControlConfigVo">
+        select id, withdraw_enabled, min_user_balance, min_withdraw_credit_score, min_withdraw_amount, max_withdraw_amount, daily_withdraw_limit, withdraw_fee_percent, level_1_commission_percent, level_2_commission_percent, level_3_commission_percent, level_4_commission_percent, level_5_commission_percent, trade_range_percent_min, trade_range_percent_max, recharge_time_start, recharge_time_end, withdraw_time_start, withdraw_time_end, order_time_start, order_time_end, work_time_start, work_time_end, create_time, update_time from order_trade_control_config
+    </sql>
+
+    <select id="selectOrderTradeControlConfigList" parameterType="OrderTradeControlConfig" resultMap="OrderTradeControlConfigResult">
+        <include refid="selectOrderTradeControlConfigVo"/>
+        <where>  
+            <if test="withdrawEnabled != null "> and withdraw_enabled = #{withdrawEnabled}</if>
+            <if test="minUserBalance != null "> and min_user_balance = #{minUserBalance}</if>
+            <if test="minWithdrawCreditScore != null "> and min_withdraw_credit_score = #{minWithdrawCreditScore}</if>
+            <if test="minWithdrawAmount != null "> and min_withdraw_amount = #{minWithdrawAmount}</if>
+            <if test="maxWithdrawAmount != null "> and max_withdraw_amount = #{maxWithdrawAmount}</if>
+            <if test="dailyWithdrawLimit != null "> and daily_withdraw_limit = #{dailyWithdrawLimit}</if>
+            <if test="withdrawFeePercent != null "> and withdraw_fee_percent = #{withdrawFeePercent}</if>
+            <if test="level1CommissionPercent != null "> and level_1_commission_percent = #{level1CommissionPercent}</if>
+            <if test="level2CommissionPercent != null "> and level_2_commission_percent = #{level2CommissionPercent}</if>
+            <if test="level3CommissionPercent != null "> and level_3_commission_percent = #{level3CommissionPercent}</if>
+            <if test="level4CommissionPercent != null "> and level_4_commission_percent = #{level4CommissionPercent}</if>
+            <if test="level5CommissionPercent != null "> and level_5_commission_percent = #{level5CommissionPercent}</if>
+            <if test="tradeRangePercentMin != null "> and trade_range_percent_min = #{tradeRangePercentMin}</if>
+            <if test="tradeRangePercentMax != null "> and trade_range_percent_max = #{tradeRangePercentMax}</if>
+            <if test="rechargeTimeStart != null "> and recharge_time_start = #{rechargeTimeStart}</if>
+            <if test="rechargeTimeEnd != null "> and recharge_time_end = #{rechargeTimeEnd}</if>
+            <if test="withdrawTimeStart != null "> and withdraw_time_start = #{withdrawTimeStart}</if>
+            <if test="withdrawTimeEnd != null "> and withdraw_time_end = #{withdrawTimeEnd}</if>
+            <if test="orderTimeStart != null "> and order_time_start = #{orderTimeStart}</if>
+            <if test="orderTimeEnd != null "> and order_time_end = #{orderTimeEnd}</if>
+            <if test="workTimeStart != null "> and work_time_start = #{workTimeStart}</if>
+            <if test="workTimeEnd != null "> and work_time_end = #{workTimeEnd}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderTradeControlConfigById" parameterType="Long" resultMap="OrderTradeControlConfigResult">
+        <include refid="selectOrderTradeControlConfigVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderTradeControlConfig" parameterType="OrderTradeControlConfig" useGeneratedKeys="true" keyProperty="id">
+        insert into order_trade_control_config
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="withdrawEnabled != null">withdraw_enabled,</if>
+            <if test="minUserBalance != null">min_user_balance,</if>
+            <if test="minWithdrawCreditScore != null">min_withdraw_credit_score,</if>
+            <if test="minWithdrawAmount != null">min_withdraw_amount,</if>
+            <if test="maxWithdrawAmount != null">max_withdraw_amount,</if>
+            <if test="dailyWithdrawLimit != null">daily_withdraw_limit,</if>
+            <if test="withdrawFeePercent != null">withdraw_fee_percent,</if>
+            <if test="level1CommissionPercent != null">level_1_commission_percent,</if>
+            <if test="level2CommissionPercent != null">level_2_commission_percent,</if>
+            <if test="level3CommissionPercent != null">level_3_commission_percent,</if>
+            <if test="level4CommissionPercent != null">level_4_commission_percent,</if>
+            <if test="level5CommissionPercent != null">level_5_commission_percent,</if>
+            <if test="tradeRangePercentMin != null">trade_range_percent_min,</if>
+            <if test="tradeRangePercentMax != null">trade_range_percent_max,</if>
+            <if test="rechargeTimeStart != null">recharge_time_start,</if>
+            <if test="rechargeTimeEnd != null">recharge_time_end,</if>
+            <if test="withdrawTimeStart != null">withdraw_time_start,</if>
+            <if test="withdrawTimeEnd != null">withdraw_time_end,</if>
+            <if test="orderTimeStart != null">order_time_start,</if>
+            <if test="orderTimeEnd != null">order_time_end,</if>
+            <if test="workTimeStart != null">work_time_start,</if>
+            <if test="workTimeEnd != null">work_time_end,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="withdrawEnabled != null">#{withdrawEnabled},</if>
+            <if test="minUserBalance != null">#{minUserBalance},</if>
+            <if test="minWithdrawCreditScore != null">#{minWithdrawCreditScore},</if>
+            <if test="minWithdrawAmount != null">#{minWithdrawAmount},</if>
+            <if test="maxWithdrawAmount != null">#{maxWithdrawAmount},</if>
+            <if test="dailyWithdrawLimit != null">#{dailyWithdrawLimit},</if>
+            <if test="withdrawFeePercent != null">#{withdrawFeePercent},</if>
+            <if test="level1CommissionPercent != null">#{level1CommissionPercent},</if>
+            <if test="level2CommissionPercent != null">#{level2CommissionPercent},</if>
+            <if test="level3CommissionPercent != null">#{level3CommissionPercent},</if>
+            <if test="level4CommissionPercent != null">#{level4CommissionPercent},</if>
+            <if test="level5CommissionPercent != null">#{level5CommissionPercent},</if>
+            <if test="tradeRangePercentMin != null">#{tradeRangePercentMin},</if>
+            <if test="tradeRangePercentMax != null">#{tradeRangePercentMax},</if>
+            <if test="rechargeTimeStart != null">#{rechargeTimeStart},</if>
+            <if test="rechargeTimeEnd != null">#{rechargeTimeEnd},</if>
+            <if test="withdrawTimeStart != null">#{withdrawTimeStart},</if>
+            <if test="withdrawTimeEnd != null">#{withdrawTimeEnd},</if>
+            <if test="orderTimeStart != null">#{orderTimeStart},</if>
+            <if test="orderTimeEnd != null">#{orderTimeEnd},</if>
+            <if test="workTimeStart != null">#{workTimeStart},</if>
+            <if test="workTimeEnd != null">#{workTimeEnd},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderTradeControlConfig" parameterType="OrderTradeControlConfig">
+        update order_trade_control_config
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="withdrawEnabled != null">withdraw_enabled = #{withdrawEnabled},</if>
+            <if test="minUserBalance != null">min_user_balance = #{minUserBalance},</if>
+            <if test="minWithdrawCreditScore != null">min_withdraw_credit_score = #{minWithdrawCreditScore},</if>
+            <if test="minWithdrawAmount != null">min_withdraw_amount = #{minWithdrawAmount},</if>
+            <if test="maxWithdrawAmount != null">max_withdraw_amount = #{maxWithdrawAmount},</if>
+            <if test="dailyWithdrawLimit != null">daily_withdraw_limit = #{dailyWithdrawLimit},</if>
+            <if test="withdrawFeePercent != null">withdraw_fee_percent = #{withdrawFeePercent},</if>
+            <if test="level1CommissionPercent != null">level_1_commission_percent = #{level1CommissionPercent},</if>
+            <if test="level2CommissionPercent != null">level_2_commission_percent = #{level2CommissionPercent},</if>
+            <if test="level3CommissionPercent != null">level_3_commission_percent = #{level3CommissionPercent},</if>
+            <if test="level4CommissionPercent != null">level_4_commission_percent = #{level4CommissionPercent},</if>
+            <if test="level5CommissionPercent != null">level_5_commission_percent = #{level5CommissionPercent},</if>
+            <if test="tradeRangePercentMin != null">trade_range_percent_min = #{tradeRangePercentMin},</if>
+            <if test="tradeRangePercentMax != null">trade_range_percent_max = #{tradeRangePercentMax},</if>
+            <if test="rechargeTimeStart != null">recharge_time_start = #{rechargeTimeStart},</if>
+            <if test="rechargeTimeEnd != null">recharge_time_end = #{rechargeTimeEnd},</if>
+            <if test="withdrawTimeStart != null">withdraw_time_start = #{withdrawTimeStart},</if>
+            <if test="withdrawTimeEnd != null">withdraw_time_end = #{withdrawTimeEnd},</if>
+            <if test="orderTimeStart != null">order_time_start = #{orderTimeStart},</if>
+            <if test="orderTimeEnd != null">order_time_end = #{orderTimeEnd},</if>
+            <if test="workTimeStart != null">work_time_start = #{workTimeStart},</if>
+            <if test="workTimeEnd != null">work_time_end = #{workTimeEnd},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderTradeControlConfigById" parameterType="Long">
+        delete from order_trade_control_config where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderTradeControlConfigByIds" parameterType="String">
+        delete from order_trade_control_config where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

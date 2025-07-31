@@ -185,9 +185,17 @@
                 <version>${brushing.version}</version>
             </dependency>
 
+            <!-- 会员管理-->
             <dependency>
                 <groupId>com.brushing</groupId>
                 <artifactId>brushing-member</artifactId>
+                <version>${brushing.version}</version>
+            </dependency>
+
+            <!-- 配置管理-->
+            <dependency>
+                <groupId>com.brushing</groupId>
+                <artifactId>brushing-set</artifactId>
                 <version>${brushing.version}</version>
             </dependency>
         </dependencies>
@@ -201,6 +209,7 @@
         <module>brushing-generator</module>
         <module>brushing-common</module>
         <module>brushing-member</module>
+        <module>brushing-set</module>
     </modules>
     <packaging>pom</packaging>
 

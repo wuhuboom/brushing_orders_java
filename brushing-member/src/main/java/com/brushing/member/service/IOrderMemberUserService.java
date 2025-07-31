@@ -22,6 +22,8 @@ public interface IOrderMemberUserService
 
     public OrderMemberUser findByUsername(String username);
 
+    public String register(OrderMemberUser user);
+
     /**
      * 查询会员用户列表
      * 

@@ -54,6 +54,7 @@
             <artifactId>brushing-generator</artifactId>
         </dependency>
 
+
     </dependencies>
 
     <build>

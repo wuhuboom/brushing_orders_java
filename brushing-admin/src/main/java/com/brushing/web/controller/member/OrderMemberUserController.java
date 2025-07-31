@@ -4,6 +4,8 @@ import java.util.List;
 
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.service.IOrderMemberLevelService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,9 @@ public class OrderMemberUserController extends BaseController
 {
     @Autowired
     private IOrderMemberUserService orderMemberUserService;
+
+    @Autowired
+    private IOrderMemberLevelService orderMemberLevelService;
 
     /**
      * 查询会员用户列表
@@ -114,5 +119,16 @@ public class OrderMemberUserController extends BaseController
     public AjaxResult remove(@PathVariable Long[] ids)
     {
         return toAjax(orderMemberUserService.deleteOrderMemberUserByIds(ids));
+    }
+
+    /**
+     * 获取等级列表
+     * @return
+     */
+    @GetMapping("/levelList")
+    public AjaxResult levelList()
+    {
+        List<OrderMemberLevel> list = orderMemberLevelService.selectOrderMemberLevelList(new OrderMemberLevel());
+        return success(list);
     }
 }

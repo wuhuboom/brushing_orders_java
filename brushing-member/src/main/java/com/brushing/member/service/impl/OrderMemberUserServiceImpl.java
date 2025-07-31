@@ -42,6 +42,19 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         return orderMemberUserMapper.findByUsername(username);
     }
 
+    @Override
+    public String register(OrderMemberUser user) {
+        OrderMemberUser orderMemberUser = orderMemberUserMapper.selectOrderMemberUserByInCode(user.getInviteCode());
+        if (StringUtils.isNull(orderMemberUser)){
+            return "500";
+        }
+        user.setParentId(orderMemberUser.getId());
+        user.setInviteCode(setCode());
+        user.setAncestors(orderMemberUser.getAncestors()+","+orderMemberUser.getId());
+        orderMemberUserMapper.insertOrderMemberUser(user);
+        return "200";
+    }
+
 
     /**
      * 查询会员用户列表

@@ -13,6 +13,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="parentId"    column="parent_id"    />
         <result property="ancestors"    column="ancestors"    />
         <result property="email"    column="email"    />
+        <result property="sex"    column="sex"    />
         <result property="creditScore"    column="credit_score"    />
         <result property="balance"    column="balance"    />
         <result property="frozenBalance"    column="frozen_balance"    />
@@ -37,7 +38,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectOrderMemberUserVo">
-        select id, username, phone, password, trade_password, parent_id, ancestors, email, credit_score, balance, frozen_balance, total_balance, invite_code, register_ip, last_login_time, account_status, trade_status, withdraw_status, real_name_status, real_name, id_card_number, id_card_front, id_card_back, withdraw_name, withdraw_address, withdraw_type, create_time, remark, is_real from order_member_user
+        select id, username, phone, password, trade_password, parent_id, ancestors,sex, email, credit_score, balance, frozen_balance, total_balance, invite_code, register_ip, last_login_time, account_status, trade_status, withdraw_status, real_name_status, real_name, id_card_number, id_card_front, id_card_back, withdraw_name, withdraw_address, withdraw_type, create_time, remark, is_real from order_member_user
     </sql>
 
     <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
@@ -97,6 +98,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parentId != null">parent_id,</if>
             <if test="ancestors != null">ancestors,</if>
             <if test="email != null">email,</if>
+            <if test="sex != null">sex,</if>
             <if test="creditScore != null">credit_score,</if>
             <if test="balance != null">balance,</if>
             <if test="frozenBalance != null">frozen_balance,</if>
@@ -127,6 +129,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parentId != null">#{parentId},</if>
             <if test="ancestors != null">#{ancestors},</if>
             <if test="email != null">#{email},</if>
+            <if test="sex != null">#{sex},</if>
             <if test="creditScore != null">#{creditScore},</if>
             <if test="balance != null">#{balance},</if>
             <if test="frozenBalance != null">#{frozenBalance},</if>
@@ -161,6 +164,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parentId != null">parent_id = #{parentId},</if>
             <if test="ancestors != null">ancestors = #{ancestors},</if>
             <if test="email != null">email = #{email},</if>
+            <if test="sex != null">sex = #{email},</if>
             <if test="creditScore != null">credit_score = #{creditScore},</if>
             <if test="balance != null">balance = #{balance},</if>
             <if test="frozenBalance != null">frozen_balance = #{frozenBalance},</if>

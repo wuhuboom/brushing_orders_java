@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.set.mapper.OrderGlobalConfigMapper">
+    
+    <resultMap type="OrderGlobalConfig" id="OrderGlobalConfigResult">
+        <result property="id"    column="id"    />
+        <result property="registerProtocolEn"    column="register_protocol_en"    />
+        <result property="registerProtocolLocal"    column="register_protocol_local"    />
+        <result property="aboutUsEn"    column="about_us_en"    />
+        <result property="aboutUsLocal"    column="about_us_local"    />
+        <result property="certificateEn"    column="certificate_en"    />
+        <result property="certificateLocal"    column="certificate_local"    />
+        <result property="faqEn"    column="faq_en"    />
+        <result property="faqLocal"    column="faq_local"    />
+        <result property="latestEventEn"    column="latest_event_en"    />
+        <result property="latestEventLocal"    column="latest_event_local"    />
+        <result property="termsEn"    column="terms_en"    />
+        <result property="termsLocal"    column="terms_local"    />
+        <result property="incomeGuideEn"    column="income_guide_en"    />
+        <result property="incomeGuideLocal"    column="income_guide_local"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectOrderGlobalConfigVo">
+        select id, register_protocol_en, register_protocol_local, about_us_en, about_us_local, certificate_en, certificate_local, faq_en, faq_local, latest_event_en, latest_event_local, terms_en, terms_local, income_guide_en, income_guide_local, create_time, update_time from order_global_config
+    </sql>
+
+    <select id="selectOrderGlobalConfigList" parameterType="OrderGlobalConfig" resultMap="OrderGlobalConfigResult">
+        <include refid="selectOrderGlobalConfigVo"/>
+        <where>  
+            <if test="registerProtocolEn != null  and registerProtocolEn != ''"> and register_protocol_en = #{registerProtocolEn}</if>
+            <if test="registerProtocolLocal != null  and registerProtocolLocal != ''"> and register_protocol_local = #{registerProtocolLocal}</if>
+            <if test="aboutUsEn != null  and aboutUsEn != ''"> and about_us_en = #{aboutUsEn}</if>
+            <if test="aboutUsLocal != null  and aboutUsLocal != ''"> and about_us_local = #{aboutUsLocal}</if>
+            <if test="certificateEn != null  and certificateEn != ''"> and certificate_en = #{certificateEn}</if>
+            <if test="certificateLocal != null  and certificateLocal != ''"> and certificate_local = #{certificateLocal}</if>
+            <if test="faqEn != null  and faqEn != ''"> and faq_en = #{faqEn}</if>
+            <if test="faqLocal != null  and faqLocal != ''"> and faq_local = #{faqLocal}</if>
+            <if test="latestEventEn != null  and latestEventEn != ''"> and latest_event_en = #{latestEventEn}</if>
+            <if test="latestEventLocal != null  and latestEventLocal != ''"> and latest_event_local = #{latestEventLocal}</if>
+            <if test="termsEn != null  and termsEn != ''"> and terms_en = #{termsEn}</if>
+            <if test="termsLocal != null  and termsLocal != ''"> and terms_local = #{termsLocal}</if>
+            <if test="incomeGuideEn != null  and incomeGuideEn != ''"> and income_guide_en = #{incomeGuideEn}</if>
+            <if test="incomeGuideLocal != null  and incomeGuideLocal != ''"> and income_guide_local = #{incomeGuideLocal}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderGlobalConfigById" parameterType="Long" resultMap="OrderGlobalConfigResult">
+        <include refid="selectOrderGlobalConfigVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderGlobalConfig" parameterType="OrderGlobalConfig" useGeneratedKeys="true" keyProperty="id">
+        insert into order_global_config
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="registerProtocolEn != null">register_protocol_en,</if>
+            <if test="registerProtocolLocal != null">register_protocol_local,</if>
+            <if test="aboutUsEn != null">about_us_en,</if>
+            <if test="aboutUsLocal != null">about_us_local,</if>
+            <if test="certificateEn != null">certificate_en,</if>
+            <if test="certificateLocal != null">certificate_local,</if>
+            <if test="faqEn != null">faq_en,</if>
+            <if test="faqLocal != null">faq_local,</if>
+            <if test="latestEventEn != null">latest_event_en,</if>
+            <if test="latestEventLocal != null">latest_event_local,</if>
+            <if test="termsEn != null">terms_en,</if>
+            <if test="termsLocal != null">terms_local,</if>
+            <if test="incomeGuideEn != null">income_guide_en,</if>
+            <if test="incomeGuideLocal != null">income_guide_local,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="registerProtocolEn != null">#{registerProtocolEn},</if>
+            <if test="registerProtocolLocal != null">#{registerProtocolLocal},</if>
+            <if test="aboutUsEn != null">#{aboutUsEn},</if>
+            <if test="aboutUsLocal != null">#{aboutUsLocal},</if>
+            <if test="certificateEn != null">#{certificateEn},</if>
+            <if test="certificateLocal != null">#{certificateLocal},</if>
+            <if test="faqEn != null">#{faqEn},</if>
+            <if test="faqLocal != null">#{faqLocal},</if>
+            <if test="latestEventEn != null">#{latestEventEn},</if>
+            <if test="latestEventLocal != null">#{latestEventLocal},</if>
+            <if test="termsEn != null">#{termsEn},</if>
+            <if test="termsLocal != null">#{termsLocal},</if>
+            <if test="incomeGuideEn != null">#{incomeGuideEn},</if>
+            <if test="incomeGuideLocal != null">#{incomeGuideLocal},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderGlobalConfig" parameterType="OrderGlobalConfig">
+        update order_global_config
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="registerProtocolEn != null">register_protocol_en = #{registerProtocolEn},</if>
+            <if test="registerProtocolLocal != null">register_protocol_local = #{registerProtocolLocal},</if>
+            <if test="aboutUsEn != null">about_us_en = #{aboutUsEn},</if>
+            <if test="aboutUsLocal != null">about_us_local = #{aboutUsLocal},</if>
+            <if test="certificateEn != null">certificate_en = #{certificateEn},</if>
+            <if test="certificateLocal != null">certificate_local = #{certificateLocal},</if>
+            <if test="faqEn != null">faq_en = #{faqEn},</if>
+            <if test="faqLocal != null">faq_local = #{faqLocal},</if>
+            <if test="latestEventEn != null">latest_event_en = #{latestEventEn},</if>
+            <if test="latestEventLocal != null">latest_event_local = #{latestEventLocal},</if>
+            <if test="termsEn != null">terms_en = #{termsEn},</if>
+            <if test="termsLocal != null">terms_local = #{termsLocal},</if>
+            <if test="incomeGuideEn != null">income_guide_en = #{incomeGuideEn},</if>
+            <if test="incomeGuideLocal != null">income_guide_local = #{incomeGuideLocal},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderGlobalConfigById" parameterType="Long">
+        delete from order_global_config where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderGlobalConfigByIds" parameterType="String">
+        delete from order_global_config where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

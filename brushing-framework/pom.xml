@@ -63,6 +63,12 @@
             <groupId>com.brushing</groupId>
             <artifactId>brushing-member</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.brushing</groupId>
+            <artifactId>brushing-set</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>

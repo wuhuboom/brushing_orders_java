@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.set.mapper.OrderSiteConfigMapper">
+    
+    <resultMap type="OrderSiteConfig" id="OrderSiteConfigResult">
+        <result property="id"    column="id"    />
+        <result property="siteName"    column="site_name"    />
+        <result property="customerServiceUrl"    column="customer_service_url"    />
+        <result property="popupMessage"    column="popup_message"    />
+        <result property="copyrightInfo"    column="copyright_info"    />
+        <result property="registerBonusAmount"    column="register_bonus_amount"    />
+        <result property="maintenanceImage"    column="maintenance_image"    />
+        <result property="siteLogo"    column="site_logo"    />
+        <result property="favicon"    column="favicon"    />
+        <result property="currencyType"    column="currency_type"    />
+        <result property="maxRegisterPerIp"    column="max_register_per_ip"    />
+        <result property="ipBlacklist"    column="ip_blacklist"    />
+        <result property="registerEnabled"    column="register_enabled"    />
+        <result property="emailVerificationEnabled"    column="email_verification_enabled"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectOrderSiteConfigVo">
+        select id, site_name, customer_service_url, popup_message, copyright_info, register_bonus_amount, maintenance_image, site_logo, favicon, currency_type, max_register_per_ip, ip_blacklist, register_enabled, email_verification_enabled, create_time, update_time from order_site_config
+    </sql>
+
+    <select id="selectOrderSiteConfigList" parameterType="OrderSiteConfig" resultMap="OrderSiteConfigResult">
+        <include refid="selectOrderSiteConfigVo"/>
+        <where>  
+            <if test="siteName != null  and siteName != ''"> and site_name like concat('%', #{siteName}, '%')</if>
+            <if test="customerServiceUrl != null  and customerServiceUrl != ''"> and customer_service_url = #{customerServiceUrl}</if>
+            <if test="popupMessage != null  and popupMessage != ''"> and popup_message = #{popupMessage}</if>
+            <if test="copyrightInfo != null  and copyrightInfo != ''"> and copyright_info = #{copyrightInfo}</if>
+            <if test="registerBonusAmount != null "> and register_bonus_amount = #{registerBonusAmount}</if>
+            <if test="maintenanceImage != null  and maintenanceImage != ''"> and maintenance_image = #{maintenanceImage}</if>
+            <if test="siteLogo != null  and siteLogo != ''"> and site_logo = #{siteLogo}</if>
+            <if test="favicon != null  and favicon != ''"> and favicon = #{favicon}</if>
+            <if test="currencyType != null  and currencyType != ''"> and currency_type = #{currencyType}</if>
+            <if test="maxRegisterPerIp != null "> and max_register_per_ip = #{maxRegisterPerIp}</if>
+            <if test="ipBlacklist != null  and ipBlacklist != ''"> and ip_blacklist = #{ipBlacklist}</if>
+            <if test="registerEnabled != null  and registerEnabled != ''"> and register_enabled = #{registerEnabled}</if>
+            <if test="emailVerificationEnabled != null  and emailVerificationEnabled != ''"> and email_verification_enabled = #{emailVerificationEnabled}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderSiteConfigById" parameterType="Long" resultMap="OrderSiteConfigResult">
+        <include refid="selectOrderSiteConfigVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderSiteConfig" parameterType="OrderSiteConfig" useGeneratedKeys="true" keyProperty="id">
+        insert into order_site_config
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="siteName != null and siteName != ''">site_name,</if>
+            <if test="customerServiceUrl != null">customer_service_url,</if>
+            <if test="popupMessage != null">popup_message,</if>
+            <if test="copyrightInfo != null">copyright_info,</if>
+            <if test="registerBonusAmount != null">register_bonus_amount,</if>
+            <if test="maintenanceImage != null">maintenance_image,</if>
+            <if test="siteLogo != null">site_logo,</if>
+            <if test="favicon != null">favicon,</if>
+            <if test="currencyType != null">currency_type,</if>
+            <if test="maxRegisterPerIp != null">max_register_per_ip,</if>
+            <if test="ipBlacklist != null">ip_blacklist,</if>
+            <if test="registerEnabled != null">register_enabled,</if>
+            <if test="emailVerificationEnabled != null">email_verification_enabled,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="siteName != null and siteName != ''">#{siteName},</if>
+            <if test="customerServiceUrl != null">#{customerServiceUrl},</if>
+            <if test="popupMessage != null">#{popupMessage},</if>
+            <if test="copyrightInfo != null">#{copyrightInfo},</if>
+            <if test="registerBonusAmount != null">#{registerBonusAmount},</if>
+            <if test="maintenanceImage != null">#{maintenanceImage},</if>
+            <if test="siteLogo != null">#{siteLogo},</if>
+            <if test="favicon != null">#{favicon},</if>
+            <if test="currencyType != null">#{currencyType},</if>
+            <if test="maxRegisterPerIp != null">#{maxRegisterPerIp},</if>
+            <if test="ipBlacklist != null">#{ipBlacklist},</if>
+            <if test="registerEnabled != null">#{registerEnabled},</if>
+            <if test="emailVerificationEnabled != null">#{emailVerificationEnabled},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderSiteConfig" parameterType="OrderSiteConfig">
+        update order_site_config
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="siteName != null and siteName != ''">site_name = #{siteName},</if>
+            <if test="customerServiceUrl != null">customer_service_url = #{customerServiceUrl},</if>
+            <if test="popupMessage != null">popup_message = #{popupMessage},</if>
+            <if test="copyrightInfo != null">copyright_info = #{copyrightInfo},</if>
+            <if test="registerBonusAmount != null">register_bonus_amount = #{registerBonusAmount},</if>
+            <if test="maintenanceImage != null">maintenance_image = #{maintenanceImage},</if>
+            <if test="siteLogo != null">site_logo = #{siteLogo},</if>
+            <if test="favicon != null">favicon = #{favicon},</if>
+            <if test="currencyType != null">currency_type = #{currencyType},</if>
+            <if test="maxRegisterPerIp != null">max_register_per_ip = #{maxRegisterPerIp},</if>
+            <if test="ipBlacklist != null">ip_blacklist = #{ipBlacklist},</if>
+            <if test="registerEnabled != null">register_enabled = #{registerEnabled},</if>
+            <if test="emailVerificationEnabled != null">email_verification_enabled = #{emailVerificationEnabled},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderSiteConfigById" parameterType="Long">
+        delete from order_site_config where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderSiteConfigByIds" parameterType="String">
+        delete from order_site_config where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

@@ -126,7 +126,19 @@ public class OrderMemberUser extends BaseEntity
     @Excel(name = "是否假人")
     private String isReal;
 
-    public void setId(Long id) 
+
+    private String sex;
+
+
+    public String getSex() {
+        return sex;
+    }
+
+    public void setSex(String sex) {
+        this.sex = sex;
+    }
+
+    public void setId(Long id)
     {
         this.id = id;
     }
