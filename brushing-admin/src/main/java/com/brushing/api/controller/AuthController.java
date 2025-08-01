@@ -14,13 +14,12 @@ import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.service.IOrderMemberUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 
@@ -31,6 +30,10 @@ public class AuthController extends BaseController {
 
     @Autowired
     private IOrderMemberUserService userService;
+
+    @Autowired
+    private FrontJwtUtil frontJwtUtil;
+
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -47,7 +50,7 @@ public class AuthController extends BaseController {
         boolean matches = passwordEncoder.matches(loginRequest.getPassword(), user.getPassword());
         if (!matches) return error("wrong password");
 
-        String token = FrontJwtUtil.generateToken(user.getUsername());
+        String token = frontJwtUtil.generateToken(user.getUsername());
         String ipAddr = IpUtils.getIpAddr();
         String address = AddressUtils.getRealAddressByIP(ipAddr);
         user.setLastLoginTime(new Date());
@@ -98,12 +101,33 @@ public class AuthController extends BaseController {
         }
     }
 
+    @PostMapping("/logout")
+    @Operation(summary = "退出登录")
+    public AjaxResult logout(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (StringUtils.isEmpty(authHeader) || !authHeader.startsWith("Bearer ")) {
+            return AjaxResult.error(HttpStatus.BAD_REQUEST.value(), "Invalid authorization header");
+        }
+
+        String token = authHeader.substring("Bearer ".length());
+        try {
+            String username = frontJwtUtil.getUsernameFromToken(token);
+            frontJwtUtil.invalidateToken(token, username);
+            return success("Logout successful");
+        } catch (Exception e) {
+            return AjaxResult.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Logout failed: " + e.getMessage());
+        }
+    }
+
 
     @PostMapping("/getInfo")
-    @Operation(summary = "登录操作")
-    public AjaxResult getInfo(){
-
-        return success();
+    @Operation(summary = "获取用户信息")
+    public AjaxResult getInfo(@RequestAttribute("username") String username) {
+        OrderMemberUser user = userService.findByUsername(username);
+        if (user == null) {
+            return error("User not found");
+        }
+        return success(user);
     }
 
     public OrderMemberUser setUser(RegisterDto registerDto){

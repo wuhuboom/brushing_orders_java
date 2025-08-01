@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderGoodsTypeMapper">
+    
+    <resultMap type="OrderGoodsType" id="OrderGoodsTypeResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="sort"    column="sort"    />
+        <result property="status"    column="status"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectOrderGoodsTypeVo">
+        select id, name, sort, status, create_time, update_time from order_goods_type
+    </sql>
+
+    <select id="selectOrderGoodsTypeList" parameterType="OrderGoodsType" resultMap="OrderGoodsTypeResult">
+        <include refid="selectOrderGoodsTypeVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="sort != null "> and sort = #{sort}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderGoodsTypeById" parameterType="Long" resultMap="OrderGoodsTypeResult">
+        <include refid="selectOrderGoodsTypeVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderGoodsType" parameterType="OrderGoodsType" useGeneratedKeys="true" keyProperty="id">
+        insert into order_goods_type
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null">name,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null">#{name},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderGoodsType" parameterType="OrderGoodsType">
+        update order_goods_type
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null">name = #{name},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderGoodsTypeById" parameterType="Long">
+        delete from order_goods_type where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderGoodsTypeByIds" parameterType="String">
+        delete from order_goods_type where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
