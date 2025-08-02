@@ -20,6 +20,12 @@ public interface OrderMemberLevelMapper
     public OrderMemberLevel selectOrderMemberLevelById(Long id);
 
     /**
+     * 查询会员价格最低的等级 ，作为注册的最低等级
+     * @return
+     */
+    public OrderMemberLevel selectLowestPriceLevel();
+
+    /**
      * 查询会员等级列表
      * 
      * @param orderMemberLevel 会员等级

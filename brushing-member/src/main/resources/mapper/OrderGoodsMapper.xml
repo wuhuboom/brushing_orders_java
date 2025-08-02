@@ -47,6 +47,30 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where g.id = #{id}
     </select>
 
+    <select id="selectNearestPriceGoods" resultMap="OrderGoodsResult" parameterType="java.math.BigDecimal">
+        SELECT
+        g.id,
+        g.name,
+        g.cover_url,
+        g.price,
+        g.description,
+        g.status,
+        g.type_id,
+        g.create_time,
+        g.update_time,
+        t.name AS typeName
+        FROM
+        order_goods g
+        LEFT JOIN
+        order_goods_type t ON t.id = g.type_id
+        WHERE
+        g.price &lt;= #{price}
+        ORDER BY
+        g.price DESC
+        LIMIT 1
+    </select>
+
+
     <insert id="insertOrderGoods" parameterType="OrderGoods" useGeneratedKeys="true" keyProperty="id">
         insert into order_goods
         <trim prefix="(" suffix=")" suffixOverrides=",">

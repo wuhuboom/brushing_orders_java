@@ -58,6 +58,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id}
     </select>
 
+    <select id="selectLowestPriceLevel" resultMap="OrderMemberLevelResult">
+        <include refid="selectOrderMemberLevelVo"/>
+        order by price asc
+        limit 1
+    </select>
+
+
     <insert id="insertOrderMemberLevel" parameterType="OrderMemberLevel" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_level
         <trim prefix="(" suffix=")" suffixOverrides=",">

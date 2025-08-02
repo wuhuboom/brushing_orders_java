@@ -2,12 +2,12 @@ package com.brushing.member.service.impl;
 
 import java.util.List;
 
-import com.brushing.common.InviteCodeGenerator;
+import com.brushing.common.utils.InviteCodeGenerator;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.mapper.OrderMemberLevelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import com.brushing.member.mapper.OrderMemberUserMapper;
 import com.brushing.member.domain.OrderMemberUser;
@@ -24,6 +24,9 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
 {
     @Autowired
     private OrderMemberUserMapper orderMemberUserMapper;
+
+    @Autowired
+    private OrderMemberLevelMapper levelMapper;
 
     /**
      * 查询会员用户
@@ -48,6 +51,9 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         if (StringUtils.isNull(orderMemberUser)){
             return "500";
         }
+
+        OrderMemberLevel orderMemberLevel = levelMapper.selectLowestPriceLevel();
+        orderMemberUser.setLevelId(orderMemberLevel.getId());
         user.setParentId(orderMemberUser.getId());
         user.setInviteCode(setCode());
         user.setAncestors(orderMemberUser.getAncestors()+","+orderMemberUser.getId());

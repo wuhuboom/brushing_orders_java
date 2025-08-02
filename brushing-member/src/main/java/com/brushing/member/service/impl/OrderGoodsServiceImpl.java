@@ -1,5 +1,6 @@
 package com.brushing.member.service.impl;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.brushing.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,5 +93,10 @@ public class OrderGoodsServiceImpl implements IOrderGoodsService
     public int deleteOrderGoodsById(String id)
     {
         return orderGoodsMapper.deleteOrderGoodsById(id);
+    }
+
+    @Override
+    public OrderGoods selectNearestPriceGoods(BigDecimal price) {
+        return orderGoodsMapper.selectNearestPriceGoods(price);
     }
 }

@@ -1,4 +1,4 @@
-package com.brushing.common;
+package com.brushing.common.utils;
 import java.security.SecureRandom;
 
 public class InviteCodeGenerator {

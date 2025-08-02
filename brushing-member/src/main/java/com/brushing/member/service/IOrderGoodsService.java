@@ -1,7 +1,9 @@
 package com.brushing.member.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.brushing.member.domain.OrderGoods;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 商品列表Service接口
@@ -58,4 +60,6 @@ public interface IOrderGoodsService
      * @return 结果
      */
     public int deleteOrderGoodsById(String id);
+
+    public OrderGoods selectNearestPriceGoods(@Param("price") BigDecimal price);
 }

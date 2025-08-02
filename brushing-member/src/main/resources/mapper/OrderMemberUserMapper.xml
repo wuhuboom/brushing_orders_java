@@ -35,57 +35,85 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime"    column="create_time"    />
         <result property="remark"    column="remark"    />
         <result property="isReal"    column="is_real"    />
+        <result property="levelId"    column="level_id"    />
+        <association property="userLevel"     javaType="UserLevel"  resultMap="userLevelResult" />
+    </resultMap>
+
+
+    <resultMap type="UserLevel" id="userLevelResult">
+        <result property="id"    column="id"    />
+        <result property="icon"    column="icon"    />
+        <result property="nameZh"    column="name_zh"    />
+        <result property="nameEn"    column="name_en"    />
+        <result property="orderCount"    column="order_count"    />
     </resultMap>
 
     <sql id="selectOrderMemberUserVo">
-        select id, username, phone, password, trade_password, parent_id, ancestors,sex, email, credit_score, balance, frozen_balance, total_balance, invite_code, register_ip, last_login_time, account_status, trade_status, withdraw_status, real_name_status, real_name, id_card_number, id_card_front, id_card_back, withdraw_name, withdraw_address, withdraw_type, create_time, remark, is_real from order_member_user
+        SELECT
+        u.id,
+        u.username,
+        u.phone,
+        u.password,
+        u.trade_password,
+        u.parent_id,
+        u.ancestors,
+        u.sex,
+        u.email,
+        u.credit_score,
+        u.balance,
+        u.frozen_balance,
+        u.total_balance,
+        u.invite_code,
+        u.register_ip,
+        u.last_login_time,
+        u.account_status,
+        u.trade_status,
+        u.withdraw_status,
+        u.real_name_status,
+        u.real_name,
+        u.id_card_number,
+        u.id_card_front,
+        u.id_card_back,
+        u.withdraw_name,
+        u.withdraw_address,
+        u.withdraw_type,
+        u.create_time,
+        u.remark,
+        u.is_real,
+        u.level_id,
+        l.id AS level_id,
+        l.icon,
+        l.name_zh,
+        l.name_en,
+        l.order_count
+        FROM
+        order_member_user u
+        LEFT JOIN
+        order_member_level l ON u.level_id = l.id
     </sql>
+
 
     <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
         <where>  
-            <if test="username != null  and username != ''"> and username like concat('%', #{username}, '%')</if>
-            <if test="phone != null  and phone != ''"> and phone = #{phone}</if>
-            <if test="password != null  and password != ''"> and password = #{password}</if>
-            <if test="tradePassword != null  and tradePassword != ''"> and trade_password = #{tradePassword}</if>
-            <if test="parentId != null "> and parent_id = #{parentId}</if>
-            <if test="ancestors != null  and ancestors != ''"> and ancestors = #{ancestors}</if>
-            <if test="email != null  and email != ''"> and email = #{email}</if>
-            <if test="creditScore != null "> and credit_score = #{creditScore}</if>
-            <if test="balance != null "> and balance = #{balance}</if>
-            <if test="frozenBalance != null "> and frozen_balance = #{frozenBalance}</if>
-            <if test="totalBalance != null "> and total_balance = #{totalBalance}</if>
-            <if test="inviteCode != null  and inviteCode != ''"> and invite_code = #{inviteCode}</if>
-            <if test="registerIp != null  and registerIp != ''"> and register_ip = #{registerIp}</if>
-            <if test="lastLoginTime != null "> and last_login_time = #{lastLoginTime}</if>
-            <if test="accountStatus != null  and accountStatus != ''"> and account_status = #{accountStatus}</if>
-            <if test="tradeStatus != null  and tradeStatus != ''"> and trade_status = #{tradeStatus}</if>
-            <if test="withdrawStatus != null  and withdrawStatus != ''"> and withdraw_status = #{withdrawStatus}</if>
-            <if test="realNameStatus != null  and realNameStatus != ''"> and real_name_status = #{realNameStatus}</if>
-            <if test="realName != null  and realName != ''"> and real_name like concat('%', #{realName}, '%')</if>
-            <if test="idCardNumber != null  and idCardNumber != ''"> and id_card_number = #{idCardNumber}</if>
-            <if test="idCardFront != null  and idCardFront != ''"> and id_card_front = #{idCardFront}</if>
-            <if test="idCardBack != null  and idCardBack != ''"> and id_card_back = #{idCardBack}</if>
-            <if test="withdrawName != null  and withdrawName != ''"> and withdraw_name like concat('%', #{withdrawName}, '%')</if>
-            <if test="withdrawAddress != null  and withdrawAddress != ''"> and withdraw_address = #{withdrawAddress}</if>
-            <if test="withdrawType != null  and withdrawType != ''"> and withdraw_type = #{withdrawType}</if>
-            <if test="isReal != null  and isReal != ''"> and is_real = #{isReal}</if>
+            <if test="username != null  and username != ''"> and u.username like concat('%', #{username}, '%')</if>
+            <if test="phone != null  and phone != ''"> and u.phone = #{phone}</if>
         </where>
     </select>
     
     <select id="selectOrderMemberUserById" parameterType="Long" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
-        where id = #{id}
+        where u.id = #{id}
     </select>
 
     <select id="selectOrderMemberUserByInCode" parameterType="String" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
-        where invite_code = #{inviteCode}
+        where u.invite_code = #{inviteCode}
     </select>
 
     <select id="findByUsername" parameterType="String" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
-        where username = #{username}
+        where u.username = #{username}
     </select>
 
     <insert id="insertOrderMemberUser" parameterType="OrderMemberUser" useGeneratedKeys="true" keyProperty="id">
@@ -120,6 +148,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="createTime != null">create_time,</if>
             <if test="remark != null">remark,</if>
             <if test="isReal != null">is_real,</if>
+            <if test="levelId != null">level_id,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="username != null and username != ''">#{username},</if>
@@ -151,6 +180,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="createTime != null">#{createTime},</if>
             <if test="remark != null">#{remark},</if>
             <if test="isReal != null">#{isReal},</if>
+            <if test="levelId != null">#{levelId},</if>
          </trim>
     </insert>
 
@@ -186,6 +216,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="isReal != null">is_real = #{isReal},</if>
+            <if test="levelId != null">level_id = #{levelId},</if>
         </trim>
         where id = #{id}
     </update>

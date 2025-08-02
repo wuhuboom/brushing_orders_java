@@ -2,6 +2,8 @@ package com.brushing.member.domain;
 
 import java.math.BigDecimal;
 import java.util.Date;
+
+import com.brushing.member.domain.vo.UserLevel;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -126,9 +128,27 @@ public class OrderMemberUser extends BaseEntity
     @Excel(name = "是否假人")
     private String isReal;
 
-
     private String sex;
 
+    private Long levelId;
+
+    private UserLevel userLevel;
+
+    public Long getLevelId() {
+        return levelId;
+    }
+
+    public void setLevelId(Long levelId) {
+        this.levelId = levelId;
+    }
+
+    public UserLevel getUserLevel() {
+        return userLevel;
+    }
+
+    public void setUserLevel(UserLevel userLevel) {
+        this.userLevel = userLevel;
+    }
 
     public String getSex() {
         return sex;

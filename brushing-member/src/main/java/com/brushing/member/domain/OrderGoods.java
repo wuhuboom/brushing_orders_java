@@ -17,7 +17,7 @@ public class OrderGoods extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     /** 主键ID */
-    private String id;
+    private Long id;
 
     /** 商品名称 */
     @Excel(name = "商品名称")
@@ -59,17 +59,15 @@ public class OrderGoods extends BaseEntity
         this.typeId = typeId;
     }
 
-    public void setId(String id)
-    {
-        this.id = id;
-    }
-
-    public String getId() 
-    {
+    public Long getId() {
         return id;
     }
 
-    public void setName(String name) 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name)
     {
         this.name = name;
     }

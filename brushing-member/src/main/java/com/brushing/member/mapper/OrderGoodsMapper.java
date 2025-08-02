@@ -1,7 +1,9 @@
 package com.brushing.member.mapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.brushing.member.domain.OrderGoods;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 商品列表Mapper接口
@@ -18,6 +20,14 @@ public interface OrderGoodsMapper
      * @return 商品列表
      */
     public OrderGoods selectOrderGoodsById(String id);
+
+    /**
+     * 查询用户余额 最接近的一条商品数据
+     * @param price 用户余额
+     * @return
+     */
+    public OrderGoods selectNearestPriceGoods(@Param("price") BigDecimal price);
+
 
     /**
      * 查询商品列表列表

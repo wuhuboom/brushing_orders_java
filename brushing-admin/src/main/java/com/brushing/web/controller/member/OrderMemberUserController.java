@@ -105,8 +105,12 @@ public class OrderMemberUserController extends BaseController
     public AjaxResult edit(@RequestBody OrderMemberUser orderMemberUser)
     {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        orderMemberUser.setPassword(encoder.encode(orderMemberUser.getPassword()));
-        orderMemberUser.setTradePassword(encoder.encode(orderMemberUser.getTradePassword()));
+        if (StringUtils.isNotEmpty(orderMemberUser.getPassword())){
+            orderMemberUser.setPassword(encoder.encode(orderMemberUser.getPassword()));
+        }
+        if(StringUtils.isNotEmpty(orderMemberUser.getTradePassword())){
+            orderMemberUser.setTradePassword(encoder.encode(orderMemberUser.getTradePassword()));
+        }
         return toAjax(orderMemberUserService.updateOrderMemberUser(orderMemberUser));
     }
 
