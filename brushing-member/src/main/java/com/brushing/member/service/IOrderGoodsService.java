@@ -19,7 +19,7 @@ public interface IOrderGoodsService
      * @param id 商品列表主键
      * @return 商品列表
      */
-    public OrderGoods selectOrderGoodsById(String id);
+    public OrderGoods selectOrderGoodsById(Long id);
 
     /**
      * 查询商品列表列表
@@ -28,6 +28,8 @@ public interface IOrderGoodsService
      * @return 商品列表集合
      */
     public List<OrderGoods> selectOrderGoodsList(OrderGoods orderGoods);
+
+    public List<OrderGoods> selectRandomOrderGoods();
 
     /**
      * 新增商品列表

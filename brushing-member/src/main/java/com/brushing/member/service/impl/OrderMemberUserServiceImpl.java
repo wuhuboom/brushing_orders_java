@@ -53,7 +53,7 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         }
 
         OrderMemberLevel orderMemberLevel = levelMapper.selectLowestPriceLevel();
-        orderMemberUser.setLevelId(orderMemberLevel.getId());
+        user.setLevelId(orderMemberLevel.getId());
         user.setParentId(orderMemberUser.getId());
         user.setInviteCode(setCode());
         user.setAncestors(orderMemberUser.getAncestors()+","+orderMemberUser.getId());
@@ -86,6 +86,8 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         orderMemberUser.setCreateTime(DateUtils.getNowDate());
         orderMemberUser.setInviteCode(setCode());
         orderMemberUser.setAncestors(setAncestors(orderMemberUser));
+        OrderMemberLevel orderMemberLevel = levelMapper.selectLowestPriceLevel();
+        orderMemberUser.setLevelId(orderMemberLevel.getId());
         return orderMemberUserMapper.insertOrderMemberUser(orderMemberUser);
     }
 

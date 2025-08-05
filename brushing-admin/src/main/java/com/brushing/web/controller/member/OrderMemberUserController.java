@@ -1,11 +1,14 @@
 package com.brushing.web.controller.member;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderMemberLevel;
 import com.brushing.member.service.IOrderMemberLevelService;
+import com.brushing.member.service.IOrderTopupService;
+import com.brushing.web.controller.member.dto.TopupDto;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,9 @@ public class OrderMemberUserController extends BaseController
 
     @Autowired
     private IOrderMemberLevelService orderMemberLevelService;
+
+    @Autowired
+    private IOrderTopupService orderTopupService;
 
     /**
      * 查询会员用户列表
@@ -134,5 +140,11 @@ public class OrderMemberUserController extends BaseController
     {
         List<OrderMemberLevel> list = orderMemberLevelService.selectOrderMemberLevelList(new OrderMemberLevel());
         return success(list);
+    }
+
+    @PostMapping("/topupAmount")
+    public AjaxResult topupAmount(@RequestBody TopupDto dto){
+
+        return toAjax(orderTopupService.upOrDown(dto.getUserId(), new BigDecimal(dto.getAmount()),dto.getType()));
     }
 }

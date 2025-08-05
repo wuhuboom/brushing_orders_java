@@ -17,7 +17,9 @@ public interface IOrderAccountChangeService
      * @param id 账户变动主键
      * @return 账户变动
      */
-    public OrderAccountChange selectOrderAccountChangeById(String id);
+    public OrderAccountChange selectOrderAccountChangeById(Long id);
+
+    public OrderAccountChange selectOrderAccountChangeByCode(String changeNo);
 
     /**
      * 查询账户变动列表

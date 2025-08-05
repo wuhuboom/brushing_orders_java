@@ -27,9 +27,14 @@ public class OrderAccountChangeServiceImpl implements IOrderAccountChangeService
      * @return 账户变动
      */
     @Override
-    public OrderAccountChange selectOrderAccountChangeById(String id)
+    public OrderAccountChange selectOrderAccountChangeById(Long id)
     {
         return orderAccountChangeMapper.selectOrderAccountChangeById(id);
+    }
+
+    @Override
+    public OrderAccountChange selectOrderAccountChangeByCode(String changeNo) {
+        return orderAccountChangeMapper.selectOrderAccountChangeByCode(changeNo);
     }
 
     /**

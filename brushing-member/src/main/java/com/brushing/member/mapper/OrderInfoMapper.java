@@ -2,6 +2,7 @@ package com.brushing.member.mapper;
 
 import java.util.List;
 import com.brushing.member.domain.OrderInfo;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 订单列表Mapper接口
@@ -17,7 +18,9 @@ public interface OrderInfoMapper
      * @param id 订单列表主键
      * @return 订单列表
      */
-    public OrderInfo selectOrderInfoById(String id);
+    public OrderInfo selectOrderInfoById(Long id);
+
+    public OrderInfo selectOrderInfoByCode(String orderNo);
 
     /**
      * 查询订单列表列表
@@ -26,6 +29,8 @@ public interface OrderInfoMapper
      * @return 订单列表集合
      */
     public List<OrderInfo> selectOrderInfoList(OrderInfo orderInfo);
+
+    public List<OrderInfo> selectOrderInfoBySeries(@Param("userId") Long userId);
 
     /**
      * 新增订单列表
@@ -58,4 +63,11 @@ public interface OrderInfoMapper
      * @return 结果
      */
     public int deleteOrderInfoByIds(String[] ids);
+
+    /**
+     * 查询当前用户是否存在未完成的订单
+     * @return
+     */
+    public int countUnfinishedOrders(@Param("userId") Long userId);
+
 }

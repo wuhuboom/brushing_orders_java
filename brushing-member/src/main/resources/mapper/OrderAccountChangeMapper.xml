@@ -33,9 +33,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
     
-    <select id="selectOrderAccountChangeById" parameterType="String" resultMap="OrderAccountChangeResult">
+    <select id="selectOrderAccountChangeById" parameterType="Long" resultMap="OrderAccountChangeResult">
         <include refid="selectOrderAccountChangeVo"/>
         where id = #{id}
+    </select>
+
+    <select id="selectOrderAccountChangeByCode" parameterType="String" resultMap="OrderAccountChangeResult">
+        <include refid="selectOrderAccountChangeVo"/>
+        where change_no = #{changeNo}
     </select>
 
     <insert id="insertOrderAccountChange" parameterType="OrderAccountChange" useGeneratedKeys="true" keyProperty="id">

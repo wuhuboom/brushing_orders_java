@@ -27,9 +27,14 @@ public class OrderInfoServiceImpl implements IOrderInfoService
      * @return 订单列表
      */
     @Override
-    public OrderInfo selectOrderInfoById(String id)
+    public OrderInfo selectOrderInfoById(Long id)
     {
         return orderInfoMapper.selectOrderInfoById(id);
+    }
+
+    @Override
+    public OrderInfo selectOrderInfoByCode(String code) {
+        return orderInfoMapper.selectOrderInfoByCode(code);
     }
 
     /**
@@ -53,7 +58,6 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     @Override
     public int insertOrderInfo(OrderInfo orderInfo)
     {
-        orderInfo.setCreateTime(DateUtils.getNowDate());
         return orderInfoMapper.insertOrderInfo(orderInfo);
     }
 
@@ -92,5 +96,15 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     public int deleteOrderInfoById(String id)
     {
         return orderInfoMapper.deleteOrderInfoById(id);
+    }
+
+    @Override
+    public int countUnfinishedOrders(Long userId) {
+        return orderInfoMapper.countUnfinishedOrders(userId);
+    }
+
+    @Override
+    public List<OrderInfo> selectOrderInfoBySeries(Long userId) {
+        return orderInfoMapper.selectOrderInfoBySeries(userId);
     }
 }

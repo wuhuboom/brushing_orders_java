@@ -19,7 +19,7 @@ public interface OrderGoodsMapper
      * @param id 商品列表主键
      * @return 商品列表
      */
-    public OrderGoods selectOrderGoodsById(String id);
+    public OrderGoods selectOrderGoodsById(Long id);
 
     /**
      * 查询用户余额 最接近的一条商品数据
@@ -36,6 +36,12 @@ public interface OrderGoodsMapper
      * @return 商品列表集合
      */
     public List<OrderGoods> selectOrderGoodsList(OrderGoods orderGoods);
+
+    /**
+     * 获取随机商品
+     * @return
+     */
+    public List<OrderGoods> selectRandomOrderGoods();
 
     /**
      * 新增商品列表

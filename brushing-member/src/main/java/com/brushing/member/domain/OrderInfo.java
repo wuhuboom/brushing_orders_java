@@ -19,7 +19,7 @@ public class OrderInfo extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     /** 主键ID */
-    private String id;
+    private Long id;
 
     /** 订单号 */
     @Excel(name = "订单号")
@@ -35,7 +35,7 @@ public class OrderInfo extends BaseEntity
 
     /** 商品数量 */
     @Excel(name = "商品数量")
-    private Long quantity;
+    private Integer quantity;
 
     /** 佣金金额 */
     @Excel(name = "佣金金额")
@@ -50,13 +50,11 @@ public class OrderInfo extends BaseEntity
     private String commissionStatus;
 
     /** 下单时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "下单时间", width = 30, dateFormat = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date orderTime;
 
     /** 提交时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "提交时间", width = 30, dateFormat = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date submitTime;
 
     /** 订单类型 */
@@ -67,17 +65,79 @@ public class OrderInfo extends BaseEntity
     @Excel(name = "订单状态")
     private String status;
 
-    public void setId(String id) 
-    {
-        this.id = id;
+    /**
+     * 商品价格
+     */
+    private BigDecimal price;
+
+    private String username;
+    private String phone;
+    private Integer dealCount;
+
+    /**
+     * 连单id
+     */
+    private Long seriesId;
+
+    public Long getSeriesId() {
+        return seriesId;
     }
 
-    public String getId() 
-    {
+    public void setSeriesId(Long seriesId) {
+        this.seriesId = seriesId;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Integer getDealCount() {
+        return dealCount;
+    }
+
+    public void setDealCount(Integer dealCount) {
+        this.dealCount = dealCount;
+    }
+
+    private OrderGoods product;
+
+    public OrderGoods getProduct() {
+        return product;
+    }
+
+    public void setProduct(OrderGoods product) {
+        this.product = product;
+    }
+
+    public Long getId() {
         return id;
     }
 
-    public void setOrderNo(String orderNo) 
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setOrderNo(String orderNo)
     {
         this.orderNo = orderNo;
     }
@@ -107,17 +167,15 @@ public class OrderInfo extends BaseEntity
         return productId;
     }
 
-    public void setQuantity(Long quantity) 
-    {
-        this.quantity = quantity;
-    }
-
-    public Long getQuantity() 
-    {
+    public Integer getQuantity() {
         return quantity;
     }
 
-    public void setCommission(BigDecimal commission) 
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public void setCommission(BigDecimal commission)
     {
         this.commission = commission;
     }

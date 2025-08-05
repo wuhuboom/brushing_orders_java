@@ -31,6 +31,9 @@ public class OrderGoods extends BaseEntity
     @Excel(name = "商品价格")
     private BigDecimal price;
 
+    private BigDecimal minPrice;
+    private BigDecimal maxPrice;
+
     /** 商品描述 */
     @Excel(name = "商品描述")
     private String description;
@@ -42,6 +45,22 @@ public class OrderGoods extends BaseEntity
     private String typeName;
 
     private Long typeId;
+
+    public BigDecimal getMinPrice() {
+        return minPrice;
+    }
+
+    public void setMinPrice(BigDecimal minPrice) {
+        this.minPrice = minPrice;
+    }
+
+    public BigDecimal getMaxPrice() {
+        return maxPrice;
+    }
+
+    public void setMaxPrice(BigDecimal maxPrice) {
+        this.maxPrice = maxPrice;
+    }
 
     public String getTypeName() {
         return typeName;

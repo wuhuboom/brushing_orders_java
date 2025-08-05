@@ -28,7 +28,7 @@ public class OrderGoodsServiceImpl implements IOrderGoodsService
      * @return 商品列表
      */
     @Override
-    public OrderGoods selectOrderGoodsById(String id)
+    public OrderGoods selectOrderGoodsById(Long id)
     {
         return orderGoodsMapper.selectOrderGoodsById(id);
     }
@@ -43,6 +43,11 @@ public class OrderGoodsServiceImpl implements IOrderGoodsService
     public List<OrderGoods> selectOrderGoodsList(OrderGoods orderGoods)
     {
         return orderGoodsMapper.selectOrderGoodsList(orderGoods);
+    }
+
+    @Override
+    public List<OrderGoods> selectRandomOrderGoods() {
+        return orderGoodsMapper.selectRandomOrderGoods();
     }
 
     /**

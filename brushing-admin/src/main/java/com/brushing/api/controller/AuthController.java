@@ -1,5 +1,8 @@
 package com.brushing.api.controller;
 
+import com.brushing.api.controller.vo.CheckTradePassword;
+import com.brushing.api.controller.vo.EditPasswordDto;
+import com.brushing.api.controller.vo.EditTradePasswordDto;
 import com.brushing.api.dto.FrontLoginResponse;
 import com.brushing.api.dto.LoginUserDto;
 import com.brushing.api.dto.RegisterDto;
@@ -119,15 +122,101 @@ public class AuthController extends BaseController {
         }
     }
 
-
-    @PostMapping("/getInfo")
-    @Operation(summary = "获取用户信息")
+    @GetMapping("/getInfo")
+    @Operation(summary = "获取用户信息",
+            description =
+                    "'username': '用户名', " +
+                            "'phone': '手机号', " +
+                            "'password': '登录密码', " +
+                            "'tradePassword': '交易密码', " +
+                            "'parentId': '上级用户ID', " +
+                            "'email': '邮箱', " +
+                            "'creditScore': '信誉分', " +
+                            "'balance': '可用余额', " +
+                            "'frozenBalance': '冻结余额', " +
+                            "'totalBalance': '总余额', " +
+                            "'inviteCode': '邀请码', " +
+                            "'registerIp': '最近登录', " +
+                            "'lastLoginTime': '登录时间', " +
+                            "'accountStatus': '账户状态', " +
+                            "'tradeStatus': '交易状态', " +
+                            "'withdrawStatus': '提现状态', " +
+                            "'realNameStatus': '实名状态', " +
+                            "'realName': '真实姓名', " +
+                            "'idCardNumber': '身份证号', " +
+                            "'idCardFront': '身份证正面', " +
+                            "'idCardBack': '身份证反面', " +
+                            "'withdrawName': '提现姓名', " +
+                            "'withdrawAddress': '提现地址', " +
+                            "'withdrawType': '提现类型', " +
+                            "'isReal': '是否假人', " +
+                            "'sex': '性别', " +
+                            "'levelId': '会员等级ID', " +
+                            "'commission': '当日佣金', " +
+                            "'allCommission': '累计佣金', " +
+                            "'dealCount': '单数',  " +
+                            "'directSubCount': '直属下级人数', " +
+                            "'allSubCount': '所有下级人数', " +
+                            "'todayWithdrawCount': '今日提现次数', " +
+                            "'totalWithdrawCount': '历史提现次数', " +
+                            "'todayResetCount': '今日重置次数', " +
+                            "'totalResetCount': '总重置次数', " +
+                            "'withdrawTip': '提现提示', " +
+                            "'userLevel.icon': '会员图标', " +
+                            "'userLevel.nameZh': '中文名称', " +
+                            "'userLevel.nameEn': '英文名称' " +
+                            "'userLevel.orderCount': '提现所需订单数'"
+    )
     public AjaxResult getInfo(@RequestAttribute("username") String username) {
         OrderMemberUser user = userService.findByUsername(username);
         if (user == null) {
             return error("User not found");
         }
         return success(user);
+    }
+
+
+    @PostMapping("/editPassword")
+    @Operation(summary = "修改登录密码" ,description = "oldPassword:旧密码，newPassword:新密码")
+    public AjaxResult editPassword(@RequestBody EditPasswordDto passwordDto,@RequestAttribute("username") String username){
+        OrderMemberUser user = userService.findByUsername(username);
+        if (StringUtils.isEmpty(passwordDto.getOldPassword())||StringUtils.isEmpty(passwordDto.getNewPassword())){
+            return error("Please enter password");
+        }
+        boolean matches = passwordEncoder.matches(passwordDto.getOldPassword(), user.getPassword());
+        if (!matches){
+            error("wrong password");
+        }
+        String encode = passwordEncoder.encode(passwordDto.getNewPassword());
+        user.setPassword(encode);
+        return toAjax(userService.updateOrderMemberUser(user));
+    }
+
+    @PostMapping("/editTradePassword")
+    @Operation(summary = "修改交易密码" ,description = "oldTradePassword:旧密码，newTradePassword:新密码")
+    public AjaxResult editTradePassword(@RequestBody EditTradePasswordDto passwordDto, @RequestAttribute("username") String username){
+        OrderMemberUser user = userService.findByUsername(username);
+        if (StringUtils.isEmpty(passwordDto.getOldTradePassword())||StringUtils.isEmpty(passwordDto.getNewTradePassword())){
+            return error("Please enter password");
+        }
+        boolean matches = passwordEncoder.matches(passwordDto.getOldTradePassword(), user.getTradePassword());
+        if (!matches){
+           return error("wrong trade password");
+        }
+        String encode = passwordEncoder.encode(passwordDto.getNewTradePassword());
+        user.setPassword(encode);
+        return toAjax(userService.updateOrderMemberUser(user));
+    }
+
+    @PostMapping("/checkTradePassword")
+    @Operation(summary = "验证交易密码")
+    public AjaxResult checkTradePassword(@RequestBody CheckTradePassword checkTradePassword,@RequestAttribute("username") String username){
+        OrderMemberUser user = userService.findByUsername(username);
+        boolean matches = passwordEncoder.matches(checkTradePassword.getTradePassword(), user.getTradePassword());
+        if (!matches){
+            return error("wrong trade password");
+        }
+        return success();
     }
 
     public OrderMemberUser setUser(RegisterDto registerDto){

@@ -64,7 +64,7 @@ public class OrderAccountChangeController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('member:change:query')")
     @GetMapping(value = "/{id}")
-    public AjaxResult getInfo(@PathVariable("id") String id)
+    public AjaxResult getInfo(@PathVariable("id") Long id)
     {
         return success(orderAccountChangeService.selectOrderAccountChangeById(id));
     }

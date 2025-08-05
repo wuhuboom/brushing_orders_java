@@ -36,12 +36,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"    column="remark"    />
         <result property="isReal"    column="is_real"    />
         <result property="levelId"    column="level_id"    />
+        <result property="commission"    column="commission"    />
+        <result property="allCommission"    column="all_commission"    />
+        <result property="dealCount"    column="deal_count"    />
+        <result property="directSubCount"    column="direct_sub_count"    />
+        <result property="allSubCount"    column="all_sub_count"    />
+        <result property="todayWithdrawCount"    column="today_withdraw_count"    />
+        <result property="totalWithdrawCount"    column="total_withdraw_count"    />
+        <result property="todayResetCount"    column="today_reset_count"    />
+        <result property="totalResetCount"    column="total_reset_count"    />
+        <result property="withdrawTip"    column="withdraw_tip"    />
         <association property="userLevel"     javaType="UserLevel"  resultMap="userLevelResult" />
     </resultMap>
 
 
     <resultMap type="UserLevel" id="userLevelResult">
-        <result property="id"    column="id"    />
+        <result property="id"    column="levelId"    />
         <result property="icon"    column="icon"    />
         <result property="nameZh"    column="name_zh"    />
         <result property="nameEn"    column="name_en"    />
@@ -62,7 +72,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.credit_score,
         u.balance,
         u.frozen_balance,
-        u.total_balance,
+        (u.balance + u.frozen_balance) AS total_balance,
         u.invite_code,
         u.register_ip,
         u.last_login_time,
@@ -81,16 +91,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.remark,
         u.is_real,
         u.level_id,
-        l.id AS level_id,
+        u.commission,
+        u.all_commission,
+        u.deal_count,
+        u.today_withdraw_count,
+        u.total_withdraw_count,
+        u.today_reset_count,
+        u.total_reset_count,
+        u.withdraw_tip,
+
+        -- 等级信息
+        l.id AS levelId,
         l.icon,
         l.name_zh,
         l.name_en,
-        l.order_count
+        l.order_count,
+
+        -- 直属下级数量
+        (SELECT COUNT(1) FROM order_member_user d WHERE d.parent_id = u.id) AS direct_sub_count,
+
+        -- 所有下级数量（使用 FIND_IN_SET 替代 LIKE）
+        (SELECT COUNT(1) FROM order_member_user a WHERE FIND_IN_SET(u.id, a.ancestors)) AS all_sub_count
+
         FROM
         order_member_user u
         LEFT JOIN
         order_member_level l ON u.level_id = l.id
     </sql>
+
 
 
     <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
@@ -115,6 +143,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectOrderMemberUserVo"/>
         where u.username = #{username}
     </select>
+
+    <select id="selectSubUsers" parameterType="map" resultType="OrderMemberUser">
+        SELECT *
+        FROM order_member_user
+        <where>
+            <if test="isDirect">
+                parent_id = #{userId}
+            </if>
+            <if test="!isDirect">
+                FIND_IN_SET(#{userId}, ancestors)
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
 
     <insert id="insertOrderMemberUser" parameterType="OrderMemberUser" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_user
@@ -149,6 +192,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null">remark,</if>
             <if test="isReal != null">is_real,</if>
             <if test="levelId != null">level_id,</if>
+            <if test="commission != null">commission,</if>
+            <if test="allCommission != null">all_commission,</if>
+            <if test="dealCount != null">deal_count,</if>
+            <if test="todayWithdrawCount != null">today_withdraw_count,</if>
+            <if test="totalWithdrawCount != null">total_withdraw_count,</if>
+            <if test="todayResetCount != null">today_reset_count,</if>
+            <if test="totalResetCount != null">total_reset_count,</if>
+            <if test="withdrawTip != null">withdraw_tip,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="username != null and username != ''">#{username},</if>
@@ -181,6 +232,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null">#{remark},</if>
             <if test="isReal != null">#{isReal},</if>
             <if test="levelId != null">#{levelId},</if>
+            <if test="commission != null">#{commission},</if>
+            <if test="allCommission != null">#{allCommission},</if>
+            <if test="dealCount != null">#{dealCount},</if>
+            <if test="todayWithdrawCount != null">#{todayWithdrawCount},</if>
+            <if test="totalWithdrawCount != null">#{totalWithdrawCount},</if>
+            <if test="todayResetCount != null">#{todayResetCount},</if>
+            <if test="totalResetCount != null">#{totalResetCount},</if>
+            <if test="withdrawTip != null">#{withdrawTip},</if>
          </trim>
     </insert>
 
@@ -217,6 +276,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null">remark = #{remark},</if>
             <if test="isReal != null">is_real = #{isReal},</if>
             <if test="levelId != null">level_id = #{levelId},</if>
+            <if test="commission != null">commission = #{commission},</if>
+            <if test="allCommission != null">all_commission = #{allCommission},</if>
+            <if test="dealCount != null">deal_count = #{dealCount},</if>
+            <if test="todayWithdrawCount != null">today_withdraw_count = #{todayWithdrawCount},</if>
+            <if test="totalWithdrawCount != null">total_withdraw_count = #{totalWithdrawCount},</if>
+            <if test="todayResetCount != null">today_reset_count = #{todayResetCount},</if>
+            <if test="totalResetCount != null">total_reset_count = #{totalResetCount},</if>
+            <if test="withdrawTip != null">withdraw_tip = #{withdrawTip},</if>
         </trim>
         where id = #{id}
     </update>

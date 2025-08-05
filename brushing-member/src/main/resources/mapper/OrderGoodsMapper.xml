@@ -39,10 +39,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectOrderGoodsVo"/>
         <where>  
             <if test="name != null  and name != ''"> and g.name like concat('%', #{name}, '%')</if>
+            <if test="minPrice != null and maxPrice == null">
+                AND g.price &gt;= #{minPrice}
+            </if>
+
+            <if test="maxPrice != null and minPrice == null">
+                AND g.price &lt;= #{maxPrice}
+            </if>
+            <if test="minPrice != null and maxPrice != null">
+                AND g.price BETWEEN #{minPrice} AND #{maxPrice}
+            </if>
         </where>
     </select>
     
-    <select id="selectOrderGoodsById" parameterType="String" resultMap="OrderGoodsResult">
+    <select id="selectOrderGoodsById" parameterType="Long" resultMap="OrderGoodsResult">
         <include refid="selectOrderGoodsVo"/>
         where g.id = #{id}
     </select>
@@ -69,6 +79,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         g.price DESC
         LIMIT 1
     </select>
+
+    <select id="selectRandomOrderGoods" resultMap="OrderGoodsResult">
+        SELECT
+        id,
+        name,
+        cover_url,
+        price,
+        description,
+        status,
+        create_time,
+        update_time
+        FROM order_goods
+        WHERE id >= (
+        SELECT FLOOR(RAND() * (SELECT MAX(id) FROM order_goods))
+        )
+        LIMIT 8
+    </select>
+
 
 
     <insert id="insertOrderGoods" parameterType="OrderGoods" useGeneratedKeys="true" keyProperty="id">

@@ -52,12 +52,12 @@ public class SwaggerConfig {
     public Info getApiInfo() {
         return new Info()
                 // 设置标题
-                .title("标题：管理平台管理系统_接口文档")
+                .title("标题：抢单_接口文档")
                 // 描述
-                .description("描述：用于管理集团旗下公司的人员信息,具体包括XXX,XXX模块...")
+                .description("描述：商品，订单 用户管理")
                 // 作者信息
                 .contact(new Contact().name(brushingConfig.getName()))
                 // 版本
-                .version("版本号:" + brushingConfig.getVersion());
+                .version("版本号:1.0.0" );
     }
 }

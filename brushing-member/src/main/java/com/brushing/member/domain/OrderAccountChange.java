@@ -25,7 +25,7 @@ public class OrderAccountChange extends BaseEntity
 
     /** 用户ID */
     @Excel(name = "用户ID")
-    private String userId;
+    private Long userId;
 
     /** 变动类型 */
     @Excel(name = "变动类型")
@@ -67,17 +67,15 @@ public class OrderAccountChange extends BaseEntity
         return changeNo;
     }
 
-    public void setUserId(String userId) 
-    {
-        this.userId = userId;
-    }
-
-    public String getUserId() 
-    {
+    public Long getUserId() {
         return userId;
     }
 
-    public void setType(String type) 
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public void setType(String type)
     {
         this.type = type;
     }

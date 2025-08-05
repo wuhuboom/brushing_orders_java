@@ -2,6 +2,7 @@ package com.brushing.member.service;
 
 import java.util.List;
 import com.brushing.member.domain.OrderInfo;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 订单列表Service接口
@@ -17,7 +18,9 @@ public interface IOrderInfoService
      * @param id 订单列表主键
      * @return 订单列表
      */
-    public OrderInfo selectOrderInfoById(String id);
+    public OrderInfo selectOrderInfoById(Long id);
+
+    public OrderInfo selectOrderInfoByCode(String code);
 
     /**
      * 查询订单列表列表
@@ -58,4 +61,8 @@ public interface IOrderInfoService
      * @return 结果
      */
     public int deleteOrderInfoById(String id);
+
+    public int countUnfinishedOrders(Long userId);
+
+    public List<OrderInfo> selectOrderInfoBySeries(Long userId);
 }

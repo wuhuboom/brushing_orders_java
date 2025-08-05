@@ -19,6 +19,9 @@ public class UserLevel {
     @Excel(name = "英文名称")
     private String nameEn;
 
+    /**
+     * 提现所需订单数
+     */
     private Integer orderCount;
 
     public Long getId() {

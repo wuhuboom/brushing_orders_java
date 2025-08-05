@@ -76,8 +76,7 @@ public class OrderMemberUser extends BaseEntity
     private String registerIp;
 
     /** 登录时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    @Excel(name = "登录时间", width = 30, dateFormat = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date lastLoginTime;
 
     /** 账户状态 */
@@ -128,11 +127,128 @@ public class OrderMemberUser extends BaseEntity
     @Excel(name = "是否假人")
     private String isReal;
 
+    /**
+     *性别 0男 1女
+     */
     private String sex;
 
     private Long levelId;
 
+
     private UserLevel userLevel;
+
+    /**
+     * 当日佣金
+     */
+    private BigDecimal commission;
+
+    /** 累计佣金 */
+    private BigDecimal allCommission;
+
+    /** 单数 */
+    private Integer dealCount;
+
+
+    // 直属下级人数
+    private Integer directSubCount;
+    // 所有下级人数
+    private Integer allSubCount;
+
+
+    /** 今日提现次数 */
+    private Integer todayWithdrawCount;
+
+    /** 历史提现次数 */
+    private Integer totalWithdrawCount;
+
+    /** 今日重置次数 */
+    private Integer todayResetCount;
+
+    /** 总重置次数 */
+    private Integer totalResetCount;
+
+    /** 提现提示 */
+    private String withdrawTip;
+
+    public Integer getTodayWithdrawCount() {
+        return todayWithdrawCount;
+    }
+
+    public void setTodayWithdrawCount(Integer todayWithdrawCount) {
+        this.todayWithdrawCount = todayWithdrawCount;
+    }
+
+    public Integer getTotalWithdrawCount() {
+        return totalWithdrawCount;
+    }
+
+    public void setTotalWithdrawCount(Integer totalWithdrawCount) {
+        this.totalWithdrawCount = totalWithdrawCount;
+    }
+
+    public Integer getTodayResetCount() {
+        return todayResetCount;
+    }
+
+    public void setTodayResetCount(Integer todayResetCount) {
+        this.todayResetCount = todayResetCount;
+    }
+
+    public Integer getTotalResetCount() {
+        return totalResetCount;
+    }
+
+    public void setTotalResetCount(Integer totalResetCount) {
+        this.totalResetCount = totalResetCount;
+    }
+
+    public String getWithdrawTip() {
+        return withdrawTip;
+    }
+
+    public void setWithdrawTip(String withdrawTip) {
+        this.withdrawTip = withdrawTip;
+    }
+
+    public Integer getDirectSubCount() {
+        return directSubCount;
+    }
+
+    public void setDirectSubCount(Integer directSubCount) {
+        this.directSubCount = directSubCount;
+    }
+
+    public Integer getAllSubCount() {
+        return allSubCount;
+    }
+
+    public void setAllSubCount(Integer allSubCount) {
+        this.allSubCount = allSubCount;
+    }
+
+    public BigDecimal getCommission() {
+        return commission;
+    }
+
+    public void setCommission(BigDecimal commission) {
+        this.commission = commission;
+    }
+
+    public BigDecimal getAllCommission() {
+        return allCommission;
+    }
+
+    public void setAllCommission(BigDecimal allCommission) {
+        this.allCommission = allCommission;
+    }
+
+    public Integer getDealCount() {
+        return dealCount;
+    }
+
+    public void setDealCount(Integer dealCount) {
+        this.dealCount = dealCount;
+    }
 
     public Long getLevelId() {
         return levelId;

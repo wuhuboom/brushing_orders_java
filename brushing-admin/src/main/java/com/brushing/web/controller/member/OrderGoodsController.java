@@ -76,7 +76,7 @@ public class OrderGoodsController extends BaseController
      */
     @PreAuthorize("@ss.hasPermi('member:goods:query')")
     @GetMapping(value = "/{id}")
-    public AjaxResult getInfo(@PathVariable("id") String id)
+    public AjaxResult getInfo(@PathVariable("id") Long id)
     {
         return success(orderGoodsService.selectOrderGoodsById(id));
     }

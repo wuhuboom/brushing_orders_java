@@ -2,6 +2,7 @@ package com.brushing.member.mapper;
 
 import java.util.List;
 import com.brushing.member.domain.OrderMemberUser;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 会员用户Mapper接口
@@ -73,6 +74,16 @@ public interface OrderMemberUserMapper
      * @return 结果
      */
     public int deleteOrderMemberUserByIds(Long[] ids);
+
+    /**
+     * 查询直属下级
+     * @param userId  对应用户id
+     * @param isDirect true查询直属下级 false 查询所有
+     * @return
+     */
+    List<OrderMemberUser> selectSubUsers(@Param("userId") Long userId,
+                                         @Param("isDirect") boolean isDirect);
+
 
 
 }

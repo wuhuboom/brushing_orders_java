@@ -8,8 +8,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="id"    column="id"    />
         <result property="orderNo"    column="order_no"    />
         <result property="userId"    column="user_id"    />
+        <result property="seriesId"    column="series_id"    />
         <result property="productId"    column="product_id"    />
         <result property="quantity"    column="quantity"    />
+        <result property="price"    column="price"    />
         <result property="commission"    column="commission"    />
         <result property="commissionRate"    column="commission_rate"    />
         <result property="commissionStatus"    column="commission_status"    />
@@ -17,43 +19,81 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="submitTime"    column="submit_time"    />
         <result property="orderType"    column="order_type"    />
         <result property="status"    column="status"    />
+        <result property="username"    column="username"    />
+        <result property="phone"    column="phone"    />
+        <result property="dealCount"    column="deal_count"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
+        <!-- 嵌套商品信息 -->
+        <association property="product" javaType="OrderGoods">
+            <result property="id" column="goods_id"/>
+            <result property="name" column="name"/>
+            <result property="coverUrl" column="cover_url"/>
+            <result property="price" column="price"/>
+            <result property="description" column="description"/>
+            <result property="status" column="goods_status"/>
+            <result property="createTime" column="goods_create_time"/>
+            <result property="updateTime" column="goods_update_time"/>
+        </association>
     </resultMap>
 
     <sql id="selectOrderInfoVo">
-        select id, order_no, user_id, product_id, quantity, commission, commission_rate, commission_status, order_time, submit_time, order_type, status, create_time, update_time from order_info
+        SELECT
+        o.id, o.order_no, o.user_id, o.product_id, o.quantity,
+        o.commission, o.commission_rate, o.commission_status,
+        o.order_time, o.submit_time, o.order_type, o.status,
+        o.create_time, o.update_time, o.price, o.series_id,
+
+        g.id AS goods_id, g.name, g.cover_url,  g.description,
+        g.status AS goods_status,
+        g.create_time AS goods_create_time, g.update_time AS goods_update_time,
+
+        u.username,u.phone,u.deal_count
+
+        FROM order_info o
+        LEFT JOIN order_goods g ON o.product_id = g.id
+        left join order_member_user u on u.id = o.user_id
     </sql>
 
     <select id="selectOrderInfoList" parameterType="OrderInfo" resultMap="OrderInfoResult">
         <include refid="selectOrderInfoVo"/>
-        <where>  
-            <if test="orderNo != null  and orderNo != ''"> and order_no = #{orderNo}</if>
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="productId != null "> and product_id = #{productId}</if>
-            <if test="quantity != null "> and quantity = #{quantity}</if>
-            <if test="commission != null "> and commission = #{commission}</if>
-            <if test="commissionRate != null "> and commission_rate = #{commissionRate}</if>
-            <if test="commissionStatus != null  and commissionStatus != ''"> and commission_status = #{commissionStatus}</if>
-            <if test="orderTime != null "> and order_time = #{orderTime}</if>
-            <if test="submitTime != null "> and submit_time = #{submitTime}</if>
-            <if test="orderType != null  and orderType != ''"> and order_type = #{orderType}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
+        <where>
+            <if test="orderNo != null  and orderNo != ''"> and o.order_no = #{orderNo}</if>
         </where>
     </select>
     
-    <select id="selectOrderInfoById" parameterType="String" resultMap="OrderInfoResult">
+    <select id="selectOrderInfoById" parameterType="Long" resultMap="OrderInfoResult">
         <include refid="selectOrderInfoVo"/>
-        where id = #{id}
+        where o.id = #{id}
     </select>
+
+    <select id="selectOrderInfoByCode" parameterType="String" resultMap="OrderInfoResult">
+        <include refid="selectOrderInfoVo"/>
+        where o.order_no = #{orderNo}
+    </select>
+
+    <select id="countUnfinishedOrders" resultType="int" parameterType="Long">
+        SELECT COUNT(*)
+        FROM order_info
+        WHERE status != 0  and user_id = #{userId}
+    </select>
+
+    <select id="selectOrderInfoBySeries" parameterType="Long" resultMap="OrderInfoResult">
+        <include refid="selectOrderInfoVo"/>
+            WHERE o.status = 1 AND o.order_type = 1 AND  o.user_id = #{userId}
+    </select>
+
 
     <insert id="insertOrderInfo" parameterType="OrderInfo" useGeneratedKeys="true" keyProperty="id">
         insert into order_info
         <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null and userId != 0">id,</if>
             <if test="orderNo != null and orderNo != ''">order_no,</if>
             <if test="userId != null">user_id,</if>
+            <if test="seriesId != null">series_id,</if>
             <if test="productId != null">product_id,</if>
             <if test="quantity != null">quantity,</if>
+            <if test="price != null">price,</if>
             <if test="commission != null">commission,</if>
             <if test="commissionRate != null">commission_rate,</if>
             <if test="commissionStatus != null">commission_status,</if>
@@ -67,8 +107,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="orderNo != null and orderNo != ''">#{orderNo},</if>
             <if test="userId != null">#{userId},</if>
+            <if test="seriesId != null">#{seriesId},</if>
             <if test="productId != null">#{productId},</if>
             <if test="quantity != null">#{quantity},</if>
+            <if test="price != null">#{price},</if>
             <if test="commission != null">#{commission},</if>
             <if test="commissionRate != null">#{commissionRate},</if>
             <if test="commissionStatus != null">#{commissionStatus},</if>
@@ -84,7 +126,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateOrderInfo" parameterType="OrderInfo">
         update order_info
         <trim prefix="SET" suffixOverrides=",">
-            <if test="orderNo != null and orderNo != ''">order_no = #{orderNo},</if>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="productId != null">product_id = #{productId},</if>
             <if test="quantity != null">quantity = #{quantity},</if>

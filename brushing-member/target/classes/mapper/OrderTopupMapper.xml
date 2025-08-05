@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderTopupMapper">
+    
+    <resultMap type="OrderTopup" id="OrderTopupResult">
+        <result property="id"    column="id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="code"    column="code"    />
+        <result property="amout"    column="amout"    />
+        <result property="username"    column="username"    />
+        <result property="phone"    column="phone"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectOrderTopupVo">
+        select t.id, t.user_id, t.code , t.amout, t.create_time ,u.username ,u.phone from order_topup   t
+        left join order_member_user u on u.id = t.user_id
+    </sql>
+
+    <select id="selectOrderTopupList" parameterType="OrderTopup" resultMap="OrderTopupResult">
+        <include refid="selectOrderTopupVo"/>
+        <where>
+            <if test="code != null  and code != ''"> and t.code = #{code}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderTopupById" parameterType="String" resultMap="OrderTopupResult">
+        <include refid="selectOrderTopupVo"/>
+        where t.id = #{id}
+    </select>
+
+    <select id="selectOrderTopupByCode" parameterType="Long" resultMap="OrderTopupResult">
+        <include refid="selectOrderTopupVo"/>
+        where t.code = #{code}
+    </select>
+
+    <insert id="insertOrderTopup" parameterType="OrderTopup" useGeneratedKeys="true" keyProperty="id">
+        insert into order_topup
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="amout != null">amout,</if>
+            <if test="code != null">code,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="amout != null">#{amout},</if>
+            <if test="code != null">#{code},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderTopup" parameterType="OrderTopup">
+        update order_topup
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="amout != null">amout = #{amout},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderTopupById" parameterType="Long">
+        delete from order_topup where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderTopupByIds" parameterType="String">
+        delete from order_topup where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
