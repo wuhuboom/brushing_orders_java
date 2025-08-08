@@ -23,18 +23,28 @@ public class OrderVo {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTime;
 
+    private String status;
 
 
-    public OrderVo(Long id, String orderNo, String goodsName, String coverUrl, BigDecimal price, BigDecimal commission,Date createTime) {
+
+    public OrderVo(Long id, String orderNo, String goodsName, String coverUrl, BigDecimal price, BigDecimal commission,Date createTime ,String status) {
         this.id = id;
         this.orderNo = orderNo;
         this.goodsName = goodsName;
         this.coverUrl = coverUrl;
         this.price = price;
         this.commission = commission;
-        this.createTime=createTime;
+        this.createTime = createTime;
+        this.status = status;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
     public Date getCreateTime() {
         return createTime;

@@ -40,8 +40,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectOrderSeriesList" parameterType="OrderSeries" resultMap="OrderSeriesResult">
         <include refid="selectOrderSeriesVo"/>
         <where>
-            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="userId != null "> and s.user_id = #{userId}</if>
         </where>
+        order by s.create_time desc
     </select>
     
     <select id="selectOrderSeriesById" parameterType="Long" resultMap="OrderSeriesResult">

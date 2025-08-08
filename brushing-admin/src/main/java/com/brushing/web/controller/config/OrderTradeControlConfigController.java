@@ -1,6 +1,8 @@
 package com.brushing.web.controller.config;
 
 import java.util.List;
+
+import com.brushing.common.core.redis.RedisCache;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,9 @@ public class OrderTradeControlConfigController extends BaseController
 {
     @Autowired
     private IOrderTradeControlConfigService orderTradeControlConfigService;
+
+    @Autowired
+    private RedisCache redisCache;
 
     /**
      * 查询交易控制配置列表
@@ -88,6 +93,7 @@ public class OrderTradeControlConfigController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderTradeControlConfig orderTradeControlConfig)
     {
+         redisCache.setCacheObject("trade_config",orderTradeControlConfig);
         return toAjax(orderTradeControlConfigService.updateOrderTradeControlConfig(orderTradeControlConfig));
     }
 

@@ -51,6 +51,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionZh != null  and descriptionZh != ''"> and description_zh = #{descriptionZh}</if>
             <if test="descriptionEn != null  and descriptionEn != ''"> and description_en = #{descriptionEn}</if>
         </where>
+
     </select>
     
     <select id="selectOrderMemberLevelById" parameterType="Long" resultMap="OrderMemberLevelResult">

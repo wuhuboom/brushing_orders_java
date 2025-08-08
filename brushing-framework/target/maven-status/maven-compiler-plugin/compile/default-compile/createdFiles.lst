@@ -6,6 +6,7 @@ com\brushing\framework\config\properties\DruidProperties.class
 com\brushing\framework\security\handle\AuthenticationEntryPointImpl.class
 com\brushing\framework\web\service\SysPasswordService.class
 com\brushing\framework\front\FrontJwtUtil.class
+com\brushing\framework\init\StartupTask.class
 com\brushing\framework\security\handle\LogoutSuccessHandlerImpl.class
 com\brushing\framework\security\filter\JwtAuthenticationTokenFilter.class
 com\brushing\framework\web\domain\server\Sys.class
@@ -17,6 +18,7 @@ com\brushing\framework\aspectj\LogAspect.class
 com\brushing\framework\aspectj\DataScopeAspect.class
 com\brushing\framework\config\DruidConfig.class
 com\brushing\framework\web\service\SysPermissionService.class
+com\brushing\framework\init\DailyTask.class
 com\brushing\framework\manager\factory\AsyncFactory.class
 com\brushing\framework\web\service\SysLoginService.class
 com\brushing\framework\config\ResourcesConfig.class

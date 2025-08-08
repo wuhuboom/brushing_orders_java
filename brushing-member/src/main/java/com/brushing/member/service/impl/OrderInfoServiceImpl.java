@@ -49,6 +49,11 @@ public class OrderInfoServiceImpl implements IOrderInfoService
         return orderInfoMapper.selectOrderInfoList(orderInfo);
     }
 
+    @Override
+    public List<OrderInfo> selectOrderInfosByUser(OrderInfo orderInfo) {
+        return orderInfoMapper.selectOrderInfosByUser(orderInfo);
+    }
+
     /**
      * 新增订单列表
      * 

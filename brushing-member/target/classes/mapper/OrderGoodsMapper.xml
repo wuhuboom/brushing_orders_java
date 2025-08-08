@@ -50,6 +50,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 AND g.price BETWEEN #{minPrice} AND #{maxPrice}
             </if>
         </where>
+        order by g.create_time desc
     </select>
     
     <select id="selectOrderGoodsById" parameterType="Long" resultMap="OrderGoodsResult">

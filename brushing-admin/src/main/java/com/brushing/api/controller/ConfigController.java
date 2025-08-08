@@ -1,10 +1,17 @@
 package com.brushing.api.controller;
 
+import com.brushing.api.controller.vo.PageDto;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
+import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.set.domain.*;
 import com.brushing.set.service.*;
+import com.brushing.system.domain.SysNotice;
+import com.brushing.system.service.ISysNoticeService;
+import com.github.pagehelper.PageHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +38,12 @@ public class ConfigController extends BaseController {
 
     @Autowired
     private IOrderTradeControlConfigService orderTradeControlConfigService;
+
+    @Autowired
+    private IOrderMemberLevelService levelService;
+
+    @Autowired
+    private ISysNoticeService noticeService;
 
     /**
      * 获取客服地址
@@ -116,4 +129,44 @@ public class ConfigController extends BaseController {
         return success(orderTradeControlConfig);
 
     }
+
+    @GetMapping("/getLevel")
+    @Operation(summary = "获取VIP等级列表",
+            description =
+                    "'icon': '会员图标',\n" +
+                            "'nameZh': '中文名称',\n" +
+                            "'nameEn': '英文名称',\n" +
+                            "'price': '价格',\n" +
+                            "'autoUpgradeInviteCount': '自动升级需邀请人数',\n" +
+                            "'commissionRatio': '佣金比例',\n" +
+                            "'streakCommissionRatio': '连单佣金比例',\n" +
+                            "'minBalance': '最低余额',\n" +
+                            "'orderCount': '接单次数',\n" +
+                            "'withdrawCount': '提现次数',\n" +
+                            "'withdrawLimit': '提现限额',\n" +
+                            "'minWithdrawAmount': '最低提现金额',\n" +
+                            "'maxWithdrawAmount': '最高提现金额',\n" +
+                            "'withdrawFee': '提现手续费',\n" +
+                            "'withdrawOrderPerDay': '每天多少单可以提现',\n" +
+                            "'descriptionZh': '中文描述',\n" +
+                            "'descriptionEn': '英文描述'"
+    )
+    public AjaxResult getLevel(){
+        List<OrderMemberLevel> orderMemberLevels = levelService.selectOrderMemberLevelList(null);
+        if (StringUtils.isNull(orderMemberLevels)){
+            return error("No data yet");
+        }
+        return success(orderMemberLevels);
+    }
+
+    @GetMapping("/getNoticeList")
+    @Operation(summary = "获取公告列表" ,description = "noticeTitle:标题，noticeContent：类容")
+    public TableDataInfo getNoticeList(PageDto dto)
+    {
+        PageHelper.startPage(dto.getPageNum(), dto.getPageSize());
+        List<SysNotice> list = noticeService.selectNoticeList(new SysNotice());
+        return getDataTable(list);
+    }
+
+
 }

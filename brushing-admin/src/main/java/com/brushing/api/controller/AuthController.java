@@ -3,6 +3,7 @@ package com.brushing.api.controller;
 import com.brushing.api.controller.vo.CheckTradePassword;
 import com.brushing.api.controller.vo.EditPasswordDto;
 import com.brushing.api.controller.vo.EditTradePasswordDto;
+import com.brushing.api.controller.vo.WithdrawalMethodDto;
 import com.brushing.api.dto.FrontLoginResponse;
 import com.brushing.api.dto.LoginUserDto;
 import com.brushing.api.dto.RegisterDto;
@@ -218,6 +219,22 @@ public class AuthController extends BaseController {
         }
         return success();
     }
+
+    @PostMapping("/addWithdrawalMethod")
+    @Operation(summary = "添加/修改提现方式" ,description = "withdrawName:钱包，withdrawAddress：地址 ，withdrawType:网络")
+    public AjaxResult addWithdrawalMethod(@RequestBody WithdrawalMethodDto methodDto, @RequestAttribute("username") String username){
+        OrderMemberUser user = userService.findByUsername(username);
+        if (StringUtils.isNull(user)){
+            return error("User not found");
+        }
+        user.setWithdrawAddress(methodDto.getWithdrawAddress());
+        user.setWithdrawName(methodDto.getWithdrawName());
+        user.setWithdrawType(methodDto.getWithdrawType());
+        return success(userService.updateOrderMemberUser(user));
+    }
+
+
+
 
     public OrderMemberUser setUser(RegisterDto registerDto){
         OrderMemberUser user = new OrderMemberUser();

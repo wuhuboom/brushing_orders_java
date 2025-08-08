@@ -24,8 +24,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             <if test="code != null  and code != ''"> and t.code = #{code}</if>
         </where>
+        order by t.create_time desc
     </select>
-    
+
+    <select id="selectOrderTopupByUserId" parameterType="Long" resultMap="OrderTopupResult">
+        <include refid="selectOrderTopupVo"/>
+        where  t.user_id=#{userId} and t.amout >0
+        order by t.create_time desc
+    </select>
+
     <select id="selectOrderTopupById" parameterType="String" resultMap="OrderTopupResult">
         <include refid="selectOrderTopupVo"/>
         where t.id = #{id}

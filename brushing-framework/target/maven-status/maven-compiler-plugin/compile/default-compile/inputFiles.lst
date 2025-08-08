@@ -22,6 +22,8 @@ E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framewor
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\front\FrontJwtUtil.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\front\FrontUserAuthInterceptor.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\front\FrontWebConfig.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\DailyTask.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\StartupTask.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\interceptor\impl\SameUrlDataInterceptor.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\interceptor\RepeatSubmitInterceptor.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\manager\AsyncManager.java

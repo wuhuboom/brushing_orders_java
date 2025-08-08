@@ -31,6 +31,12 @@ public interface IOrderInfoService
     public List<OrderInfo> selectOrderInfoList(OrderInfo orderInfo);
 
     /**
+     * 查询用户订单列表
+     * @param
+     * @return
+     */
+    public List<OrderInfo> selectOrderInfosByUser(OrderInfo orderInfo);
+    /**
      * 新增订单列表
      * 
      * @param orderInfo 订单列表

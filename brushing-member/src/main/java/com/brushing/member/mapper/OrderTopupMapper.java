@@ -29,6 +29,9 @@ public interface OrderTopupMapper
      */
     public List<OrderTopup> selectOrderTopupList(OrderTopup orderTopup);
 
+
+    public List<OrderTopup> selectOrderTopupByUserId(Long userId);
+
     /**
      * 新增充值记录
      * 

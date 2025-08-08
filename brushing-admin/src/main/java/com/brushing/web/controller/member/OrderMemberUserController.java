@@ -142,9 +142,30 @@ public class OrderMemberUserController extends BaseController
         return success(list);
     }
 
+    /**
+     * 上下分操作
+     * @param dto
+     * @return
+     */
     @PostMapping("/topupAmount")
     public AjaxResult topupAmount(@RequestBody TopupDto dto){
-
         return toAjax(orderTopupService.upOrDown(dto.getUserId(), new BigDecimal(dto.getAmount()),dto.getType()));
     }
+
+    /**
+     * 重置单数
+     * @return
+     */
+    @GetMapping("/restDealCount/{id}")
+    public AjaxResult restDealCount(@PathVariable("id") Long userId){
+        OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(userId);
+        if (orderMemberUser.getUserLevel().getOrderCount() != orderMemberUser.getDealCount()){
+            return error("未达到重置条件");
+        }
+        orderMemberUser.setDealCount(0);
+        orderMemberUser.setTotalResetCount(orderMemberUser.getTotalResetCount()+1);
+        orderMemberUser.setTodayResetCount(orderMemberUser.getTodayResetCount()+1);
+        return toAjax(orderMemberUserService.updateOrderMemberUser(orderMemberUser));
+    }
+
 }

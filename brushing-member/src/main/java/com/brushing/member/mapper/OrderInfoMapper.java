@@ -33,6 +33,13 @@ public interface OrderInfoMapper
     public List<OrderInfo> selectOrderInfoBySeries(@Param("userId") Long userId);
 
     /**
+     * 查询用户订单列表
+     * @param
+     * @return
+     */
+    public List<OrderInfo> selectOrderInfosByUser(OrderInfo orderInfo);
+
+    /**
      * 新增订单列表
      * 
      * @param orderInfo 订单列表

@@ -60,6 +60,12 @@ public interface OrderMemberUserMapper
     public int updateOrderMemberUser(OrderMemberUser orderMemberUser);
 
     /**
+     * 重置今日提现次数 和 重置次数
+     * @return
+     */
+    public int resetTodayCounts();
+
+    /**
      * 删除会员用户
      * 
      * @param id 会员用户主键

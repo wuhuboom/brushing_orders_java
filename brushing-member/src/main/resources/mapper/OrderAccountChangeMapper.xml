@@ -31,6 +31,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="afterAmount != null "> and after_amount = #{afterAmount}</if>
             <if test="description != null  and description != ''"> and description = #{description}</if>
         </where>
+        order by create_time desc
     </select>
     
     <select id="selectOrderAccountChangeById" parameterType="Long" resultMap="OrderAccountChangeResult">

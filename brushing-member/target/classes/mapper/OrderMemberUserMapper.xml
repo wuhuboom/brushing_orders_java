@@ -127,6 +127,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="username != null  and username != ''"> and u.username like concat('%', #{username}, '%')</if>
             <if test="phone != null  and phone != ''"> and u.phone = #{phone}</if>
         </where>
+        order by u.create_time desc
     </select>
     
     <select id="selectOrderMemberUserById" parameterType="Long" resultMap="OrderMemberUserResult">
@@ -286,6 +287,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="withdrawTip != null">withdraw_tip = #{withdrawTip},</if>
         </trim>
         where id = #{id}
+    </update>
+
+    <update id="resetTodayCounts">
+        UPDATE order_member_user
+        SET today_withdraw_count = 0,
+        today_reset_count = 0
     </update>
 
     <delete id="deleteOrderMemberUserById" parameterType="Long">

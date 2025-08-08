@@ -64,6 +64,11 @@ public class OrderTopupServiceImpl implements IOrderTopupService
         return orderTopupMapper.selectOrderTopupList(orderTopup);
     }
 
+    @Override
+    public List<OrderTopup> selectOrderTopupByUserId(Long userId) {
+        return orderTopupMapper.selectOrderTopupByUserId(userId);
+    }
+
     /**
      * 新增充值记录
      * 
