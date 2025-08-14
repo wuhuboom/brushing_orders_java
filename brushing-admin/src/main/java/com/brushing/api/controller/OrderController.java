@@ -29,6 +29,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 
@@ -84,13 +85,14 @@ public class OrderController extends BaseController {
             return AjaxResult.error("Usernames cannot be empty");
         }
         OrderMemberUser user = userService.findByUsername(username);
+        OrderMemberLevel userLevel = user.getUserLevel();
         if (user == null) {
             return AjaxResult.error("The user does not exist");
         }
         if (!user.getTradeStatus().equals("0")){
             return error("This user is not allowed to grab orders");
         }
-        BigDecimal minUserBalance = controlConfig.getMinUserBalance();
+        BigDecimal minUserBalance = userLevel.getMinBalance();
         if (user.getBalance().compareTo(minUserBalance) < 0) {
             return AjaxResult.error("The minimum transaction amount is:：" + minUserBalance);
         }
@@ -141,7 +143,12 @@ public class OrderController extends BaseController {
                 response = createOrderResponse(order, productId, price, commission, orderGoods.getName(), orderGoods.getCoverUrl(), DateUtils.getNowDate(),order.getStatus());
             } else {
                 // 非连单逻辑
-                OrderGoods orderGoods = orderGoodsService.selectNearestPriceGoods(user.getBalance());
+                BigDecimal percentRaw = randomBetween(controlConfig.getTradeRangePercentMin(),
+                        controlConfig.getTradeRangePercentMax(), 4);
+                BigDecimal percent = percentRaw.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP); // 转比例 0.05~0.15
+
+                BigDecimal amount  = user.getBalance().multiply(percent).setScale(2, RoundingMode.DOWN);
+                OrderGoods orderGoods = orderGoodsService.selectNearestPriceGoods(amount);
                 if (orderGoods == null) {
                     return AjaxResult.error("No suitable product or insufficient balance");
                 }
@@ -276,6 +283,8 @@ public class OrderController extends BaseController {
                             seriesService.updateOrderSeries(series1);
                         }
                         orderInfoService.updateOrderInfo(info);
+                        user.setAllCommission(user.getAllCommission().add(info.getCommission()));
+                        user.setCommission(user.getCommission().add(info.getCommission()));
                         user.setBalance(finalBalance);
                         user.setFrozenBalance(newFrozen);
                     }
@@ -568,6 +577,10 @@ public class OrderController extends BaseController {
                 balanceBeforeCommission, orderInfo.getCommission(), user.getBalance(),
                 "佣金返还", orderInfo.getCommission()
         );
+        //添加用户今日佣金
+        user.setCommission(user.getCommission().add(orderInfo.getCommission()));
+        //添加用户所有的佣金
+        user.setAllCommission(user.getAllCommission().add(orderInfo.getCommission()));
 
         BigDecimal balanceBeforeRefund = user.getBalance();
         user.setFrozenBalance(user.getFrozenBalance().subtract(price));
@@ -591,7 +604,7 @@ public class OrderController extends BaseController {
     //获取订单列表
     @GetMapping("/getOrderInfos")
     @Operation(summary = "获取用户订单记录", description = "orderNo:编号，goodsName：商品名称 ，coverUrl：图片地址，" +
-            "price:价格,commission:佣金,createTime:创建时间, status:状态 0：完成 1：待提交 2 冻结 如果不传 默认就是全部")
+            "price:价格,commission:佣金,createTime:创建时间, status:状态 0：完成 1：冻结 2 待提交, 如果不传 默认就是全部")
     public TableDataInfo getOrderInfos(WithrawalPage page, @RequestAttribute("username") String username) {
         OrderMemberUser user = userService.findByUsername(username);
         PageHelper.startPage(page.getPageNum(), page.getPageSize());
@@ -606,5 +619,12 @@ public class OrderController extends BaseController {
 
     private boolean isWithinWithdrawTimeRange(LocalTime now, LocalTime start, LocalTime end) {
         return !now.isBefore(start) && !now.isAfter(end);
+    }
+
+    public BigDecimal randomBetween(BigDecimal min, BigDecimal max, int scale) {
+        if (min.compareTo(max) > 0) { BigDecimal t = min; min = max; max = t; }
+        BigDecimal range = max.subtract(min);
+        BigDecimal r = BigDecimal.valueOf(ThreadLocalRandom.current().nextDouble()); // [0,1)
+        return min.add(range.multiply(r)).setScale(scale, RoundingMode.HALF_UP);
     }
 }

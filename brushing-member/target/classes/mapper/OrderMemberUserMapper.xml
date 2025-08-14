@@ -11,6 +11,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="password"    column="password"    />
         <result property="tradePassword"    column="trade_password"    />
         <result property="parentId"    column="parent_id"    />
+        <result property="avatar"    column="avatar"    />
         <result property="ancestors"    column="ancestors"    />
         <result property="email"    column="email"    />
         <result property="sex"    column="sex"    />
@@ -46,16 +47,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="todayResetCount"    column="today_reset_count"    />
         <result property="totalResetCount"    column="total_reset_count"    />
         <result property="withdrawTip"    column="withdraw_tip"    />
+        <result property="parentUsername"    column="parent_username"    />
+        <result property="parentPhone"    column="parent_phone"    />
+        <result property="rechargeNeededForNextLevel"    column="recharge_needed_for_next_level"    />
         <association property="userLevel"     javaType="UserLevel"  resultMap="userLevelResult" />
     </resultMap>
 
 
-    <resultMap type="UserLevel" id="userLevelResult">
+    <resultMap type="OrderMemberLevel" id="userLevelResult">
         <result property="id"    column="levelId"    />
         <result property="icon"    column="icon"    />
         <result property="nameZh"    column="name_zh"    />
         <result property="nameEn"    column="name_en"    />
+        <result property="price"    column="price"    />
+        <result property="autoUpgradeInviteCount"    column="auto_upgrade_invite_count"    />
+        <result property="commissionRatio"    column="commission_ratio"    />
+        <result property="streakCommissionRatio"    column="streak_commission_ratio"    />
+        <result property="minBalance"    column="min_balance"    />
         <result property="orderCount"    column="order_count"    />
+        <result property="withdrawCount"    column="withdraw_count"    />
+        <result property="withdrawLimit"    column="withdraw_limit"    />
+        <result property="minWithdrawAmount"    column="min_withdraw_amount"    />
+        <result property="maxWithdrawAmount"    column="max_withdraw_amount"    />
+        <result property="withdrawFee"    column="withdraw_fee"    />
+        <result property="withdrawOrderPerDay"    column="withdraw_order_per_day"    />
+        <result property="descriptionZh"    column="description_zh"    />
+        <result property="descriptionEn"    column="description_en"    />
+        <result property="createTime"    column="levelTime"    />
     </resultMap>
 
     <sql id="selectOrderMemberUserVo">
@@ -66,6 +84,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.password,
         u.trade_password,
         u.parent_id,
+        u.avatar,
         u.ancestors,
         u.sex,
         u.email,
@@ -94,42 +113,145 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.commission,
         u.all_commission,
         u.deal_count,
-        u.today_withdraw_count,
+
+        (
+        SELECT COUNT(1)
+        FROM order_withdrawal w
+        WHERE w.user_id = u.id
+        AND w.application_time <![CDATA[ >= ]]> CURDATE()
+        AND w.application_time <![CDATA[ < ]]>  CURDATE() + INTERVAL 1 DAY
+        ) AS today_withdraw_count,
+
         u.total_withdraw_count,
         u.today_reset_count,
         u.total_reset_count,
         u.withdraw_tip,
+
+        -- 父级信息
+        parent_user.username AS parent_username,
+        parent_user.phone AS parent_phone,
+
+        -- 直属下级数量
+        (SELECT COUNT(1) FROM order_member_user d WHERE d.parent_id = u.id) AS direct_sub_count,
+
+        -- 所有下级数量（使用 FIND_IN_SET 替代 LIKE）
+        (SELECT COUNT(1) FROM order_member_user a WHERE FIND_IN_SET(u.id, a.ancestors)) AS all_sub_count,
+
 
         -- 等级信息
         l.id AS levelId,
         l.icon,
         l.name_zh,
         l.name_en,
+        l.price,
+        l.auto_upgrade_invite_count,
+        l.commission_ratio,
+        l.streak_commission_ratio,
+        l.min_balance,
         l.order_count,
+        l.withdraw_count,
+        l.withdraw_limit,
+        l.min_withdraw_amount,
+        l.max_withdraw_amount,
+        l.withdraw_fee,
+        l.withdraw_order_per_day,
+        l.description_zh,
+        l.description_en,
+        l.create_time AS levelTime,
 
-        -- 直属下级数量
-        (SELECT COUNT(1) FROM order_member_user d WHERE d.parent_id = u.id) AS direct_sub_count,
+        -- 统计用户累计充值金额
+        (SELECT COALESCE(SUM(t.amout), 0)
+        FROM order_topup t
+        WHERE t.user_id = u.id AND t.amout > 0) AS total_recharge,
 
-        -- 所有下级数量（使用 FIND_IN_SET 替代 LIKE）
-        (SELECT COUNT(1) FROM order_member_user a WHERE FIND_IN_SET(u.id, a.ancestors)) AS all_sub_count
+        -- 最大可达等级价格（小于等于累计充值金额）
+        (SELECT MAX(l2.price)
+        FROM order_member_level l2
+        WHERE l2.price &lt;= (
+        SELECT COALESCE(SUM(t.amout), 0)
+        FROM order_topup t
+        WHERE t.user_id = u.id AND t.amout > 0
+        )) AS max_level_price,
+
+        -- 下一等级价格（大于最大可达等级的最小价格，如果无最大等级则取最小价格）
+        (SELECT MIN(l2.price)
+        FROM order_member_level l2
+        WHERE l2.price > COALESCE(
+        (SELECT MAX(l3.price)
+        FROM order_member_level l3
+        WHERE l3.price &lt;= (
+        SELECT COALESCE(SUM(t.amout), 0)
+        FROM order_topup t
+        WHERE t.user_id = u.id AND t.amout > 0
+        )),
+        -1  -- 使用一个负值作为占位符，确保 > -1 总是取 MIN(price)
+        )) AS next_level_price,
+
+        -- 计算距离下一等级所需的充值金额
+        COALESCE(
+        (
+        SELECT MIN(l2.price)
+        FROM order_member_level l2
+        WHERE l2.price > COALESCE(
+        (SELECT MAX(l3.price)
+        FROM order_member_level l3
+        WHERE l3.price &lt;= (
+        SELECT COALESCE(SUM(t.amout), 0)
+        FROM order_topup t
+        WHERE t.user_id = u.id AND t.amout > 0
+        )),
+        -1
+        )
+        ) - (
+        SELECT COALESCE(SUM(t.amout), 0)
+        FROM order_topup t
+        WHERE t.user_id = u.id AND t.amout > 0
+        ),
+        0
+        ) AS recharge_needed_for_next_level
 
         FROM
         order_member_user u
         LEFT JOIN
         order_member_level l ON u.level_id = l.id
+        LEFT JOIN
+        order_member_user parent_user ON u.parent_id = parent_user.id
     </sql>
+
+
 
 
 
     <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
-        <where>  
+        <where>
             <if test="username != null  and username != ''"> and u.username like concat('%', #{username}, '%')</if>
             <if test="phone != null  and phone != ''"> and u.phone = #{phone}</if>
         </where>
         order by u.create_time desc
     </select>
-    
+
+    <select id="selectMembersByScope"  resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserVo"/>
+        <where>
+            <choose>
+                <!-- 直属下级 -->
+                <when test="scope == 'direct'">
+                    u.parent_id = #{userId}
+                </when>
+                <!-- 所有下级（多级）：用 ancestors 路径命中，防止部分匹配 -->
+                <when test="scope == 'all'">
+                    CONCAT(',', IFNULL(u.ancestors, ''), ',') LIKE CONCAT('%,', #{userId}, ',%')
+                </when>
+                <!-- 默认：当 scope 为空时按直属下级处理 -->
+                <otherwise>
+                    u.parent_id = #{userId}
+                </otherwise>
+            </choose>
+        </where>
+        order by u.create_time desc
+    </select>
+
     <select id="selectOrderMemberUserById" parameterType="Long" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
         where u.id = #{id}
@@ -168,6 +290,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="password != null and password != ''">password,</if>
             <if test="tradePassword != null and tradePassword != ''">trade_password,</if>
             <if test="parentId != null">parent_id,</if>
+            <if test="avatar != null">avatar,</if>
             <if test="ancestors != null">ancestors,</if>
             <if test="email != null">email,</if>
             <if test="sex != null">sex,</if>
@@ -208,6 +331,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="password != null and password != ''">#{password},</if>
             <if test="tradePassword != null and tradePassword != ''">#{tradePassword},</if>
             <if test="parentId != null">#{parentId},</if>
+            <if test="avatar != null">#{avatar},</if>
             <if test="ancestors != null">#{ancestors},</if>
             <if test="email != null">#{email},</if>
             <if test="sex != null">#{sex},</if>
@@ -252,6 +376,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="password != null and password != ''">password = #{password},</if>
             <if test="tradePassword != null and tradePassword != ''">trade_password = #{tradePassword},</if>
             <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
             <if test="ancestors != null">ancestors = #{ancestors},</if>
             <if test="email != null">email = #{email},</if>
             <if test="sex != null">sex = #{email},</if>
@@ -292,8 +417,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="resetTodayCounts">
         UPDATE order_member_user
         SET today_withdraw_count = 0,
-        today_reset_count = 0
+        today_reset_count = 0 ,commission = 0
     </update>
+
+    <update id="updateChildrenAncestors">
+        UPDATE order_member_user
+        SET ancestors = REPLACE(ancestors, #{oldAncestors}, #{newAncestors})
+        WHERE ancestors LIKE CONCAT(#{oldAncestors}, ',%')
+    </update>
+
 
     <delete id="deleteOrderMemberUserById" parameterType="Long">
         delete from order_member_user where id = #{id}

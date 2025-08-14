@@ -8,6 +8,7 @@ import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderMemberLevel;
 import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.member.service.IOrderTopupService;
+import com.brushing.web.controller.member.dto.ScopeUser;
 import com.brushing.web.controller.member.dto.TopupDto;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -58,6 +59,14 @@ public class OrderMemberUserController extends BaseController
     {
         startPage();
         List<OrderMemberUser> list = orderMemberUserService.selectOrderMemberUserList(orderMemberUser);
+        return getDataTable(list);
+    }
+
+    @GetMapping("/scopeList")
+    public TableDataInfo scopeList(ScopeUser user)
+    {
+        startPage();
+        List<OrderMemberUser> list = orderMemberUserService.selectMembersByScope(user.getUserId(),user.getScope());
         return getDataTable(list);
     }
 
@@ -117,6 +126,14 @@ public class OrderMemberUserController extends BaseController
         if(StringUtils.isNotEmpty(orderMemberUser.getTradePassword())){
             orderMemberUser.setTradePassword(encoder.encode(orderMemberUser.getTradePassword()));
         }
+        if(StringUtils.isNotNull(orderMemberUser.getParentId())){
+            if (!orderMemberUser.getParentId().equals(0L)) {
+                OrderMemberUser orderMemberUser1 = orderMemberUserService.selectOrderMemberUserById(orderMemberUser.getParentId());
+                if (StringUtils.isNull(orderMemberUser1)){
+                    return error("上级ID错误");
+                }
+            }
+        }
         return toAjax(orderMemberUserService.updateOrderMemberUser(orderMemberUser));
     }
 
@@ -150,6 +167,16 @@ public class OrderMemberUserController extends BaseController
     @PostMapping("/topupAmount")
     public AjaxResult topupAmount(@RequestBody TopupDto dto){
         return toAjax(orderTopupService.upOrDown(dto.getUserId(), new BigDecimal(dto.getAmount()),dto.getType()));
+    }
+
+    @PostMapping("/upAmount")
+    public AjaxResult upAmount(@RequestBody TopupDto dto){
+        return toAjax(orderTopupService.uPamount(dto.getUserId(),new BigDecimal(dto.getAmount()),getUserId(),getUsername()));
+    }
+
+    @PostMapping("/updateAmount")
+    public AjaxResult updateAmount(@RequestBody TopupDto dto){
+        return toAjax(orderTopupService.updateAmount(dto.getUserId(),new BigDecimal(dto.getAmount()),getUserId(),getUsername()));
     }
 
     /**

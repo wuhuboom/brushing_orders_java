@@ -90,6 +90,17 @@ public interface OrderMemberUserMapper
     List<OrderMemberUser> selectSubUsers(@Param("userId") Long userId,
                                          @Param("isDirect") boolean isDirect);
 
+    int updateChildrenAncestors(@Param("oldAncestors") String oldAncestors,
+                                @Param("newAncestors") String newAncestors);
+
+    /**
+     * 查选对应用户的直属下级或者所有下级
+     * @param userId
+     * @param scope 'direct' 或 'all'
+     * @return
+     */
+    List<OrderMemberUser> selectMembersByScope(@Param("userId") Long userId,
+                                         @Param("scope") String scope);
 
 
 }

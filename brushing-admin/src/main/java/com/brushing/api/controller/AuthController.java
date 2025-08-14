@@ -1,9 +1,6 @@
 package com.brushing.api.controller;
 
-import com.brushing.api.controller.vo.CheckTradePassword;
-import com.brushing.api.controller.vo.EditPasswordDto;
-import com.brushing.api.controller.vo.EditTradePasswordDto;
-import com.brushing.api.controller.vo.WithdrawalMethodDto;
+import com.brushing.api.controller.vo.*;
 import com.brushing.api.dto.FrontLoginResponse;
 import com.brushing.api.dto.LoginUserDto;
 import com.brushing.api.dto.RegisterDto;
@@ -163,6 +160,7 @@ public class AuthController extends BaseController {
                             "'todayResetCount': '今日重置次数', " +
                             "'totalResetCount': '总重置次数', " +
                             "'withdrawTip': '提现提示', " +
+                            "'avatar': '用户头像', " +
                             "'userLevel.icon': '会员图标', " +
                             "'userLevel.nameZh': '中文名称', " +
                             "'userLevel.nameEn': '英文名称' " +
@@ -194,20 +192,35 @@ public class AuthController extends BaseController {
     }
 
     @PostMapping("/editTradePassword")
-    @Operation(summary = "修改交易密码" ,description = "oldTradePassword:旧密码，newTradePassword:新密码")
-    public AjaxResult editTradePassword(@RequestBody EditTradePasswordDto passwordDto, @RequestAttribute("username") String username){
+    @Operation(summary = "修改交易密码", description = "oldTradePassword:旧密码，newTradePassword:新密码")
+    public AjaxResult editTradePassword(@RequestBody EditTradePasswordDto passwordDto,
+                                        @RequestAttribute("username") String username) {
         OrderMemberUser user = userService.findByUsername(username);
-        if (StringUtils.isEmpty(passwordDto.getOldTradePassword())||StringUtils.isEmpty(passwordDto.getNewTradePassword())){
+        String oldPwd = passwordDto.getOldTradePassword();
+        String newPwd = passwordDto.getNewTradePassword();
+
+        // 空值校验
+        if (StringUtils.isEmpty(oldPwd) || StringUtils.isEmpty(newPwd)) {
             return error("Please enter password");
         }
-        boolean matches = passwordEncoder.matches(passwordDto.getOldTradePassword(), user.getTradePassword());
-        if (!matches){
-           return error("wrong trade password");
+
+        // 长度校验：6-18位
+        if (newPwd.length() < 6 || newPwd.length() > 18) {
+            return error("Trade password length must be between 6 and 18 characters");
         }
-        String encode = passwordEncoder.encode(passwordDto.getNewTradePassword());
-        user.setPassword(encode);
+
+        // 旧密码校验
+        boolean matches = passwordEncoder.matches(oldPwd, user.getTradePassword());
+        if (!matches) {
+            return error("Wrong trade password");
+        }
+
+        // 更新交易密码
+        String encode = passwordEncoder.encode(newPwd);
+        user.setTradePassword(encode); // 注意这里改成交易密码字段
         return toAjax(userService.updateOrderMemberUser(user));
     }
+
 
     @PostMapping("/checkTradePassword")
     @Operation(summary = "验证交易密码")
@@ -230,6 +243,17 @@ public class AuthController extends BaseController {
         user.setWithdrawAddress(methodDto.getWithdrawAddress());
         user.setWithdrawName(methodDto.getWithdrawName());
         user.setWithdrawType(methodDto.getWithdrawType());
+        return success(userService.updateOrderMemberUser(user));
+    }
+
+    @PostMapping("/updateAvatar")
+    @Operation(summary = "添加/修改用户头像" ,description = "avatar:用户头像地址")
+    public AjaxResult updateAvatar(@RequestBody AvatarDto dto, @RequestAttribute("username") String username){
+        OrderMemberUser user = userService.findByUsername(username);
+        if (StringUtils.isNull(user)||StringUtils.isEmpty(dto.getAvatar())){
+            return error("User not found or avatar is not null");
+        }
+        user.setAvatar(dto.getAvatar());
         return success(userService.updateOrderMemberUser(user));
     }
 

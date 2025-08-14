@@ -38,6 +38,9 @@ public class OrderWithdrawal extends BaseEntity
     @Excel(name = "手续费")
     private BigDecimal fee;
 
+
+    private BigDecimal withdrawFee;
+
     /** 申请时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Excel(name = "申请时间", width = 30, dateFormat = "yyyy-MM-dd")
@@ -72,6 +75,14 @@ public class OrderWithdrawal extends BaseEntity
     // 当日统计字段
     private Integer dailyOrderCount; // 当日订单数
     private Integer dailyWithdrawalCount; //
+
+    public BigDecimal getWithdrawFee() {
+        return withdrawFee;
+    }
+
+    public void setWithdrawFee(BigDecimal withdrawFee) {
+        this.withdrawFee = withdrawFee;
+    }
 
     public String getUserRemark() {
         return userRemark;

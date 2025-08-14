@@ -1,6 +1,7 @@
 com\brushing\api\controller\AuthController.class
 com\brushing\BrushingServletInitializer.class
 com\brushing\web\controller\system\SysRegisterController.class
+com\brushing\api\controller\vo\AvatarDto.class
 com\brushing\api\controller\vo\WithdrawalDto.class
 com\brushing\api\controller\ConfigController.class
 com\brushing\api\controller\enumvo\CommissionStatus.class
@@ -12,6 +13,7 @@ com\brushing\api\controller\OrderController.class
 com\brushing\web\controller\config\OrderTradeControlConfigController.class
 com\brushing\web\controller\system\SysNoticeController.class
 com\brushing\web\controller\system\SysProfileController.class
+com\brushing\web\controller\member\dto\ScopeUser.class
 com\brushing\web\controller\config\OrderEmailConfigController.class
 com\brushing\web\core\config\SwaggerConfig.class
 com\brushing\api\dto\RegisterDto.class

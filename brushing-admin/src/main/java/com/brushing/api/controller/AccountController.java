@@ -8,12 +8,12 @@ import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.core.redis.RedisCache;
+import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.OrderNoGenerator;
 import com.brushing.common.utils.StringUtils;
-import com.brushing.member.domain.OrderMemberUser;
-import com.brushing.member.domain.OrderTopup;
-import com.brushing.member.domain.OrderWithdrawal;
+import com.brushing.member.domain.*;
+import com.brushing.member.service.IOrderAccountChangeService;
 import com.brushing.member.service.IOrderMemberUserService;
 import com.brushing.member.service.IOrderTopupService;
 import com.brushing.member.service.IOrderWithdrawalService;
@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalTime;
+import java.util.Date;
 import java.util.List;
 
 @Tag(name = "账户管理")
@@ -48,6 +49,9 @@ public class AccountController extends BaseController {
 
     @Autowired
     private IOrderWithdrawalService withdrawalService;
+
+    @Autowired
+    private IOrderAccountChangeService accountChangeService;
 
 
     @Autowired
@@ -96,7 +100,12 @@ public class AccountController extends BaseController {
             return error("User level information is missing");
         }
         if (!user.getWithdrawStatus().equals("0")) {
-            return error("Withdrawal is not possible at the moment");
+            String withdrawTip = user.getWithdrawTip();
+            String errMsg= StringUtils.isEmpty(withdrawTip)?"Withdrawal is not possible at the moment":withdrawTip;
+            return error(errMsg);
+        }
+        if (controlConfig.getWithdrawEnabled().equals("1")){
+            return error("Withdrawal is not open");
         }
         // 2. 验证时间范围和金额
         LocalTime now = LocalTime.now();
@@ -105,11 +114,14 @@ public class AccountController extends BaseController {
             return error(ERR_NOT_IN_TIME_RANGE);
         }
         BigDecimal amount = dto.getAmount().setScale(2, RoundingMode.HALF_UP);
-        if (controlConfig.getMinWithdrawAmount().compareTo(amount) > 0) {
+        OrderMemberLevel userLevel = user.getUserLevel();
+        BigDecimal minWithdrawAmount = userLevel.getMinWithdrawAmount();
+        BigDecimal maxWithdrawAmount = userLevel.getMaxWithdrawAmount();
+        if (minWithdrawAmount.compareTo(amount) > 0) {
             log.warn("用户 {} 提现金额 {} 小于最低限额 {}", username, amount, controlConfig.getMinWithdrawAmount());
             return error(ERR_BELOW_MIN_AMOUNT);
         }
-        if (amount.compareTo(controlConfig.getMaxWithdrawAmount()) > 0) {
+        if (amount.compareTo(maxWithdrawAmount) > 0) {
             log.warn("用户 {} 提现金额 {} 超过最大限额 {}", username, amount, controlConfig.getMaxWithdrawAmount());
             return error(ERR_EXCEED_MAX_AMOUNT);
         }
@@ -139,20 +151,36 @@ public class AccountController extends BaseController {
         if (StringUtils.isEmpty(user.getWithdrawName()) || StringUtils.isEmpty(user.getWithdrawAddress()) || StringUtils.isEmpty(user.getWithdrawType())) {
             return error("Please check your withdrawal settings");
         }
+        //更新用户余额
+        BigDecimal balance = user.getBalance();
+        //得到新的余额
+        BigDecimal subtract = balance.subtract(amount);
+        user.setBalance(subtract);
+        //记录账变信息
+        recordAccountChange(user.getId(),username,"3",balance,new BigDecimal("0").subtract(amount),subtract,"用户Id: "+user.getLevelId()+", 用户名: "+username+", 提现金额为: "+amount);
+
         // 4. 创建提现订单
         OrderWithdrawal withdrawal = new OrderWithdrawal();
         String code = generateUniqueOrderId();
         withdrawal.setCode(code);
         withdrawal.setAmount(amount);
         withdrawal.setUserId(user.getId());
-        withdrawal.setCreditedAmount(calculateCreditedAmount(amount, controlConfig.getWithdrawFeePercent()));
-        withdrawal.setFee(calculateFee(amount, controlConfig.getWithdrawFeePercent()));
+        withdrawal.setCreditedAmount(calculateCreditedAmount(amount, userLevel.getWithdrawFee()));
+        withdrawal.setFee(calculateFee(amount, userLevel.getWithdrawFee()));
+        withdrawal.setWithdrawFee(userLevel.getWithdrawFee());
         withdrawal.setApplicationTime(DateUtils.getNowDate());
         withdrawal.setWithdrawType(user.getWithdrawType());
         withdrawal.setWithdrawAddress(user.getWithdrawAddress());
         withdrawal.setWithdrawName(user.getWithdrawName());
         // 5. 保存订单
         log.info("用户 {} 提现订单创建成功，订单号: {}", username, code);
+        //新增提现次数
+        user.setTodayWithdrawCount(user.getTotalWithdrawCount()+1);
+        user.setTodayWithdrawCount(user.getTodayWithdrawCount()+1);
+        user.setTodayResetCount(user.getTotalResetCount()+1);
+        user.setTotalResetCount(user.getTotalResetCount()+1);
+        //更新用户信息
+        memberUserService.updateOrderMemberUser(user);
         return toAjax(withdrawalService.insertOrderWithdrawal(withdrawal));
     }
 
@@ -183,7 +211,7 @@ public class AccountController extends BaseController {
 
     @GetMapping("/getWithdrawals")
     @Operation(summary = "获取用户提现记录", description = "code:编号，amount：提现金额 ，creditedAmount：到账金额，" +
-            "fee:手续费,applicationTime:申请时间,auditTime:审核时间,status:状态 0：通过 1：待审核 2 拒绝 ，withdrawName：名称 ，withdrawAddress：地址 ，withdrawType：钱包名称")
+            "fee:手续费,applicationTime:申请时间,auditTime:审核时间,status:状态 0：通过 1：待审核 2 拒绝 ，withdrawName：名称 ，withdrawAddress：地址 ，withdrawType：钱包名称,withdrawFee：费率")
     public TableDataInfo getWithdrawals(WithrawalPage page, @RequestAttribute("username") String username) {
         OrderMemberUser user = memberUserService.findByUsername(username);
         PageHelper.startPage(page.getPageNum(), page.getPageSize());
@@ -193,4 +221,36 @@ public class AccountController extends BaseController {
         List<OrderWithdrawal> orderWithdrawals = withdrawalService.selectOrderWithdrawalList(withdrawal);
         return getDataTable(orderWithdrawals);
     }
+
+    private void recordAccountChange(Long userId, String username, String changeType,
+                                     BigDecimal beforeAmount, BigDecimal changeAmount,
+                                     BigDecimal afterAmount, String action) {
+        String changeNo = generateUniqueChangeNo();
+        if (changeNo == null) {
+            throw new ServiceException("Please try again later");
+        }
+
+        OrderAccountChange change = new OrderAccountChange();
+        change.setChangeNo(changeNo);
+        change.setType(changeType);
+        change.setUserId(userId);
+        change.setBeforeAmount(beforeAmount);
+        change.setChangeAmount(changeAmount);
+        change.setAfterAmount(afterAmount);
+        change.setDescription(action);
+        change.setCreateTime(new Date());
+        accountChangeService.insertOrderAccountChange(change);
+    }
+
+    private String generateUniqueChangeNo() {
+        int maxAttempts = 5;
+        for (int i = 0; i < maxAttempts; i++) {
+            String changeNo = OrderNoGenerator.generateOrderId();
+            if (accountChangeService.selectOrderAccountChangeByCode(changeNo) == null) {
+                return changeNo;
+            }
+        }
+        return null;
+    }
+
 }

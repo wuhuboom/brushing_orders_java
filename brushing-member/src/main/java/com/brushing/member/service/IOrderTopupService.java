@@ -64,6 +64,8 @@ public interface IOrderTopupService
     public int deleteOrderTopupById(Long id);
 
     public int upOrDown(Long userId, BigDecimal amount,String type);
+    public int uPamount(Long userId, BigDecimal amount,Long adminId,String adminUsername);
+    public int updateAmount(Long userId, BigDecimal amount,Long adminId,String adminUsername);
 
 
 }

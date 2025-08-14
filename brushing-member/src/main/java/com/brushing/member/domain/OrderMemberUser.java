@@ -67,6 +67,9 @@ public class OrderMemberUser extends BaseEntity
     @Excel(name = "总余额")
     private BigDecimal totalBalance;
 
+
+    private BigDecimal rechargeNeededForNextLevel;
+
     /** 邀请码 */
     @Excel(name = "邀请码")
     private String inviteCode;
@@ -135,7 +138,7 @@ public class OrderMemberUser extends BaseEntity
     private Long levelId;
 
 
-    private UserLevel userLevel;
+    private OrderMemberLevel userLevel;
 
     /**
      * 当日佣金
@@ -169,6 +172,47 @@ public class OrderMemberUser extends BaseEntity
 
     /** 提现提示 */
     private String withdrawTip;
+
+    /**
+     * 用户头像
+     */
+    private String avatar;
+
+    private String parentUsername;
+
+    private String parentPhone;
+
+    public BigDecimal getRechargeNeededForNextLevel() {
+        return rechargeNeededForNextLevel;
+    }
+
+    public void setRechargeNeededForNextLevel(BigDecimal rechargeNeededForNextLevel) {
+        this.rechargeNeededForNextLevel = rechargeNeededForNextLevel;
+    }
+
+    public String getParentUsername() {
+        return parentUsername;
+    }
+
+    public void setParentUsername(String parentUsername) {
+        this.parentUsername = parentUsername;
+    }
+
+    public String getParentPhone() {
+        return parentPhone;
+    }
+
+    public void setParentPhone(String parentPhone) {
+        this.parentPhone = parentPhone;
+    }
+
+    public String getAvatar() {
+        return avatar;
+    }
+
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
+    }
 
     public Integer getTodayWithdrawCount() {
         return todayWithdrawCount;
@@ -258,11 +302,11 @@ public class OrderMemberUser extends BaseEntity
         this.levelId = levelId;
     }
 
-    public UserLevel getUserLevel() {
+    public OrderMemberLevel getUserLevel() {
         return userLevel;
     }
 
-    public void setUserLevel(UserLevel userLevel) {
+    public void setUserLevel(OrderMemberLevel userLevel) {
         this.userLevel = userLevel;
     }
 

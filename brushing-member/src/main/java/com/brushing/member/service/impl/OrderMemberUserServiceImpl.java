@@ -74,6 +74,11 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         return orderMemberUserMapper.selectOrderMemberUserList(orderMemberUser);
     }
 
+    @Override
+    public List<OrderMemberUser> selectMembersByScope(Long userId, String scope) {
+        return orderMemberUserMapper.selectMembersByScope(userId,scope);
+    }
+
     /**
      * 新增会员用户
      * 
@@ -86,8 +91,10 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         orderMemberUser.setCreateTime(DateUtils.getNowDate());
         orderMemberUser.setInviteCode(setCode());
         orderMemberUser.setAncestors(setAncestors(orderMemberUser));
-        OrderMemberLevel orderMemberLevel = levelMapper.selectLowestPriceLevel();
-        orderMemberUser.setLevelId(orderMemberLevel.getId());
+       if (StringUtils.isNull(orderMemberUser.getLevelId())){
+           OrderMemberLevel orderMemberLevel = levelMapper.selectLowestPriceLevel();
+           orderMemberUser.setLevelId(orderMemberLevel.getId());
+       }
         return orderMemberUserMapper.insertOrderMemberUser(orderMemberUser);
     }
 
@@ -103,6 +110,9 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
     //设置祖级
     public String setAncestors(OrderMemberUser orderMemberUser){
         Long parentId = orderMemberUser.getParentId();
+        if (StringUtils.isNull(parentId)){
+            return "0";
+        }
         if (parentId.equals("0")){
             return "0";
         }
@@ -122,6 +132,31 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
     @Override
     public int updateOrderMemberUser(OrderMemberUser orderMemberUser)
     {
+
+        if(StringUtils.isNotNull(orderMemberUser.getParentId())){
+            OrderMemberUser oldUser = orderMemberUserMapper.selectOrderMemberUserById(orderMemberUser.getId());
+            String oldAncestors = oldUser.getAncestors(); // 旧祖籍，比如 "0,1,2"
+            Long newParentId = orderMemberUser.getParentId();    // 新parentId，比如 0 或 10
+            String newAncestors;
+            if (newParentId == 0L) {
+                // 新的上级是0，说明是顶级用户，祖籍就直接是 "0"
+                newAncestors = "0";
+            } else {
+                // 去掉旧祖籍最后一部分，加上新的parentId
+                int lastCommaIndex = oldAncestors.lastIndexOf(",");
+                if (lastCommaIndex != -1) {
+                    newAncestors = oldAncestors.substring(0, lastCommaIndex + 1) + newParentId;
+                } else {
+                    newAncestors = String.valueOf(newParentId);
+                }
+            }
+            orderMemberUser.setAncestors(newAncestors);
+            // 调用更新子孙节点祖籍的方法
+            orderMemberUserMapper.updateChildrenAncestors(oldAncestors, newAncestors);
+
+        }
+
+
         return orderMemberUserMapper.updateOrderMemberUser(orderMemberUser);
     }
 

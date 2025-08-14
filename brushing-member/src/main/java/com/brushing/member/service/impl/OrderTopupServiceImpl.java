@@ -127,7 +127,7 @@ public class OrderTopupServiceImpl implements IOrderTopupService
             BigDecimal balance = orderMemberUser.getBalance();
             BigDecimal add = balance.add(amount);
             //记录账变信息
-            recordAccountChange(userId,orderMemberUser.getUsername(),"2",balance,amount,add,"增加用户余额, 操作");
+            recordAccountChange(userId,orderMemberUser.getUsername(),"2",balance,amount,add,"增加用户余额, 操作","0");
             //保存用户信息
             orderMemberUser.setBalance(add);
             orderMemberUserMapper.updateOrderMemberUser(orderMemberUser);
@@ -141,7 +141,7 @@ public class OrderTopupServiceImpl implements IOrderTopupService
             //变动金额
             BigDecimal subtract1 = new BigDecimal("0").subtract(amount);
             //记录账变信息
-            recordAccountChange(userId,orderMemberUser.getUsername(),"2",balance,subtract1,subtract,"减少用户余额, 操作");
+            recordAccountChange(userId,orderMemberUser.getUsername(),"2",balance,subtract1,subtract,"减少用户余额, 操作","0");
             //保存用户信息
             orderMemberUser.setBalance(subtract);
             orderMemberUserMapper.updateOrderMemberUser(orderMemberUser);
@@ -150,9 +150,37 @@ public class OrderTopupServiceImpl implements IOrderTopupService
         }
     }
 
+    @Override
+    public int uPamount(Long userId, BigDecimal amount, Long adminId, String adminUsername) {
+        OrderMemberUser orderMemberUser = orderMemberUserMapper.selectOrderMemberUserById(userId);
+        BigDecimal balance = orderMemberUser.getBalance();
+        BigDecimal add = balance.add(amount);
+        //记录账变信息
+        recordAccountChange(userId,orderMemberUser.getUsername(),"8",balance,amount,add,"后台管理员ID: "+adminId+", 管理员用户名: "+adminUsername+"," +
+                " 赠送,增加用户余额, 操作金额为"+amount,"1");
+        //保存用户信息
+        orderMemberUser.setBalance(add);
+        orderMemberUserMapper.updateOrderMemberUser(orderMemberUser);
+        //充值记录
+        return setLog(userId,amount);
+    }
+
+    @Override
+    public int updateAmount(Long userId, BigDecimal amount, Long adminId, String adminUsername) {
+        OrderMemberUser orderMemberUser = orderMemberUserMapper.selectOrderMemberUserById(userId);
+        BigDecimal balance = orderMemberUser.getBalance();
+        //记录账变信息
+        recordAccountChange(userId,orderMemberUser.getUsername(),"2",balance,amount,amount,"后台管理员ID: "+adminId+", 管理员用户名: "+adminUsername+"," +
+                " 覆盖用户余额, 操作金额为：:"+amount,"1");
+        orderMemberUser.setBalance(amount);
+        orderMemberUserMapper.updateOrderMemberUser(orderMemberUser);
+
+          return setLog(userId,amount);
+    }
+
     private void recordAccountChange(Long userId, String username, String changeType,
                                            BigDecimal beforeAmount, BigDecimal changeAmount,
-                                           BigDecimal afterAmount, String action) {
+                                           BigDecimal afterAmount, String action,String type) {
         String changeNo = generateUniqueChangeNo();
         if (changeNo == null) {
             throw new ServiceException("Please try again later");
@@ -165,7 +193,12 @@ public class OrderTopupServiceImpl implements IOrderTopupService
         change.setBeforeAmount(beforeAmount);
         change.setChangeAmount(changeAmount);
         change.setAfterAmount(afterAmount);
-        change.setDescription(buildChangeDescription(userId, username, action, changeAmount));
+        if (type.equals(0)){
+            String s = buildChangeDescription(userId, username, action, changeAmount);
+            change.setDescription(s);
+        }else{
+            change.setDescription(action);
+        }
         change.setCreateTime(new Date());
         orderAccountChangeMapper.insertOrderAccountChange(change);
     }

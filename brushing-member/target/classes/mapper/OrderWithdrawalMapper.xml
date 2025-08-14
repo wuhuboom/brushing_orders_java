@@ -19,6 +19,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="withdrawName" column="withdraw_name" />
         <result property="withdrawAddress" column="withdraw_address" />
         <result property="withdrawType" column="withdraw_type" />
+        <result property="withdrawFee" column="withdraw_fee" />
         <!-- 当前用户字段 -->
         <result property="username" column="username" />
         <result property="phone" column="phone" />
@@ -47,6 +48,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         w.withdraw_name,
         w.withdraw_address,
         w.withdraw_type,
+        w.withdraw_fee,
         u.id AS user_id,
         u.username,
         u.phone,
@@ -70,9 +72,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectOrderWithdrawalList" parameterType="OrderWithdrawal" resultMap="OrderWithdrawalResult">
         <include refid="selectOrderWithdrawalVo"/>
-        <where>  
+        <where>
+            <if test="userId != null  and userId != ''"> and w.user_id = #{userId}</if>
             <if test="code != null  and code != ''"> and w.code = #{code}</if>
+            <if test="status != null  and status != ''"> and w.status = #{status}</if>
         </where>
+        order by
+        CASE
+        WHEN w.status = 1 THEN 0
+        ELSE 1
+        END,
+        w.application_time DESC
     </select>
     
     <select id="selectOrderWithdrawalById" parameterType="Long" resultMap="OrderWithdrawalResult">
@@ -106,6 +116,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="withdrawName != null">withdraw_name,</if>
             <if test="withdrawAddress != null">withdraw_address,</if>
             <if test="withdrawType != null">withdraw_type,</if>
+            <if test="withdrawFee != null">withdraw_fee,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="code != null and code != ''">#{code},</if>
@@ -120,6 +131,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="withdrawName != null">#{withdrawName},</if>
             <if test="withdrawAddress != null">#{withdrawAddress},</if>
             <if test="withdrawType != null">#{withdrawType},</if>
+            <if test="withdrawFee != null">#{withdrawFee},</if>
          </trim>
     </insert>
 

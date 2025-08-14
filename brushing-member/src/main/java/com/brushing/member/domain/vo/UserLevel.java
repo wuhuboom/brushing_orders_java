@@ -2,22 +2,33 @@ package com.brushing.member.domain.vo;
 
 import com.brushing.common.annotation.Excel;
 
+import java.math.BigDecimal;
+
 public class UserLevel {
 
     /** 主键ID */
     private Long id;
 
     /** 会员图标 */
-    @Excel(name = "会员图标")
     private String icon;
 
     /** 中文名称 */
-    @Excel(name = "中文名称")
     private String nameZh;
 
     /** 英文名称 */
-    @Excel(name = "英文名称")
     private String nameEn;
+
+    /** 提现手续费（%） */
+    private BigDecimal withdrawFee;
+
+    /** 最低余额 */
+    private BigDecimal minBalance;
+
+    /** 佣金比例（%） */
+    private BigDecimal commissionRatio;
+
+    /** 连单佣金比例（%） */
+    private BigDecimal streakCommissionRatio;
 
     /**
      * 提现所需订单数

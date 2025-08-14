@@ -1,9 +1,15 @@
 package com.brushing.web.controller.member;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 
+import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
+import com.brushing.common.utils.OrderNoGenerator;
+import com.brushing.member.domain.OrderAccountChange;
 import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.service.IOrderAccountChangeService;
 import com.brushing.member.service.IOrderMemberUserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,6 +46,12 @@ public class OrderWithdrawalController extends BaseController
 
     @Autowired
     private IOrderMemberUserService userService;
+
+    @Autowired
+    private IOrderWithdrawalService withdrawalService;
+
+    @Autowired
+    private IOrderAccountChangeService accountChangeService;
 
     /**
      * 查询提现记录列表
@@ -95,15 +107,24 @@ public class OrderWithdrawalController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderWithdrawal orderWithdrawal)
     {
+        OrderWithdrawal withdrawal = orderWithdrawalService.selectOrderWithdrawalById(orderWithdrawal.getId());
         orderWithdrawal.setAuditTime(DateUtils.getNowDate());
         if (orderWithdrawal.getStatus().equals("0")){
             OrderMemberUser orderMemberUser = userService.selectOrderMemberUserById(orderWithdrawal.getUserId());
             orderMemberUser.setDealCount(0);
-            orderMemberUser.setTodayWithdrawCount(orderMemberUser.getTotalWithdrawCount()+1);
-            orderMemberUser.setTodayWithdrawCount(orderMemberUser.getTodayWithdrawCount()+1);
-            orderMemberUser.setTodayResetCount(orderMemberUser.getTotalResetCount()+1);
-            orderMemberUser.setTotalResetCount(orderMemberUser.getTotalResetCount()+1);
+
             userService.updateOrderMemberUser(orderMemberUser);
+        }
+        if (orderWithdrawal.getStatus().equals("2")){
+            OrderMemberUser orderMemberUser = userService.selectOrderMemberUserById(orderWithdrawal.getUserId());
+            BigDecimal balance = orderMemberUser.getBalance();
+            BigDecimal amount = withdrawal.getAmount();
+            BigDecimal add = balance.add(amount);
+            recordAccountChange(orderMemberUser.getId(),orderMemberUser.getUsername(),"4",balance,amount,add,"提现审核不通过, 操作人ID:" +
+                    " "+getUserId()+", 操作人用户名: "+getUsername()+", 提现金额: "+amount);
+            orderMemberUser.setBalance(add);
+            userService.updateOrderMemberUser(orderMemberUser);
+
         }
         return toAjax(orderWithdrawalService.updateOrderWithdrawal(orderWithdrawal));
     }
@@ -117,5 +138,36 @@ public class OrderWithdrawalController extends BaseController
     public AjaxResult remove(@PathVariable Long[] ids)
     {
         return toAjax(orderWithdrawalService.deleteOrderWithdrawalByIds(ids));
+    }
+
+    private void recordAccountChange(Long userId, String username, String changeType,
+                                     BigDecimal beforeAmount, BigDecimal changeAmount,
+                                     BigDecimal afterAmount, String action) {
+        String changeNo = generateUniqueChangeNo();
+        if (changeNo == null) {
+            throw new ServiceException("Please try again later");
+        }
+
+        OrderAccountChange change = new OrderAccountChange();
+        change.setChangeNo(changeNo);
+        change.setType(changeType);
+        change.setUserId(userId);
+        change.setBeforeAmount(beforeAmount);
+        change.setChangeAmount(changeAmount);
+        change.setAfterAmount(afterAmount);
+        change.setDescription(action);
+        change.setCreateTime(new Date());
+        accountChangeService.insertOrderAccountChange(change);
+    }
+
+    private String generateUniqueChangeNo() {
+        int maxAttempts = 5;
+        for (int i = 0; i < maxAttempts; i++) {
+            String changeNo = OrderNoGenerator.generateOrderId();
+            if (accountChangeService.selectOrderAccountChangeByCode(changeNo) == null) {
+                return changeNo;
+            }
+        }
+        return null;
     }
 }

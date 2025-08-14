@@ -2,6 +2,7 @@ package com.brushing.member.service;
 
 import java.util.List;
 import com.brushing.member.domain.OrderMemberUser;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.security.core.userdetails.UserDetails;
 
 /**
@@ -31,6 +32,8 @@ public interface IOrderMemberUserService
      * @return 会员用户集合
      */
     public List<OrderMemberUser> selectOrderMemberUserList(OrderMemberUser orderMemberUser);
+
+    public List<OrderMemberUser> selectMembersByScope(Long userId, String scope);
 
     /**
      * 新增会员用户

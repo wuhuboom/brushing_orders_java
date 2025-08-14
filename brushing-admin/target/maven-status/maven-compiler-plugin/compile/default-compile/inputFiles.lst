@@ -7,6 +7,7 @@ E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controll
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\enumvo\SeriesStatus.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\GoodsController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\OrderController.java
+E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\vo\AvatarDto.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\vo\CheckTradePassword.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\vo\EditPasswordDto.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\vo\EditTradePasswordDto.java
@@ -28,6 +29,7 @@ E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controll
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\config\OrderGlobalConfigController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\config\OrderSiteConfigController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\config\OrderTradeControlConfigController.java
+E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\member\dto\ScopeUser.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\member\dto\TopupDto.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\member\OrderAccountChangeController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\member\OrderGoodsController.java

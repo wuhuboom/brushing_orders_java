@@ -1,10 +1,13 @@
 package com.brushing.api.controller;
 
 import com.brushing.api.controller.vo.PageDto;
+import com.brushing.common.config.BrushingConfig;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.file.FileUploadUtils;
+import com.brushing.framework.config.ServerConfig;
 import com.brushing.member.domain.OrderMemberLevel;
 import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.set.domain.*;
@@ -13,11 +16,12 @@ import com.brushing.system.domain.SysNotice;
 import com.brushing.system.service.ISysNoticeService;
 import com.github.pagehelper.PageHelper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -44,6 +48,9 @@ public class ConfigController extends BaseController {
 
     @Autowired
     private ISysNoticeService noticeService;
+
+    @Autowired
+    private ServerConfig serverConfig;
 
     /**
      * 获取客服地址
@@ -166,6 +173,40 @@ public class ConfigController extends BaseController {
         PageHelper.startPage(dto.getPageNum(), dto.getPageSize());
         List<SysNotice> list = noticeService.selectNoticeList(new SysNotice());
         return getDataTable(list);
+    }
+
+    @GetMapping("/getNotice/{id}")
+    @Operation(summary = "获取公告详情" ,description = "noticeTitle:标题，noticeContent：类容")
+    public AjaxResult getNotice(@PathVariable("id") Long id)
+    {
+        SysNotice sysNotice = noticeService.selectNoticeById(id);
+        if (StringUtils.isNull(sysNotice)){
+            return error("no data");
+        }
+        return success(sysNotice);
+    }
+
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "文件上传接口",
+            description = "code:200 表示上传成功，fileName: 路径地址"
+    )
+    public AjaxResult uploadFile(
+            @RequestPart("file") @Parameter(description = "上传的文件") MultipartFile file) throws Exception
+    {
+        try {
+            // 上传文件路径
+            String filePath = BrushingConfig.getUploadPath();
+            // 上传并返回新文件名称
+            String fileName = FileUploadUtils.upload(filePath, file);
+            String url = serverConfig.getUrl() + fileName;
+            AjaxResult ajax = AjaxResult.success();
+            ajax.put("fileName", fileName);
+            ajax.put("url", url);  // 建议同时返回可访问 URL
+            return ajax;
+        } catch (Exception e) {
+            return AjaxResult.error(e.getMessage());
+        }
     }
 
 
