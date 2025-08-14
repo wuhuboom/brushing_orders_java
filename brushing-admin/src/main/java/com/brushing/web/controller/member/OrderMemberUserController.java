@@ -195,4 +195,13 @@ public class OrderMemberUserController extends BaseController
         return toAjax(orderMemberUserService.updateOrderMemberUser(orderMemberUser));
     }
 
+    /**
+     * 获取统计信息
+     * @return
+     */
+    @GetMapping("/getDashboardData")
+    public AjaxResult getDashboardData(){
+
+        return success(orderMemberUserService.getDashboardData());
+    }
 }

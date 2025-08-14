@@ -5,7 +5,9 @@ import java.util.List;
 import com.brushing.common.utils.InviteCodeGenerator;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.member.domain.DashboardData;
 import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.mapper.DashboardMapper;
 import com.brushing.member.mapper.OrderMemberLevelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,9 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
 
     @Autowired
     private OrderMemberLevelMapper levelMapper;
+
+    @Autowired
+    private DashboardMapper dashboardMapper;
 
     /**
      * 查询会员用户
@@ -182,5 +187,10 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
     public int deleteOrderMemberUserById(Long id)
     {
         return orderMemberUserMapper.deleteOrderMemberUserById(id);
+    }
+
+    @Override
+    public DashboardData getDashboardData() {
+        return dashboardMapper.getDashboardData();
     }
 }
