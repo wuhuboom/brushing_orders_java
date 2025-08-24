@@ -161,6 +161,7 @@ public class AuthController extends BaseController {
                             "'totalResetCount': '总重置次数', " +
                             "'withdrawTip': '提现提示', " +
                             "'avatar': '用户头像', " +
+                            "'cardNumber': '卡单数量', " +
                             "'userLevel.icon': '会员图标', " +
                             "'userLevel.nameZh': '中文名称', " +
                             "'userLevel.nameEn': '英文名称' " +

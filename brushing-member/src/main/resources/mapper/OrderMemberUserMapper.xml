@@ -49,6 +49,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="withdrawTip"    column="withdraw_tip"    />
         <result property="parentUsername"    column="parent_username"    />
         <result property="parentPhone"    column="parent_phone"    />
+        <result property="cardNumber"    column="card_number"    />
         <result property="rechargeNeededForNextLevel"    column="recharge_needed_for_next_level"    />
         <association property="userLevel"     javaType="UserLevel"  resultMap="userLevelResult" />
     </resultMap>
@@ -113,6 +114,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.commission,
         u.all_commission,
         u.deal_count,
+        u.card_number,
 
         (
         SELECT COUNT(1)
@@ -410,6 +412,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="todayResetCount != null">today_reset_count = #{todayResetCount},</if>
             <if test="totalResetCount != null">total_reset_count = #{totalResetCount},</if>
             <if test="withdrawTip != null">withdraw_tip = #{withdrawTip},</if>
+            <if test="cardNumber != null">card_number = #{cardNumber},</if>
         </trim>
         where id = #{id}
     </update>

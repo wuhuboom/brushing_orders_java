@@ -1,3 +1,4 @@
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\DashboardData.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderAccountChange.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderGoods.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderGoodsType.java
@@ -9,6 +10,7 @@ E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\doma
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderWithdrawal.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\vo\OrderInfoVo.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\vo\UserLevel.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\DashboardMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderAccountChangeMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderGoodsMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderGoodsTypeMapper.java

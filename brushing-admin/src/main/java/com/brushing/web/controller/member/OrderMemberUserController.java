@@ -90,7 +90,8 @@ public class OrderMemberUserController extends BaseController
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
-        return success(orderMemberUserService.selectOrderMemberUserById(id));
+        OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(id);
+        return success(orderMemberUser);
     }
 
     /**

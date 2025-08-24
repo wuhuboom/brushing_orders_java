@@ -170,6 +170,10 @@ public class OrderMemberUser extends BaseEntity
     /** 总重置次数 */
     private Integer totalResetCount;
 
+
+    /** 卡单数量 */
+    private Integer cardNumber;
+
     /** 提现提示 */
     private String withdrawTip;
 
@@ -181,6 +185,15 @@ public class OrderMemberUser extends BaseEntity
     private String parentUsername;
 
     private String parentPhone;
+
+
+    public Integer getCardNumber() {
+        return cardNumber;
+    }
+
+    public void setCardNumber(Integer cardNumber) {
+        this.cardNumber = cardNumber;
+    }
 
     public BigDecimal getRechargeNeededForNextLevel() {
         return rechargeNeededForNextLevel;
