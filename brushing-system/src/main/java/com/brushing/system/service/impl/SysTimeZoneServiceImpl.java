@@ -96,7 +96,18 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
     @Override
     public int updateSysTimeZone(SysTimeZone sysTimeZone)
     {
-        return sysTimeZoneMapper.updateSysTimeZone(sysTimeZone);
+        try {
+            ZoneId.of(sysTimeZone.getTzName());  // 如果时区无效，抛出异常
+        } catch (Exception e) {
+            throw new IllegalArgumentException("无效的时区ID: " + sysTimeZone.getTzName());
+        }
+        // 2. 检查时区是否已存在
+        try {
+            return sysTimeZoneMapper.updateSysTimeZone(sysTimeZone);
+        }catch (Exception e){
+            throw new IllegalArgumentException("时区已经存在: " + sysTimeZone.getTzName());
+        }
+
     }
 
     @Override

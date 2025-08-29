@@ -4,6 +4,7 @@ com\brushing\web\controller\system\SysRegisterController.class
 com\brushing\api\controller\vo\AvatarDto.class
 com\brushing\api\controller\vo\WithdrawalDto.class
 com\brushing\api\controller\ConfigController.class
+com\brushing\web\controller\system\SysTimeZoneController.class
 com\brushing\api\controller\enumvo\CommissionStatus.class
 com\brushing\web\controller\monitor\SysLogininforController.class
 com\brushing\web\controller\config\OrderGlobalConfigController.class
@@ -28,6 +29,7 @@ com\brushing\web\controller\member\OrderMemberUserController.class
 com\brushing\web\controller\monitor\CacheController.class
 com\brushing\web\controller\config\OrderBannerController.class
 com\brushing\api\controller\vo\EditTradePasswordDto.class
+com\brushing\web\core\config\ForwardHeadersConfig.class
 com\brushing\web\controller\member\OrderSeriesController.class
 com\brushing\web\controller\member\dto\TopupDto.class
 com\brushing\web\controller\monitor\SysUserOnlineController.class

@@ -1,6 +1,8 @@
 package com.brushing.quartz.util;
 
 import java.util.Date;
+
+import com.brushing.common.utils.DateUtils;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.slf4j.Logger;
@@ -58,7 +60,7 @@ public abstract class AbstractQuartzJob implements Job
      */
     protected void before(JobExecutionContext context, SysJob sysJob)
     {
-        threadLocal.set(new Date());
+        threadLocal.set(DateUtils.getNowDate());
     }
 
     /**
@@ -77,7 +79,7 @@ public abstract class AbstractQuartzJob implements Job
         sysJobLog.setJobGroup(sysJob.getJobGroup());
         sysJobLog.setInvokeTarget(sysJob.getInvokeTarget());
         sysJobLog.setStartTime(startTime);
-        sysJobLog.setStopTime(new Date());
+        sysJobLog.setStopTime(DateUtils.getNowDate());
         long runMs = sysJobLog.getStopTime().getTime() - sysJobLog.getStartTime().getTime();
         sysJobLog.setJobMessage(sysJobLog.getJobName() + " 总共耗时：" + runMs + "毫秒");
         if (e != null)

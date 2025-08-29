@@ -24,12 +24,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
     
-    <select id="selectSysTimeZoneById" parameterType="String" resultMap="SysTimeZoneResult">
+    <select id="selectSysTimeZoneById" parameterType="Long" resultMap="SysTimeZoneResult">
         <include refid="selectSysTimeZoneVo"/>
         where id = #{id}
     </select>
 
-    <select id="selectByTzName" parameterType="String" resultType="SysTimeZone">
+    <select id="selectByTzName" parameterType="String" resultMap="SysTimeZoneResult">
         SELECT id, name, tz_name, status, create_time
         FROM sys_time_zone
         WHERE tz_name = #{tzName}

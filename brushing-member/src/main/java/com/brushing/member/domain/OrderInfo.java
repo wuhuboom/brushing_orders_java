@@ -50,11 +50,11 @@ public class OrderInfo extends BaseEntity
     private String commissionStatus;
 
     /** 下单时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date orderTime;
 
     /** 提交时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date submitTime;
 
     /** 订单类型 */

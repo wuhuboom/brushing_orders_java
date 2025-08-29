@@ -13,7 +13,9 @@ import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.set.domain.*;
 import com.brushing.set.service.*;
 import com.brushing.system.domain.SysNotice;
+import com.brushing.system.domain.SysTimeZone;
 import com.brushing.system.service.ISysNoticeService;
+import com.brushing.system.service.ISysTimeZoneService;
 import com.github.pagehelper.PageHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,8 +27,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-
-@Tag(name = "配置管理")
+@Tag(
+        name = "配置管理",
+        description =
+                "错误码对照表：\n" +
+                        "701: No data （暂无数据）\n" +
+                        "703: Upload failed （上传失败）"
+)
 @RestController
 @RequestMapping("/api/config")
 public class ConfigController extends BaseController {
@@ -52,12 +59,15 @@ public class ConfigController extends BaseController {
     @Autowired
     private ServerConfig serverConfig;
 
+    @Autowired
+    private ISysTimeZoneService sysTimeZoneService;
+
     /**
      * 获取客服地址
-     * @return
      */
     @GetMapping("/getCustomerService")
-    @Operation(summary = "获取客服地址",
+    @Operation(
+            summary = "获取客服地址",
             description =
                     "'name': '客服名称',\n" +
                             "'linkUrl': '跳转地址',\n" +
@@ -66,79 +76,84 @@ public class ConfigController extends BaseController {
                             "'status': '状态 0正常 1停用'"
     )
     public AjaxResult getCustomerService(){
-        List<OrderCustomerService> orderCustomerServices = orderCustomerServiceService.selectOrderCustomerServiceList(null);
-        if (orderCustomerServices.size()==0){
-            return error("No data yet");
+        List<OrderCustomerService> orderCustomerServices =
+                orderCustomerServiceService.selectOrderCustomerServiceList(null);
+        if (orderCustomerServices.size() == 0){
+            return AjaxResult.error(701, "No data");
         }
         return success(orderCustomerServices);
     }
 
     @GetMapping("/getEmailConfig")
-    @Operation(summary = "获取邮件配置",
+    @Operation(
+            summary = "获取邮件配置",
             description =
-                    "'host': '邮件服务器地址,\n" +
-                    "'username': '邮箱用户名',\n" +
-                    "'password': '邮箱密码或授权码',\n" +
-                    "'fromAddress': '发件人邮箱地址',\n" +
-                    "'fromName': '发件人名称'"
+                    "'host': '邮件服务器地址',\n" +
+                            "'username': '邮箱用户名',\n" +
+                            "'password': '邮箱密码或授权码',\n" +
+                            "'fromAddress': '发件人邮箱地址',\n" +
+                            "'fromName': '发件人名称'"
     )
     public AjaxResult getEmailConfig(){
         OrderEmailConfig orderEmailConfig = orderEmailConfigService.selectOrderEmailConfigById(1L);
         if (StringUtils.isNull(orderEmailConfig)){
-            return error("No data yet");
+            return AjaxResult.error(701, "No data");
         }
         return success(orderEmailConfig);
     }
 
     @GetMapping("/getGlobalConfig")
-    @Operation(summary = "获取基本配置",
+    @Operation(
+            summary = "获取基本配置",
             description =
                     "'registerProtocolEn': '注册协议（英文）',\n" +
-                    "'registerProtocolLocal': '注册协议（非英文）',\n" +
-                    "'aboutUsEn': '关于我们（英文）',\n" +
-                    "'aboutUsLocal': '关于我们（非英文）',\n" +
-                    "'certificateEn': '证书（英文）',\n" +
-                    "'certificateLocal': '证书（非英文）',\n" +
-                    "'faqEn': '常见问题（英文）',\n" +
-                    "'faqLocal': '常见问题（非英文）',\n" +
-                    "'latestEventEn': '最新事件（英文）',\n" +
-                    "'latestEventLocal': '最新事件（非英文）',\n" +
-                    "'termsEn': '条款条规（英文）',\n" +
-                    "'termsLocal': '条款条规（非英文）',\n" +
-                    "'incomeGuideEn': '收入指南（英文）',\n" +
-                    "'incomeGuideLocal': '收入指南（非英文）'"
+                            "'registerProtocolLocal': '注册协议（非英文）',\n" +
+                            "'aboutUsEn': '关于我们（英文）',\n" +
+                            "'aboutUsLocal': '关于我们（非英文）',\n" +
+                            "'certificateEn': '证书（英文）',\n" +
+                            "'certificateLocal': '证书（非英文）',\n" +
+                            "'faqEn': '常见问题（英文）',\n" +
+                            "'faqLocal': '常见问题（非英文）',\n" +
+                            "'latestEventEn': '最新事件（英文）',\n" +
+                            "'latestEventLocal': '最新事件（非英文）',\n" +
+                            "'termsEn': '条款条规（英文）',\n" +
+                            "'termsLocal': '条款条规（非英文）',\n" +
+                            "'incomeGuideEn': '收入指南（英文）',\n" +
+                            "'incomeGuideLocal': '收入指南（非英文）'"
     )
     public AjaxResult getGlobalConfig(){
         OrderGlobalConfig orderGlobalConfig = orderGlobalConfigService.selectOrderGlobalConfigById(1L);
         if (StringUtils.isNull(orderGlobalConfig)){
-            return error("No data yet");
+            return AjaxResult.error(701, "No data");
         }
         return success(orderGlobalConfig);
     }
 
     @GetMapping("/getTradeConfig")
-    @Operation(summary = "获取交易配置",
+    @Operation(
+            summary = "获取交易配置",
             description =
                     "'rechargeTimeStart': '充值时间开始',\n" +
-                    "'rechargeTimeEnd': '充值时间结束',\n" +
-                    "'withdrawTimeStart': '提现时间开始',\n" +
-                    "'withdrawTimeEnd': '提现时间结束',\n" +
-                    "'orderTimeStart': '抢单时间开始',\n" +
-                    "'orderTimeEnd': '抢单时间结束',\n" +
-                    "'workTimeStart': '工作时间开始',\n" +
-                    "'workTimeEnd': '工作时间结束'"
-)
+                            "'rechargeTimeEnd': '充值时间结束',\n" +
+                            "'withdrawTimeStart': '提现时间开始',\n" +
+                            "'withdrawTimeEnd': '提现时间结束',\n" +
+                            "'orderTimeStart': '抢单时间开始',\n" +
+                            "'orderTimeEnd': '抢单时间结束',\n" +
+                            "'workTimeStart': '工作时间开始',\n" +
+                            "'workTimeEnd': '工作时间结束'"
+    )
     public AjaxResult getTradeConfig(){
-        OrderTradeControlConfig orderTradeControlConfig = orderTradeControlConfigService.selectOrderTradeControlConfigById(1L);
+        OrderTradeControlConfig orderTradeControlConfig =
+                orderTradeControlConfigService.selectOrderTradeControlConfigById(1L);
         if (StringUtils.isNull(orderTradeControlConfig)){
-            return error("No data yet");
+            return AjaxResult.error(701, "No data");
         }
         return success(orderTradeControlConfig);
-
     }
 
     @GetMapping("/getLevel")
-    @Operation(summary = "获取VIP等级列表",
+    @Operation(
+            summary = "获取VIP等级列表",
             description =
                     "'icon': '会员图标',\n" +
                             "'nameZh': '中文名称',\n" +
@@ -161,27 +176,25 @@ public class ConfigController extends BaseController {
     public AjaxResult getLevel(){
         List<OrderMemberLevel> orderMemberLevels = levelService.selectOrderMemberLevelList(null);
         if (StringUtils.isNull(orderMemberLevels)){
-            return error("No data yet");
+            return AjaxResult.error(701, "No data");
         }
         return success(orderMemberLevels);
     }
 
     @GetMapping("/getNoticeList")
-    @Operation(summary = "获取公告列表" ,description = "noticeTitle:标题，noticeContent：类容")
-    public TableDataInfo getNoticeList(PageDto dto)
-    {
+    @Operation(summary = "获取公告列表" , description = "noticeTitle:标题，noticeContent：类容")
+    public TableDataInfo getNoticeList(PageDto dto) {
         PageHelper.startPage(dto.getPageNum(), dto.getPageSize());
         List<SysNotice> list = noticeService.selectNoticeList(new SysNotice());
         return getDataTable(list);
     }
 
     @GetMapping("/getNotice/{id}")
-    @Operation(summary = "获取公告详情" ,description = "noticeTitle:标题，noticeContent：类容")
-    public AjaxResult getNotice(@PathVariable("id") Long id)
-    {
+    @Operation(summary = "获取公告详情" , description = "noticeTitle:标题，noticeContent：类容")
+    public AjaxResult getNotice(@PathVariable("id") Long id) {
         SysNotice sysNotice = noticeService.selectNoticeById(id);
         if (StringUtils.isNull(sysNotice)){
-            return error("no data");
+            return AjaxResult.error(701, "No data");
         }
         return success(sysNotice);
     }
@@ -192,8 +205,8 @@ public class ConfigController extends BaseController {
             description = "code:200 表示上传成功，fileName: 路径地址"
     )
     public AjaxResult uploadFile(
-            @RequestPart("file") @Parameter(description = "上传的文件") MultipartFile file) throws Exception
-    {
+            @RequestPart("file") @Parameter(description = "上传的文件") MultipartFile file
+    ) throws Exception {
         try {
             // 上传文件路径
             String filePath = BrushingConfig.getUploadPath();
@@ -202,12 +215,21 @@ public class ConfigController extends BaseController {
             String url = serverConfig.getUrl() + fileName;
             AjaxResult ajax = AjaxResult.success();
             ajax.put("fileName", fileName);
-            ajax.put("url", url);  // 建议同时返回可访问 URL
+            ajax.put("url", url);  // 同时返回可访问 URL
             return ajax;
         } catch (Exception e) {
-            return AjaxResult.error(e.getMessage());
+            return AjaxResult.error(703, "Upload failed: " + e.getMessage());
         }
     }
 
-
+    @GetMapping("/getZoneActive")
+    @Operation(summary = "获取系统时区")
+    public AjaxResult getZoneActive(){
+        SysTimeZone active = sysTimeZoneService.getActive();
+        AjaxResult ajaxResult = new AjaxResult();
+        ajaxResult.put("data", active);
+        ajaxResult.put("code", 200);
+        ajaxResult.put("msg", "The operation was successful");
+        return ajaxResult;
+    }
 }

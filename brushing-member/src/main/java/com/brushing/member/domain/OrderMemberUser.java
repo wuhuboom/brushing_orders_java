@@ -79,7 +79,7 @@ public class OrderMemberUser extends BaseEntity
     private String registerIp;
 
     /** 登录时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date lastLoginTime;
 
     /** 账户状态 */

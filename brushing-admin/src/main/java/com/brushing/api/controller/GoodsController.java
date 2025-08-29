@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@Tag(name = "商品管理")
+@Tag(name = "商品管理",description =
+        "错误码对照表：\n" +
+                "701: No data （暂无数据）")
 @RestController
 @RequestMapping("/api/goods")
 public class GoodsController extends BaseController {
@@ -32,8 +34,8 @@ public class GoodsController extends BaseController {
     )
     public AjaxResult getGoodsList(){
         List<OrderGoods> orderGoods = orderGoodsService.selectRandomOrderGoods();
-        if (orderGoods.size() == 0){
-            return error("No data yet");
+        if (orderGoods == null || orderGoods.isEmpty()){
+            return AjaxResult.error(701, "No data yet");
         }
         return success(orderGoods);
 

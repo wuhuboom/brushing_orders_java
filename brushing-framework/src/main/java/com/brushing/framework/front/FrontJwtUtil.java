@@ -1,5 +1,6 @@
 package com.brushing.framework.front;
 
+import com.brushing.common.utils.DateUtils;
 import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.service.IOrderMemberUserService;
 import io.jsonwebtoken.Claims;
@@ -23,7 +24,7 @@ public class FrontJwtUtil {
     @Value("${token.secret}")
     private String SECRET_KEY;
 
-    private static final long EXPIRATION_TIME = 86400000; // 24小时
+    private static final long EXPIRATION_TIME = 24*3600*1000*3; // 3天
 
     @Autowired
     private RedisCache redisCache;
@@ -53,7 +54,7 @@ public class FrontJwtUtil {
         // 生成新 token
         String token = Jwts.builder()
                 .setSubject(username)
-                .setIssuedAt(new Date())
+                .setIssuedAt(DateUtils.getNowDate())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
                 .compact();

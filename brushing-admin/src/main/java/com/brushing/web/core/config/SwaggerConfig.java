@@ -10,6 +10,9 @@ import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.servers.Server;
+
+import java.util.List;
 
 /**
  * Swagger 接口配置
@@ -29,6 +32,7 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI customOpenApi() {
         return new OpenAPI()
+                .servers(List.of(new Server().url("/")))
                 .components(new Components()
                         // 设置认证的请求头
                         .addSecuritySchemes("BearerAuth", securityScheme()))

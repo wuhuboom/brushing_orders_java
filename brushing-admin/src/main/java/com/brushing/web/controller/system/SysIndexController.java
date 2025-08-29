@@ -24,6 +24,6 @@ public class SysIndexController
     @RequestMapping("/")
     public String index()
     {
-        return StringUtils.format("欢迎使用{}后台管理框架，当前版本：v{}，请通过前端地址访问。", brushingConfig.getName(), brushingConfig.getVersion());
+        return StringUtils.format("Welcome to the {} Admin Framework. Current version: v{}. Please access it through the frontend URL", brushingConfig.getName(), brushingConfig.getVersion());
     }
 }

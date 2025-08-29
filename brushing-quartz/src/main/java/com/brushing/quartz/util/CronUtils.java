@@ -2,6 +2,8 @@ package com.brushing.quartz.util;
 
 import java.text.ParseException;
 import java.util.Date;
+
+import com.brushing.common.utils.DateUtils;
 import org.quartz.CronExpression;
 
 /**
@@ -53,7 +55,7 @@ public class CronUtils
         try
         {
             CronExpression cron = new CronExpression(cronExpression);
-            return cron.getNextValidTimeAfter(new Date(System.currentTimeMillis()));
+            return cron.getNextValidTimeAfter(DateUtils.getNowDate());
         }
         catch (ParseException e)
         {

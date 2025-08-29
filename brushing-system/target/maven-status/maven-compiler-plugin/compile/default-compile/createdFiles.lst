@@ -1,5 +1,6 @@
 com\brushing\system\service\ISysUserService.class
 com\brushing\system\domain\SysOperLog.class
+com\brushing\system\mapper\SysTimeZoneMapper.class
 com\brushing\system\domain\SysRoleDept.class
 com\brushing\system\mapper\SysRoleMenuMapper.class
 com\brushing\system\service\ISysDictDataService.class
@@ -13,6 +14,7 @@ com\brushing\system\service\impl\SysUserServiceImpl.class
 com\brushing\system\service\impl\SysUserOnlineServiceImpl.class
 com\brushing\system\domain\SysRoleMenu.class
 com\brushing\system\service\impl\SysDictTypeServiceImpl.class
+com\brushing\system\service\ISysTimeZoneService.class
 com\brushing\system\service\ISysMenuService.class
 com\brushing\system\service\impl\SysOperLogServiceImpl.class
 com\brushing\system\service\ISysConfigService.class
@@ -33,6 +35,7 @@ com\brushing\system\mapper\SysConfigMapper.class
 com\brushing\system\mapper\SysNoticeMapper.class
 com\brushing\system\mapper\SysRoleDeptMapper.class
 com\brushing\system\mapper\SysUserRoleMapper.class
+com\brushing\system\domain\SysTimeZone.class
 com\brushing\system\mapper\SysLogininforMapper.class
 com\brushing\system\mapper\SysUserMapper.class
 com\brushing\system\service\impl\SysDictDataServiceImpl.class
@@ -49,4 +52,5 @@ com\brushing\system\service\impl\SysLogininforServiceImpl.class
 com\brushing\system\mapper\SysMenuMapper.class
 com\brushing\system\service\ISysLogininforService.class
 com\brushing\system\domain\SysConfig.class
+com\brushing\system\service\impl\SysTimeZoneServiceImpl.class
 com\brushing\system\mapper\SysDeptMapper.class

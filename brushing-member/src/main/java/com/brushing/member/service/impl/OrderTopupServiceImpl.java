@@ -199,7 +199,7 @@ public class OrderTopupServiceImpl implements IOrderTopupService
         }else{
             change.setDescription(action);
         }
-        change.setCreateTime(new Date());
+        change.setCreateTime(DateUtils.getNowDate());
         orderAccountChangeMapper.insertOrderAccountChange(change);
     }
 
@@ -227,7 +227,7 @@ public class OrderTopupServiceImpl implements IOrderTopupService
         orderTopup.setAmout(changeAmount);
         orderTopup.setUserId(userId);
         orderTopup.setCode(code);
-        orderTopup.setCreateTime(new Date());
+        orderTopup.setCreateTime(DateUtils.getNowDate());
       return  orderTopupMapper.insertOrderTopup(orderTopup);
     }
 

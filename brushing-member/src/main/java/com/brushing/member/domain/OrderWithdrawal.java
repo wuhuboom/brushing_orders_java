@@ -42,13 +42,11 @@ public class OrderWithdrawal extends BaseEntity
     private BigDecimal withdrawFee;
 
     /** 申请时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Excel(name = "申请时间", width = 30, dateFormat = "yyyy-MM-dd")
+    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date applicationTime;
 
     /** 审核时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Excel(name = "审核时间", width = 30, dateFormat = "yyyy-MM-dd")
+    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date auditTime;
 
     /** 状态 */

@@ -76,6 +76,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="userId != null  and userId != ''"> and w.user_id = #{userId}</if>
             <if test="code != null  and code != ''"> and w.code = #{code}</if>
             <if test="status != null  and status != ''"> and w.status = #{status}</if>
+            <if test="isReal != null  and isReal != ''"> and u.is_real = #{isReal}</if>
         </where>
         order by
         CASE
