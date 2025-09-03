@@ -45,7 +45,8 @@ import java.util.Date;
                         "614: User not found or avatar is blank （用户不存在或头像为空）\n" +
                         "615: Invalid authorization header \n (请求头无效)" +
                         "616: Logout failed \n (退出登录失败)" +
-                        "617: Unknown error  (登录失败，未知错误)"
+                        "617: Unknown error \n (登录失败，未知错误)"+
+                        "401: (token失效，或者未登录) \n "
 )
 @RestController
 @RequestMapping("/api/user")

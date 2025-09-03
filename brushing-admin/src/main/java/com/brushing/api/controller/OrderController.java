@@ -93,6 +93,7 @@ public class OrderController extends BaseController {
         if (controlConfig == null) {
             return AjaxResult.error(901, "System configuration is not available");
         }
+        OrderMemberUser user = userService.findByUsername(username);
         LocalTime orderTimeStart = controlConfig.getOrderTimeStart();
         LocalTime orderTimeEnd = controlConfig.getOrderTimeEnd();
         LocalTime now = LocalTime.now();
@@ -102,21 +103,21 @@ public class OrderController extends BaseController {
         if (StringUtils.isEmpty(username)) {
             return AjaxResult.error(903, "Usernames cannot be empty");
         }
-        OrderMemberUser user = userService.findByUsername(username);
         if (user == null) {
             return AjaxResult.error(904, "The user does not exist");
         }
+        if (orderInfoService.countUnfinishedOrders(user.getId()) > 0) {
+            return AjaxResult.error(907, "There is an open order");
+        }
         OrderMemberLevel userLevel = user.getUserLevel();
-        if (!"0".equals(user.getTradeStatus())||user.getDealCount()==user.getCardNumber()){
+        if (!"0".equals(user.getTradeStatus())||(user.getDealCount()==user.getCardNumber()&&user.getCardNumber()>0)){
             return AjaxResult.error(905, "This user is not allowed to grab orders");
         }
         BigDecimal minUserBalance = userLevel.getMinBalance();
         if (user.getBalance().compareTo(minUserBalance) < 0) {
             return AjaxResult.error(906, "The minimum transaction amount is: " + minUserBalance);
         }
-        if (orderInfoService.countUnfinishedOrders(user.getId()) > 0) {
-            return AjaxResult.error(907, "There is an open order");
-        }
+
         int currentNum = user.getDealCount() + 1;
         List<OrderSeries> orderSeries = seriesService.selectSeriesListByUserId(user.getId());
         OrderSeries series = findSeriesByOrderIndex(orderSeries, currentNum);

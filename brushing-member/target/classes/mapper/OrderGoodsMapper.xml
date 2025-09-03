@@ -98,6 +98,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         LIMIT 8
     </select>
 
+    <select id="selectRandomOrderGoodsTwo" resultMap="OrderGoodsResult">
+        SELECT
+        id,
+        name,
+        cover_url,
+        price,
+        description,
+        status,
+        create_time,
+        update_time
+        FROM order_goods
+        WHERE id >= (
+        SELECT FLOOR(RAND() * (SELECT MAX(id) FROM order_goods))
+        )
+        LIMIT 9
+    </select>
+
 
 
     <insert id="insertOrderGoods" parameterType="OrderGoods" useGeneratedKeys="true" keyProperty="id">

@@ -43,6 +43,8 @@ public interface OrderGoodsMapper
      */
     public List<OrderGoods> selectRandomOrderGoods();
 
+    public List<OrderGoods> selectRandomOrderGoodsTwo();
+
     /**
      * 新增商品列表
      * 

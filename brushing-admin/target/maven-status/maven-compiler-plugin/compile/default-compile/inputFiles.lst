@@ -1,6 +1,7 @@
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\AccountController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\AuthController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\ConfigController.java
+E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\CreateGoods.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\enumvo\ChangeType.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\enumvo\CommissionStatus.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\api\controller\enumvo\OrderStatus.java

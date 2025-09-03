@@ -54,6 +54,7 @@ com\brushing\web\controller\tool\UserEntity.class
 com\brushing\web\controller\member\OrderTopupController.class
 com\brushing\web\controller\system\SysUserController.class
 com\brushing\api\controller\vo\WithdrawalMethodDto.class
+com\brushing\api\controller\CreateGoods.class
 com\brushing\web\controller\system\SysIndexController.class
 com\brushing\web\controller\member\OrderGoodsController.class
 com\brushing\api\dto\LoginUserDto.class

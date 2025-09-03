@@ -19,7 +19,7 @@ public class OrderInfoVo {
 
     private BigDecimal commission;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date createTime;
 
     private String status;

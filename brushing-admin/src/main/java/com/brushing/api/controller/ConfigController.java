@@ -133,6 +133,12 @@ public class ConfigController extends BaseController {
     @Operation(
             summary = "获取交易配置",
             description =
+                    "'withdrawEnabled': '是否开启提现，0开启，1未开启',\n" +
+                    "'minUserBalance': '用户交易最低余额',\n" +
+                    "'minWithdrawCreditScore': '单笔提现最低信誉分',\n" +
+                    "'minWithdrawAmount': '单笔提现最低金额',\n" +
+                    "'maxWithdrawAmount': '单笔提现最高金额',\n" +
+                    "'dailyWithdrawLimit': '单日总提现最大金额',\n" +
                     "'rechargeTimeStart': '充值时间开始',\n" +
                             "'rechargeTimeEnd': '充值时间结束',\n" +
                             "'withdrawTimeStart': '提现时间开始',\n" +

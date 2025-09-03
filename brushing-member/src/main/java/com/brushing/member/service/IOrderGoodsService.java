@@ -21,6 +21,8 @@ public interface IOrderGoodsService
      */
     public OrderGoods selectOrderGoodsById(Long id);
 
+    public List<OrderGoods> selectRandomOrderGoodsTwo();
+
     /**
      * 查询商品列表列表
      * 

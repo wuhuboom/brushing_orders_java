@@ -33,6 +33,11 @@ public class OrderGoodsServiceImpl implements IOrderGoodsService
         return orderGoodsMapper.selectOrderGoodsById(id);
     }
 
+    @Override
+    public List<OrderGoods> selectRandomOrderGoodsTwo() {
+        return orderGoodsMapper.selectRandomOrderGoodsTwo();
+    }
+
     /**
      * 查询商品列表列表
      * 

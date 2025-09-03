@@ -24,7 +24,7 @@ public class GoodsController extends BaseController {
     private IOrderGoodsService orderGoodsService;
 
     @GetMapping("/getGoodsList")
-    @Operation(summary = "获取商品信息",
+    @Operation(summary = "获取商品信息8张图片",
             description =
                     "'name': '商品名称',\n" +
                     "'coverUrl': '商品封面图URL',\n" +
@@ -34,6 +34,24 @@ public class GoodsController extends BaseController {
     )
     public AjaxResult getGoodsList(){
         List<OrderGoods> orderGoods = orderGoodsService.selectRandomOrderGoods();
+        if (orderGoods == null || orderGoods.isEmpty()){
+            return AjaxResult.error(701, "No data yet");
+        }
+        return success(orderGoods);
+
+    }
+
+    @GetMapping("/getGoodsListTwo")
+    @Operation(summary = "获取商品信息9张图片",
+            description =
+                    "'name': '商品名称',\n" +
+                            "'coverUrl': '商品封面图URL',\n" +
+                            "'price': '商品价格',\n" +
+                            "'description': '商品描述',\n"
+
+    )
+    public AjaxResult getGoodsListTwo(){
+        List<OrderGoods> orderGoods = orderGoodsService.selectRandomOrderGoodsTwo();
         if (orderGoods == null || orderGoods.isEmpty()){
             return AjaxResult.error(701, "No data yet");
         }
