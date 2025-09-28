@@ -22,10 +22,21 @@ public class LoginBody
      */
     private String code;
 
+
+    private String totpCode;
+
     /**
      * 唯一标识
      */
     private String uuid;
+
+    public String getTotpCode() {
+        return totpCode;
+    }
+
+    public void setTotpCode(String totpCode) {
+        this.totpCode = totpCode;
+    }
 
     public String getUsername()
     {

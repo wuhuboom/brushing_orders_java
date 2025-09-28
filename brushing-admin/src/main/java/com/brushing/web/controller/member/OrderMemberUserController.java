@@ -3,6 +3,7 @@ package com.brushing.web.controller.member;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderMemberLevel;
@@ -10,6 +11,7 @@ import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.member.service.IOrderTopupService;
 import com.brushing.web.controller.member.dto.ScopeUser;
 import com.brushing.web.controller.member.dto.TopupDto;
+import com.brushing.web.controller.websocket.WebSocketServer;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,7 +137,12 @@ public class OrderMemberUserController extends BaseController
                 }
             }
         }
-        return toAjax(orderMemberUserService.updateOrderMemberUser(orderMemberUser));
+        int i = orderMemberUserService.updateOrderMemberUser(orderMemberUser);
+        JSONObject jsonObject= new JSONObject();
+        jsonObject.put("type","1");
+        jsonObject.put("data",orderMemberUser);
+        WebSocketServer.sendMessageToUser(orderMemberUser.getId(),jsonObject.toJSONString());
+        return toAjax(i);
     }
 
     /**
@@ -167,17 +174,23 @@ public class OrderMemberUserController extends BaseController
      */
     @PostMapping("/topupAmount")
     public AjaxResult topupAmount(@RequestBody TopupDto dto){
-        return toAjax(orderTopupService.upOrDown(dto.getUserId(), new BigDecimal(dto.getAmount()),dto.getType()));
+        int i = orderTopupService.upOrDown(dto.getUserId(), new BigDecimal(dto.getAmount()), dto.getType());
+        sendUserInfoMessage(dto.getUserId(),"1");
+        return toAjax(i);
     }
 
     @PostMapping("/upAmount")
     public AjaxResult upAmount(@RequestBody TopupDto dto){
-        return toAjax(orderTopupService.uPamount(dto.getUserId(),new BigDecimal(dto.getAmount()),getUserId(),getUsername()));
+        int i = orderTopupService.uPamount(dto.getUserId(), new BigDecimal(dto.getAmount()), getUserId(), getUsername());
+        sendUserInfoMessage(dto.getUserId(),"1");
+        return toAjax(i);
     }
 
     @PostMapping("/updateAmount")
     public AjaxResult updateAmount(@RequestBody TopupDto dto){
-        return toAjax(orderTopupService.updateAmount(dto.getUserId(),new BigDecimal(dto.getAmount()),getUserId(),getUsername()));
+        int i = orderTopupService.updateAmount(dto.getUserId(), new BigDecimal(dto.getAmount()), getUserId(), getUsername());
+        sendUserInfoMessage(dto.getUserId(),"1");
+        return toAjax(i);
     }
 
     /**
@@ -193,7 +206,27 @@ public class OrderMemberUserController extends BaseController
         orderMemberUser.setDealCount(0);
         orderMemberUser.setTotalResetCount(orderMemberUser.getTotalResetCount()+1);
         orderMemberUser.setTodayResetCount(orderMemberUser.getTodayResetCount()+1);
-        return toAjax(orderMemberUserService.updateOrderMemberUser(orderMemberUser));
+        int i = orderMemberUserService.updateOrderMemberUser(orderMemberUser);
+        sendUserInfoMessage(userId,"1");
+        return toAjax(i);
+    }
+
+
+    public void sendUserInfoMessage(Long userId, String type) {
+        // 获取用户信息
+        OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(userId);
+
+        if (orderMemberUser != null) {
+            // 创建 JSON 对象，构建消息
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("type", type);  // 可以根据传入的 type 动态改变消息类型
+            jsonObject.put("data", orderMemberUser);  // 包含用户信息
+
+            // 发送消息
+            WebSocketServer.sendMessageToUser(orderMemberUser.getId(), jsonObject.toJSONString());
+        } else {
+            System.out.println("User with ID " + userId + " not found.");
+        }
     }
 
     /**

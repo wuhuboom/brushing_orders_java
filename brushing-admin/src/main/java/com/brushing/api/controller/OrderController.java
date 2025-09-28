@@ -233,7 +233,7 @@ public class OrderController extends BaseController {
         if (!username.equalsIgnoreCase(user.getUsername())) {
             return AjaxResult.error(915, "User identity mismatch");
         }
-        if (user.getBalance().compareTo(BigDecimal.ZERO) <= 0) {
+        if (user.getBalance().compareTo(BigDecimal.ZERO) < 0) {
             return AjaxResult.error(916, "The balance is insufficient");
         }
         if (OrderStatus.COMPLETED.getCode().equals(orderInfo.getStatus())) {

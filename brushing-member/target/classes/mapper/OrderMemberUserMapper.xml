@@ -290,6 +290,48 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ORDER BY create_time DESC
     </select>
 
+    <select id="selectAllUser"  resultType="OrderMemberUser">
+        SELECT
+        u.id,
+        u.username,
+        u.phone,
+        u.password,
+        u.trade_password,
+        u.parent_id,
+        u.avatar,
+        u.ancestors,
+        u.sex,
+        u.email,
+        u.credit_score,
+        u.balance,
+        u.frozen_balance,
+        (u.balance + u.frozen_balance) AS total_balance,
+        u.invite_code,
+        u.register_ip,
+        u.last_login_time,
+        u.account_status,
+        u.trade_status,
+        u.withdraw_status,
+        u.real_name_status,
+        u.real_name,
+        u.id_card_number,
+        u.id_card_front,
+        u.id_card_back,
+        u.withdraw_name,
+        u.withdraw_address,
+        u.withdraw_type,
+        u.create_time,
+        u.remark,
+        u.is_real,
+        u.level_id,
+        u.commission,
+        u.all_commission,
+        u.deal_count,
+        u.card_number
+        FROM
+        order_member_user u
+    </select>
+
 
     <insert id="insertOrderMemberUser" parameterType="OrderMemberUser" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_user
@@ -447,4 +489,5 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{id}
         </foreach>
     </delete>
+
 </mapper>

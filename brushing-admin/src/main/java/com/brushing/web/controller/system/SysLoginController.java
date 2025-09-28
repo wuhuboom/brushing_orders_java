@@ -3,6 +3,11 @@ package com.brushing.web.controller.system;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import com.brushing.framework.web.domain.MfaVerifyReq;
+import com.brushing.framework.web.service.GoogleAuthenticatorService;
+import com.brushing.set.service.IOrderSiteConfigService;
+import com.brushing.system.service.ISysUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +52,15 @@ public class SysLoginController
     @Autowired
     private ISysConfigService configService;
 
+    @Autowired
+    private GoogleAuthenticatorService googleAuthenticatorService;
+
+    @Autowired
+    private ISysUserService userService;
+
+    @Autowired
+    private IOrderSiteConfigService siteConfigService;
+
     /**
      * 登录方法
      * 
@@ -57,12 +71,65 @@ public class SysLoginController
     public AjaxResult login(@RequestBody LoginBody loginBody)
     {
         AjaxResult ajax = AjaxResult.success();
-        // 生成令牌
-        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
-                loginBody.getUuid());
-        ajax.put(Constants.TOKEN, token);
+        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
+
+        String totpEnabled = siteConfigService.selectOrderSiteConfigById(1L).getTotpEnabled();
+
+        if (totpEnabled.equals("1")){
+            ajax.put(Constants.TOKEN, token);
+            return ajax;
+        }
+        // 获取当前登录用户的信息
+        SysUser user = userService.selectUserByUserName(loginBody.getUsername());
+
+        // 如果用户需要 Google 验证器绑定（首次登录），返回二维码链接
+        if (user.getTotpEnabled().equals("1")) {
+            String otpauthUri = googleAuthenticatorService.startSetup(user.getUserId(), loginBody.getUsername(), "brushing");
+            ajax.put("mfaRequired", true); // 告知前端需要进行 Google 验证器绑定
+            ajax.put("otpauthUri", otpauthUri); // 返回二维码链接
+        } else {
+            // 如果不是首次登录，验证 Google 验证码
+            String totpCode = loginBody.getTotpCode();
+            if (StringUtils.isEmpty(totpCode)) {
+                return AjaxResult.error("请输入验证码");
+            }
+            boolean verified = googleAuthenticatorService.verify(user.getUserId(), Integer.parseInt(totpCode));
+            if (!verified) {
+                return AjaxResult.error("验证码不正确");
+            }
+            ajax.put(Constants.TOKEN, token); // 普通登录成功，返回 Token
+        }
+
+        // 判断用户是否是首次登录
+        ajax.put("isFirstLogin", user.getTotpEnabled().equals("1") ? true : false);
         return ajax;
     }
+
+
+    @PostMapping("/firstLogin")
+    public AjaxResult firstLogin(@RequestBody LoginBody loginBody) {
+        AjaxResult ajax = AjaxResult.success();
+        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
+
+        SysUser user = userService.selectUserByUserName(loginBody.getUsername());
+
+        // 验证 Google 验证码
+        String totpCode = loginBody.getTotpCode();
+        boolean verified = googleAuthenticatorService.verify(user.getUserId(), Integer.parseInt(totpCode));
+
+        if (!verified) {
+            return AjaxResult.error("验证码不正确");
+        }
+
+        // 启用 Google 验证器
+        googleAuthenticatorService.enable(user.getUserId(), Integer.parseInt(totpCode));
+
+        ajax.put(Constants.TOKEN, token); // 普通登录成功，返回 Token
+        return ajax;
+    }
+
+
+
 
     /**
      * 获取用户信息

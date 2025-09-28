@@ -59,10 +59,41 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id}
     </select>
 
+
+
     <select id="selectLowestPriceLevel" resultMap="OrderMemberLevelResult">
         <include refid="selectOrderMemberLevelVo"/>
         order by price asc
         limit 1
+    </select>
+
+    <!-- 根据 balance 查询对应的会员等级 -->
+    <select id="findLevelByBalance" parameterType="java.math.BigDecimal" resultMap="OrderMemberLevelResult">
+        SELECT
+        id, icon, name_zh, name_en, price, auto_upgrade_invite_count,
+        commission_ratio, streak_commission_ratio, min_balance, order_count,
+        withdraw_count, withdraw_limit, min_withdraw_amount, max_withdraw_amount,
+        withdraw_fee, withdraw_order_per_day, description_zh, description_en, create_time
+        FROM
+        order_member_level
+        WHERE
+        price &lt;= #{balance}
+        UNION
+        SELECT
+        id, icon, name_zh, name_en, price, auto_upgrade_invite_count,
+        commission_ratio, streak_commission_ratio, min_balance, order_count,
+        withdraw_count, withdraw_limit, min_withdraw_amount, max_withdraw_amount,
+        withdraw_fee, withdraw_order_per_day, description_zh, description_en, create_time
+        FROM
+        order_member_level
+        WHERE
+        price = (SELECT MIN(price) FROM order_member_level)
+        AND NOT EXISTS (
+        SELECT 1 FROM order_member_level WHERE price &lt;= #{balance}
+        )
+        ORDER BY
+        price DESC
+        LIMIT 1
     </select>
 
 

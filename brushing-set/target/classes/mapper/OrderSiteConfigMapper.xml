@@ -21,10 +21,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="emailVerificationEnabled"    column="email_verification_enabled"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
+        <result property="totpEnabled"    column="totp_enabled"    />
     </resultMap>
 
     <sql id="selectOrderSiteConfigVo">
-        select id, site_name, customer_service_url, popup_message, copyright_info, register_bonus_amount, maintenance_image, site_logo, favicon, currency_type, max_register_per_ip, ip_blacklist, register_enabled, email_verification_enabled, create_time, update_time from order_site_config
+        select id, site_name, customer_service_url,
+        popup_message, copyright_info, register_bonus_amount,
+        maintenance_image, site_logo, favicon, currency_type,
+        max_register_per_ip, ip_blacklist, register_enabled, totp_enabled,
+        email_verification_enabled, create_time, update_time from order_site_config
     </sql>
 
     <select id="selectOrderSiteConfigList" parameterType="OrderSiteConfig" resultMap="OrderSiteConfigResult">
@@ -69,6 +74,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="emailVerificationEnabled != null">email_verification_enabled,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
+            <if test="totpEnabled != null">totp_enabled,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="siteName != null and siteName != ''">#{siteName},</if>
@@ -86,6 +92,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="emailVerificationEnabled != null">#{emailVerificationEnabled},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateTime != null">#{updateTime},</if>
+            <if test="totpEnabled != null">#{totpEnabled},</if>
          </trim>
     </insert>
 
@@ -107,6 +114,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="emailVerificationEnabled != null">email_verification_enabled = #{emailVerificationEnabled},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="totpEnabled != null">totp_enabled = #{totpEnabled},</if>
         </trim>
         where id = #{id}
     </update>

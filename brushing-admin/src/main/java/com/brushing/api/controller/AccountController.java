@@ -136,12 +136,12 @@ public class AccountController extends BaseController {
             return AjaxResult.error(503, ERR_EXCEED_MAX_AMOUNT);
         }
 
-        if (StringUtils.isEmpty(dto.getTradePassword()) || StringUtils.isEmpty(user.getTradePassword())) {
+       /* if (StringUtils.isEmpty(dto.getTradePassword()) || StringUtils.isEmpty(user.getTradePassword())) {
             return AjaxResult.error(504, ERR_INVALID_PASSWORD);
         }
         if (!passwordEncoder.matches(dto.getTradePassword(), user.getTradePassword())) {
             return AjaxResult.error(504, ERR_INVALID_PASSWORD);
-        }
+        }*/
         if (user.getDealCount() != user.getUserLevel().getOrderCount()) {
             return AjaxResult.error(505, ERR_INSUFFICIENT_ORDERS);
         }

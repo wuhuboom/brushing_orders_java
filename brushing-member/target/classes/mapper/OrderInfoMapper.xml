@@ -115,6 +115,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
 
+    <select id="countStatusOneInOrderInfo" resultType="int">
+        SELECT COUNT(*)
+        FROM order_info
+        WHERE status = 1
+    </select>
+
     <insert id="insertOrderInfo" parameterType="OrderInfo" useGeneratedKeys="true" keyProperty="id">
         insert into order_info
         <trim prefix="(" suffix=")" suffixOverrides=",">

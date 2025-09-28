@@ -112,4 +112,9 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     public List<OrderInfo> selectOrderInfoBySeries(Long userId) {
         return orderInfoMapper.selectOrderInfoBySeries(userId);
     }
+
+    @Override
+    public int countStatusOneInOrderInfo() {
+        return orderInfoMapper.countStatusOneInOrderInfo();
+    }
 }

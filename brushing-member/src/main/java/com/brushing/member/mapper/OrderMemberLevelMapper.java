@@ -1,7 +1,9 @@
 package com.brushing.member.mapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.brushing.member.domain.OrderMemberLevel;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 会员等级Mapper接口
@@ -64,4 +66,6 @@ public interface OrderMemberLevelMapper
      * @return 结果
      */
     public int deleteOrderMemberLevelByIds(Long[] ids);
+
+    public OrderMemberLevel findLevelByBalance(@Param("balance") BigDecimal balance);
 }

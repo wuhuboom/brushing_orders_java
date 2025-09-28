@@ -23,6 +23,7 @@ E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framewor
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\front\FrontUserAuthInterceptor.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\front\FrontWebConfig.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\DailyTask.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\DatabaseInitializer.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\StartupTask.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\interceptor\impl\SameUrlDataInterceptor.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\interceptor\RepeatSubmitInterceptor.java
@@ -34,6 +35,7 @@ E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framewor
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\security\filter\JwtAuthenticationTokenFilter.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\security\handle\AuthenticationEntryPointImpl.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\security\handle\LogoutSuccessHandlerImpl.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\domain\MfaVerifyReq.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\domain\Server.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\domain\server\Cpu.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\domain\server\Jvm.java
@@ -41,6 +43,7 @@ E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framewor
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\domain\server\Sys.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\domain\server\SysFile.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\exception\GlobalExceptionHandler.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\service\GoogleAuthenticatorService.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\service\PermissionService.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\service\SysLoginService.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\web\service\SysPasswordService.java

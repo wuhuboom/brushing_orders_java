@@ -124,4 +124,10 @@ public interface SysUserMapper
      * @return 结果
      */
     public SysUser checkEmailUnique(String email);
+
+    public void updateTotpSecret(Long userId, String secret); // 更新TOTP密钥
+
+    public String selectTotpSecretById(Long userId); // 查询TOTP密钥
+
+    public void enableTotp(Long userId, String enabled); // 启用TOTP
 }

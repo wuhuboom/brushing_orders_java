@@ -37,6 +37,7 @@ com\brushing\web\controller\system\SysDeptController.class
 com\brushing\web\controller\system\SysLoginController.class
 com\brushing\web\controller\member\OrderWithdrawalController.class
 com\brushing\web\controller\system\SysPostController.class
+com\brushing\web\controller\websocket\WebSocketConfig.class
 com\brushing\web\controller\monitor\ServerController.class
 com\brushing\api\controller\vo\CheckTradePassword.class
 com\brushing\web\controller\tool\TestController.class
@@ -51,6 +52,7 @@ com\brushing\web\controller\system\SysMenuController.class
 com\brushing\web\controller\config\OrderCustomerServiceController.class
 com\brushing\web\controller\system\SysDictTypeController.class
 com\brushing\web\controller\tool\UserEntity.class
+com\brushing\web\controller\websocket\WebSocketServer.class
 com\brushing\web\controller\member\OrderTopupController.class
 com\brushing\web\controller\system\SysUserController.class
 com\brushing\api\controller\vo\WithdrawalMethodDto.class

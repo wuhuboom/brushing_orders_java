@@ -52,6 +52,7 @@ public class SysLoginService
     @Autowired
     private ISysConfigService configService;
 
+
     /**
      * 登录验证
      * 
@@ -111,7 +112,7 @@ public class SysLoginService
     public void validateCaptcha(String username, String code, String uuid)
     {
         boolean captchaEnabled = configService.selectCaptchaEnabled();
-        if (captchaEnabled)
+        if (false)
         {
             String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
             String captcha = redisCache.getCacheObject(verifyKey);

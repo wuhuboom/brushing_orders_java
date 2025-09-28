@@ -63,4 +63,6 @@ public interface IOrderWithdrawalService
 
     public OrderWithdrawal selectOrderWithdrawalByCode(String code);
 
+    public int  countStatusOneInOrderWithdrawal();
+
 }

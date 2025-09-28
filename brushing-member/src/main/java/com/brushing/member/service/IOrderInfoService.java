@@ -71,4 +71,6 @@ public interface IOrderInfoService
     public int countUnfinishedOrders(Long userId);
 
     public List<OrderInfo> selectOrderInfoBySeries(Long userId);
+
+    public int  countStatusOneInOrderInfo();
 }

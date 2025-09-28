@@ -61,5 +61,7 @@ E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controll
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\system\SysTimeZoneController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\system\SysUserController.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\tool\TestController.java
+E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\websocket\WebSocketConfig.java
+E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\controller\websocket\WebSocketServer.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\core\config\ForwardHeadersConfig.java
 E:\code\brushing\brushing\brushing-admin\src\main\java\com\brushing\web\core\config\SwaggerConfig.java

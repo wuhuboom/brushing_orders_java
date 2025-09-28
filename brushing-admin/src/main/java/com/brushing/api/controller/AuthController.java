@@ -102,9 +102,9 @@ public class AuthController extends BaseController {
         if (StringUtils.isEmpty(registerDto.getPassword())){
             return AjaxResult.error(604, "Password must not be blank");
         }
-        if (StringUtils.isEmpty(registerDto.getTradePassword())){
-            return AjaxResult.error(605, "Trade password must not be blank");
-        }
+//        if (StringUtils.isEmpty(registerDto.getTradePassword())){
+//            return AjaxResult.error(605, "Trade password must not be blank");
+//        }
         if (StringUtils.isEmpty(registerDto.getPhone())){
             return AjaxResult.error(606, "Phone number must not be blank");
         }
@@ -120,7 +120,7 @@ public class AuthController extends BaseController {
         }
         OrderMemberUser orderMemberUser = setUser(registerDto);
         orderMemberUser.setPassword(encoder.encode(registerDto.getPassword()));
-        orderMemberUser.setTradePassword(encoder.encode(registerDto.getTradePassword()));
+        //orderMemberUser.setTradePassword(encoder.encode(registerDto.getTradePassword()));
         String register = userService.register(orderMemberUser);
         if ("200".equals(register)){
             return success("register success");

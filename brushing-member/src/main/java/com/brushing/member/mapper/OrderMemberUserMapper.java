@@ -43,6 +43,8 @@ public interface OrderMemberUserMapper
      */
     public List<OrderMemberUser> selectOrderMemberUserList(OrderMemberUser orderMemberUser);
 
+    public List<OrderMemberUser> selectAllUser();
+
     /**
      * 新增会员用户
      * 

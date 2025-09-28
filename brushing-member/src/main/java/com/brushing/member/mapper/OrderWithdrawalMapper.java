@@ -64,4 +64,6 @@ public interface OrderWithdrawalMapper
      * @return 结果
      */
     public int deleteOrderWithdrawalByIds(Long[] ids);
+
+    public int  countStatusOneInOrderWithdrawal();
 }

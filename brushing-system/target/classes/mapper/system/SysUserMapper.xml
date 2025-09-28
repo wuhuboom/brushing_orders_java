@@ -27,6 +27,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="ipaddr"        column="ipaddr"            />
 		<result property="loginLocation" column="login_location"    />
 		<result property="loginDate" column="login_time"    />
+		<result property="totpSecret" column="totp_secret"    />
+		<result property="totpEnabled" column="totp_enabled"    />
         <association property="dept"     javaType="SysDept"         resultMap="deptResult" />
         <collection  property="roles"    javaType="java.util.List"  resultMap="RoleResult" />
     </resultMap>
@@ -51,7 +53,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 	
 	<sql id="selectUserVo">
-        select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.remark, 
+        select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password,
+		u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.remark, u.totp_secret , u.totp_enabled ,
         d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
         r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status
         from sys_user u
@@ -64,7 +67,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		SELECT
 		u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar,
 		u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date,
-		u.create_by, u.create_time, u.remark,
+		u.create_by, u.create_time, u.remark, u.totp_secret , u.totp_enabled ,
 		d.dept_name, d.leader,
 		l.ipaddr, l.login_location, l.login_time
 		FROM sys_user u
@@ -105,7 +108,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</select>
 	
 	<select id="selectAllocatedList" parameterType="SysUser" resultMap="SysUserResult">
-	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
+	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.totp_secret , u.totp_enabled , u.create_time
 	    from sys_user u
 			 left join sys_dept d on u.dept_id = d.dept_id
 			 left join sys_user_role ur on u.user_id = ur.user_id
@@ -122,7 +125,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</select>
 	
 	<select id="selectUnallocatedList" parameterType="SysUser" resultMap="SysUserResult">
-	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time
+	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time , u.totp_secret , u.totp_enabled
 	    from sys_user u
 			 left join sys_dept d on u.dept_id = d.dept_id
 			 left join sys_user_role ur on u.user_id = ur.user_id
@@ -159,6 +162,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	
 	<select id="checkEmailUnique" parameterType="String" resultMap="SysUserResult">
 		select user_id, email from sys_user where email = #{email} and del_flag = '0' limit 1
+	</select>
+
+	<select id="selectTotpSecretById" parameterType="Long" resultType="String">
+		select totp_secret from sys_user
+		where user_id = #{userId}
 	</select>
 	
 	<insert id="insertUser" parameterType="SysUser" useGeneratedKeys="true" keyProperty="userId">
@@ -230,6 +238,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<delete id="deleteUserById" parameterType="Long">
  		update sys_user set del_flag = '2' where user_id = #{userId}
  	</delete>
+
+	<!-- 更新用户的 TOTP 密钥 -->
+	<update id="updateTotpSecret">
+		UPDATE sys_user
+		SET totp_secret = #{secret}
+		WHERE user_id = #{userId}
+	</update>
+
+	<!-- 启用用户的 TOTP 验证 -->
+	<update id="enableTotp" parameterType="Long">
+		UPDATE sys_user
+		SET totp_enabled = 0
+		WHERE user_id = #{userId}
+	</update>
  	
  	<delete id="deleteUserByIds" parameterType="Long">
  		update sys_user set del_flag = '2' where user_id in

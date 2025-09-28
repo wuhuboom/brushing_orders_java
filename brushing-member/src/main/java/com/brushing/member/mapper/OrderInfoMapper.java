@@ -77,4 +77,7 @@ public interface OrderInfoMapper
      */
     public int countUnfinishedOrders(@Param("userId") Long userId);
 
+
+    public int  countStatusOneInOrderInfo();
+
 }

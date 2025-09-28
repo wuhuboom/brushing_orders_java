@@ -97,6 +97,33 @@ public class SysUser extends BaseEntity
     private String loginLocation;
 
 
+    /**
+     * Google 验证器的密钥
+     */
+    private String totpSecret;
+
+
+    /**
+     * 用户是否启用了 Google 验证器
+     */
+    private String totpEnabled ;
+
+
+    public String getTotpEnabled() {
+        return totpEnabled;
+    }
+
+    public void setTotpEnabled(String totpEnabled) {
+        this.totpEnabled = totpEnabled;
+    }
+
+    public String getTotpSecret() {
+        return totpSecret;
+    }
+
+    public void setTotpSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+    }
 
     public String getIpaddr() {
         return ipaddr;

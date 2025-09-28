@@ -19,6 +19,8 @@ com\brushing\framework\aspectj\DataScopeAspect.class
 com\brushing\framework\config\DruidConfig.class
 com\brushing\framework\web\service\SysPermissionService.class
 com\brushing\framework\init\DailyTask.class
+com\brushing\framework\init\DatabaseInitializer.class
+com\brushing\framework\web\domain\MfaVerifyReq.class
 com\brushing\framework\manager\factory\AsyncFactory.class
 com\brushing\framework\web\service\SysLoginService.class
 com\brushing\framework\config\ResourcesConfig.class
@@ -51,4 +53,5 @@ com\brushing\framework\config\ServerConfig.class
 com\brushing\framework\aspectj\RateLimiterAspect.class
 com\brushing\framework\config\ThreadPoolConfig$1.class
 com\brushing\framework\manager\ShutdownManager.class
+com\brushing\framework\web\service\GoogleAuthenticatorService.class
 com\brushing\framework\web\domain\server\Cpu.class

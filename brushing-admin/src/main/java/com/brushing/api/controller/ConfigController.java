@@ -1,10 +1,12 @@
 package com.brushing.api.controller;
 
 import com.brushing.api.controller.vo.PageDto;
+import com.brushing.common.annotation.Excel;
 import com.brushing.common.config.BrushingConfig;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.page.TableDataInfo;
+import com.brushing.common.core.redis.RedisCache;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.file.FileUploadUtils;
 import com.brushing.framework.config.ServerConfig;
@@ -25,6 +27,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalTime;
 import java.util.List;
 
 @Tag(
@@ -62,6 +65,12 @@ public class ConfigController extends BaseController {
     @Autowired
     private ISysTimeZoneService sysTimeZoneService;
 
+    @Autowired
+    private IOrderBannerService bannerService;
+
+    @Autowired
+    private RedisCache redisCache;
+
     /**
      * 获取客服地址
      */
@@ -76,12 +85,23 @@ public class ConfigController extends BaseController {
                             "'status': '状态 0正常 1停用'"
     )
     public AjaxResult getCustomerService(){
+        OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
+        LocalTime orderTimeStart = controlConfig.getOrderTimeStart();
+        LocalTime orderTimeEnd = controlConfig.getOrderTimeEnd();
+        LocalTime now = LocalTime.now();
+        if (!isWithinWithdrawTimeRange(now, orderTimeStart, orderTimeEnd)) {
+            return AjaxResult.error(902, "Not within the time frame for grabbing orders");
+        }
         List<OrderCustomerService> orderCustomerServices =
                 orderCustomerServiceService.selectOrderCustomerServiceList(null);
         if (orderCustomerServices.size() == 0){
             return AjaxResult.error(701, "No data");
         }
         return success(orderCustomerServices);
+    }
+
+    private boolean isWithinWithdrawTimeRange(LocalTime now, LocalTime start, LocalTime end) {
+        return !now.isBefore(start) && !now.isAfter(end);
     }
 
     @GetMapping("/getEmailConfig")
@@ -237,5 +257,14 @@ public class ConfigController extends BaseController {
         ajaxResult.put("code", 200);
         ajaxResult.put("msg", "The operation was successful");
         return ajaxResult;
+    }
+
+    @GetMapping("/bannerList")
+    @Operation(summary = "获取轮播图", description = "name:轮播图名称，imageUrl: 图片地址，linkUrl：跳转地址，sort：排序")
+    public AjaxResult getBannerList(){
+        OrderBanner banner=new OrderBanner();
+        banner.setStatus("0");
+        List<OrderBanner> orderBanners = bannerService.selectOrderBannerList(banner);
+        return success(orderBanners);
     }
 }

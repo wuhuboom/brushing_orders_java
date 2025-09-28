@@ -1,6 +1,8 @@
 package com.brushing.web.controller.member;
 
 import java.util.List;
+
+import com.brushing.member.service.IOrderWithdrawalService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,9 @@ public class OrderInfoController extends BaseController
 {
     @Autowired
     private IOrderInfoService orderInfoService;
+
+    @Autowired
+    private IOrderWithdrawalService withdrawalService;
 
     /**
      * 查询订单列表列表
@@ -100,5 +105,16 @@ public class OrderInfoController extends BaseController
     public AjaxResult remove(@PathVariable String[] ids)
     {
         return toAjax(orderInfoService.deleteOrderInfoByIds(ids));
+    }
+
+
+    @GetMapping("/getStatusOneCount")
+    public AjaxResult getStatusOneCount(){
+        int i = orderInfoService.countStatusOneInOrderInfo();
+        int i1 = withdrawalService.countStatusOneInOrderWithdrawal();
+        AjaxResult ajaxResult =new AjaxResult();
+        ajaxResult.put("orderCount",i);
+        ajaxResult.put("withdrawalCount",i1);
+        return  success(ajaxResult);
     }
 }

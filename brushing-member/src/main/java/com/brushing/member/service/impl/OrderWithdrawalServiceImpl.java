@@ -100,4 +100,9 @@ public class OrderWithdrawalServiceImpl implements IOrderWithdrawalService
     public OrderWithdrawal selectOrderWithdrawalByCode(String code) {
         return orderWithdrawalMapper.selectOrderWithdrawalByCode(code);
     }
+
+    @Override
+    public int countStatusOneInOrderWithdrawal() {
+        return orderWithdrawalMapper.countStatusOneInOrderWithdrawal();
+    }
 }

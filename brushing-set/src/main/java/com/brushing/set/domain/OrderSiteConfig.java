@@ -71,7 +71,17 @@ public class OrderSiteConfig extends BaseEntity
     @Excel(name = "是否开启邮箱验证")
     private String emailVerificationEnabled;
 
-    public void setId(Long id) 
+    private String  totpEnabled;
+
+    public String getTotpEnabled() {
+        return totpEnabled;
+    }
+
+    public void setTotpEnabled(String totpEnabled) {
+        this.totpEnabled = totpEnabled;
+    }
+
+    public void setId(Long id)
     {
         this.id = id;
     }
