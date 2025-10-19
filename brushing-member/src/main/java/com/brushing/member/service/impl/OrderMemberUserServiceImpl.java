@@ -1,5 +1,6 @@
 package com.brushing.member.service.impl;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.brushing.common.utils.InviteCodeGenerator;
@@ -7,8 +8,10 @@ import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.DashboardData;
 import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.domain.WelfareConfig;
 import com.brushing.member.mapper.DashboardMapper;
 import com.brushing.member.mapper.OrderMemberLevelMapper;
+import com.brushing.member.mapper.WelfareConfigMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.brushing.member.mapper.OrderMemberUserMapper;
@@ -32,6 +35,9 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
 
     @Autowired
     private DashboardMapper dashboardMapper;
+
+    @Autowired
+    private WelfareConfigMapper welfareConfigMapper;
 
     /**
      * 查询会员用户
@@ -60,6 +66,10 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         OrderMemberLevel orderMemberLevel = levelMapper.selectLowestPriceLevel();
         user.setLevelId(orderMemberLevel.getId());
         user.setParentId(orderMemberUser.getId());
+        WelfareConfig welfareConfig = welfareConfigMapper.selectWelfareConfigByType("1");
+        if (StringUtils.isNotNull(welfareConfig)&&welfareConfig.getStatus().equals("0")){
+            user.setBalance(welfareConfig.getAmount());
+        }
         user.setInviteCode(setCode());
         user.setAncestors(orderMemberUser.getAncestors()+","+orderMemberUser.getId());
         orderMemberUserMapper.insertOrderMemberUser(user);
@@ -192,5 +202,28 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
     @Override
     public DashboardData getDashboardData() {
         return dashboardMapper.getDashboardData();
+    }
+
+    @Override
+    public void updateUserLevel(Long userId, BigDecimal amount) {
+        OrderMemberUser user = orderMemberUserMapper.selectOrderMemberUserById(userId);
+        try {
+                // 获取用户当前的余额对应的等级
+                OrderMemberLevel levelByBalance = levelMapper.findLevelByBalance(amount);
+                if (levelByBalance == null) {
+                    return;
+                }
+                // 比较查询到的等级与用户当前等级
+                Long currentLevelId = user.getLevelId();
+                Long newLevelId = levelByBalance.getId();
+                if (currentLevelId != null && currentLevelId.equals(newLevelId)) {
+                    return;
+                }
+                user.setLevelId(newLevelId);
+                // 更新用户等级
+                int i = orderMemberUserMapper.updateOrderMemberUser(user);
+        } catch (Exception e) {
+                // 记录错误，继续处理下一个用户
+        }
     }
 }

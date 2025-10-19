@@ -1,6 +1,7 @@
 package com.brushing.api.controller;
 
 import com.brushing.api.controller.vo.PageDto;
+import com.brushing.api.controller.vo.WalletDto;
 import com.brushing.api.controller.vo.WithdrawalDto;
 import com.brushing.api.controller.vo.WithrawalPage;
 import com.brushing.common.core.controller.BaseController;
@@ -12,20 +13,24 @@ import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.OrderNoGenerator;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.*;
-import com.brushing.member.service.IOrderAccountChangeService;
-import com.brushing.member.service.IOrderMemberUserService;
-import com.brushing.member.service.IOrderTopupService;
-import com.brushing.member.service.IOrderWithdrawalService;
+import com.brushing.member.service.*;
 import com.brushing.set.domain.OrderTradeControlConfig;
+import com.brushing.system.domain.SysTimeZone;
+import com.brushing.system.service.ISysTimeZoneService;
 import com.github.pagehelper.PageHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -68,6 +73,14 @@ public class AccountController extends BaseController {
     @Autowired
     private RedisCache redisCache;
 
+    @Autowired
+    private ISysTimeZoneService sysTimeZoneService;
+
+    @Autowired
+    private IOrderBankWalletService bankWalletService;
+
+
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // 错误消息常量
@@ -88,6 +101,9 @@ public class AccountController extends BaseController {
     @Operation(summary = "获取用户充值记录", description = "amout:金额，username：名称 ，code：编号，createTime:创建时间")
     public TableDataInfo getDeposit(PageDto dto, @RequestAttribute("username") String username) {
         OrderMemberUser byUsername = memberUserService.findByUsername(username);
+        if (byUsername == null) {
+            throw new RuntimeException("Please try again later");
+        }
         PageHelper.startPage(dto.getPageNum(), dto.getPageSize());
         List<OrderTopup> orderTopups = topupService.selectOrderTopupByUserId(byUsername.getId());
         return getDataTable(orderTopups);
@@ -95,6 +111,7 @@ public class AccountController extends BaseController {
 
     @PostMapping("/withdrawal")
     @Operation(summary = "发起提现", description = "amount:金额，tradePassword：交易密码")
+    @Transactional
     public AjaxResult withdrawal(@RequestBody WithdrawalDto dto, @RequestAttribute("username") String username) {
         log.info("用户 {} 发起提现请求，金额: {}", username, dto.getAmount());
 
@@ -102,7 +119,6 @@ public class AccountController extends BaseController {
         if (controlConfig == null) {
             return AjaxResult.error(508, ERR_SYSTEM_CONFIG_UNAVAILABLE);
         }
-
         OrderMemberUser user = memberUserService.findByUsername(username);
         if (user == null) {
             return AjaxResult.error(509, ERR_USER_NOT_FOUND);
@@ -118,8 +134,9 @@ public class AccountController extends BaseController {
         if (controlConfig.getWithdrawEnabled().equals("1")) {
             return AjaxResult.error(512, ERR_WITHDRAWAL_STATUS);
         }
-
-        LocalTime now = LocalTime.now();
+        SysTimeZone active = sysTimeZoneService.getActive();
+        String tzName = active.getTzName();
+        LocalTime now = LocalTime.now(ZoneId.of(tzName));
         if (!isWithinWithdrawTimeRange(now, controlConfig.getWithdrawTimeStart(), controlConfig.getWithdrawTimeEnd())) {
             return AjaxResult.error(501, ERR_NOT_IN_TIME_RANGE);
         }
@@ -142,7 +159,8 @@ public class AccountController extends BaseController {
         if (!passwordEncoder.matches(dto.getTradePassword(), user.getTradePassword())) {
             return AjaxResult.error(504, ERR_INVALID_PASSWORD);
         }*/
-        if (user.getDealCount() != user.getUserLevel().getOrderCount()) {
+
+        if (user.getDealCount() < user.getUserLevel().getOrderCount()) {
             return AjaxResult.error(505, ERR_INSUFFICIENT_ORDERS);
         }
         List<OrderWithdrawal> pendingWithdrawals = withdrawalService.selectOrderWithdrawalByUserId(user.getId());
@@ -156,6 +174,7 @@ public class AccountController extends BaseController {
             return AjaxResult.error(513, "Please check your withdrawal settings");
         }
 
+        try {
         BigDecimal balance = user.getBalance();
         BigDecimal subtract = balance.subtract(amount);
         user.setBalance(subtract);
@@ -180,21 +199,95 @@ public class AccountController extends BaseController {
         user.setTodayResetCount(user.getTotalResetCount() + 1);
         user.setTotalResetCount(user.getTotalResetCount() + 1);
 
-        memberUserService.updateOrderMemberUser(user);
-        return toAjax(withdrawalService.insertOrderWithdrawal(withdrawal));
+        int i = memberUserService.updateOrderMemberUser(user);
+        if (i  == 0) {
+            throw new RuntimeException("Please try again later");  // 如果没有更新成功，说明版本冲突
+        }
+            return toAjax(withdrawalService.insertOrderWithdrawal(withdrawal));
+        } catch (Exception e) {
+            log.error("提现失败，用户ID: {}, 错误: {}", user.getId(), e.getMessage());
+            throw new RuntimeException("Please try again later");
+        }
     }
+
+
 
     @GetMapping("/getWithdrawals")
     @Operation(summary = "获取用户提现记录", description = "code:编号，amount：提现金额 ，creditedAmount：到账金额，fee:手续费,applicationTime:申请时间,auditTime:审核时间,status:状态 0：通过 1：待审核 2 拒绝 ，withdrawName：名称 ，withdrawAddress：地址 ，withdrawType：钱包名称,withdrawFee：费率")
     public TableDataInfo getWithdrawals(WithrawalPage page, @RequestAttribute("username") String username) {
-        OrderMemberUser user = memberUserService.findByUsername(username);
-        PageHelper.startPage(page.getPageNum(), page.getPageSize());
-        OrderWithdrawal withdrawal = new OrderWithdrawal();
-        withdrawal.setUserId(user.getId());
-        withdrawal.setStatus(page.getStatus());
-        List<OrderWithdrawal> orderWithdrawals = withdrawalService.selectOrderWithdrawalList(withdrawal);
-        return getDataTable(orderWithdrawals);
+        try{
+            OrderMemberUser user = memberUserService.findByUsername(username);
+            if (user == null) {
+                throw new RuntimeException("Please try again later");
+            }
+            PageHelper.startPage(page.getPageNum(), page.getPageSize());
+            OrderWithdrawal withdrawal = new OrderWithdrawal();
+            withdrawal.setUserId(user.getId());
+            withdrawal.setStatus(page.getStatus());
+            List<OrderWithdrawal> orderWithdrawals = withdrawalService.selectOrderWithdrawalList(withdrawal);
+            return getDataTable(orderWithdrawals);
+        }catch (RuntimeException e){
+            throw new RuntimeException("Please try again later");
+        }
     }
+
+
+    @PostMapping("/addWalletBank")
+    @Operation(summary = "添加修改银行卡/钱包",description = "传id就是修改，" +
+            "不传id就是新增，type ： 1 为银行卡 2 为钱包  ，name: 姓名，  bankCode：银行编码， bankCard ：银行卡号，" +
+            "walletType ：钱包类型 ，walletAddress :钱包地址 。 如果是银行卡只需传name，bankCode，bankCard。钱包只需要传" +
+            "name，walletType，walletAddress")
+    public AjaxResult addWalletBank(@RequestBody WalletDto dto,@RequestAttribute("username") String username){
+
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        OrderBankWallet orderBankWallet = new OrderBankWallet();
+        orderBankWallet.setName(dto.getName());
+        orderBankWallet.setBankCode(dto.getBankCode());
+        orderBankWallet.setUserId(user.getId());
+        orderBankWallet.setBankCard(dto.getBankCard());
+        orderBankWallet.setWalletType(dto.getWalletType());
+        orderBankWallet.setWalletAddress(dto.getWalletAddress());
+
+        if (StringUtils.isNull(dto.getId())){
+            bankWalletService.insertOrderBankWallet(orderBankWallet);
+        }else{
+            orderBankWallet.setId(orderBankWallet.getUserId());
+            bankWalletService.updateOrderBankWallet(orderBankWallet);
+        }
+        return success();
+    }
+
+    @GetMapping("/getUserBankWallet")
+    @Operation(summary = "获取用户的银行卡/钱包")
+    public AjaxResult getUserBankWallet(@RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        OrderBankWallet orderBankWallet = new OrderBankWallet();
+        orderBankWallet.setUserId(user.getId());
+        List<OrderBankWallet> list = bankWalletService.selectOrderBankWalletList(orderBankWallet);
+        AjaxResult ajaxResult= new AjaxResult();
+        ajaxResult.put("data",list);
+        ajaxResult.put("code",200);
+        return ajaxResult;
+    }
+
+    @GetMapping("/delBankWallet/{id}")
+    public AjaxResult delBankWallet(@PathVariable("id")Long id,@RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        int i = bankWalletService.deleteOrderBankWalletById(id);
+        return success();
+    }
+
+
+
 
     private boolean isWithinWithdrawTimeRange(LocalTime now, LocalTime start, LocalTime end) {
         return !now.isBefore(start) && !now.isAfter(end);

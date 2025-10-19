@@ -10,6 +10,7 @@ import com.brushing.common.core.redis.RedisCache;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.file.FileUploadUtils;
 import com.brushing.framework.config.ServerConfig;
+import com.brushing.framework.init.GeoIpQueryQueryService;
 import com.brushing.member.domain.OrderMemberLevel;
 import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.set.domain.*;
@@ -28,14 +29,19 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Tag(
         name = "配置管理",
         description =
                 "错误码对照表：\n" +
                         "701: No data （暂无数据）\n" +
-                        "703: Upload failed （上传失败）"
+                        "703: Upload failed （上传失败）" +
+                        "920:客户服务目前无法提供服务"
 )
 @RestController
 @RequestMapping("/api/config")
@@ -49,6 +55,9 @@ public class ConfigController extends BaseController {
 
     @Autowired
     private IOrderGlobalConfigService orderGlobalConfigService;
+
+    @Autowired
+    private IOrderSiteConfigService siteConfigService;
 
     @Autowired
     private IOrderTradeControlConfigService orderTradeControlConfigService;
@@ -71,6 +80,8 @@ public class ConfigController extends BaseController {
     @Autowired
     private RedisCache redisCache;
 
+
+
     /**
      * 获取客服地址
      */
@@ -86,11 +97,13 @@ public class ConfigController extends BaseController {
     )
     public AjaxResult getCustomerService(){
         OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
-        LocalTime orderTimeStart = controlConfig.getOrderTimeStart();
-        LocalTime orderTimeEnd = controlConfig.getOrderTimeEnd();
-        LocalTime now = LocalTime.now();
+        LocalTime orderTimeStart = controlConfig.getWorkTimeStart();
+        LocalTime orderTimeEnd = controlConfig.getWorkTimeEnd();
+        SysTimeZone active = sysTimeZoneService.getActive();
+        String tzName = active.getTzName();
+        LocalTime now = LocalTime.now(ZoneId.of(tzName));
         if (!isWithinWithdrawTimeRange(now, orderTimeStart, orderTimeEnd)) {
-            return AjaxResult.error(902, "Not within the time frame for grabbing orders");
+            return AjaxResult.error(920, "Customer service is currently unavailable");
         }
         List<OrderCustomerService> orderCustomerServices =
                 orderCustomerServiceService.selectOrderCustomerServiceList(null);
@@ -148,6 +161,167 @@ public class ConfigController extends BaseController {
         }
         return success(orderGlobalConfig);
     }
+
+    @GetMapping("/getConfigByLang")
+    @Operation(
+            summary = "根据语言获取全局配置",
+            description =
+                    "接口描述：根据传入的语言参数返回对应的全局配置内容（仅返回7个核心配置项）。如果未提供 lang 参数，默认返回英文内容。\n" +
+                            "\n" +
+                            "**请求参数：**\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）。\n" +
+                            "\n" +
+                            "**返回字段：**\n" +
+                            "- `registerProtocol` (string): 注册协议内容\n" +
+                            "- `aboutUs` (string): 关于我们内容\n" +
+                            "- `certificate` (string): 证书内容\n" +
+                            "- `faq` (string): 常见问题内容\n" +
+                            "- `latestEvent` (string): 最新事件内容\n" +
+                            "- `terms` (string): 条款条规内容\n" +
+                            "- `incomeGuide` (string): 收入指南内容\n"
+    )
+    public AjaxResult getConfigByLang(@RequestParam(value = "lang", defaultValue = "en") String lang)
+    {
+
+
+        // 验证语言参数
+        if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)) {
+            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko");
+        }
+
+        // 查询所有全局配置（假设服务层有获取所有或单条的方法，根据实际调整）
+        OrderGlobalConfig config = orderGlobalConfigService.selectOrderGlobalConfigById(1L);  // 示例：假设ID=1为默认配置，根据实际主键调整
+
+        if (config == null) {
+            return AjaxResult.error("未找到全局配置");
+        }
+
+        // 根据语言构建返回Map：key为配置类型，value为对应内容
+        Map<String, String> result = new HashMap<>();
+
+        if ("en".equals(lang)) {
+            // 返回所有英文字段
+            result.put("registerProtocol", config.getRegisterProtocolEn());
+            result.put("aboutUs", config.getAboutUsEn());
+            result.put("certificate", config.getCertificateEn());
+            result.put("faq", config.getFaqEn());
+            result.put("latestEvent", config.getLatestEventEn());
+            result.put("terms", config.getTermsEn());
+            result.put("incomeGuide", config.getIncomeGuideEn());
+        } else if ("zh".equals(lang)) {
+            // 返回简体中文（Local）字段
+            result.put("registerProtocol", config.getRegisterProtocolLocal());
+            result.put("aboutUs", config.getAboutUsLocal());
+            result.put("certificate", config.getCertificateLocal());
+            result.put("faq", config.getFaqLocal());
+            result.put("latestEvent", config.getLatestEventLocal());
+            result.put("terms", config.getTermsLocal());
+            result.put("incomeGuide", config.getIncomeGuideLocal());
+        } else if ("zh_tw".equals(lang)) {
+            // 返回繁体中文（ZhTw）字段
+            result.put("registerProtocol", config.getRegistrationAgreementZhTw());
+            result.put("aboutUs", config.getAboutUsZhTw());
+            result.put("certificate", config.getCertificateZhTw());
+            result.put("faq", config.getFaqZhTw());
+            result.put("latestEvent", config.getLatestEventsZhTw());
+            result.put("terms", config.getTermsConditionsZhTw());
+            result.put("incomeGuide", config.getIncomeGuideZhTw());
+        } else if ("ja".equals(lang)) {
+            // 返回日文（Ja）字段
+            result.put("registerProtocol", config.getRegistrationAgreementJa());
+            result.put("aboutUs", config.getAboutUsJa());
+            result.put("certificate", config.getCertificateJa());
+            result.put("faq", config.getFaqJa());
+            result.put("latestEvent", config.getLatestEventsJa());
+            result.put("terms", config.getTermsConditionsJa());
+            result.put("incomeGuide", config.getIncomeGuideJa());
+        } else if ("th".equals(lang)) {
+            // 返回泰文（Th）字段
+            result.put("registerProtocol", config.getRegistrationAgreementTh());
+            result.put("aboutUs", config.getAboutUsTh());
+            result.put("certificate", config.getCertificateTh());
+            result.put("faq", config.getFaqTh());
+            result.put("latestEvent", config.getLatestEventsTh());
+            result.put("terms", config.getTermsConditionsTh());
+            result.put("incomeGuide", config.getIncomeGuideTh());
+        } else if ("ko".equals(lang)) {
+            // 返回韩文（Ko）字段
+            result.put("registerProtocol", config.getRegistrationAgreementKo());
+            result.put("aboutUs", config.getAboutUsKo());
+            result.put("certificate", config.getCertificateKo());
+            result.put("faq", config.getFaqKo());
+            result.put("latestEvent", config.getLatestEventsKo());
+            result.put("terms", config.getTermsConditionsKo());
+            result.put("incomeGuide", config.getIncomeGuideKo());
+        }
+
+        return success(result);
+    }
+
+    @GetMapping("/getLevelByLang")
+    @Operation(
+            summary = "根据语言获取VIP等级列表",
+            description =
+                    "接口描述：根据传入的语言参数返回VIP等级列表（仅返回核心字段：会员图标、名称、价格及对应语言描述）。如果未提供 lang 参数，默认返回英文内容。\n" +
+                            "\n" +
+                            "**请求参数：**\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）。\n" +
+                            "\n" +
+                            "**返回字段（每个等级对象）：**\n" +
+                            "- `icon` (string): 会员图标\n" +
+                            "- `name` (string): 等级名称（根据语言：zh返回中文名，其他返回英文名）\n" +
+                            "- `price` (number): 价格\n" +
+                            "- `description` (string): 描述内容（对应语言）\n"
+    )
+    public AjaxResult getLevelByLang(@RequestParam(value = "lang", defaultValue = "en") String lang) {
+        // 验证语言参数
+        if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)) {
+            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko");
+        }
+
+        List<OrderMemberLevel> orderMemberLevels = levelService.selectOrderMemberLevelList(null);
+        if (StringUtils.isNull(orderMemberLevels) || orderMemberLevels.isEmpty()) {
+            return AjaxResult.error(701, "No data");
+        }
+
+        // 转换为简化Map列表
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (OrderMemberLevel level : orderMemberLevels) {
+            Map<String, Object> levelMap = new HashMap<>();
+            levelMap.put("icon", level.getIcon());
+
+            // 名称：zh返回nameZh，其他返回nameEn
+            String name = "zh".equals(lang) ? level.getNameZh() : level.getNameEn();
+            levelMap.put("name", name);
+
+            levelMap.put("price", level.getPrice());
+
+            // 描述：根据语言选择对应字段
+            String description = "";
+            if ("en".equals(lang)) {
+                description = level.getDescriptionEn();
+            } else if ("zh".equals(lang)) {
+                description = level.getDescriptionZh();
+            } else if ("zh_tw".equals(lang)) {
+                description = level.getDescriptionZhTw();
+            } else if ("ja".equals(lang)) {
+                description = level.getDescriptionJa();
+            } else if ("th".equals(lang)) {
+                description = level.getDescriptionTh();
+            } else if ("ko".equals(lang)) {
+                description = level.getDescriptionKo();
+            }
+            levelMap.put("description", description);
+
+            resultList.add(levelMap);
+        }
+
+        return success(resultList);
+    }
+
+
 
     @GetMapping("/getTradeConfig")
     @Operation(
@@ -266,5 +440,16 @@ public class ConfigController extends BaseController {
         banner.setStatus("0");
         List<OrderBanner> orderBanners = bannerService.selectOrderBannerList(banner);
         return success(orderBanners);
+    }
+
+    @GetMapping("/getEmailAddress")
+    @Operation(summary = "获取邮箱地址")
+    public AjaxResult getEmailAddress(){
+        OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        String emailAddress = orderSiteConfig.getEmailAddress();
+        AjaxResult ajaxResult=new AjaxResult();
+        ajaxResult.put("code",200);
+        ajaxResult.put("data",emailAddress);
+        return ajaxResult;
     }
 }

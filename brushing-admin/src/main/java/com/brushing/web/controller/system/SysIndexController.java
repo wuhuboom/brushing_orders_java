@@ -45,6 +45,6 @@ public class SysIndexController
         // 格式化为字符串
         String formattedDate = zonedDateTime.format(formatter);
 
-        return StringUtils.format("当前版本1.0.3,当前时区为：{},当前时间为：{}", systemZoneId,formattedDate);
+        return StringUtils.format("version1.1.9,time-zone：{},time：{}", systemZoneId,formattedDate);
     }
 }

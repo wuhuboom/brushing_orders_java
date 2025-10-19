@@ -2,6 +2,7 @@ E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framewor
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\aspectj\DataSourceAspect.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\aspectj\LogAspect.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\aspectj\RateLimiterAspect.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\aspectj\UpdateOrderMemberUserAop.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\config\ApplicationConfig.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\config\CaptchaConfig.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\config\DruidConfig.java
@@ -24,6 +25,7 @@ E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framewor
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\front\FrontWebConfig.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\DailyTask.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\DatabaseInitializer.java
+E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\GeoIpQueryQueryService.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\init\StartupTask.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\interceptor\impl\SameUrlDataInterceptor.java
 E:\code\brushing\brushing\brushing-framework\src\main\java\com\brushing\framework\interceptor\RepeatSubmitInterceptor.java

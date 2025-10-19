@@ -37,7 +37,6 @@ public class OrderSeriesController extends BaseController
     /**
      * 查询连单列表
      */
-    @PreAuthorize("@ss.hasPermi('member:series:list')")
     @GetMapping("/list")
     public TableDataInfo list(OrderSeries orderSeries)
     {
@@ -49,7 +48,6 @@ public class OrderSeriesController extends BaseController
     /**
      * 导出连单列表
      */
-    @PreAuthorize("@ss.hasPermi('member:series:export')")
     @Log(title = "连单", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, OrderSeries orderSeries)
@@ -62,7 +60,6 @@ public class OrderSeriesController extends BaseController
     /**
      * 获取连单详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:series:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -72,7 +69,6 @@ public class OrderSeriesController extends BaseController
     /**
      * 新增连单
      */
-    @PreAuthorize("@ss.hasPermi('member:series:add')")
     @Log(title = "连单", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody OrderSeries orderSeries)
@@ -91,7 +87,6 @@ public class OrderSeriesController extends BaseController
     /**
      * 修改连单
      */
-    @PreAuthorize("@ss.hasPermi('member:series:edit')")
     @Log(title = "连单", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody OrderSeries orderSeries)
@@ -106,7 +101,6 @@ public class OrderSeriesController extends BaseController
     /**
      * 删除连单
      */
-    @PreAuthorize("@ss.hasPermi('member:series:remove')")
     @Log(title = "连单", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)

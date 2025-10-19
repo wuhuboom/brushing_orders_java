@@ -1,10 +1,8 @@
 package com.brushing.member.service.impl;
 
 import java.math.BigDecimal;
-import java.util.Date;
 import java.util.List;
 
-import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.OrderNoGenerator;
@@ -12,7 +10,6 @@ import com.brushing.common.utils.SnowflakeIdGenerator;
 import com.brushing.member.domain.OrderAccountChange;
 import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.mapper.OrderAccountChangeMapper;
-import com.brushing.member.mapper.OrderMemberLevelMapper;
 import com.brushing.member.mapper.OrderMemberUserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -39,6 +36,7 @@ public class OrderTopupServiceImpl implements IOrderTopupService
 
     @Autowired
     private OrderMemberUserMapper orderMemberUserMapper;
+
 
     /**
      * 查询充值记录
@@ -213,6 +211,7 @@ public class OrderTopupServiceImpl implements IOrderTopupService
         }
         return null;
     }
+
     private String buildChangeDescription(Long userId, String username, String action, BigDecimal amount) {
         return String.format("用户ID: %d, 用户名: %s, %s, 金额: %s",
                 userId, username, action, amount.toPlainString());

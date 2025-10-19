@@ -1,18 +1,25 @@
 package com.brushing.member.service.impl;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderGoods;
+import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.mapper.OrderGoodsMapper;
+import com.brushing.member.mapper.OrderMemberLevelMapper;
+import com.brushing.member.mapper.OrderMemberUserMapper;
+import com.brushing.member.service.IOrderMemberUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.brushing.member.mapper.OrderSeriesMapper;
 import com.brushing.member.domain.OrderSeries;
+import java.math.RoundingMode;
 import com.brushing.member.service.IOrderSeriesService;
-
+import java.util.Random;
 /**
  * 连单Service业务层处理
  * 
@@ -27,6 +34,12 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
 
     @Autowired
     private OrderGoodsMapper orderGoodsMapper;
+
+    @Autowired
+    private OrderMemberUserMapper memberUserMapper;
+
+    @Autowired
+    private OrderMemberLevelMapper memberLevelMapper;
 
     /**
      * 查询连单
@@ -59,10 +72,9 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
      * @return 结果
      */
     @Override
-    public int insertOrderSeries(OrderSeries orderSeries)
-    {
-        //查询
-        Integer orderIndex = orderSeries.getOrderIndex();  // 起始值
+    public int insertOrderSeries(OrderSeries orderSeries) {
+        // 查询
+        Integer orderIndex = orderSeries.getOrderIndex() - 1;  // 起始值
         Long[] goodsIds = orderSeries.getGoodsIds();       // 商品ID数组
 
         List<Integer> orderIndexes = new ArrayList<>();
@@ -70,27 +82,164 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
             orderIndexes.add(orderIndex + i);
         }
         List<OrderSeries> orderSeries1 = orderSeriesMapper.selectByUserIdAndOrderIndexes(orderSeries.getUserId(), orderIndexes);
-        if (orderSeries1.size()>0){
-            return 5;
+        if (orderSeries1.size() > 0) {
+            return 5; // 如果已经存在订单，返回5
         }
-        //创建连单
-        for (int i = 0; i < goodsIds.length; i++) {
-            OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
-            if (StringUtils.isNull(orderGoods)){
-                return 6;
+
+        BigDecimal frozenAmount = orderSeries.getFrozenAmount();  // 获取当前冻结金额
+        if (frozenAmount == null) {
+            frozenAmount = BigDecimal.ZERO;
+        }
+
+        OrderMemberUser orderMemberUser = memberUserMapper.selectOrderMemberUser(orderSeries.getUserId());
+
+        BigDecimal balance = orderMemberUser.getBalance(); // 获取余额
+        if (balance == null) {
+            balance = BigDecimal.ZERO;
+        }
+
+        OrderMemberLevel userLevel = memberLevelMapper.selectOrderMemberLevelById(orderMemberUser.getLevelId());
+
+        // 统一计算总金额
+        BigDecimal totalAmount = frozenAmount.add(balance);
+
+        // 如果 frozenAmount == 0 或 balance == 0，走简单分支（使用真实价格，只检查 vs balance）
+        if (frozenAmount.compareTo(BigDecimal.ZERO) == 0 || balance.compareTo(BigDecimal.ZERO) == 0) {
+            // 简单分支：使用商品真实价格，检查总价 <= balance（不考虑 frozenAmount，因为条件已排除两者都有值）
+            BigDecimal totalRealPrice = BigDecimal.ZERO;
+            for (int i = 0; i < goodsIds.length; i++) {
+                OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
+                if (orderGoods == null) {
+                    return 6; // 商品不存在，返回6
+                }
+                totalRealPrice = totalRealPrice.add(orderGoods.getPrice());
             }
-            OrderSeries series= new OrderSeries();
-            series.setOrderIndex(orderIndex+i);
+
+            for (int i = 0; i < goodsIds.length; i++) {
+                // 获取商品信息
+                OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
+
+                // 创建订单
+                OrderSeries series = new OrderSeries();
+                if (userLevel.getOrderCount() <= orderIndex) {
+                    orderIndex = 1;
+                    series.setOrderIndex(orderIndex);
+                } else {
+                    orderIndex += 1;
+                    series.setOrderIndex(orderIndex);
+                }
+
+                series.setCommissionRatio(orderSeries.getCommissionRatio());
+                series.setProductId(goodsIds[i]);
+                series.setUserId(orderSeries.getUserId());
+                series.setPrice(orderGoods.getPrice()); // 设置商品价格
+                series.setCreateTime(DateUtils.getNowDate());
+                series.setCreateBy(orderSeries.getCreateBy());
+
+                // 插入订单
+                orderSeriesMapper.insertOrderSeries(series);
+            }
+            return 1; // 成功插入订单
+        }
+
+        // 随机分支：frozenAmount >0 && balance >0，不检查不足，直接分配 totalAmount
+        int totalItems = goodsIds.length;
+
+        // 如果商品数量大于0，开始计算每个商品的价格
+        Random random = new Random();
+
+        // 只有一个连单时的特殊处理
+        if (totalItems == 1) {
+            BigDecimal price = totalAmount; // 只有一个订单时，价格直接等于总金额
+            OrderSeries series = new OrderSeries();
+            if (userLevel.getOrderCount() <= orderIndex) {
+                orderIndex = 1;
+            } else {
+                orderIndex += 1;
+            }
+            series.setOrderIndex(orderIndex);
+            series.setCommissionRatio(orderSeries.getCommissionRatio());
+            series.setProductId(goodsIds[0]);
+            series.setUserId(orderSeries.getUserId());
+            series.setPrice(price); // 设置商品价格
+            series.setCreateTime(DateUtils.getNowDate());
+            series.setCreateBy(orderSeries.getCreateBy());
+            orderSeriesMapper.insertOrderSeries(series); // 插入订单
+            return 1; // 成功插入订单
+        }
+
+        // 前 (totalItems - 1) 个订单从 balance 随机分配，每次上限为当前剩余余额 / 2，确保总和 < balance
+        BigDecimal remainingBalance = balance;
+        BigDecimal sumFirst = BigDecimal.ZERO;
+        List<BigDecimal> prices = new ArrayList<>();
+
+        for (int i = 0; i < totalItems - 1; i++) { // 前订单
+            // 每次上限：当前剩余余额 / 2
+            BigDecimal maxThis = remainingBalance.divide(BigDecimal.valueOf(2), 0, RoundingMode.DOWN); // 整数除法
+            if (maxThis.compareTo(BigDecimal.ZERO) <= 0) {
+                // 剩余不足，继续分配最小值或报错（但按需求，不报不足，直接设0？这里设小随机）
+                maxThis = BigDecimal.ONE; // 最小1，避免0
+            }
+
+            // 随机：0 ~ maxThis
+            BigDecimal rand = new BigDecimal(random.nextDouble());
+            BigDecimal price = rand.multiply(maxThis).setScale(0, RoundingMode.HALF_UP); // 整数
+
+            // 确保 price <= remainingBalance，且 >0
+            if (price.compareTo(BigDecimal.ZERO) == 0) {
+                price = BigDecimal.ONE; // 至少1，确保 >0
+            }
+            if (price.compareTo(remainingBalance) > 0) {
+                price = remainingBalance.subtract(BigDecimal.ONE); // 留1给下个，避免总和=balance
+            }
+
+            prices.add(price);
+            sumFirst = sumFirst.add(price);
+            remainingBalance = remainingBalance.subtract(price);
+
+            // 获取商品信息（可选：用作校验）
+            OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
+            if (orderGoods == null) {
+                return 6; // 商品不存在，返回6
+            }
+        }
+
+        // 最后一个订单：补齐总金额
+        BigDecimal lastPrice = totalAmount.subtract(sumFirst);
+        prices.add(lastPrice);
+
+        // 确保前总和 < balance（通过留1逻辑，几乎总是 <）
+        if (sumFirst.compareTo(balance) >= 0) {
+            // 罕见情况，调整最后一个
+            lastPrice = lastPrice.add(balance.subtract(sumFirst));
+            sumFirst = balance.subtract(BigDecimal.ONE); // 强制 < balance
+        }
+
+        // 现在插入所有订单
+        for (int i = 0; i < totalItems; i++) {
+            BigDecimal price = prices.get(i);
+
+            // 创建订单
+            OrderSeries series = new OrderSeries();
+            if (userLevel.getOrderCount() <= orderIndex) {
+                orderIndex = 1;
+            } else {
+                orderIndex += 1;
+            }
+            series.setOrderIndex(orderIndex);
             series.setCommissionRatio(orderSeries.getCommissionRatio());
             series.setProductId(goodsIds[i]);
             series.setUserId(orderSeries.getUserId());
-            series.setPrice(orderGoods.getPrice());
+            series.setPrice(price); // 设置计算的价格
             series.setCreateTime(DateUtils.getNowDate());
             series.setCreateBy(orderSeries.getCreateBy());
-            orderSeriesMapper.insertOrderSeries(series);
+
+            orderSeriesMapper.insertOrderSeries(series); // 插入订单
         }
-        return 1;
+
+        return 1; // 成功插入订单
     }
+
 
     /**
      * 修改连单

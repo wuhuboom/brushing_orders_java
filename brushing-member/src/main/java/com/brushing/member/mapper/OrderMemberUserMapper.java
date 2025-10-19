@@ -20,10 +20,12 @@ public interface OrderMemberUserMapper
      */
     public OrderMemberUser selectOrderMemberUserById(Long id);
 
+    public OrderMemberUser selectOrderMemberUser(Long id);
+
 
     /**
      * 通过
-     * @param id
+     * @param
      * @return
      */
     public OrderMemberUser selectOrderMemberUserByInCode(String inviteCode);
@@ -103,6 +105,9 @@ public interface OrderMemberUserMapper
      */
     List<OrderMemberUser> selectMembersByScope(@Param("userId") Long userId,
                                          @Param("scope") String scope);
+
+
+   public int updateUserLevel(@Param("id") Long id, @Param("levelId") Long levelId);
 
 
 }

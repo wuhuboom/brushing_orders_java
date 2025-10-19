@@ -59,6 +59,9 @@ public class OrderMemberUser extends BaseEntity
     @Excel(name = "可用余额")
     private BigDecimal balance;
 
+    /** 卡单金额 */
+    private BigDecimal cardAmount;
+
     /** 冻结余额 */
     @Excel(name = "冻结余额")
     private BigDecimal frozenBalance;
@@ -171,6 +174,14 @@ public class OrderMemberUser extends BaseEntity
     private Integer totalResetCount;
 
 
+    public BigDecimal getCardAmount() {
+        return cardAmount;
+    }
+
+    public void setCardAmount(BigDecimal cardAmount) {
+        this.cardAmount = cardAmount;
+    }
+
     /** 卡单数量 */
     private Integer cardNumber;
 
@@ -185,6 +196,12 @@ public class OrderMemberUser extends BaseEntity
     private String parentUsername;
 
     private String parentPhone;
+
+    private Long version;
+
+    public Long getVersion() { return version; }
+
+    public void setVersion(Long version) { this.version = version; }
 
 
     public Integer getCardNumber() {

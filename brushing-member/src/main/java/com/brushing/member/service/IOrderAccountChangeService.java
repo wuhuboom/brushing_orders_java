@@ -1,5 +1,6 @@
 package com.brushing.member.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.brushing.member.domain.OrderAccountChange;
 
@@ -60,4 +61,8 @@ public interface IOrderAccountChangeService
      * @return 结果
      */
     public int deleteOrderAccountChangeById(String id);
+
+    public void recordAccountChange(Long userId, String username, String changeType,
+                                     BigDecimal beforeAmount, BigDecimal changeAmount,
+                                     BigDecimal afterAmount, String action);
 }

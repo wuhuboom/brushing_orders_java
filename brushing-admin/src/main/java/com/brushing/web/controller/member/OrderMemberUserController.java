@@ -110,7 +110,9 @@ public class OrderMemberUserController extends BaseController
         }
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         orderMemberUser.setPassword(encoder.encode(orderMemberUser.getPassword()));
-        orderMemberUser.setTradePassword(encoder.encode(orderMemberUser.getTradePassword()));
+        if(StringUtils.isNotEmpty(orderMemberUser.getTradePassword())){
+            orderMemberUser.setTradePassword(encoder.encode(orderMemberUser.getTradePassword()));
+        }
         return toAjax(orderMemberUserService.insertOrderMemberUser(orderMemberUser));
     }
 
@@ -122,6 +124,8 @@ public class OrderMemberUserController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderMemberUser orderMemberUser)
     {
+        OrderMemberUser orderMemberUser2 = orderMemberUserService.selectOrderMemberUserById(orderMemberUser.getId());
+        orderMemberUser.setVersion(orderMemberUser2.getVersion());
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         if (StringUtils.isNotEmpty(orderMemberUser.getPassword())){
             orderMemberUser.setPassword(encoder.encode(orderMemberUser.getPassword()));
@@ -200,7 +204,7 @@ public class OrderMemberUserController extends BaseController
     @GetMapping("/restDealCount/{id}")
     public AjaxResult restDealCount(@PathVariable("id") Long userId){
         OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(userId);
-        if (orderMemberUser.getUserLevel().getOrderCount() != orderMemberUser.getDealCount()){
+        if (orderMemberUser.getDealCount() < orderMemberUser.getUserLevel().getOrderCount() ){
             return error("未达到重置条件");
         }
         orderMemberUser.setDealCount(0);

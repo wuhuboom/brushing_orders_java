@@ -23,11 +23,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="withdrawOrderPerDay"    column="withdraw_order_per_day"    />
         <result property="descriptionZh"    column="description_zh"    />
         <result property="descriptionEn"    column="description_en"    />
+        <result property="descriptionJa"    column="description_ja"    />
+        <result property="descriptionTh"    column="description_th"    />
+        <result property="descriptionKo"    column="description_ko"    />
+        <result property="descriptionZhTw"    column="description_zh_tw"    />
         <result property="createTime"    column="create_time"    />
     </resultMap>
 
     <sql id="selectOrderMemberLevelVo">
-        select id, icon, name_zh, name_en, price, auto_upgrade_invite_count, commission_ratio, streak_commission_ratio, min_balance, order_count, withdraw_count, withdraw_limit, min_withdraw_amount, max_withdraw_amount, withdraw_fee, withdraw_order_per_day, description_zh, description_en, create_time from order_member_level
+        select id, icon, name_zh, name_en, price,
+        auto_upgrade_invite_count, commission_ratio,
+        streak_commission_ratio, min_balance, order_count,
+        withdraw_count, withdraw_limit, min_withdraw_amount,
+        max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
+        description_zh, description_en,description_ja,description_th,description_ko,description_zh_tw,
+        create_time from order_member_level
     </sql>
 
     <select id="selectOrderMemberLevelList" parameterType="OrderMemberLevel" resultMap="OrderMemberLevelResult">
@@ -96,13 +106,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         LIMIT 1
     </select>
 
-
     <insert id="insertOrderMemberLevel" parameterType="OrderMemberLevel" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_level
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="icon != null">icon,</if>
-            <if test="nameZh != null">name_zh,</if>
-            <if test="nameEn != null">name_en,</if>
+            <if test="icon != null and icon != ''">icon,</if>
+            <if test="nameZh != null and nameZh != ''">name_zh,</if>
+            <if test="nameEn != null and nameEn != ''">name_en,</if>
             <if test="price != null">price,</if>
             <if test="autoUpgradeInviteCount != null">auto_upgrade_invite_count,</if>
             <if test="commissionRatio != null">commission_ratio,</if>
@@ -115,14 +124,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="maxWithdrawAmount != null">max_withdraw_amount,</if>
             <if test="withdrawFee != null">withdraw_fee,</if>
             <if test="withdrawOrderPerDay != null">withdraw_order_per_day,</if>
-            <if test="descriptionZh != null">description_zh,</if>
-            <if test="descriptionEn != null">description_en,</if>
+            <if test="descriptionZh != null and descriptionZh != ''">description_zh,</if>
+            <if test="descriptionEn != null and descriptionEn != ''">description_en,</if>
             <if test="createTime != null">create_time,</if>
-         </trim>
+            <if test="descriptionJa != null and descriptionJa != ''">description_ja,</if>
+            <if test="descriptionTh != null and descriptionTh != ''">description_th,</if>
+            <if test="descriptionKo != null and descriptionKo != ''">description_ko,</if>
+            <if test="descriptionZhTw != null and descriptionZhTw != ''">description_zh_tw,</if>
+        </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="icon != null">#{icon},</if>
-            <if test="nameZh != null">#{nameZh},</if>
-            <if test="nameEn != null">#{nameEn},</if>
+            <if test="icon != null and icon != ''">#{icon},</if>
+            <if test="nameZh != null and nameZh != ''">#{nameZh},</if>
+            <if test="nameEn != null and nameEn != ''">#{nameEn},</if>
             <if test="price != null">#{price},</if>
             <if test="autoUpgradeInviteCount != null">#{autoUpgradeInviteCount},</if>
             <if test="commissionRatio != null">#{commissionRatio},</if>
@@ -135,18 +148,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="maxWithdrawAmount != null">#{maxWithdrawAmount},</if>
             <if test="withdrawFee != null">#{withdrawFee},</if>
             <if test="withdrawOrderPerDay != null">#{withdrawOrderPerDay},</if>
-            <if test="descriptionZh != null">#{descriptionZh},</if>
-            <if test="descriptionEn != null">#{descriptionEn},</if>
+            <if test="descriptionZh != null and descriptionZh != ''">#{descriptionZh},</if>
+            <if test="descriptionEn != null and descriptionEn != ''">#{descriptionEn},</if>
             <if test="createTime != null">#{createTime},</if>
-         </trim>
+            <if test="descriptionJa != null and descriptionJa != ''">#{descriptionJa},</if>
+            <if test="descriptionTh != null and descriptionTh != ''">#{descriptionTh},</if>
+            <if test="descriptionKo != null and descriptionKo != ''">#{descriptionKo},</if>
+            <if test="descriptionZhTw != null and descriptionZhTw != ''">#{descriptionZhTw},</if>
+        </trim>
     </insert>
 
     <update id="updateOrderMemberLevel" parameterType="OrderMemberLevel">
         update order_member_level
         <trim prefix="SET" suffixOverrides=",">
-            <if test="icon != null">icon = #{icon},</if>
-            <if test="nameZh != null">name_zh = #{nameZh},</if>
-            <if test="nameEn != null">name_en = #{nameEn},</if>
+            <if test="icon != null and icon != ''">icon = #{icon},</if>
+            <if test="nameZh != null and nameZh != ''">name_zh = #{nameZh},</if>
+            <if test="nameEn != null and nameEn != ''">name_en = #{nameEn},</if>
             <if test="price != null">price = #{price},</if>
             <if test="autoUpgradeInviteCount != null">auto_upgrade_invite_count = #{autoUpgradeInviteCount},</if>
             <if test="commissionRatio != null">commission_ratio = #{commissionRatio},</if>
@@ -159,9 +176,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="maxWithdrawAmount != null">max_withdraw_amount = #{maxWithdrawAmount},</if>
             <if test="withdrawFee != null">withdraw_fee = #{withdrawFee},</if>
             <if test="withdrawOrderPerDay != null">withdraw_order_per_day = #{withdrawOrderPerDay},</if>
-            <if test="descriptionZh != null">description_zh = #{descriptionZh},</if>
-            <if test="descriptionEn != null">description_en = #{descriptionEn},</if>
+            <if test="descriptionZh != null and descriptionZh != ''">description_zh = #{descriptionZh},</if>
+            <if test="descriptionEn != null and descriptionEn != ''">description_en = #{descriptionEn},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="descriptionJa != null and descriptionJa != ''">description_ja = #{descriptionJa},</if>
+            <if test="descriptionTh != null and descriptionTh != ''">description_th = #{descriptionTh},</if>
+            <if test="descriptionKo != null and descriptionKo != ''">description_ko = #{descriptionKo},</if>
+            <if test="descriptionZhTw != null and descriptionZhTw != ''">description_zh_tw = #{descriptionZhTw},</if>
         </trim>
         where id = #{id}
     </update>

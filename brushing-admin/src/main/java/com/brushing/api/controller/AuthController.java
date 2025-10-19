@@ -12,6 +12,7 @@ import com.brushing.common.utils.bean.BeanUtils;
 import com.brushing.common.utils.ip.AddressUtils;
 import com.brushing.common.utils.ip.IpUtils;
 import com.brushing.framework.front.FrontJwtUtil;
+import com.brushing.framework.init.GeoIpQueryQueryService;
 import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.service.IOrderMemberUserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,6 +59,10 @@ public class AuthController extends BaseController {
     @Autowired
     private FrontJwtUtil frontJwtUtil;
 
+    @Autowired
+    private GeoIpQueryQueryService queryService;
+
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -76,7 +81,7 @@ public class AuthController extends BaseController {
         try {
             String token = frontJwtUtil.generateToken(user.getUsername());
             String ipAddr = IpUtils.getIpAddr();
-            String address = AddressUtils.getRealAddressByIP(ipAddr);
+            String address = queryService.queryByIp(ipAddr);
             user.setLastLoginTime(DateUtils.getNowDate());
             user.setRegisterIp(ipAddr + "," + address);
             userService.updateOrderMemberUser(user);
@@ -95,7 +100,7 @@ public class AuthController extends BaseController {
             summary = "注册操作",
             description = "username:用户名，password：密码，tradePassword：交易密码，phone:电话，sex: 性别 0 男，1 女 ，inviteCode邀请码"
     )
-    public AjaxResult register(@RequestBody RegisterDto registerDto){
+    public  AjaxResult register(@RequestBody RegisterDto registerDto){
         if (StringUtils.isEmpty(registerDto.getUsername())){
             return AjaxResult.error(603, "Username must not be blank");
         }
@@ -114,12 +119,13 @@ public class AuthController extends BaseController {
         if (StringUtils.isEmpty(registerDto.getInviteCode())){
             return AjaxResult.error(608, "Invite code must not be blank");
         }
-        OrderMemberUser user = userService.findByUsername(registerDto.getUsername());
+        OrderMemberUser user = userService.findByUsername(registerDto.getUsername().trim());
         if (StringUtils.isNotNull(user)){
             return AjaxResult.error(609, "Username already exists");
         }
         OrderMemberUser orderMemberUser = setUser(registerDto);
         orderMemberUser.setPassword(encoder.encode(registerDto.getPassword()));
+        orderMemberUser.setSex(registerDto.getSex());
         //orderMemberUser.setTradePassword(encoder.encode(registerDto.getTradePassword()));
         String register = userService.register(orderMemberUser);
         if ("200".equals(register)){
@@ -253,7 +259,7 @@ public class AuthController extends BaseController {
 
     public OrderMemberUser setUser(RegisterDto registerDto){
         OrderMemberUser user = new OrderMemberUser();
-        user.setUsername(registerDto.getUsername());
+        user.setUsername(registerDto.getUsername().trim());
         user.setPassword(registerDto.getPassword());
         user.setTradePassword(registerDto.getTradePassword());
         user.setPhone(registerDto.getPhone());

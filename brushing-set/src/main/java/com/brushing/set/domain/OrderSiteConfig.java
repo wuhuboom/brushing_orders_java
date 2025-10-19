@@ -27,6 +27,9 @@ public class OrderSiteConfig extends BaseEntity
     @Excel(name = "客服链接")
     private String customerServiceUrl;
 
+
+    private String emailAddress;
+
     /** 弹框内容 */
     @Excel(name = "弹框内容")
     private String popupMessage;
@@ -72,6 +75,33 @@ public class OrderSiteConfig extends BaseEntity
     private String emailVerificationEnabled;
 
     private String  totpEnabled;
+
+    private String  levelStatus;
+    private String  seriesStatus;
+
+    public String getLevelStatus() {
+        return levelStatus;
+    }
+
+    public void setLevelStatus(String levelStatus) {
+        this.levelStatus = levelStatus;
+    }
+
+    public String getSeriesStatus() {
+        return seriesStatus;
+    }
+
+    public void setSeriesStatus(String seriesStatus) {
+        this.seriesStatus = seriesStatus;
+    }
+
+    public String getEmailAddress() {
+        return emailAddress;
+    }
+
+    public void setEmailAddress(String emailAddress) {
+        this.emailAddress = emailAddress;
+    }
 
     public String getTotpEnabled() {
         return totpEnabled;

@@ -37,7 +37,6 @@ public class OrderAccountChangeController extends BaseController
     /**
      * 查询账户变动列表
      */
-    @PreAuthorize("@ss.hasPermi('member:change:list')")
     @GetMapping("/list")
     public TableDataInfo list(OrderAccountChange orderAccountChange)
     {
@@ -49,7 +48,6 @@ public class OrderAccountChangeController extends BaseController
     /**
      * 导出账户变动列表
      */
-    @PreAuthorize("@ss.hasPermi('member:change:export')")
     @Log(title = "账户变动", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, OrderAccountChange orderAccountChange)
@@ -62,7 +60,6 @@ public class OrderAccountChangeController extends BaseController
     /**
      * 获取账户变动详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:change:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -72,7 +69,6 @@ public class OrderAccountChangeController extends BaseController
     /**
      * 新增账户变动
      */
-    @PreAuthorize("@ss.hasPermi('member:change:add')")
     @Log(title = "账户变动", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody OrderAccountChange orderAccountChange)
@@ -83,7 +79,6 @@ public class OrderAccountChangeController extends BaseController
     /**
      * 修改账户变动
      */
-    @PreAuthorize("@ss.hasPermi('member:change:edit')")
     @Log(title = "账户变动", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody OrderAccountChange orderAccountChange)
@@ -94,7 +89,6 @@ public class OrderAccountChangeController extends BaseController
     /**
      * 删除账户变动
      */
-    @PreAuthorize("@ss.hasPermi('member:change:remove')")
     @Log(title = "账户变动", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable String[] ids)

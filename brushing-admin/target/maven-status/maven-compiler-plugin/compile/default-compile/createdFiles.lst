@@ -3,6 +3,8 @@ com\brushing\BrushingServletInitializer.class
 com\brushing\web\controller\system\SysRegisterController.class
 com\brushing\api\controller\vo\AvatarDto.class
 com\brushing\api\controller\vo\WithdrawalDto.class
+com\brushing\api\controller\vo\WalletDto.class
+com\brushing\web\controller\member\OrderLotteryPrizeController.class
 com\brushing\api\controller\ConfigController.class
 com\brushing\web\controller\system\SysTimeZoneController.class
 com\brushing\api\controller\enumvo\CommissionStatus.class
@@ -24,6 +26,7 @@ com\brushing\web\controller\member\OrderInfoController.class
 com\brushing\BrushingApplication.class
 com\brushing\api\controller\vo\EditPasswordDto.class
 com\brushing\api\controller\enumvo\SeriesStatus.class
+com\brushing\api\controller\LotteryController.class
 com\brushing\api\controller\enumvo\ChangeType.class
 com\brushing\web\controller\member\OrderMemberUserController.class
 com\brushing\web\controller\monitor\CacheController.class
@@ -31,6 +34,7 @@ com\brushing\web\controller\config\OrderBannerController.class
 com\brushing\api\controller\vo\EditTradePasswordDto.class
 com\brushing\web\core\config\ForwardHeadersConfig.class
 com\brushing\web\controller\member\OrderSeriesController.class
+com\brushing\web\controller\member\WelfareConfigController.class
 com\brushing\web\controller\member\dto\TopupDto.class
 com\brushing\web\controller\monitor\SysUserOnlineController.class
 com\brushing\web\controller\system\SysDeptController.class
@@ -50,7 +54,9 @@ com\brushing\web\controller\common\CaptchaController.class
 com\brushing\web\controller\member\OrderAccountChangeController.class
 com\brushing\web\controller\system\SysMenuController.class
 com\brushing\web\controller\config\OrderCustomerServiceController.class
+com\brushing\web\controller\member\OrderBankWalletController.class
 com\brushing\web\controller\system\SysDictTypeController.class
+com\brushing\web\controller\member\OrderLotteryConfigController.class
 com\brushing\web\controller\tool\UserEntity.class
 com\brushing\web\controller\websocket\WebSocketServer.class
 com\brushing\web\controller\member\OrderTopupController.class
@@ -61,6 +67,7 @@ com\brushing\web\controller\system\SysIndexController.class
 com\brushing\web\controller\member\OrderGoodsController.class
 com\brushing\api\dto\LoginUserDto.class
 com\brushing\web\controller\system\SysConfigController.class
+com\brushing\web\controller\member\OrderLotteryRecordController.class
 com\brushing\api\controller\vo\PageDto.class
 com\brushing\api\controller\AccountController.class
 com\brushing\web\controller\system\SysDictDataController.class

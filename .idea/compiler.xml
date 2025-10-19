@@ -11,8 +11,8 @@
         <module name="brushing-quartz" />
         <module name="brushing-framework" />
         <module name="brushing-member" />
-        <module name="brushing-system" />
         <module name="brushing-set" />
+        <module name="brushing-system" />
         <module name="brushing-admin" />
       </profile>
     </annotationProcessing>

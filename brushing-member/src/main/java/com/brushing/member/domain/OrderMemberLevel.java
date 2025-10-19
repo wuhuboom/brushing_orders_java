@@ -87,7 +87,55 @@ public class OrderMemberLevel extends BaseEntity
     @Excel(name = "英文描述")
     private String descriptionEn;
 
-    public void setId(Long id) 
+    /** 描述 - 日文 */
+    @Excel(name = "描述 - 日文")
+    private String descriptionJa;
+
+    /** 描述 - 泰文 */
+    @Excel(name = "描述 - 泰文")
+    private String descriptionTh;
+
+    /** 描述 - 韩文 */
+    @Excel(name = "描述 - 韩文")
+    private String descriptionKo;
+
+    /** 描述 - 中文繁体 */
+    @Excel(name = "描述 - 中文繁体")
+    private String descriptionZhTw;
+
+    public String getDescriptionJa() {
+        return descriptionJa;
+    }
+
+    public void setDescriptionJa(String descriptionJa) {
+        this.descriptionJa = descriptionJa;
+    }
+
+    public String getDescriptionTh() {
+        return descriptionTh;
+    }
+
+    public void setDescriptionTh(String descriptionTh) {
+        this.descriptionTh = descriptionTh;
+    }
+
+    public String getDescriptionKo() {
+        return descriptionKo;
+    }
+
+    public void setDescriptionKo(String descriptionKo) {
+        this.descriptionKo = descriptionKo;
+    }
+
+    public String getDescriptionZhTw() {
+        return descriptionZhTw;
+    }
+
+    public void setDescriptionZhTw(String descriptionZhTw) {
+        this.descriptionZhTw = descriptionZhTw;
+    }
+
+    public void setId(Long id)
     {
         this.id = id;
     }

@@ -2,6 +2,8 @@ package com.brushing.web.controller.system;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.brushing.framework.init.GeoIpQueryQueryService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +55,10 @@ public class SysUserController extends BaseController
     @Autowired
     private ISysPostService postService;
 
+    @Autowired
+    private GeoIpQueryQueryService queryService;
+
+
     /**
      * 获取用户列表
      */
@@ -62,6 +68,10 @@ public class SysUserController extends BaseController
     {
         startPage();
         List<SysUser> list = userService.selectUserList(user);
+        for (SysUser user1:list){
+            String s = queryService.queryByIp(user1.getLoginIp());
+            user1.setLoginLocation(s);
+        }
         return getDataTable(list);
     }
 

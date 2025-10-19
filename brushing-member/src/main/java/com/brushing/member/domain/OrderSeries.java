@@ -43,7 +43,17 @@ public class OrderSeries extends BaseEntity
 
     private Integer commissionRatio;
 
+    private BigDecimal frozenAmount;
+
     private Long[] goodsIds;
+
+    public BigDecimal getFrozenAmount() {
+        return frozenAmount;
+    }
+
+    public void setFrozenAmount(BigDecimal frozenAmount) {
+        this.frozenAmount = frozenAmount;
+    }
 
     public String getProductName() {
         return productName;

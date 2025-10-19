@@ -1,5 +1,6 @@
 package com.brushing.member.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.brushing.member.domain.DashboardData;
@@ -70,4 +71,6 @@ public interface IOrderMemberUserService
     public int deleteOrderMemberUserById(Long id);
 
     public DashboardData getDashboardData();
+
+    public void updateUserLevel(Long userId, BigDecimal amount);
 }

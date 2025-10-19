@@ -22,13 +22,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
         <result property="totpEnabled"    column="totp_enabled"    />
+        <result property="emailAddress"    column="email_address"    />
+        <result property="levelStatus"    column="level_status"    />
+        <result property="seriesStatus"    column="series_status"    />
     </resultMap>
 
     <sql id="selectOrderSiteConfigVo">
         select id, site_name, customer_service_url,
         popup_message, copyright_info, register_bonus_amount,
         maintenance_image, site_logo, favicon, currency_type,
-        max_register_per_ip, ip_blacklist, register_enabled, totp_enabled,
+        max_register_per_ip, ip_blacklist, register_enabled, totp_enabled,email_address,level_status,series_status,
         email_verification_enabled, create_time, update_time from order_site_config
     </sql>
 
@@ -115,6 +118,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="totpEnabled != null">totp_enabled = #{totpEnabled},</if>
+            <if test="emailAddress != null">email_address = #{emailAddress},</if>
+            <if test="levelStatus != null">level_status = #{levelStatus},</if>
+            <if test="seriesStatus != null">series_status = #{seriesStatus},</if>
         </trim>
         where id = #{id}
     </update>

@@ -10,6 +10,7 @@ import com.brushing.system.mapper.SysUserMapper;
 import com.brushing.system.service.ISysUserService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -27,6 +28,8 @@ public class StartupTask implements ApplicationRunner{
 
     @Autowired
     private DatabaseInitializer databaseInitializer;
+
+
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
@@ -59,4 +62,7 @@ public class StartupTask implements ApplicationRunner{
         sysUser.setPassword(SecurityUtils.encryptPassword("qq123123"));
         userService.insertUser(sysUser);
     }
+
+
+
 }

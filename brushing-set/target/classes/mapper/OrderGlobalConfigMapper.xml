@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.brushing.set.mapper.OrderGlobalConfigMapper">
-    
+
     <resultMap type="OrderGlobalConfig" id="OrderGlobalConfigResult">
         <result property="id"    column="id"    />
         <result property="registerProtocolEn"    column="register_protocol_en"    />
@@ -22,15 +22,43 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="incomeGuideLocal"    column="income_guide_local"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
+        <result property="aboutUsZhTw"    column="about_us_zh_tw"    />
+        <result property="registrationAgreementKo"    column="registration_agreement_ko"    />
+        <result property="aboutUsKo"    column="about_us_ko"    />
+        <result property="registrationAgreementZhTw"    column="registration_agreement_zh_tw"    />
+        <result property="termsConditionsZhTw"    column="terms_conditions_zh_tw"    />
+        <result property="incomeGuideTh"    column="income_guide_th"    />
+        <result property="certificateJa"    column="certificate_ja"    />
+        <result property="certificateTh"    column="certificate_th"    />
+        <result property="latestEventsTh"    column="latest_events_th"    />
+        <result property="termsConditionsJa"    column="terms_conditions_ja"    />
+        <result property="faqJa"    column="faq_ja"    />
+        <result property="incomeGuideJa"    column="income_guide_ja"    />
+        <result property="termsConditionsTh"    column="terms_conditions_th"    />
+        <result property="certificateKo"    column="certificate_ko"    />
+        <result property="latestEventsJa"    column="latest_events_ja"    />
+        <result property="faqTh"    column="faq_th"    />
+        <result property="latestEventsKo"    column="latest_events_ko"    />
+        <result property="registrationAgreementJa"    column="registration_agreement_ja"    />
+        <result property="termsConditionsKo"    column="terms_conditions_ko"    />
+        <result property="registrationAgreementTh"    column="registration_agreement_th"    />
+        <result property="faqZhTw"    column="faq_zh_tw"    />
+        <result property="latestEventsZhTw"    column="latest_events_zh_tw"    />
+        <result property="aboutUsTh"    column="about_us_th"    />
+        <result property="aboutUsJa"    column="about_us_ja"    />
+        <result property="incomeGuideKo"    column="income_guide_ko"    />
+        <result property="certificateZhTw"    column="certificate_zh_tw"    />
+        <result property="faqKo"    column="faq_ko"    />
+        <result property="incomeGuideZhTw"    column="income_guide_zh_tw"    />
     </resultMap>
 
     <sql id="selectOrderGlobalConfigVo">
-        select id, register_protocol_en, register_protocol_local, about_us_en, about_us_local, certificate_en, certificate_local, faq_en, faq_local, latest_event_en, latest_event_local, terms_en, terms_local, income_guide_en, income_guide_local, create_time, update_time from order_global_config
+        select id, register_protocol_en, register_protocol_local, about_us_en, about_us_local, certificate_en, certificate_local, faq_en, faq_local, latest_event_en, latest_event_local, terms_en, terms_local, income_guide_en, income_guide_local, create_time, update_time, about_us_zh_tw, registration_agreement_ko, about_us_ko, registration_agreement_zh_tw, terms_conditions_zh_tw, income_guide_th, certificate_ja, certificate_th, latest_events_th, terms_conditions_ja, faq_ja, income_guide_ja, terms_conditions_th, certificate_ko, latest_events_ja, faq_th, latest_events_ko, registration_agreement_ja, terms_conditions_ko, registration_agreement_th, faq_zh_tw, latest_events_zh_tw, about_us_th, about_us_ja, income_guide_ko, certificate_zh_tw, faq_ko, income_guide_zh_tw from order_global_config
     </sql>
 
     <select id="selectOrderGlobalConfigList" parameterType="OrderGlobalConfig" resultMap="OrderGlobalConfigResult">
         <include refid="selectOrderGlobalConfigVo"/>
-        <where>  
+        <where>
             <if test="registerProtocolEn != null  and registerProtocolEn != ''"> and register_protocol_en = #{registerProtocolEn}</if>
             <if test="registerProtocolLocal != null  and registerProtocolLocal != ''"> and register_protocol_local = #{registerProtocolLocal}</if>
             <if test="aboutUsEn != null  and aboutUsEn != ''"> and about_us_en = #{aboutUsEn}</if>
@@ -45,9 +73,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="termsLocal != null  and termsLocal != ''"> and terms_local = #{termsLocal}</if>
             <if test="incomeGuideEn != null  and incomeGuideEn != ''"> and income_guide_en = #{incomeGuideEn}</if>
             <if test="incomeGuideLocal != null  and incomeGuideLocal != ''"> and income_guide_local = #{incomeGuideLocal}</if>
+            <if test="aboutUsZhTw != null  and aboutUsZhTw != ''"> and about_us_zh_tw = #{aboutUsZhTw}</if>
+            <if test="registrationAgreementKo != null  and registrationAgreementKo != ''"> and registration_agreement_ko = #{registrationAgreementKo}</if>
+            <if test="aboutUsKo != null  and aboutUsKo != ''"> and about_us_ko = #{aboutUsKo}</if>
+            <if test="registrationAgreementZhTw != null  and registrationAgreementZhTw != ''"> and registration_agreement_zh_tw = #{registrationAgreementZhTw}</if>
+            <if test="termsConditionsZhTw != null  and termsConditionsZhTw != ''"> and terms_conditions_zh_tw = #{termsConditionsZhTw}</if>
+            <if test="incomeGuideTh != null  and incomeGuideTh != ''"> and income_guide_th = #{incomeGuideTh}</if>
+            <if test="certificateJa != null  and certificateJa != ''"> and certificate_ja = #{certificateJa}</if>
+            <if test="certificateTh != null  and certificateTh != ''"> and certificate_th = #{certificateTh}</if>
+            <if test="latestEventsTh != null  and latestEventsTh != ''"> and latest_events_th = #{latestEventsTh}</if>
+            <if test="termsConditionsJa != null  and termsConditionsJa != ''"> and terms_conditions_ja = #{termsConditionsJa}</if>
+            <if test="faqJa != null  and faqJa != ''"> and faq_ja = #{faqJa}</if>
+            <if test="incomeGuideJa != null  and incomeGuideJa != ''"> and income_guide_ja = #{incomeGuideJa}</if>
+            <if test="termsConditionsTh != null  and termsConditionsTh != ''"> and terms_conditions_th = #{termsConditionsTh}</if>
+            <if test="certificateKo != null  and certificateKo != ''"> and certificate_ko = #{certificateKo}</if>
+            <if test="latestEventsJa != null  and latestEventsJa != ''"> and latest_events_ja = #{latestEventsJa}</if>
+            <if test="faqTh != null  and faqTh != ''"> and faq_th = #{faqTh}</if>
+            <if test="latestEventsKo != null  and latestEventsKo != ''"> and latest_events_ko = #{latestEventsKo}</if>
+            <if test="registrationAgreementJa != null  and registrationAgreementJa != ''"> and registration_agreement_ja = #{registrationAgreementJa}</if>
+            <if test="termsConditionsKo != null  and termsConditionsKo != ''"> and terms_conditions_ko = #{termsConditionsKo}</if>
+            <if test="registrationAgreementTh != null  and registrationAgreementTh != ''"> and registration_agreement_th = #{registrationAgreementTh}</if>
+            <if test="faqZhTw != null  and faqZhTw != ''"> and faq_zh_tw = #{faqZhTw}</if>
+            <if test="latestEventsZhTw != null  and latestEventsZhTw != ''"> and latest_events_zh_tw = #{latestEventsZhTw}</if>
+            <if test="aboutUsTh != null  and aboutUsTh != ''"> and about_us_th = #{aboutUsTh}</if>
+            <if test="aboutUsJa != null  and aboutUsJa != ''"> and about_us_ja = #{aboutUsJa}</if>
+            <if test="incomeGuideKo != null  and incomeGuideKo != ''"> and income_guide_ko = #{incomeGuideKo}</if>
+            <if test="certificateZhTw != null  and certificateZhTw != ''"> and certificate_zh_tw = #{certificateZhTw}</if>
+            <if test="faqKo != null  and faqKo != ''"> and faq_ko = #{faqKo}</if>
+            <if test="incomeGuideZhTw != null  and incomeGuideZhTw != ''"> and income_guide_zh_tw = #{incomeGuideZhTw}</if>
         </where>
     </select>
-    
+
     <select id="selectOrderGlobalConfigById" parameterType="Long" resultMap="OrderGlobalConfigResult">
         <include refid="selectOrderGlobalConfigVo"/>
         where id = #{id}
@@ -72,7 +128,35 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="incomeGuideLocal != null">income_guide_local,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
-         </trim>
+            <if test="aboutUsZhTw != null and aboutUsZhTw != ''">about_us_zh_tw,</if>
+            <if test="registrationAgreementKo != null and registrationAgreementKo != ''">registration_agreement_ko,</if>
+            <if test="aboutUsKo != null and aboutUsKo != ''">about_us_ko,</if>
+            <if test="registrationAgreementZhTw != null and registrationAgreementZhTw != ''">registration_agreement_zh_tw,</if>
+            <if test="termsConditionsZhTw != null and termsConditionsZhTw != ''">terms_conditions_zh_tw,</if>
+            <if test="incomeGuideTh != null and incomeGuideTh != ''">income_guide_th,</if>
+            <if test="certificateJa != null and certificateJa != ''">certificate_ja,</if>
+            <if test="certificateTh != null and certificateTh != ''">certificate_th,</if>
+            <if test="latestEventsTh != null and latestEventsTh != ''">latest_events_th,</if>
+            <if test="termsConditionsJa != null and termsConditionsJa != ''">terms_conditions_ja,</if>
+            <if test="faqJa != null and faqJa != ''">faq_ja,</if>
+            <if test="incomeGuideJa != null and incomeGuideJa != ''">income_guide_ja,</if>
+            <if test="termsConditionsTh != null and termsConditionsTh != ''">terms_conditions_th,</if>
+            <if test="certificateKo != null and certificateKo != ''">certificate_ko,</if>
+            <if test="latestEventsJa != null and latestEventsJa != ''">latest_events_ja,</if>
+            <if test="faqTh != null and faqTh != ''">faq_th,</if>
+            <if test="latestEventsKo != null and latestEventsKo != ''">latest_events_ko,</if>
+            <if test="registrationAgreementJa != null and registrationAgreementJa != ''">registration_agreement_ja,</if>
+            <if test="termsConditionsKo != null and termsConditionsKo != ''">terms_conditions_ko,</if>
+            <if test="registrationAgreementTh != null and registrationAgreementTh != ''">registration_agreement_th,</if>
+            <if test="faqZhTw != null and faqZhTw != ''">faq_zh_tw,</if>
+            <if test="latestEventsZhTw != null and latestEventsZhTw != ''">latest_events_zh_tw,</if>
+            <if test="aboutUsTh != null and aboutUsTh != ''">about_us_th,</if>
+            <if test="aboutUsJa != null and aboutUsJa != ''">about_us_ja,</if>
+            <if test="incomeGuideKo != null and incomeGuideKo != ''">income_guide_ko,</if>
+            <if test="certificateZhTw != null and certificateZhTw != ''">certificate_zh_tw,</if>
+            <if test="faqKo != null and faqKo != ''">faq_ko,</if>
+            <if test="incomeGuideZhTw != null and incomeGuideZhTw != ''">income_guide_zh_tw,</if>
+        </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="registerProtocolEn != null">#{registerProtocolEn},</if>
             <if test="registerProtocolLocal != null">#{registerProtocolLocal},</if>
@@ -90,7 +174,35 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="incomeGuideLocal != null">#{incomeGuideLocal},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateTime != null">#{updateTime},</if>
-         </trim>
+            <if test="aboutUsZhTw != null and aboutUsZhTw != ''">#{aboutUsZhTw},</if>
+            <if test="registrationAgreementKo != null and registrationAgreementKo != ''">#{registrationAgreementKo},</if>
+            <if test="aboutUsKo != null and aboutUsKo != ''">#{aboutUsKo},</if>
+            <if test="registrationAgreementZhTw != null and registrationAgreementZhTw != ''">#{registrationAgreementZhTw},</if>
+            <if test="termsConditionsZhTw != null and termsConditionsZhTw != ''">#{termsConditionsZhTw},</if>
+            <if test="incomeGuideTh != null and incomeGuideTh != ''">#{incomeGuideTh},</if>
+            <if test="certificateJa != null and certificateJa != ''">#{certificateJa},</if>
+            <if test="certificateTh != null and certificateTh != ''">#{certificateTh},</if>
+            <if test="latestEventsTh != null and latestEventsTh != ''">#{latestEventsTh},</if>
+            <if test="termsConditionsJa != null and termsConditionsJa != ''">#{termsConditionsJa},</if>
+            <if test="faqJa != null and faqJa != ''">#{faqJa},</if>
+            <if test="incomeGuideJa != null and incomeGuideJa != ''">#{incomeGuideJa},</if>
+            <if test="termsConditionsTh != null and termsConditionsTh != ''">#{termsConditionsTh},</if>
+            <if test="certificateKo != null and certificateKo != ''">#{certificateKo},</if>
+            <if test="latestEventsJa != null and latestEventsJa != ''">#{latestEventsJa},</if>
+            <if test="faqTh != null and faqTh != ''">#{faqTh},</if>
+            <if test="latestEventsKo != null and latestEventsKo != ''">#{latestEventsKo},</if>
+            <if test="registrationAgreementJa != null and registrationAgreementJa != ''">#{registrationAgreementJa},</if>
+            <if test="termsConditionsKo != null and termsConditionsKo != ''">#{termsConditionsKo},</if>
+            <if test="registrationAgreementTh != null and registrationAgreementTh != ''">#{registrationAgreementTh},</if>
+            <if test="faqZhTw != null and faqZhTw != ''">#{faqZhTw},</if>
+            <if test="latestEventsZhTw != null and latestEventsZhTw != ''">#{latestEventsZhTw},</if>
+            <if test="aboutUsTh != null and aboutUsTh != ''">#{aboutUsTh},</if>
+            <if test="aboutUsJa != null and aboutUsJa != ''">#{aboutUsJa},</if>
+            <if test="incomeGuideKo != null and incomeGuideKo != ''">#{incomeGuideKo},</if>
+            <if test="certificateZhTw != null and certificateZhTw != ''">#{certificateZhTw},</if>
+            <if test="faqKo != null and faqKo != ''">#{faqKo},</if>
+            <if test="incomeGuideZhTw != null and incomeGuideZhTw != ''">#{incomeGuideZhTw},</if>
+        </trim>
     </insert>
 
     <update id="updateOrderGlobalConfig" parameterType="OrderGlobalConfig">
@@ -112,6 +224,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="incomeGuideLocal != null">income_guide_local = #{incomeGuideLocal},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="aboutUsZhTw != null and aboutUsZhTw != ''">about_us_zh_tw = #{aboutUsZhTw},</if>
+            <if test="registrationAgreementKo != null and registrationAgreementKo != ''">registration_agreement_ko = #{registrationAgreementKo},</if>
+            <if test="aboutUsKo != null and aboutUsKo != ''">about_us_ko = #{aboutUsKo},</if>
+            <if test="registrationAgreementZhTw != null and registrationAgreementZhTw != ''">registration_agreement_zh_tw = #{registrationAgreementZhTw},</if>
+            <if test="termsConditionsZhTw != null and termsConditionsZhTw != ''">terms_conditions_zh_tw = #{termsConditionsZhTw},</if>
+            <if test="incomeGuideTh != null and incomeGuideTh != ''">income_guide_th = #{incomeGuideTh},</if>
+            <if test="certificateJa != null and certificateJa != ''">certificate_ja = #{certificateJa},</if>
+            <if test="certificateTh != null and certificateTh != ''">certificate_th = #{certificateTh},</if>
+            <if test="latestEventsTh != null and latestEventsTh != ''">latest_events_th = #{latestEventsTh},</if>
+            <if test="termsConditionsJa != null and termsConditionsJa != ''">terms_conditions_ja = #{termsConditionsJa},</if>
+            <if test="faqJa != null and faqJa != ''">faq_ja = #{faqJa},</if>
+            <if test="incomeGuideJa != null and incomeGuideJa != ''">income_guide_ja = #{incomeGuideJa},</if>
+            <if test="termsConditionsTh != null and termsConditionsTh != ''">terms_conditions_th = #{termsConditionsTh},</if>
+            <if test="certificateKo != null and certificateKo != ''">certificate_ko = #{certificateKo},</if>
+            <if test="latestEventsJa != null and latestEventsJa != ''">latest_events_ja = #{latestEventsJa},</if>
+            <if test="faqTh != null and faqTh != ''">faq_th = #{faqTh},</if>
+            <if test="latestEventsKo != null and latestEventsKo != ''">latest_events_ko = #{latestEventsKo},</if>
+            <if test="registrationAgreementJa != null and registrationAgreementJa != ''">registration_agreement_ja = #{registrationAgreementJa},</if>
+            <if test="termsConditionsKo != null and termsConditionsKo != ''">terms_conditions_ko = #{termsConditionsKo},</if>
+            <if test="registrationAgreementTh != null and registrationAgreementTh != ''">registration_agreement_th = #{registrationAgreementTh},</if>
+            <if test="faqZhTw != null and faqZhTw != ''">faq_zh_tw = #{faqZhTw},</if>
+            <if test="latestEventsZhTw != null and latestEventsZhTw != ''">latest_events_zh_tw = #{latestEventsZhTw},</if>
+            <if test="aboutUsTh != null and aboutUsTh != ''">about_us_th = #{aboutUsTh},</if>
+            <if test="aboutUsJa != null and aboutUsJa != ''">about_us_ja = #{aboutUsJa},</if>
+            <if test="incomeGuideKo != null and incomeGuideKo != ''">income_guide_ko = #{incomeGuideKo},</if>
+            <if test="certificateZhTw != null and certificateZhTw != ''">certificate_zh_tw = #{certificateZhTw},</if>
+            <if test="faqKo != null and faqKo != ''">faq_ko = #{faqKo},</if>
+            <if test="incomeGuideZhTw != null and incomeGuideZhTw != ''">income_guide_zh_tw = #{incomeGuideZhTw},</if>
         </trim>
         where id = #{id}
     </update>
@@ -121,7 +261,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <delete id="deleteOrderGlobalConfigByIds" parameterType="String">
-        delete from order_global_config where id in 
+        delete from order_global_config where id in
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>

@@ -21,6 +21,8 @@ public class FrontWebConfig implements WebMvcConfigurer {
                         "/api/config/getGlobalConfig",
                         "/api/creategoodes/create",
                         "/api/config/getZoneActive",
+                        "/api/config/getEmailAddress",
+                        "/api/config/getConfigByLang",
                         "/api/config/getTradeConfig" );
     }
 }

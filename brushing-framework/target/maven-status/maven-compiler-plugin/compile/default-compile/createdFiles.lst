@@ -29,11 +29,13 @@ com\brushing\framework\config\MyBatisConfig.class
 com\brushing\framework\web\domain\server\SysFile.class
 com\brushing\framework\config\ThreadPoolConfig.class
 com\brushing\framework\web\service\UserDetailsServiceImpl.class
+com\brushing\framework\init\GeoIpQueryQueryService.class
 com\brushing\framework\web\domain\Server.class
 com\brushing\framework\web\service\PermissionService.class
 com\brushing\framework\config\FilterConfig.class
 com\brushing\framework\web\service\TokenService.class
 com\brushing\framework\interceptor\RepeatSubmitInterceptor.class
+com\brushing\framework\aspectj\UpdateOrderMemberUserAop.class
 com\brushing\framework\manager\AsyncManager.class
 com\brushing\framework\front\FrontUserAuthInterceptor.class
 com\brushing\framework\config\ApplicationConfig.class
