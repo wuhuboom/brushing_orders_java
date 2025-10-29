@@ -21,6 +21,7 @@ public class OrderTopup extends BaseEntity
 
     /** 用户id */
     private Long userId;
+    private Long agentUserId;
 
     /** 金额 */
     private BigDecimal amout;
@@ -32,6 +33,14 @@ public class OrderTopup extends BaseEntity
 
 
     private String code;
+
+    public Long getAgentUserId() {
+        return agentUserId;
+    }
+
+    public void setAgentUserId(Long agentUserId) {
+        this.agentUserId = agentUserId;
+    }
 
     public String getCode() {
         return code;

@@ -25,12 +25,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="emailAddress"    column="email_address"    />
         <result property="levelStatus"    column="level_status"    />
         <result property="seriesStatus"    column="series_status"    />
+        <result property="autoReset"    column="auto_reset"    />
     </resultMap>
 
     <sql id="selectOrderSiteConfigVo">
         select id, site_name, customer_service_url,
         popup_message, copyright_info, register_bonus_amount,
-        maintenance_image, site_logo, favicon, currency_type,
+        maintenance_image, site_logo, favicon, currency_type,auto_reset,
         max_register_per_ip, ip_blacklist, register_enabled, totp_enabled,email_address,level_status,series_status,
         email_verification_enabled, create_time, update_time from order_site_config
     </sql>
@@ -56,6 +57,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <select id="selectOrderSiteConfigById" parameterType="Long" resultMap="OrderSiteConfigResult">
         <include refid="selectOrderSiteConfigVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectOrderSiteConfigByUserUpdate" parameterType="Long" resultMap="OrderSiteConfigResult">
+        select id, level_status from order_site_config
         where id = #{id}
     </select>
 
@@ -121,6 +127,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="emailAddress != null">email_address = #{emailAddress},</if>
             <if test="levelStatus != null">level_status = #{levelStatus},</if>
             <if test="seriesStatus != null">series_status = #{seriesStatus},</if>
+            <if test="autoReset != null">auto_reset = #{autoReset},</if>
         </trim>
         where id = #{id}
     </update>

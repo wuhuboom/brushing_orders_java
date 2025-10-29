@@ -162,6 +162,72 @@ public class ConfigController extends BaseController {
         return success(orderGlobalConfig);
     }
 
+    @GetMapping("/getCustomerServiceByLang")
+    @Operation(
+            summary = "根据语言获取客服地址",
+            description =
+                    "**请求参数：**\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）。\n" +
+                            "\n" +
+                    "**返回字段：**\n" +
+                    "'name': '客服名称',\n" +
+                    "'linkUrl': '跳转地址',\n" +
+                    "'iconUrl': '图标URL',\n" +
+                    "'sort': '排序',\n" +
+                    "'status': '状态 0正常 1停用'"
+    )
+    public AjaxResult getCustomerServiceByLang(@RequestParam(value = "lang", defaultValue = "en") @Parameter(description = "语言代码: en, zh, zh_tw, ja, th, ko") String lang) {
+        if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)) {
+            return AjaxResult.error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko");
+        }
+
+        OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
+        LocalTime orderTimeStart = controlConfig.getWorkTimeStart();
+        LocalTime orderTimeEnd = controlConfig.getWorkTimeEnd();
+        SysTimeZone active = sysTimeZoneService.getActive();
+        String tzName = active.getTzName();
+        LocalTime now = LocalTime.now(ZoneId.of(tzName));
+        if (!isWithinWithdrawTimeRange(now, orderTimeStart, orderTimeEnd)) {
+            return AjaxResult.error(920, "Customer service is currently unavailable");
+        }
+
+        List<OrderCustomerService> orderCustomerServices = orderCustomerServiceService.selectOrderCustomerServiceList(null);
+        if (orderCustomerServices.size() == 0) {
+            return AjaxResult.error(701, "No data");
+        }
+
+        // 根据语言提取对应名称，构建响应列表
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (OrderCustomerService service : orderCustomerServices) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("name", getLocalizedName(service, lang));  // 提取语言特定名称
+            item.put("linkUrl", service.getLinkUrl());
+            item.put("iconUrl", service.getIconUrl());
+            item.put("sort", service.getSort());
+            item.put("status", service.getStatus());
+            resultList.add(item);
+        }
+        return AjaxResult.success(resultList);
+    }
+
+    private String getLocalizedName(OrderCustomerService service, String lang) {
+        switch (lang) {
+            case "zh":
+                return service.getNameZh() != null ? service.getNameZh() : service.getName();
+            case "zh_tw":
+                return service.getNameZhTw() != null ? service.getNameZhTw() : service.getName();
+            case "ja":
+                return service.getNameJp() != null ? service.getNameJp() : service.getName();
+            case "th":
+                return service.getNameTh() != null ? service.getNameTh() : service.getName();
+            case "ko":
+                return service.getNameKo() != null ? service.getNameKo() : service.getName();
+            default:  // "en"
+                return service.getName();
+        }
+    }
+
     @GetMapping("/getConfigByLang")
     @Operation(
             summary = "根据语言获取全局配置",

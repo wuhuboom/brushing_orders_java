@@ -78,6 +78,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
                 AND date_format(o.order_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
             </if>
+            <if test="agentUserId != null and agentUserId != ''">
+                AND (FIND_IN_SET(#{agentUserId}, u.ancestors) > 0 OR o.user_id = #{agentUserId})
+            </if>
         </where>
         order by o.create_time desc
     </select>

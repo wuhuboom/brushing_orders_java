@@ -2,7 +2,13 @@ package com.brushing.web.controller.member;
 
 import java.util.List;
 
+import com.brushing.common.core.domain.entity.SysUser;
+import com.brushing.common.utils.StringUtils;
+import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.OrderWithdrawal;
+import com.brushing.member.service.IOrderMemberUserService;
 import com.brushing.member.service.IOrderWithdrawalService;
+import com.brushing.system.service.ISysUserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +45,11 @@ public class OrderInfoController extends BaseController
     @Autowired
     private IOrderWithdrawalService withdrawalService;
 
+    @Autowired
+    private ISysUserService userService;
+
+    @Autowired
+    private IOrderMemberUserService orderMemberUserService;
     /**
      * 查询订单列表列表
      */
@@ -46,7 +57,27 @@ public class OrderInfoController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(OrderInfo orderInfo)
     {
+        Long userId = getUserId();
+        SysUser sysUser = userService.selectUserById(userId);
+        if (sysUser.getUserName().equals("admin")){
+            startPage();
+            List<OrderInfo> list = orderInfoService.selectOrderInfoList(orderInfo);
+            return getDataTable(list);
+        }
+        String agentUser = sysUser.getAgentUser();
+        if (StringUtils.isEmpty(agentUser)){
+            startPage();
+            List<OrderInfo> list = orderInfoService.selectOrderInfoList(orderInfo);
+            return getDataTable(list);
+        }
+        OrderMemberUser byUsername = orderMemberUserService.findByUsername(agentUser);
+        if (StringUtils.isNull(byUsername)){
+            startPage();
+            List<OrderInfo> list = orderInfoService.selectOrderInfoList(orderInfo);
+            return getDataTable(list);
+        }
         startPage();
+        orderInfo.setAgentUserId(byUsername.getId());
         List<OrderInfo> list = orderInfoService.selectOrderInfoList(orderInfo);
         return getDataTable(list);
     }

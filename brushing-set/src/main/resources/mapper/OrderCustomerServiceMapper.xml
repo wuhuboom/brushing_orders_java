@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
-PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.brushing.set.mapper.OrderCustomerServiceMapper">
-    
+
     <resultMap type="OrderCustomerService" id="OrderCustomerServiceResult">
         <result property="id"    column="id"    />
         <result property="name"    column="name"    />
@@ -13,23 +13,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="status"    column="status"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
+        <result property="nameZh"    column="name_zh"    />
+        <result property="nameJp"    column="name_jp"    />
+        <result property="nameKo"    column="name_ko"    />
+        <result property="nameTh"    column="name_th"    />
+        <result property="nameZhTw"    column="name_zh_tw"    />
     </resultMap>
 
     <sql id="selectOrderCustomerServiceVo">
-        select id, name, link_url, icon_url, sort, status, create_time, update_time from order_customer_service
+        select id, name, link_url, icon_url, sort, status, create_time, update_time, name_zh, name_jp, name_ko, name_th, name_zh_tw from order_customer_service
     </sql>
 
     <select id="selectOrderCustomerServiceList" parameterType="OrderCustomerService" resultMap="OrderCustomerServiceResult">
         <include refid="selectOrderCustomerServiceVo"/>
-        <where>  
+        <where>
             <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
             <if test="linkUrl != null  and linkUrl != ''"> and link_url = #{linkUrl}</if>
             <if test="iconUrl != null  and iconUrl != ''"> and icon_url = #{iconUrl}</if>
             <if test="sort != null "> and sort = #{sort}</if>
-            <if test="status != null "> and status = #{status}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="nameZh != null  and nameZh != ''"> and name_zh = #{nameZh}</if>
+            <if test="nameJp != null  and nameJp != ''"> and name_jp = #{nameJp}</if>
+            <if test="nameKo != null  and nameKo != ''"> and name_ko = #{nameKo}</if>
+            <if test="nameTh != null  and nameTh != ''"> and name_th = #{nameTh}</if>
+            <if test="nameZhTw != null  and nameZhTw != ''"> and name_zh_tw = #{nameZhTw}</if>
         </where>
     </select>
-    
+
     <select id="selectOrderCustomerServiceById" parameterType="Long" resultMap="OrderCustomerServiceResult">
         <include refid="selectOrderCustomerServiceVo"/>
         where id = #{id}
@@ -45,7 +55,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null">status,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
-         </trim>
+            <if test="nameZh != null">name_zh,</if>
+            <if test="nameJp != null">name_jp,</if>
+            <if test="nameKo != null">name_ko,</if>
+            <if test="nameTh != null">name_th,</if>
+            <if test="nameZhTw != null">name_zh_tw,</if>
+        </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
             <if test="linkUrl != null and linkUrl != ''">#{linkUrl},</if>
@@ -54,7 +69,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null">#{status},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateTime != null">#{updateTime},</if>
-         </trim>
+            <if test="nameZh != null">#{nameZh},</if>
+            <if test="nameJp != null">#{nameJp},</if>
+            <if test="nameKo != null">#{nameKo},</if>
+            <if test="nameTh != null">#{nameTh},</if>
+            <if test="nameZhTw != null">#{nameZhTw},</if>
+        </trim>
     </insert>
 
     <update id="updateOrderCustomerService" parameterType="OrderCustomerService">
@@ -67,6 +87,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null">status = #{status},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="nameZh != null">name_zh = #{nameZh},</if>
+            <if test="nameJp != null">name_jp = #{nameJp},</if>
+            <if test="nameKo != null">name_ko = #{nameKo},</if>
+            <if test="nameTh != null">name_th = #{nameTh},</if>
+            <if test="nameZhTw != null">name_zh_tw = #{nameZhTw},</if>
         </trim>
         where id = #{id}
     </update>
@@ -76,7 +101,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <delete id="deleteOrderCustomerServiceByIds" parameterType="String">
-        delete from order_customer_service where id in 
+        delete from order_customer_service where id in
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>

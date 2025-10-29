@@ -94,6 +94,8 @@ public class SysUser extends BaseEntity
 
     private String ipaddr;
 
+    private String roleName;
+
     private String loginLocation;
 
 
@@ -108,6 +110,37 @@ public class SysUser extends BaseEntity
      */
     private String totpEnabled ;
 
+    /** 代理用户 */
+    @Excel(name = "代理用户")
+    private String agentUser;
+
+    /** 代理开关 */
+    @Excel(name = "代理开关")
+    private String agentSwitch;
+
+    public String getRoleName() {
+        return roleName;
+    }
+
+    public void setRoleName(String roleName) {
+        this.roleName = roleName;
+    }
+
+    public String getAgentUser() {
+        return agentUser;
+    }
+
+    public void setAgentUser(String agentUser) {
+        this.agentUser = agentUser;
+    }
+
+    public String getAgentSwitch() {
+        return agentSwitch;
+    }
+
+    public void setAgentSwitch(String agentSwitch) {
+        this.agentSwitch = agentSwitch;
+    }
 
     public String getTotpEnabled() {
         return totpEnabled;

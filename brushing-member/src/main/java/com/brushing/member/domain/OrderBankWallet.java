@@ -38,6 +38,8 @@ public class OrderBankWallet extends BaseEntity
     @Excel(name = "银行卡号")
     private String bankCard;
 
+    private String bankType;
+
     /** 钱包类型 */
     @Excel(name = "钱包类型")
     private String walletType;
@@ -46,7 +48,15 @@ public class OrderBankWallet extends BaseEntity
     @Excel(name = "钱包地址")
     private String walletAddress;
 
-    public void setId(Long id) 
+    public String getBankType() {
+        return bankType;
+    }
+
+    public void setBankType(String bankType) {
+        this.bankType = bankType;
+    }
+
+    public void setId(Long id)
     {
         this.id = id;
     }

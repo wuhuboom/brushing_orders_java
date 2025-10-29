@@ -4,13 +4,19 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
+import com.brushing.common.core.domain.entity.SysUser;
 import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.OrderNoGenerator;
+import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderAccountChange;
 import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.OrderTopup;
 import com.brushing.member.service.IOrderAccountChangeService;
 import com.brushing.member.service.IOrderMemberUserService;
+import com.brushing.set.domain.OrderSiteConfig;
+import com.brushing.set.service.IOrderSiteConfigService;
+import com.brushing.system.service.ISysUserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,13 +51,19 @@ public class OrderWithdrawalController extends BaseController
     private IOrderWithdrawalService orderWithdrawalService;
 
     @Autowired
-    private IOrderMemberUserService userService;
+    private IOrderMemberUserService orderMemberUserService;
 
     @Autowired
     private IOrderWithdrawalService withdrawalService;
 
     @Autowired
     private IOrderAccountChangeService accountChangeService;
+
+    @Autowired
+    private ISysUserService userService;
+
+    @Autowired
+    private IOrderSiteConfigService siteConfigService;
 
     /**
      * 查询提现记录列表
@@ -60,7 +72,27 @@ public class OrderWithdrawalController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(OrderWithdrawal orderWithdrawal)
     {
+        Long userId = getUserId();
+        SysUser sysUser = userService.selectUserById(userId);
+        if (sysUser.getUserName().equals("admin")){
+            startPage();
+            List<OrderWithdrawal> list = orderWithdrawalService.selectOrderWithdrawalList(orderWithdrawal);
+            return getDataTable(list);
+        }
+        String agentUser = sysUser.getAgentUser();
+        if (StringUtils.isEmpty(agentUser)){
+            startPage();
+            List<OrderWithdrawal> list = orderWithdrawalService.selectOrderWithdrawalList(orderWithdrawal);
+            return getDataTable(list);
+        }
+        OrderMemberUser byUsername = orderMemberUserService.findByUsername(agentUser);
+        if (StringUtils.isNull(byUsername)){
+            startPage();
+            List<OrderWithdrawal> list = orderWithdrawalService.selectOrderWithdrawalList(orderWithdrawal);
+            return getDataTable(list);
+        }
         startPage();
+        orderWithdrawal.setAgentUserId(byUsername.getId());
         List<OrderWithdrawal> list = orderWithdrawalService.selectOrderWithdrawalList(orderWithdrawal);
         return getDataTable(list);
     }
@@ -110,20 +142,22 @@ public class OrderWithdrawalController extends BaseController
         OrderWithdrawal withdrawal = orderWithdrawalService.selectOrderWithdrawalById(orderWithdrawal.getId());
         orderWithdrawal.setAuditTime(DateUtils.getNowDate());
         if (orderWithdrawal.getStatus().equals("0")){
-            OrderMemberUser orderMemberUser = userService.selectOrderMemberUserById(orderWithdrawal.getUserId());
-            orderMemberUser.setDealCount(0);
-
-            userService.updateOrderMemberUser(orderMemberUser);
+            OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(orderWithdrawal.getUserId());
+            OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+            if (orderSiteConfig.getAutoReset().equals("0")){
+                orderMemberUser.setDealCount(0);
+            }
+            orderMemberUserService.updateOrderMemberUser(orderMemberUser);
         }
         if (orderWithdrawal.getStatus().equals("2")){
-            OrderMemberUser orderMemberUser = userService.selectOrderMemberUserById(orderWithdrawal.getUserId());
+            OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(orderWithdrawal.getUserId());
             BigDecimal balance = orderMemberUser.getBalance();
             BigDecimal amount = withdrawal.getAmount();
             BigDecimal add = balance.add(amount);
             recordAccountChange(orderMemberUser.getId(),orderMemberUser.getUsername(),"4",balance,amount,add,"提现审核不通过, 操作人ID:" +
                     " "+getUserId()+", 操作人用户名: "+getUsername()+", 提现金额: "+amount);
             orderMemberUser.setBalance(add);
-            userService.updateOrderMemberUser(orderMemberUser);
+            orderMemberUserService.updateOrderMemberUser(orderMemberUser);
 
         }
         return toAjax(orderWithdrawalService.updateOrderWithdrawal(orderWithdrawal));

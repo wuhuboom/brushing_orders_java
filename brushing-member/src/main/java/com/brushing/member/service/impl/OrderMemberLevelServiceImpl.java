@@ -92,4 +92,11 @@ public class OrderMemberLevelServiceImpl implements IOrderMemberLevelService
     {
         return orderMemberLevelMapper.deleteOrderMemberLevelById(id);
     }
+
+    @Override
+    public int selectLevelById(Long id) {
+        return orderMemberLevelMapper.selectLevelById(id);
+    }
+
+
 }

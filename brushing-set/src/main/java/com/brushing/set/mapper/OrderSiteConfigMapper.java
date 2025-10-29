@@ -19,6 +19,8 @@ public interface OrderSiteConfigMapper
      */
     public OrderSiteConfig selectOrderSiteConfigById(Long id);
 
+    public OrderSiteConfig selectOrderSiteConfigByUserUpdate(Long id);
+
     /**
      * 查询网站设置列表
      * 

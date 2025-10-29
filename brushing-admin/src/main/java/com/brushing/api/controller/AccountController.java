@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZoneId;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import java.math.BigDecimal;
@@ -41,6 +42,7 @@ import java.util.List;
         name = "账户管理",
         description =
                 "错误码对照表：\n" +
+                        "500 : 系统级别错误，一般是后台报错，可提示用户稍后重试 \n" +
                         "501: Not in the time frame （不在允许的提现时间范围内）\n" +
                         "502: Less than the minimum withdrawal amount （提现金额小于最低限额）\n" +
                         "503: Exceeding the maximum cash withdrawal （提现金额超过最大限额）\n" +
@@ -54,7 +56,11 @@ import java.util.List;
                         "511: Please try again later （请稍后再试）\n" +
                         "512: Withdrawal is not open （提现未开启）\n" +
                         "513: Please check your withdrawal settings （提现方式未设置）\n" +
-                        "514: Withdrawal is not possible at the moment （当前不可提现）"
+                        "514: Withdrawal is not possible at the moment （当前不可提现）\n" +
+                        "515:  表单验证未通过" +
+                        "516:  请勿重复添加" +
+                        "517:  提现金额达到当日最大额度" +
+                        "518:  提现次数达到当日最大"
 )
 @RestController
 @RequestMapping("/api/account")
@@ -78,6 +84,9 @@ public class AccountController extends BaseController {
 
     @Autowired
     private IOrderBankWalletService bankWalletService;
+
+    @Autowired
+    private IOrderMemberLevelService memberLevelService;
 
 
 
@@ -110,7 +119,7 @@ public class AccountController extends BaseController {
     }
 
     @PostMapping("/withdrawal")
-    @Operation(summary = "发起提现", description = "amount:金额，tradePassword：交易密码")
+    @Operation(summary = "发起提现", description = "amount:金额，tradePassword：交易密码,walletId银行或者钱包id")
     @Transactional
     public AjaxResult withdrawal(@RequestBody WithdrawalDto dto, @RequestAttribute("username") String username) {
         log.info("用户 {} 发起提现请求，金额: {}", username, dto.getAmount());
@@ -142,15 +151,28 @@ public class AccountController extends BaseController {
         }
 
         BigDecimal amount = dto.getAmount().setScale(2, RoundingMode.HALF_UP);
-        OrderMemberLevel userLevel = user.getUserLevel();
-        BigDecimal minWithdrawAmount = userLevel.getMinWithdrawAmount();
-        BigDecimal maxWithdrawAmount = userLevel.getMaxWithdrawAmount();
 
-        if (minWithdrawAmount.compareTo(amount) > 0) {
-            return AjaxResult.error(502, ERR_BELOW_MIN_AMOUNT);
-        }
-        if (amount.compareTo(maxWithdrawAmount) > 0) {
-            return AjaxResult.error(503, ERR_EXCEED_MAX_AMOUNT);
+        int level = memberLevelService.selectLevelById(user.getLevelId());
+        OrderMemberLevel userLevel = user.getUserLevel();
+        if (level<3){
+            Map<String, Object> stats = withdrawalService.selectDailyWithdrawalStatsByUserId(user.getId());
+            BigDecimal totalAmount = (BigDecimal) stats.get("totalAmount");
+            Long count = (Long) stats.get("withdrawalCount");
+            if (totalAmount.compareTo(userLevel.getWithdrawLimit())>0){
+                return AjaxResult.error(517, "The withdrawal amount has reached the maximum limit for the day");
+            }
+            if (count>userLevel.getWithdrawCount().longValue()){
+                return AjaxResult.error(518, "The number of withdrawals has reached the daily limit");
+            }
+            BigDecimal minWithdrawAmount = userLevel.getMinWithdrawAmount();
+            BigDecimal maxWithdrawAmount = userLevel.getMaxWithdrawAmount();
+
+            if (minWithdrawAmount.compareTo(amount) > 0) {
+                return AjaxResult.error(502, ERR_BELOW_MIN_AMOUNT);
+            }
+            if (amount.compareTo(maxWithdrawAmount) > 0) {
+                return AjaxResult.error(503, ERR_EXCEED_MAX_AMOUNT);
+            }
         }
 
        /* if (StringUtils.isEmpty(dto.getTradePassword()) || StringUtils.isEmpty(user.getTradePassword())) {
@@ -170,8 +192,10 @@ public class AccountController extends BaseController {
         if (user.getBalance().compareTo(amount) < 0) {
             return AjaxResult.error(507, ERR_INSUFFICIENT_BALANCE);
         }
-        if (StringUtils.isEmpty(user.getWithdrawName()) || StringUtils.isEmpty(user.getWithdrawAddress()) || StringUtils.isEmpty(user.getWithdrawType())) {
-            return AjaxResult.error(513, "Please check your withdrawal settings");
+        if (StringUtils.isNull(dto.getWalletId())){
+            if (StringUtils.isEmpty(user.getWithdrawName()) || StringUtils.isEmpty(user.getWithdrawAddress()) || StringUtils.isEmpty(user.getWithdrawType())) {
+                return AjaxResult.error(513, "Please check your withdrawal settings");
+            }
         }
 
         try {
@@ -193,7 +217,9 @@ public class AccountController extends BaseController {
         withdrawal.setWithdrawType(user.getWithdrawType());
         withdrawal.setWithdrawAddress(user.getWithdrawAddress());
         withdrawal.setWithdrawName(user.getWithdrawName());
-
+        if (StringUtils.isNotNull(dto.getWalletId())){
+            withdrawal.setWalletId(dto.getWalletId());
+        }
         user.setTodayWithdrawCount(user.getTotalWithdrawCount() + 1);
         user.setTodayWithdrawCount(user.getTodayWithdrawCount() + 1);
         user.setTodayResetCount(user.getTotalResetCount() + 1);
@@ -234,7 +260,7 @@ public class AccountController extends BaseController {
 
     @PostMapping("/addWalletBank")
     @Operation(summary = "添加修改银行卡/钱包",description = "传id就是修改，" +
-            "不传id就是新增，type ： 1 为银行卡 2 为钱包  ，name: 姓名，  bankCode：银行编码， bankCard ：银行卡号，" +
+            "不传id就是新增，type ： 1 为银行卡 2 为钱包  ，name: 姓名，  bankCode：银行编码， bankCard ：银行卡号， bankType ：账户类型，" +
             "walletType ：钱包类型 ，walletAddress :钱包地址 。 如果是银行卡只需传name，bankCode，bankCard。钱包只需要传" +
             "name，walletType，walletAddress")
     public AjaxResult addWalletBank(@RequestBody WalletDto dto,@RequestAttribute("username") String username){
@@ -243,18 +269,44 @@ public class AccountController extends BaseController {
         if (user == null) {
             return AjaxResult.error(509, ERR_USER_NOT_FOUND);
         }
+
+        String type = dto.getType();
+        if (StringUtils.isEmpty(type)||StringUtils.isEmpty(dto.getName())){
+            return AjaxResult.error(515, "Form validation failed");
+        }
+
+        if (StringUtils.isNull(dto.getId())){
+            OrderBankWallet bankWallet = new OrderBankWallet();
+            bankWallet.setUserId(user.getId());
+            List<OrderBankWallet> list = bankWalletService.selectOrderBankWalletList(bankWallet);
+            for (OrderBankWallet wallet:list){
+                if (wallet.getType().equals(type)){
+                    return AjaxResult.error(516,"Please do not add duplicates");
+                }
+            }
+        }
         OrderBankWallet orderBankWallet = new OrderBankWallet();
+        orderBankWallet.setType(dto.getType());
+        if (type.equals("1")){
+            if (StringUtils.isEmpty(dto.getBankCard())||StringUtils.isEmpty(dto.getBankCode())||StringUtils.isEmpty(dto.getBankType())){
+                return AjaxResult.error(515, "Form validation failed");
+            }
+        }else{
+            if (StringUtils.isEmpty(dto.getWalletType())||StringUtils.isEmpty(dto.getWalletAddress())){
+                return AjaxResult.error(515, "Form validation failed");
+            }
+        }
         orderBankWallet.setName(dto.getName());
         orderBankWallet.setBankCode(dto.getBankCode());
         orderBankWallet.setUserId(user.getId());
         orderBankWallet.setBankCard(dto.getBankCard());
         orderBankWallet.setWalletType(dto.getWalletType());
         orderBankWallet.setWalletAddress(dto.getWalletAddress());
-
+        orderBankWallet.setBankType(dto.getBankType());
         if (StringUtils.isNull(dto.getId())){
             bankWalletService.insertOrderBankWallet(orderBankWallet);
         }else{
-            orderBankWallet.setId(orderBankWallet.getUserId());
+            orderBankWallet.setId(dto.getId());
             bankWalletService.updateOrderBankWallet(orderBankWallet);
         }
         return success();
@@ -276,6 +328,7 @@ public class AccountController extends BaseController {
         return ajaxResult;
     }
 
+    @Operation(summary = "通过id删除银行卡/钱包")
     @GetMapping("/delBankWallet/{id}")
     public AjaxResult delBankWallet(@PathVariable("id")Long id,@RequestAttribute("username") String username){
         OrderMemberUser user = memberUserService.findByUsername(username);
@@ -285,6 +338,19 @@ public class AccountController extends BaseController {
         int i = bankWalletService.deleteOrderBankWalletById(id);
         return success();
     }
+
+
+    @Operation(summary = "通过id获取银行卡/钱包")
+    @GetMapping("/getBankWallet/{id}")
+    public AjaxResult getBankWallet(@PathVariable("id")Long id,@RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        OrderBankWallet orderBankWallet = bankWalletService.selectOrderBankWalletById(id);
+        return success(orderBankWallet);
+    }
+
 
 
 

@@ -31,6 +31,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <!-- 当日订单数和提现次数 -->
         <result property="dailyOrderCount" column="daily_order_count" />
         <result property="dailyWithdrawalCount" column="daily_withdrawal_count" />
+        <result property="walletId" column="wallet_id" />
+        <association property="bankWallet"     javaType="OrderBankWallet"  resultMap="OrderBankWalletResult" />
+    </resultMap>
+
+    <resultMap type="OrderBankWallet" id="OrderBankWalletResult">
+        <result property="type"    column="bankWalletType"    />
+        <result property="name"    column="bankWalletName"    />
+        <result property="bankCode"    column="bank_code"    />
+        <result property="bankType"    column="bank_type"    />
+        <result property="bankCard"    column="bank_card"    />
+        <result property="walletType"    column="wallet_type"    />
+        <result property="walletAddress"    column="wallet_address"    />
     </resultMap>
 
     <sql id="selectOrderWithdrawalVo">
@@ -49,6 +61,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         w.withdraw_address,
         w.withdraw_type,
         w.withdraw_fee,
+        w.wallet_id,
+        bw.type as bankWalletType,
+        bw.name as bankWalletName,
+        bw.bank_code,
+        bw.bank_type,
+        bw.bank_card,
+        bw.wallet_type,
+        bw.wallet_address,
         u.id AS user_id,
         u.username,
         u.phone,
@@ -68,6 +88,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         FROM order_withdrawal w
         LEFT JOIN order_member_user u ON u.id = w.user_id
         LEFT JOIN order_member_user pu ON u.parent_id = pu.id
+        LEFT JOIN order_bank_wallet bw ON w.wallet_id = bw.id
     </sql>
 
     <select id="selectOrderWithdrawalList" parameterType="OrderWithdrawal" resultMap="OrderWithdrawalResult">
@@ -78,6 +99,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="userId != null  and userId != ''"> and w.user_id = #{userId}</if>
             <if test="status != null  and status != ''"> and w.status = #{status}</if>
             <if test="isReal != null  and isReal != ''"> and u.is_real = #{isReal}</if>
+            <if test="agentUserId != null and agentUserId != ''">
+                AND (FIND_IN_SET(#{agentUserId}, u.ancestors) > 0 OR w.user_id = #{agentUserId})
+            </if>
         </where>
         order by
         CASE
@@ -110,6 +134,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE status = 1
     </select>
 
+    <select id="selectDailyWithdrawalStatsByUserId" parameterType="Long" resultType="map">
+        SELECT
+        IFNULL(SUM(amount), 0) AS totalAmount,
+        COUNT(*) AS withdrawalCount
+        FROM order_withdrawal
+        WHERE user_id = #{userId}
+        AND DATE(application_time) = CURDATE()
+        AND status = 1
+    </select>
+
     <insert id="insertOrderWithdrawal" parameterType="OrderWithdrawal" useGeneratedKeys="true" keyProperty="id">
         insert into order_withdrawal
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -126,6 +160,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="withdrawAddress != null">withdraw_address,</if>
             <if test="withdrawType != null">withdraw_type,</if>
             <if test="withdrawFee != null">withdraw_fee,</if>
+            <if test="walletId != null">wallet_id,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="code != null and code != ''">#{code},</if>
@@ -141,6 +176,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="withdrawAddress != null">#{withdrawAddress},</if>
             <if test="withdrawType != null">#{withdrawType},</if>
             <if test="withdrawFee != null">#{withdrawFee},</if>
+            <if test="walletId != null">#{walletId},</if>
          </trim>
     </insert>
 

@@ -78,6 +78,16 @@ public class OrderSiteConfig extends BaseEntity
 
     private String  levelStatus;
     private String  seriesStatus;
+    //提现后是否开启自动充值订单数
+    private String  autoReset;
+
+    public String getAutoReset() {
+        return autoReset;
+    }
+
+    public void setAutoReset(String autoReset) {
+        this.autoReset = autoReset;
+    }
 
     public String getLevelStatus() {
         return levelStatus;

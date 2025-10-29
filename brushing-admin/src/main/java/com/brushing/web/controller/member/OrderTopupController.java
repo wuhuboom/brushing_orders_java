@@ -1,6 +1,12 @@
 package com.brushing.web.controller.member;
 
 import java.util.List;
+
+import com.brushing.common.core.domain.entity.SysUser;
+import com.brushing.common.utils.StringUtils;
+import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.service.IOrderMemberUserService;
+import com.brushing.system.service.ISysUserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +40,12 @@ public class OrderTopupController extends BaseController
     @Autowired
     private IOrderTopupService orderTopupService;
 
+    @Autowired
+    private ISysUserService userService;
+
+    @Autowired
+    private IOrderMemberUserService orderMemberUserService;
+
     /**
      * 查询充值记录列表
      */
@@ -41,7 +53,27 @@ public class OrderTopupController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(OrderTopup orderTopup)
     {
+        Long userId = getUserId();
+        SysUser sysUser = userService.selectUserById(userId);
+        if (sysUser.getUserName().equals("admin")){
+            startPage();
+            List<OrderTopup> list = orderTopupService.selectOrderTopupList(orderTopup);
+            return getDataTable(list);
+        }
+        String agentUser = sysUser.getAgentUser();
+        if (StringUtils.isEmpty(agentUser)){
+            startPage();
+            List<OrderTopup> list = orderTopupService.selectOrderTopupList(orderTopup);
+            return getDataTable(list);
+        }
+        OrderMemberUser byUsername = orderMemberUserService.findByUsername(agentUser);
+        if (StringUtils.isNull(byUsername)){
+            startPage();
+            List<OrderTopup> list = orderTopupService.selectOrderTopupList(orderTopup);
+            return getDataTable(list);
+        }
         startPage();
+        orderTopup.setAgentUserId(byUsername.getId());
         List<OrderTopup> list = orderTopupService.selectOrderTopupList(orderTopup);
         return getDataTable(list);
     }

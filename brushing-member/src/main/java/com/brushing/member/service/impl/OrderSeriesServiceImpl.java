@@ -1,9 +1,8 @@
 package com.brushing.member.service.impl;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderGoods;
@@ -19,7 +18,7 @@ import com.brushing.member.mapper.OrderSeriesMapper;
 import com.brushing.member.domain.OrderSeries;
 import java.math.RoundingMode;
 import com.brushing.member.service.IOrderSeriesService;
-import java.util.Random;
+
 /**
  * 连单Service业务层处理
  * 
@@ -73,13 +72,13 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
      */
     @Override
     public int insertOrderSeries(OrderSeries orderSeries) {
-        // 查询
-        Integer orderIndex = orderSeries.getOrderIndex() - 1;  // 起始值
-        Long[] goodsIds = orderSeries.getGoodsIds();       // 商品ID数组
+        // 重复检查：从传入 orderIndex 开始（无 -1），匹配 insert 分配范围
+        Integer startCheckIndex = orderSeries.getOrderIndex();  // 假设传入的是下一个起始位置
+        Long[] goodsIds = orderSeries.getGoodsIds();
 
         List<Integer> orderIndexes = new ArrayList<>();
         for (int i = 0; i < goodsIds.length; i++) {
-            orderIndexes.add(orderIndex + i);
+            orderIndexes.add(startCheckIndex + i);
         }
         List<OrderSeries> orderSeries1 = orderSeriesMapper.selectByUserIdAndOrderIndexes(orderSeries.getUserId(), orderIndexes);
         if (orderSeries1.size() > 0) {
@@ -103,30 +102,31 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
         // 统一计算总金额
         BigDecimal totalAmount = frozenAmount.add(balance);
 
-        // 如果 frozenAmount == 0 或 balance == 0，走简单分支（使用真实价格，只检查 vs balance）
-        if (frozenAmount.compareTo(BigDecimal.ZERO) == 0 || balance.compareTo(BigDecimal.ZERO) == 0) {
-            // 简单分支：使用商品真实价格，检查总价 <= balance（不考虑 frozenAmount，因为条件已排除两者都有值）
-            BigDecimal totalRealPrice = BigDecimal.ZERO;
+        // 如果 frozenAmount == 0 或 balance == 0，走简单分支（使用真实价格）
+        if (frozenAmount.compareTo(BigDecimal.ZERO) == 0 || balance.compareTo(BigDecimal.ZERO) <= 0) {
+            // 简单分支：使用商品真实价格
+            Map<Long, OrderGoods> goodsMap = new HashMap<>();  // 优化：缓存商品信息
             for (int i = 0; i < goodsIds.length; i++) {
                 OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
                 if (orderGoods == null) {
                     return 6; // 商品不存在，返回6
                 }
-                totalRealPrice = totalRealPrice.add(orderGoods.getPrice());
+                goodsMap.put(goodsIds[i], orderGoods);
             }
 
+            // 插入（使用缓存的 goods）
+            Integer insertStart = orderSeries.getOrderIndex() - 1;  // 保留 -1，用于递增起始
             for (int i = 0; i < goodsIds.length; i++) {
-                // 获取商品信息
-                OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
+                OrderGoods orderGoods = goodsMap.get(goodsIds[i]);
 
                 // 创建订单
                 OrderSeries series = new OrderSeries();
-                if (userLevel.getOrderCount() <= orderIndex) {
-                    orderIndex = 1;
-                    series.setOrderIndex(orderIndex);
+                if (userLevel.getOrderCount() <= insertStart) {
+                    insertStart = 1;
+                    series.setOrderIndex(insertStart);
                 } else {
-                    orderIndex += 1;
-                    series.setOrderIndex(orderIndex);
+                    insertStart += 1;
+                    series.setOrderIndex(insertStart);
                 }
 
                 series.setCommissionRatio(orderSeries.getCommissionRatio());
@@ -151,13 +151,19 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
         // 只有一个连单时的特殊处理
         if (totalItems == 1) {
             BigDecimal price = totalAmount; // 只有一个订单时，价格直接等于总金额
-            OrderSeries series = new OrderSeries();
-            if (userLevel.getOrderCount() <= orderIndex) {
-                orderIndex = 1;
-            } else {
-                orderIndex += 1;
+            OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[0]);
+            if (orderGoods == null) {
+                return 6; // 商品不存在，返回6
             }
-            series.setOrderIndex(orderIndex);
+
+            Integer insertStart = orderSeries.getOrderIndex() - 1;  // 保留 -1
+            OrderSeries series = new OrderSeries();
+            if (userLevel.getOrderCount() <= insertStart) {
+                insertStart = 1;
+            } else {
+                insertStart += 1;
+            }
+            series.setOrderIndex(insertStart);
             series.setCommissionRatio(orderSeries.getCommissionRatio());
             series.setProductId(goodsIds[0]);
             series.setUserId(orderSeries.getUserId());
@@ -172,12 +178,19 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
         BigDecimal remainingBalance = balance;
         BigDecimal sumFirst = BigDecimal.ZERO;
         List<BigDecimal> prices = new ArrayList<>();
+        Map<Long, OrderGoods> goodsMap = new HashMap<>();  // 优化：缓存
 
         for (int i = 0; i < totalItems - 1; i++) { // 前订单
+            // 检查商品存在
+            OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
+            if (orderGoods == null) {
+                return 6; // 商品不存在，返回6
+            }
+            goodsMap.put(goodsIds[i], orderGoods);
+
             // 每次上限：当前剩余余额 / 2
             BigDecimal maxThis = remainingBalance.divide(BigDecimal.valueOf(2), 0, RoundingMode.DOWN); // 整数除法
             if (maxThis.compareTo(BigDecimal.ZERO) <= 0) {
-                // 剩余不足，继续分配最小值或报错（但按需求，不报不足，直接设0？这里设小随机）
                 maxThis = BigDecimal.ONE; // 最小1，避免0
             }
 
@@ -196,13 +209,14 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
             prices.add(price);
             sumFirst = sumFirst.add(price);
             remainingBalance = remainingBalance.subtract(price);
-
-            // 获取商品信息（可选：用作校验）
-            OrderGoods orderGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[i]);
-            if (orderGoods == null) {
-                return 6; // 商品不存在，返回6
-            }
         }
+
+        // 检查最后一个商品
+        OrderGoods lastGoods = orderGoodsMapper.selectOrderGoodsById(goodsIds[totalItems - 1]);
+        if (lastGoods == null) {
+            return 6; // 商品不存在，返回6
+        }
+        goodsMap.put(goodsIds[totalItems - 1], lastGoods);
 
         // 最后一个订单：补齐总金额
         BigDecimal lastPrice = totalAmount.subtract(sumFirst);
@@ -216,17 +230,19 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
         }
 
         // 现在插入所有订单
+        Integer insertStart = orderSeries.getOrderIndex() - 1;  // 保留 -1
         for (int i = 0; i < totalItems; i++) {
             BigDecimal price = prices.get(i);
+            OrderGoods orderGoods = goodsMap.get(goodsIds[i]);
 
             // 创建订单
             OrderSeries series = new OrderSeries();
-            if (userLevel.getOrderCount() <= orderIndex) {
-                orderIndex = 1;
+            if (userLevel.getOrderCount() <= insertStart) {
+                insertStart = 1;
             } else {
-                orderIndex += 1;
+                insertStart += 1;
             }
-            series.setOrderIndex(orderIndex);
+            series.setOrderIndex(insertStart);
             series.setCommissionRatio(orderSeries.getCommissionRatio());
             series.setProductId(goodsIds[i]);
             series.setUserId(orderSeries.getUserId());

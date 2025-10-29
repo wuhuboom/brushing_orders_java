@@ -4,11 +4,13 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.alibaba.fastjson2.JSONObject;
+import com.brushing.common.core.domain.entity.SysUser;
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderMemberLevel;
 import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.member.service.IOrderTopupService;
+import com.brushing.system.service.ISysUserService;
 import com.brushing.web.controller.member.dto.ScopeUser;
 import com.brushing.web.controller.member.dto.TopupDto;
 import com.brushing.web.controller.websocket.WebSocketServer;
@@ -52,6 +54,9 @@ public class OrderMemberUserController extends BaseController
     @Autowired
     private IOrderTopupService orderTopupService;
 
+    @Autowired
+    private ISysUserService userService;
+
     /**
      * 查询会员用户列表
      */
@@ -59,7 +64,29 @@ public class OrderMemberUserController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(OrderMemberUser orderMemberUser)
     {
+
+        Long userId = getUserId();
+        SysUser sysUser = userService.selectUserById(userId);
+        if (sysUser.getUserName().equals("admin")){
+            startPage();
+            List<OrderMemberUser> list = orderMemberUserService.selectOrderMemberUserList(orderMemberUser);
+            return getDataTable(list);
+        }
+        String agentUser = sysUser.getAgentUser();
+        if (StringUtils.isEmpty(agentUser)){
+            startPage();
+            List<OrderMemberUser> list = orderMemberUserService.selectOrderMemberUserList(orderMemberUser);
+            return getDataTable(list);
+        }
+        OrderMemberUser byUsername = orderMemberUserService.findByUsername(agentUser);
+        if (StringUtils.isNull(byUsername)){
+            startPage();
+            List<OrderMemberUser> list = orderMemberUserService.selectOrderMemberUserList(orderMemberUser);
+            return getDataTable(list);
+        }
         startPage();
+        Long id = byUsername.getId();
+        orderMemberUser.setAgentUserId(id);
         List<OrderMemberUser> list = orderMemberUserService.selectOrderMemberUserList(orderMemberUser);
         return getDataTable(list);
     }

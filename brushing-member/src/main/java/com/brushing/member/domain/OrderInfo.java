@@ -65,6 +65,7 @@ public class OrderInfo extends BaseEntity
     @Excel(name = "订单状态")
     private String status;
 
+    private Long agentUserId;
     /**
      * 商品价格
      */
@@ -78,6 +79,14 @@ public class OrderInfo extends BaseEntity
      * 连单id
      */
     private Long seriesId;
+
+    public Long getAgentUserId() {
+        return agentUserId;
+    }
+
+    public void setAgentUserId(Long agentUserId) {
+        this.agentUserId = agentUserId;
+    }
 
     public Long getSeriesId() {
         return seriesId;

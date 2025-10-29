@@ -21,6 +21,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="pwdUpdateDate" column="pwd_update_date" />
         <result property="createBy"      column="create_by"       />
         <result property="createTime"    column="create_time"     />
+        <result property="roleName"    column="roleName"     />
         <result property="updateBy"      column="update_by"       />
         <result property="updateTime"    column="update_time"     />
         <result property="remark"        column="remark"          />
@@ -29,6 +30,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="loginDate" column="login_time"    />
 		<result property="totpSecret" column="totp_secret"    />
 		<result property="totpEnabled" column="totp_enabled"    />
+		<result property="agentUser"    column="agent_user"    />
+		<result property="agentSwitch"    column="agent_switch"    />
         <association property="dept"     javaType="SysDept"         resultMap="deptResult" />
         <collection  property="roles"    javaType="java.util.List"  resultMap="RoleResult" />
     </resultMap>
@@ -54,7 +57,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	
 	<sql id="selectUserVo">
         select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.password,
-		u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.remark, u.totp_secret , u.totp_enabled ,
+		u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time,
+		u.remark, u.totp_secret , u.totp_enabled ,agent_user ,agent_switch,
         d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
         r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status
         from sys_user u
@@ -67,9 +71,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		SELECT
 		u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar,
 		u.phonenumber, u.sex, u.status, u.del_flag, u.login_ip, u.login_date,
-		u.create_by, u.create_time, u.remark, u.totp_secret , u.totp_enabled ,
+		u.create_by, u.create_time, u.remark, u.totp_secret , u.totp_enabled ,agent_user ,agent_switch,
 		d.dept_name, d.leader,
-		l.ipaddr, l.login_location, l.login_time
+		l.ipaddr, l.login_location, l.login_time ,
+		(SELECT r.role_name
+		FROM sys_user_role ur
+		JOIN sys_role r ON ur.role_id = r.role_id
+		WHERE ur.user_id = u.user_id
+		LIMIT 1) AS roleName
 		FROM sys_user u
 		LEFT JOIN sys_dept d ON u.dept_id = d.dept_id
 		LEFT JOIN (
@@ -108,7 +117,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</select>
 	
 	<select id="selectAllocatedList" parameterType="SysUser" resultMap="SysUserResult">
-	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.totp_secret , u.totp_enabled , u.create_time
+	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name,
+		u.email, u.phonenumber, u.status, u.totp_secret , u.totp_enabled , u.create_time ,agent_user ,agent_switch
 	    from sys_user u
 			 left join sys_dept d on u.dept_id = d.dept_id
 			 left join sys_user_role ur on u.user_id = ur.user_id
@@ -125,7 +135,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</select>
 	
 	<select id="selectUnallocatedList" parameterType="SysUser" resultMap="SysUserResult">
-	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.phonenumber, u.status, u.create_time , u.totp_secret , u.totp_enabled
+	    select distinct u.user_id, u.dept_id, u.user_name, u.nick_name, u.email,
+		u.phonenumber, u.status, u.create_time , u.totp_secret , u.totp_enabled ,agent_user ,agent_switch
 	    from sys_user u
 			 left join sys_dept d on u.dept_id = d.dept_id
 			 left join sys_user_role ur on u.user_id = ur.user_id
@@ -184,6 +195,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="pwdUpdateDate != null">pwd_update_date,</if>
  			<if test="createBy != null and createBy != ''">create_by,</if>
  			<if test="remark != null and remark != ''">remark,</if>
+			<if test="agentUser != null">agent_user,</if>
+			<if test="agentSwitch != null">agent_switch,</if>
  			create_time
  		)values(
  			<if test="userId != null and userId != ''">#{userId},</if>
@@ -199,6 +212,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="pwdUpdateDate != null">#{pwdUpdateDate},</if>
  			<if test="createBy != null and createBy != ''">#{createBy},</if>
  			<if test="remark != null and remark != ''">#{remark},</if>
+			<if test="agentUser != null">#{agentUser},</if>
+			<if test="agentSwitch != null">#{agentSwitch},</if>
  			sysdate()
  		)
 	</insert>
@@ -218,6 +233,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="loginDate != null">login_date = #{loginDate},</if>
  			<if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
  			<if test="remark != null">remark = #{remark},</if>
+			<if test="agentUser != null">agent_user = #{agentUser},</if>
+			<if test="agentSwitch != null">agent_switch = #{agentSwitch},</if>
  			update_time = sysdate()
  		</set>
  		where user_id = #{userId}

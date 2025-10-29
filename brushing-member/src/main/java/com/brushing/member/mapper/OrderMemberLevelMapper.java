@@ -68,4 +68,6 @@ public interface OrderMemberLevelMapper
     public int deleteOrderMemberLevelByIds(Long[] ids);
 
     public OrderMemberLevel findLevelByBalance(@Param("balance") BigDecimal balance);
+
+    public int selectLevelById(Long id);
 }

@@ -1,6 +1,8 @@
 package com.brushing.member.service;
 
 import java.util.List;
+import java.util.Map;
+
 import com.brushing.member.domain.OrderWithdrawal;
 
 /**
@@ -64,5 +66,7 @@ public interface IOrderWithdrawalService
     public OrderWithdrawal selectOrderWithdrawalByCode(String code);
 
     public int  countStatusOneInOrderWithdrawal();
+
+    public Map<String, Object> selectDailyWithdrawalStatsByUserId(Long userId);
 
 }

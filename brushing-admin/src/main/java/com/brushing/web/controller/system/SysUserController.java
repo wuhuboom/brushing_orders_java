@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.brushing.framework.init.GeoIpQueryQueryService;
+import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.service.IOrderMemberUserService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +59,9 @@ public class SysUserController extends BaseController
 
     @Autowired
     private GeoIpQueryQueryService queryService;
+
+    @Autowired
+    private IOrderMemberUserService memberUserService;
 
 
     /**
@@ -148,6 +153,12 @@ public class SysUserController extends BaseController
         {
             return error("新增用户'" + user.getUserName() + "'失败，邮箱账号已存在");
         }
+        if (StringUtils.isNotEmpty(user.getAgentUser())){
+            OrderMemberUser memberUser = memberUserService.findByUsername(user.getAgentUser());
+            if (StringUtils.isNull(memberUser)){
+                return error("代理用户不存在");
+            }
+        }
         user.setCreateBy(getUsername());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         return toAjax(userService.insertUser(user));
@@ -176,6 +187,12 @@ public class SysUserController extends BaseController
         else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user))
         {
             return error("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+        }
+        if (StringUtils.isNotEmpty(user.getAgentUser())){
+            OrderMemberUser memberUser = memberUserService.findByUsername(user.getAgentUser());
+            if (StringUtils.isNull(memberUser)){
+                return error("代理用户不存在");
+            }
         }
         user.setUpdateBy(getUsername());
         return toAjax(userService.updateUser(user));

@@ -1,6 +1,11 @@
 package com.brushing.framework.init;
 
 
+import com.brushing.common.utils.StringUtils;
+import com.brushing.system.domain.SysConfig;
+import com.brushing.system.mapper.SysConfigMapper;
+import com.brushing.system.mapper.SysUserMapper;
+import com.brushing.system.service.ISysConfigService;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
 import com.maxmind.geoip2.record.City;
@@ -12,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.xml.stream.Location;
 import java.io.File;
@@ -22,6 +28,7 @@ import java.util.Map;
 
 
 @Service
+@Transactional
 public class DatabaseInitializer {
 
     @Autowired
@@ -30,12 +37,82 @@ public class DatabaseInitializer {
     @Autowired
     private GeoIpQueryQueryService queryService;
 
+    @Autowired
+    private SysConfigMapper configMapper;
+
     public void init() {
+
+        SysConfig sysConfig = configMapper.checkConfigKeyUnique("app-version");
+          if (StringUtils.isNotNull(sysConfig)){
+              String configValue = sysConfig.getConfigValue();
+              if (StringUtils.isEmpty(configValue)){
+                  SysConfig config =new SysConfig();
+                  config.setConfigKey("app-version");
+                  config.setConfigValue("1.2.3");
+                  configMapper.insertConfig(config);
+              }else{
+                  if (configValue.equals("1.2.3")){
+                      System.out.println("版本一致");
+                      return;
+                  }
+              }
+          }
+
         // 检查表结构
         checkAndAddTotpFields();
         addGlobalConfigColumns();
         addMemberLevelColumns();
         scheduledUpdate();
+
+        addColumnIfNotExists("sys_user", "agent_user", "VARCHAR(255) NULL COMMENT '代理用户'");
+
+        // 为 sys_user 表添加代理开关字段
+        addColumnIfNotExists("sys_user", "agent_switch", "CHAR(1) DEFAULT '0' COMMENT '代理开关'");
+
+        addColumnIfNotExists("order_customer_service", "name_zh", "VARCHAR(200) NULL COMMENT '中文名称'");
+
+        // 为 order_customer_service 表添加日文名称字段
+        addColumnIfNotExists("order_customer_service", "name_jp", "VARCHAR(200) NULL COMMENT '日文名称'");
+
+        // 为 order_customer_service 表添加韩文名称字段
+        addColumnIfNotExists("order_customer_service", "name_ko", "VARCHAR(200) NULL COMMENT '韩文名称'");
+
+        // 为 order_customer_service 表添加泰文名称字段
+        addColumnIfNotExists("order_customer_service", "name_th", "VARCHAR(200) NULL COMMENT '泰文名称'");
+
+        // 为 order_customer_service 表添加中文繁体名称字段
+        addColumnIfNotExists("order_customer_service", "name_zh_tw", "VARCHAR(200) NULL COMMENT '中文繁体名称'");
+
+        addColumnIfNotExists("order_withdrawal", "wallet_id", "bigint NULL COMMENT '钱包或者银行卡id'");
+
+        addColumnIfNotExists("order_site_config", "auto_reset", "CHAR(1) DEFAULT '0' COMMENT '自动重置'");
+
+        String createTableSql = """
+        CREATE TABLE `order_bank_wallet` (
+          `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+          `user_id` bigint NOT NULL COMMENT '用户ID',
+          `type` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '银行卡还是钱包',
+          `bank_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '银行账户类型',
+          `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '姓名',
+          `bank_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '银行编码',
+          `bank_card` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '银行卡号',
+          `wallet_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '钱包类型',
+          `wallet_address` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '钱包地址',
+          `create_time` datetime(3) NULL DEFAULT NULL COMMENT '创建时间',
+          PRIMARY KEY (`id`) USING BTREE
+        ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+        """;
+        createTableIfNotExists("order_bank_wallet", createTableSql);
+
+       if (StringUtils.isNull(sysConfig)){
+           SysConfig config =new SysConfig();
+           config.setConfigKey("app-version");
+           config.setConfigValue("1.2.3");
+           configMapper.insertConfig(config);
+       }else{
+           sysConfig.setConfigValue("1.2.3");
+           configMapper.updateConfig(sysConfig);
+       }
     }
 
 
@@ -273,49 +350,62 @@ public class DatabaseInitializer {
             }
         }
 
+    }
 
-        // 3) 查询所有 DECIMAL 类型字段并修改其长度为 20，并设置默认值为 0
-    /**    String checkDecimalFieldsSql =
-                "SELECT TABLE_NAME, COLUMN_NAME " +
-                        "FROM INFORMATION_SCHEMA.COLUMNS " +
-                        "WHERE TABLE_SCHEMA = DATABASE() AND DATA_TYPE = 'decimal'";
 
-// 获取所有 DECIMAL 类型字段
-        List<Map<String, Object>> decimalFields = jdbcTemplate.queryForList(checkDecimalFieldsSql);
+    private void addColumnIfNotExists(String tableName, String columnName, String columnDefinition) {
+        // 1) 查询列是否存在
+        String checkColumnSql = "SELECT COUNT(*) " +
+                "FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
 
-        for (Map<String, Object> field : decimalFields) {
-            String tableNameInDb = (String) field.get("TABLE_NAME");
-            String columnNameInDb = (String) field.get("COLUMN_NAME");
+        Integer cnt = jdbcTemplate.queryForObject(checkColumnSql, Integer.class, tableName, columnName);
 
-            // 生成 ALTER TABLE 语句来修改 DECIMAL 字段的长度为 20，并设置默认值为 0
-            String alterDecimalColumnSql = "ALTER TABLE `" + tableNameInDb + "` " +
-                    "MODIFY COLUMN `" + columnNameInDb + "` DECIMAL(20,2) DEFAULT 0";
-
+        // 2) 不存在则添加
+        if (cnt == null || cnt == 0) {
+            String alterSql = "ALTER TABLE `" + tableName + "` " +
+                    "ADD COLUMN `" + columnName + "` " + columnDefinition;
             try {
-                jdbcTemplate.execute(alterDecimalColumnSql); // 执行修改操作
-            } catch (org.springframework.dao.DataAccessException e) {
-                // 可以在此处理并发冲突，或者忽略已修改的字段
+                jdbcTemplate.execute(alterSql);
+                System.out.println("成功添加列: " + tableName + "." + columnName);
+            } catch (DataAccessException e) {
+                // 并发下可能已被其它实例先添加，忽略“Duplicate column name”错误
                 String msg = e.getMessage();
                 if (msg == null || !msg.contains("Duplicate column name")) {
                     throw e;
                 }
+                System.out.println("列已存在，忽略添加: " + tableName + "." + columnName);
             }
+        } else {
+            System.out.println("列已存在，跳过: " + tableName + "." + columnName);
+        }
+    }
 
-            // 生成 UPDATE 语句将 DECIMAL 字段中的 NULL 值替换为 0
-            String updateNullValuesSql = "UPDATE `" + tableNameInDb + "` " +
-                    "SET `" + columnNameInDb + "` = 0 " +
-                    "WHERE `" + columnNameInDb + "` IS NULL";
+    private void createTableIfNotExists(String tableName, String createTableSql) {
+        // 1) 查询表是否存在
+        String checkTableSql = "SELECT COUNT(*) " +
+                "FROM INFORMATION_SCHEMA.TABLES " +
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?";
 
+        Integer cnt = jdbcTemplate.queryForObject(checkTableSql, Integer.class, tableName);
+
+        // 2) 不存在则创建
+        if (cnt == null || cnt == 0) {
             try {
-                jdbcTemplate.execute(updateNullValuesSql); // 执行替换 NULL 为 0 的操作
-            } catch (org.springframework.dao.DataAccessException e) {
-                // 可以根据需求处理异常
+                jdbcTemplate.execute(createTableSql);
+                System.out.println("成功创建表: " + tableName);
+            } catch (DataAccessException e) {
+                // 并发下可能已被其它实例先创建，忽略“Table already exists”错误
                 String msg = e.getMessage();
-                if (msg == null || !msg.contains("Duplicate column name")) {
+                if (msg == null || !msg.contains("Table") || !msg.contains("already exists")) {
                     throw e;
                 }
+                System.out.println("表已存在，忽略创建: " + tableName);
             }
-        }*/
+        } else {
+            addColumnIfNotExists("order_bank_wallet", "bank_type", "VARCHAR(100) NULL COMMENT '代理用户'");
+            System.out.println("表已存在，跳过: " + tableName);
+        }
     }
 
 }

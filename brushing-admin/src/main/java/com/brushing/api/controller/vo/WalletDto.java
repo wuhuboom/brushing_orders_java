@@ -19,9 +19,18 @@ public class WalletDto {
 
     /** 钱包类型 */
     private String walletType;
+    private String bankType;
 
     /** 钱包地址 */
     private String walletAddress;
+
+    public String getBankType() {
+        return bankType;
+    }
+
+    public void setBankType(String bankType) {
+        this.bankType = bankType;
+    }
 
     public Long getId() {
         return id;

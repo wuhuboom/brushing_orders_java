@@ -58,4 +58,6 @@ public interface IOrderMemberLevelService
      * @return 结果
      */
     public int deleteOrderMemberLevelById(Long id);
+
+    public int selectLevelById(Long id);
 }

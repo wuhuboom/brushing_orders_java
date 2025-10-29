@@ -106,6 +106,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         LIMIT 1
     </select>
 
+    <select id="selectLevelById" parameterType="Long" resultType="int">
+        SELECT level_rank
+        FROM (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY price ASC) AS level_rank
+        FROM order_member_level
+        ) ranked_levels
+        WHERE id = #{id}
+    </select>
+
     <insert id="insertOrderMemberLevel" parameterType="OrderMemberLevel" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_level
         <trim prefix="(" suffix=")" suffixOverrides=",">

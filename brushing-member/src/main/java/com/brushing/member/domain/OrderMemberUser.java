@@ -197,7 +197,27 @@ public class OrderMemberUser extends BaseEntity
 
     private String parentPhone;
 
+    private String forceNoResult;
+
     private Long version;
+
+    private Long agentUserId;
+
+    public String getForceNoResult() {
+        return forceNoResult;
+    }
+
+    public void setForceNoResult(String forceNoResult) {
+        this.forceNoResult = forceNoResult;
+    }
+
+    public Long getAgentUserId() {
+        return agentUserId;
+    }
+
+    public void setAgentUserId(Long agentUserId) {
+        this.agentUserId = agentUserId;
+    }
 
     public Long getVersion() { return version; }
 

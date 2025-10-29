@@ -48,7 +48,7 @@ public class UpdateOrderMemberUserAop {
             return joinPoint.proceed();
         }
 
-        OrderSiteConfig orderSiteConfig = siteConfigMapper.selectOrderSiteConfigById(1L);
+        OrderSiteConfig orderSiteConfig = siteConfigMapper.selectOrderSiteConfigByUserUpdate(1L);
         if (StringUtils.isNull(orderSiteConfig)){
             return joinPoint.proceed();
         }

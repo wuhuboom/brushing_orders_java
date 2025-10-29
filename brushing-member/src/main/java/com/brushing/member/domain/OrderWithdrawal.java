@@ -41,6 +41,11 @@ public class OrderWithdrawal extends BaseEntity
 
     private BigDecimal withdrawFee;
 
+    private Long agentUserId;
+
+
+    private Long walletId;
+
     /** 申请时间 */
     @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date applicationTime;
@@ -73,6 +78,32 @@ public class OrderWithdrawal extends BaseEntity
     // 当日统计字段
     private Integer dailyOrderCount; // 当日订单数
     private Integer dailyWithdrawalCount; //
+
+    private OrderBankWallet bankWallet;
+
+    public Long getWalletId() {
+        return walletId;
+    }
+
+    public void setWalletId(Long walletId) {
+        this.walletId = walletId;
+    }
+
+    public OrderBankWallet getBankWallet() {
+        return bankWallet;
+    }
+
+    public void setBankWallet(OrderBankWallet bankWallet) {
+        this.bankWallet = bankWallet;
+    }
+
+    public Long getAgentUserId() {
+        return agentUserId;
+    }
+
+    public void setAgentUserId(Long agentUserId) {
+        this.agentUserId = agentUserId;
+    }
 
     public BigDecimal getWithdrawFee() {
         return withdrawFee;

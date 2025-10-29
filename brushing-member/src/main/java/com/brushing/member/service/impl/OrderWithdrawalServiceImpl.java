@@ -1,6 +1,8 @@
 package com.brushing.member.service.impl;
 
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.brushing.member.mapper.OrderWithdrawalMapper;
@@ -104,5 +106,10 @@ public class OrderWithdrawalServiceImpl implements IOrderWithdrawalService
     @Override
     public int countStatusOneInOrderWithdrawal() {
         return orderWithdrawalMapper.countStatusOneInOrderWithdrawal();
+    }
+
+    @Override
+    public Map<String, Object> selectDailyWithdrawalStatsByUserId(Long userId) {
+        return orderWithdrawalMapper.selectDailyWithdrawalStatsByUserId(userId);
     }
 }

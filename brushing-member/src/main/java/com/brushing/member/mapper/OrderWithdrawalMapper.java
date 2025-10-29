@@ -1,6 +1,8 @@
 package com.brushing.member.mapper;
 
 import java.util.List;
+import java.util.Map;
+
 import com.brushing.member.domain.OrderWithdrawal;
 
 /**
@@ -66,4 +68,6 @@ public interface OrderWithdrawalMapper
     public int deleteOrderWithdrawalByIds(Long[] ids);
 
     public int  countStatusOneInOrderWithdrawal();
+
+    public Map<String, Object> selectDailyWithdrawalStatsByUserId(Long userId);
 }
