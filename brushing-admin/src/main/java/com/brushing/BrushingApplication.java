@@ -18,6 +18,6 @@ public class BrushingApplication
     {
         // System.setProperty("spring.devtools.restart.enabled", "false");
         SpringApplication.run(BrushingApplication.class, args);
-        System.out.println("(♥◠‿◠)ﾉﾞ  管理平台启动成功   ლ(´ڡ`ლ)ﾞ  ");
+        System.out.println("(♥◠‿◠)ﾉﾞ  管理平台启动成功1   ლ(´ڡ`ლ)ﾞ  ");
     }
 }
