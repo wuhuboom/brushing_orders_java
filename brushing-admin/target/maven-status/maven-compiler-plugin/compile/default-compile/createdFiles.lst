@@ -21,6 +21,7 @@ com\brushing\web\controller\config\OrderEmailConfigController.class
 com\brushing\web\core\config\SwaggerConfig.class
 com\brushing\api\dto\RegisterDto.class
 com\brushing\web\controller\member\OrderGoodsTypeController.class
+com\brushing\web\controller\member\OrderShopController.class
 com\brushing\web\controller\common\CommonController.class
 com\brushing\web\controller\member\OrderInfoController.class
 com\brushing\BrushingApplication.class

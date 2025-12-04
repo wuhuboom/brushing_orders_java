@@ -19,6 +19,7 @@ import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.enums.BusinessType;
 import com.brushing.common.utils.poi.ExcelUtil;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.system.domain.SysConfig;
 import com.brushing.system.service.ISysConfigService;
 
@@ -85,7 +86,7 @@ public class SysConfigController extends BaseController
     {
         if (!configService.checkConfigKeyUnique(config))
         {
-            return error("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
+            return error(MessageUtils.message("config.add.key_exists", config.getConfigName()));
         }
         config.setCreateBy(getUsername());
         return toAjax(configService.insertConfig(config));
@@ -101,7 +102,7 @@ public class SysConfigController extends BaseController
     {
         if (!configService.checkConfigKeyUnique(config))
         {
-            return error("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
+            return error(MessageUtils.message("config.edit.key_exists", config.getConfigName()));
         }
         config.setUpdateBy(getUsername());
         return toAjax(configService.updateConfig(config));

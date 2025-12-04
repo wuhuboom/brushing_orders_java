@@ -8,6 +8,7 @@ import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.domain.model.RegisterBody;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.framework.web.service.SysRegisterService;
 import com.brushing.system.service.ISysConfigService;
 
@@ -30,7 +31,7 @@ public class SysRegisterController extends BaseController
     {
         if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser"))))
         {
-            return error("当前系统没有开启注册功能！");
+            return error(MessageUtils.message("register.disabled"));
         }
         String msg = registerService.register(user);
         return StringUtils.isEmpty(msg) ? success() : error(msg);

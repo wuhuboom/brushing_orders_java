@@ -127,7 +127,7 @@ public class GeoIpQueryQueryService {
                 if (ip != null && !ip.trim().isEmpty() && !"未知".equals(ip) && !"0.0.0.0".equals(ip)) {
                     String location = queryByIp(ip);
                     user.setRegisterIp(ip+","+location);
-                    userMapper.updateOrderMemberUser(user);
+                    userMapper.updateUserAddress(user);
                 } else {
 
                 }

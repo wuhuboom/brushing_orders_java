@@ -2,6 +2,8 @@ package com.brushing.member.service.impl;
 
 import java.util.List;
 import com.brushing.common.utils.DateUtils;
+import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.mapper.OrderMemberUserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.brushing.member.mapper.OrderMemberLevelMapper;
@@ -19,6 +21,9 @@ public class OrderMemberLevelServiceImpl implements IOrderMemberLevelService
 {
     @Autowired
     private OrderMemberLevelMapper orderMemberLevelMapper;
+
+    @Autowired
+    private OrderMemberUserMapper orderMemberUserMapper;
 
     /**
      * 查询会员等级
@@ -78,7 +83,18 @@ public class OrderMemberLevelServiceImpl implements IOrderMemberLevelService
     @Override
     public int deleteOrderMemberLevelByIds(Long[] ids)
     {
-        return orderMemberLevelMapper.deleteOrderMemberLevelByIds(ids);
+        int i = orderMemberLevelMapper.deleteOrderMemberLevelByIds(ids);
+        for(Long id : ids){
+            List<OrderMemberUser> orderMemberUsers = orderMemberUserMapper.selectAllUser();
+            for(OrderMemberUser orderMemberUser : orderMemberUsers){
+                if(orderMemberUser.getLevelId().equals(id)){
+                    OrderMemberLevel levelByBalance = orderMemberLevelMapper.findLevelByBalance(orderMemberUser.getBalance());
+                    orderMemberUser.setLevelId(levelByBalance.getId());
+                    orderMemberUserMapper.updateOrderMemberUser(orderMemberUser);
+                }
+            }
+        }
+        return i;
     }
 
     /**

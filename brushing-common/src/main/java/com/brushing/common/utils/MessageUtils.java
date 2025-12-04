@@ -1,14 +1,11 @@
 package com.brushing.common.utils;
 
+import com.brushing.common.utils.spring.SpringUtils;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
-import com.brushing.common.utils.spring.SpringUtils;
 
-/**
- * 获取i18n资源文件
- * 
- * @author brushing
- */
+import java.util.Locale;
+
 public class MessageUtils
 {
     /**

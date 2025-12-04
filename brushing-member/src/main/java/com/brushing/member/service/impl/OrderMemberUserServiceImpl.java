@@ -6,16 +6,11 @@ import java.util.List;
 import com.brushing.common.utils.InviteCodeGenerator;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
-import com.brushing.member.domain.DashboardData;
-import com.brushing.member.domain.OrderMemberLevel;
-import com.brushing.member.domain.WelfareConfig;
-import com.brushing.member.mapper.DashboardMapper;
-import com.brushing.member.mapper.OrderMemberLevelMapper;
-import com.brushing.member.mapper.WelfareConfigMapper;
+import com.brushing.member.domain.*;
+import com.brushing.member.mapper.*;
+import com.brushing.member.service.IOrderShopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.brushing.member.mapper.OrderMemberUserMapper;
-import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.service.IOrderMemberUserService;
 
 /**
@@ -38,6 +33,9 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
 
     @Autowired
     private WelfareConfigMapper welfareConfigMapper;
+
+    @Autowired
+    private OrderShopMapper shopMapper;
 
     /**
      * 查询会员用户
@@ -225,5 +223,29 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         } catch (Exception e) {
                 // 记录错误，继续处理下一个用户
         }
+    }
+
+    @Override
+    public Boolean checkUserBalance(OrderMemberUser user) {
+        Integer dealCount = user.getDealCount() + 1;
+        //当前等级
+        int level = levelMapper.selectLevelById(user.getLevelId());
+        //查询当前用户的
+        OrderShop orderShop = shopMapper.selectOrderShopByAutoVip(dealCount);
+        if (StringUtils.isNull(orderShop)){
+            return false;
+        }
+        //对应的等级
+        Integer vipLevel = orderShop.getVipLevel();
+        OrderMemberLevel orderMemberLevel = levelMapper.selectLevelByRank(vipLevel);
+        if (StringUtils.isNull(orderMemberLevel)){
+            return false;
+        }
+        if (level == vipLevel || level>vipLevel){
+            return true;
+        }
+        BigDecimal balance = user.getBalance();
+        BigDecimal price = orderMemberLevel.getPrice();
+        return balance.compareTo(price) >= 0;
     }
 }

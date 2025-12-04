@@ -63,6 +63,9 @@ public interface OrderMemberUserMapper
      */
     public int updateOrderMemberUser(OrderMemberUser orderMemberUser);
 
+
+    public int updateUserAddress(OrderMemberUser orderMemberUser);
+
     /**
      * 重置今日提现次数 和 重置次数
      * @return
@@ -108,6 +111,7 @@ public interface OrderMemberUserMapper
 
 
    public int updateUserLevel(@Param("id") Long id, @Param("levelId") Long levelId);
+
 
 
 }

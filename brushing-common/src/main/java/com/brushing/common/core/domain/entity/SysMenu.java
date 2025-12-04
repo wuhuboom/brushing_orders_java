@@ -65,6 +65,15 @@ public class SysMenu extends BaseEntity
 
     /** 菜单图标 */
     private String icon;
+    private String enName;
+
+    public String getEnName() {
+        return enName;
+    }
+
+    public void setEnName(String enName) {
+        this.enName = enName;
+    }
 
     /** 子菜单 */
     private List<SysMenu> children = new ArrayList<SysMenu>();

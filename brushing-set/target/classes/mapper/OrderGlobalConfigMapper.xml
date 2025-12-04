@@ -50,10 +50,26 @@
         <result property="certificateZhTw"    column="certificate_zh_tw"    />
         <result property="faqKo"    column="faq_ko"    />
         <result property="incomeGuideZhTw"    column="income_guide_zh_tw"    />
+        <result property="registrationAgreementPor"    column="registration_agreement_por"    />
+        <result property="aboutUsPor"    column="about_us_por"    />
+        <result property="certificatePor"    column="certificate_por"    />
+        <result property="faqPor"    column="faq_por"    />
+        <result property="latestEventsPor"    column="latest_events_por"    />
+        <result property="termsConditionsPor"    column="terms_conditions_por"    />
+        <result property="incomeGuidePor"    column="income_guide_por"    />
     </resultMap>
 
     <sql id="selectOrderGlobalConfigVo">
-        select id, register_protocol_en, register_protocol_local, about_us_en, about_us_local, certificate_en, certificate_local, faq_en, faq_local, latest_event_en, latest_event_local, terms_en, terms_local, income_guide_en, income_guide_local, create_time, update_time, about_us_zh_tw, registration_agreement_ko, about_us_ko, registration_agreement_zh_tw, terms_conditions_zh_tw, income_guide_th, certificate_ja, certificate_th, latest_events_th, terms_conditions_ja, faq_ja, income_guide_ja, terms_conditions_th, certificate_ko, latest_events_ja, faq_th, latest_events_ko, registration_agreement_ja, terms_conditions_ko, registration_agreement_th, faq_zh_tw, latest_events_zh_tw, about_us_th, about_us_ja, income_guide_ko, certificate_zh_tw, faq_ko, income_guide_zh_tw from order_global_config
+        select id, register_protocol_en, register_protocol_local, about_us_en, about_us_local,
+               certificate_en, certificate_local, faq_en, faq_local, latest_event_en, latest_event_local,
+               terms_en, terms_local, income_guide_en, income_guide_local, create_time, update_time,
+               about_us_zh_tw, registration_agreement_ko, about_us_ko, registration_agreement_zh_tw,
+               terms_conditions_zh_tw, income_guide_th, certificate_ja, certificate_th, latest_events_th,
+               terms_conditions_ja, faq_ja, income_guide_ja, terms_conditions_th, certificate_ko, latest_events_ja,
+               faq_th, latest_events_ko, registration_agreement_ja, terms_conditions_ko, registration_agreement_th,
+               faq_zh_tw, latest_events_zh_tw, about_us_th, about_us_ja, income_guide_ko, certificate_zh_tw, faq_ko,
+               registration_agreement_por,about_us_por,certificate_por,faq_por,latest_events_por,terms_conditions_por,income_guide_por,
+               income_guide_zh_tw from order_global_config
     </sql>
 
     <select id="selectOrderGlobalConfigList" parameterType="OrderGlobalConfig" resultMap="OrderGlobalConfigResult">
@@ -252,9 +268,17 @@
             <if test="certificateZhTw != null and certificateZhTw != ''">certificate_zh_tw = #{certificateZhTw},</if>
             <if test="faqKo != null and faqKo != ''">faq_ko = #{faqKo},</if>
             <if test="incomeGuideZhTw != null and incomeGuideZhTw != ''">income_guide_zh_tw = #{incomeGuideZhTw},</if>
+            <if test="registrationAgreementPor != null and registrationAgreementPor != ''">registration_agreement_por = #{registrationAgreementPor},</if>
+            <if test="aboutUsPor != null and aboutUsPor != ''">about_us_por = #{aboutUsPor},</if>
+            <if test="certificatePor != null and certificatePor != ''">certificate_por = #{certificatePor},</if>
+            <if test="faqPor != null and faqPor != ''">faq_por = #{faqPor},</if>
+            <if test="latestEventsPor != null and latestEventsPor != ''">latest_events_por = #{latestEventsPor},</if>
+            <if test="termsConditionsPor != null and termsConditionsPor != ''">terms_conditions_por = #{termsConditionsPor},</if>
+            <if test="incomeGuidePor != null and incomeGuidePor != ''">income_guide_por = #{incomeGuidePor},</if>
         </trim>
         where id = #{id}
     </update>
+
 
     <delete id="deleteOrderGlobalConfigById" parameterType="Long">
         delete from order_global_config where id = #{id}

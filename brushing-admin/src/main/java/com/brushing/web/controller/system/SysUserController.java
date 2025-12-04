@@ -30,6 +30,7 @@ import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.enums.BusinessType;
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.poi.ExcelUtil;
 import com.brushing.system.service.ISysDeptService;
 import com.brushing.system.service.ISysPostService;
@@ -143,20 +144,20 @@ public class SysUserController extends BaseController
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
         {
-            return error("新增用户'" + user.getUserName() + "'失败，登录账号已存在");
+            return error(MessageUtils.message("user.add.username_exists", user.getUserName()));
         }
         else if (StringUtils.isNotEmpty(user.getPhonenumber()) && !userService.checkPhoneUnique(user))
         {
-            return error("新增用户'" + user.getUserName() + "'失败，手机号码已存在");
+            return error(MessageUtils.message("user.add.phone_exists", user.getUserName()));
         }
         else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user))
         {
-            return error("新增用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+            return error(MessageUtils.message("user.add.email_exists", user.getUserName()));
         }
         if (StringUtils.isNotEmpty(user.getAgentUser())){
             OrderMemberUser memberUser = memberUserService.findByUsername(user.getAgentUser());
             if (StringUtils.isNull(memberUser)){
-                return error("代理用户不存在");
+                return error(MessageUtils.message("user.agent_not_found"));
             }
         }
         user.setCreateBy(getUsername());
@@ -178,20 +179,20 @@ public class SysUserController extends BaseController
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
         {
-            return error("修改用户'" + user.getUserName() + "'失败，登录账号已存在");
+            return error(MessageUtils.message("user.edit.username_exists", user.getUserName()));
         }
         else if (StringUtils.isNotEmpty(user.getPhonenumber()) && !userService.checkPhoneUnique(user))
         {
-            return error("修改用户'" + user.getUserName() + "'失败，手机号码已存在");
+            return error(MessageUtils.message("user.edit.phone_exists", user.getUserName()));
         }
         else if (StringUtils.isNotEmpty(user.getEmail()) && !userService.checkEmailUnique(user))
         {
-            return error("修改用户'" + user.getUserName() + "'失败，邮箱账号已存在");
+            return error(MessageUtils.message("user.edit.email_exists", user.getUserName()));
         }
         if (StringUtils.isNotEmpty(user.getAgentUser())){
             OrderMemberUser memberUser = memberUserService.findByUsername(user.getAgentUser());
             if (StringUtils.isNull(memberUser)){
-                return error("代理用户不存在");
+                return error(MessageUtils.message("user.agent_not_found"));
             }
         }
         user.setUpdateBy(getUsername());
@@ -208,7 +209,7 @@ public class SysUserController extends BaseController
     {
         if (ArrayUtils.contains(userIds, getUserId()))
         {
-            return error("当前用户不能删除");
+            return error(MessageUtils.message("user.delete.current_forbidden"));
         }
         return toAjax(userService.deleteUserByIds(userIds));
     }

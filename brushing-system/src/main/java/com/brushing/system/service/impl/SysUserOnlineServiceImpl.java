@@ -2,6 +2,7 @@ package com.brushing.system.service.impl;
 
 import org.springframework.stereotype.Service;
 import com.brushing.common.core.domain.model.LoginUser;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.system.domain.SysUserOnline;
 import com.brushing.system.service.ISysUserOnlineService;
@@ -92,5 +93,12 @@ public class SysUserOnlineServiceImpl implements ISysUserOnlineService
             sysUserOnline.setDeptName(user.getUser().getDept().getDeptName());
         }
         return sysUserOnline;
+    }
+
+    /**
+     * 示例方法，返回国际化消息
+     */
+    public String getOnlineUserMessage() {
+        return MessageUtils.message("online.user.message");
     }
 }

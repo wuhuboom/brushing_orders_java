@@ -214,7 +214,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
         <include refid="selectOrderMemberUserVo"/>
         <where>
-            <if test="username != null  and username != ''"> and u.username like concat('%', #{username}, '%')</if>
+            <if test="username != null  and username != ''"> and u.username = #{username}</if>
+            <if test="inviteCode != null  and inviteCode != ''"> and u.invite_code = #{inviteCode}</if>
+            <if test="phone != null  and phone != ''"> and u.phone = #{phone}</if>
             <if test="isReal != null  and isReal != ''"> and u.is_real = #{isReal}</if>
             <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
                 AND date_format(u.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
@@ -516,6 +518,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateUserLevel">
         UPDATE order_member_user
         SET level_id = #{levelId}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateUserAddress" parameterType="OrderMemberUser">
+        UPDATE order_member_user
+        SET register_ip = #{registerIp}
         WHERE id = #{id}
     </update>
 

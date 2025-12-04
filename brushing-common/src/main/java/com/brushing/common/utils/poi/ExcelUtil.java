@@ -59,6 +59,7 @@ import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
 import org.apache.poi.util.IOUtils;
+import com.brushing.common.utils.MessageUtils;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
 import org.apache.poi.xssf.usermodel.XSSFDataValidation;
@@ -354,7 +355,7 @@ public class ExcelUtil<T>
         Sheet sheet = StringUtils.isNotEmpty(sheetName) ? wb.getSheet(sheetName) : wb.getSheetAt(0);
         if (sheet == null)
         {
-            throw new IOException("文件sheet不存在");
+            throw new IOException(MessageUtils.message("excel.sheet.not_found"));
         }
         boolean isXSSFWorkbook = !(wb instanceof HSSFWorkbook);
         Map<String, List<PictureData>> pictures = null;
@@ -366,7 +367,7 @@ public class ExcelUtil<T>
         {
             pictures = getSheetPictures03((HSSFSheet) sheet, (HSSFWorkbook) wb);
         }
-        // 获取最后一个非空行的行下标，比如总行数为n，则返回的为n-1
+        // 获取最后��个非空行的行下标，比如总行数为n，则返回的为n-1
         int rows = sheet.getLastRowNum();
         if (rows > 0)
         {
@@ -612,8 +613,8 @@ public class ExcelUtil<T>
     }
 
     /**
-     * 对list数据源将其里面的数据导入到excel表单
-     * 
+     * 对list数据源将其里面的数据导入到excel��单
+     *
      * @param sheetName 工作表的名称
      * @param title 标题
      * @return 结果
@@ -667,7 +668,7 @@ public class ExcelUtil<T>
         catch (Exception e)
         {
             log.error("导出Excel异常{}", e.getMessage());
-            throw new UtilException("导出Excel失败，请联系网站管理员！");
+            throw new UtilException(MessageUtils.message("excel.export.failed"));
         }
         finally
         {

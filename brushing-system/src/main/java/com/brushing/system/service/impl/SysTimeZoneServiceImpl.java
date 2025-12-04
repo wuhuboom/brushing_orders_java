@@ -2,6 +2,7 @@ package com.brushing.system.service.impl;
 
 
 import com.brushing.common.utils.DateUtils;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.system.domain.SysTimeZone;
 import com.brushing.system.mapper.SysTimeZoneMapper;
 import com.brushing.system.service.ISysTimeZoneService;
@@ -71,12 +72,12 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
         try {
             ZoneId.of(sysTimeZone.getTzName());  // 如果时区无效，抛出异常
         } catch (Exception e) {
-            throw new IllegalArgumentException("无效的时区ID: " + sysTimeZone.getTzName());
+            throw new IllegalArgumentException(MessageUtils.message("invalid.timezone", sysTimeZone.getTzName()));
         }
         // 2. 检查时区是否已存在
         SysTimeZone existing = sysTimeZoneMapper.selectByTzName(sysTimeZone.getTzName());
         if (existing != null) {
-            throw new IllegalArgumentException("时区已经存在: " + sysTimeZone.getTzName());
+            throw new IllegalArgumentException(MessageUtils.message("timezone.exists", sysTimeZone.getTzName()));
         }
         if (sysTimeZoneMapper.countAll() == 0) {
             sysTimeZone.setStatus(0);
@@ -99,13 +100,13 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
         try {
             ZoneId.of(sysTimeZone.getTzName());  // 如果时区无效，抛出异常
         } catch (Exception e) {
-            throw new IllegalArgumentException("无效的时区ID: " + sysTimeZone.getTzName());
+            throw new IllegalArgumentException(MessageUtils.message("invalid.timezone", sysTimeZone.getTzName()));
         }
         // 2. 检查时区是否已存在
         try {
             return sysTimeZoneMapper.updateSysTimeZone(sysTimeZone);
         }catch (Exception e){
-            throw new IllegalArgumentException("时区已经存在: " + sysTimeZone.getTzName());
+            throw new IllegalArgumentException(MessageUtils.message("timezone.exists", sysTimeZone.getTzName()));
         }
 
     }
@@ -139,6 +140,10 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
         return sysTimeZoneMapper.deleteSysTimeZoneById(id);
     }
 
-
-
+    /**
+     * 示例方法，返回国际化消息
+     */
+    public String getTimeZoneMessage() {
+        return MessageUtils.message("timezone.message");
+    }
 }

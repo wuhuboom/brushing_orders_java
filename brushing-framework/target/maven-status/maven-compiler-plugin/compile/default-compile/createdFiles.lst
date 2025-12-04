@@ -5,6 +5,7 @@ com\brushing\framework\front\FrontWebConfig.class
 com\brushing\framework\config\properties\DruidProperties.class
 com\brushing\framework\security\handle\AuthenticationEntryPointImpl.class
 com\brushing\framework\web\service\SysPasswordService.class
+com\brushing\framework\config\I18nConfig$1.class
 com\brushing\framework\front\FrontJwtUtil.class
 com\brushing\framework\init\StartupTask.class
 com\brushing\framework\security\handle\LogoutSuccessHandlerImpl.class
@@ -56,4 +57,5 @@ com\brushing\framework\aspectj\RateLimiterAspect.class
 com\brushing\framework\config\ThreadPoolConfig$1.class
 com\brushing\framework\manager\ShutdownManager.class
 com\brushing\framework\web\service\GoogleAuthenticatorService.class
+com\brushing\framework\init\TimezoneConfig.class
 com\brushing\framework\web\domain\server\Cpu.class

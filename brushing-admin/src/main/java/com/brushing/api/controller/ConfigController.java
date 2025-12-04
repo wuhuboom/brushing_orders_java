@@ -176,10 +176,10 @@ public class ConfigController extends BaseController {
                     "'sort': '排序',\n" +
                     "'status': '状态 0正常 1停用'"
     )
-    public AjaxResult getCustomerServiceByLang(@RequestParam(value = "lang", defaultValue = "en") @Parameter(description = "语言代码: en, zh, zh_tw, ja, th, ko") String lang) {
+    public AjaxResult getCustomerServiceByLang(@RequestParam(value = "lang", defaultValue = "en") @Parameter(description = "语言代码: en, zh, zh_tw, ja, th, ko ,pt") String lang) {
         if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
-                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)) {
-            return AjaxResult.error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko");
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)&& !"pt".equals(lang)) {
+            return AjaxResult.error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko ,pt");
         }
 
         OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
@@ -223,6 +223,8 @@ public class ConfigController extends BaseController {
                 return service.getNameTh() != null ? service.getNameTh() : service.getName();
             case "ko":
                 return service.getNameKo() != null ? service.getNameKo() : service.getName();
+            case "pt":
+                return service.getNamePor() != null ? service.getNamePor() : service.getName();
             default:  // "en"
                 return service.getName();
         }
@@ -235,7 +237,7 @@ public class ConfigController extends BaseController {
                     "接口描述：根据传入的语言参数返回对应的全局配置内容（仅返回7个核心配置项）。如果未提供 lang 参数，默认返回英文内容。\n" +
                             "\n" +
                             "**请求参数：**\n" +
-                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）。\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文） pt（葡萄牙）,。\n" +
                             "\n" +
                             "**返回字段：**\n" +
                             "- `registerProtocol` (string): 注册协议内容\n" +
@@ -252,8 +254,8 @@ public class ConfigController extends BaseController {
 
         // 验证语言参数
         if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
-                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)) {
-            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko");
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang)) {
+            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 、 ko、pt");
         }
 
         // 查询所有全局配置（假设服务层有获取所有或单条的方法，根据实际调整）
@@ -320,6 +322,15 @@ public class ConfigController extends BaseController {
             result.put("latestEvent", config.getLatestEventsKo());
             result.put("terms", config.getTermsConditionsKo());
             result.put("incomeGuide", config.getIncomeGuideKo());
+        }else if ("pt".equals(lang)) {
+            // 返回韩文（Ko）字段
+            result.put("registerProtocol", config.getRegistrationAgreementPor());
+            result.put("aboutUs", config.getAboutUsPor());
+            result.put("certificate", config.getCertificatePor());
+            result.put("faq", config.getFaqPor());
+            result.put("latestEvent", config.getLatestEventsPor());
+            result.put("terms", config.getTermsConditionsPor());
+            result.put("incomeGuide", config.getIncomeGuidePor());
         }
 
         return success(result);
@@ -332,7 +343,7 @@ public class ConfigController extends BaseController {
                     "接口描述：根据传入的语言参数返回VIP等级列表（仅返回核心字段：会员图标、名称、价格及对应语言描述）。如果未提供 lang 参数，默认返回英文内容。\n" +
                             "\n" +
                             "**请求参数：**\n" +
-                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）。\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）、pt（葡萄牙）。\n" +
                             "\n" +
                             "**返回字段（每个等级对象）：**\n" +
                             "- `icon` (string): 会员图标\n" +
@@ -343,8 +354,8 @@ public class ConfigController extends BaseController {
     public AjaxResult getLevelByLang(@RequestParam(value = "lang", defaultValue = "en") String lang) {
         // 验证语言参数
         if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
-                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)) {
-            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko");
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang)) {
+            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 、 ko、pt");
         }
 
         List<OrderMemberLevel> orderMemberLevels = levelService.selectOrderMemberLevelList(null);
@@ -365,20 +376,15 @@ public class ConfigController extends BaseController {
             levelMap.put("price", level.getPrice());
 
             // 描述：根据语言选择对应字段
-            String description = "";
-            if ("en".equals(lang)) {
-                description = level.getDescriptionEn();
-            } else if ("zh".equals(lang)) {
-                description = level.getDescriptionZh();
-            } else if ("zh_tw".equals(lang)) {
-                description = level.getDescriptionZhTw();
-            } else if ("ja".equals(lang)) {
-                description = level.getDescriptionJa();
-            } else if ("th".equals(lang)) {
-                description = level.getDescriptionTh();
-            } else if ("ko".equals(lang)) {
-                description = level.getDescriptionKo();
-            }
+            String description = switch (lang) {
+                case "zh" -> level.getDescriptionZh();
+                case "zh_tw" -> level.getDescriptionZhTw();
+                case "ja" -> level.getDescriptionJa();
+                case "th" -> level.getDescriptionTh();
+                case "ko" -> level.getDescriptionKo();
+                case "pt" -> level.getDescriptionPor();
+                default -> level.getDescriptionEn();
+            };
             levelMap.put("description", description);
 
             resultList.add(levelMap);

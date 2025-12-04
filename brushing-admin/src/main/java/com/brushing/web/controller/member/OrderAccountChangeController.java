@@ -2,6 +2,7 @@ package com.brushing.web.controller.member;
 
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,12 @@ import com.brushing.member.domain.OrderAccountChange;
 import com.brushing.member.service.IOrderAccountChangeService;
 import com.brushing.common.utils.poi.ExcelUtil;
 import com.brushing.common.core.page.TableDataInfo;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.SessionAttributes;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import java.util.Locale;
+import org.springframework.context.MessageSource;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 账户变动Controller
@@ -29,10 +36,19 @@ import com.brushing.common.core.page.TableDataInfo;
  */
 @RestController
 @RequestMapping("/member/change")
+@SessionAttributes("userLocale")
 public class OrderAccountChangeController extends BaseController
 {
     @Autowired
     private IOrderAccountChangeService orderAccountChangeService;
+
+    @Autowired
+    private MessageSource messageSource;
+
+    @Autowired
+    private HttpServletRequest request;
+
+
 
     /**
      * 查询账户变动列表
@@ -95,4 +111,6 @@ public class OrderAccountChangeController extends BaseController
     {
         return toAjax(orderAccountChangeService.deleteOrderAccountChangeByIds(ids));
     }
+
+
 }

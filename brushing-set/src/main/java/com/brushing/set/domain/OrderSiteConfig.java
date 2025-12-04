@@ -80,6 +80,33 @@ public class OrderSiteConfig extends BaseEntity
     private String  seriesStatus;
     //提现后是否开启自动充值订单数
     private String  autoReset;
+    private String  resetOrderCount;
+
+    private String minBalance;
+    private String vipAutoShop;
+
+    public String getVipAutoShop() {
+        return vipAutoShop;
+    }
+
+    public void setVipAutoShop(String vipAutoShop) {
+        this.vipAutoShop = vipAutoShop;
+    }
+
+    public String getMinBalance() {
+        return minBalance;
+    }
+    public void setMinBalance(String minBalance) {
+        this.minBalance = minBalance;
+    }
+
+    public String getResetOrderCount() {
+        return resetOrderCount;
+    }
+
+    public void setResetOrderCount(String resetOrderCount) {
+        this.resetOrderCount = resetOrderCount;
+    }
 
     public String getAutoReset() {
         return autoReset;

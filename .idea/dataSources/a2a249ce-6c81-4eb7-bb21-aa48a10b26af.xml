@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataSource name="@localhost">
+  <database-model serializer="dbm" dbms="REDIS" family-id="REDIS" format-version="4.53">
+    <root id="1">
+      <ServerVersion>7.4.4</ServerVersion>
+    </root>
+    <schema id="2" parent="1" name="0">
+      <Current>1</Current>
+    </schema>
+    <schema id="3" parent="1" name="1"/>
+    <schema id="4" parent="1" name="10"/>
+    <schema id="5" parent="1" name="11"/>
+    <schema id="6" parent="1" name="12"/>
+    <schema id="7" parent="1" name="13"/>
+    <schema id="8" parent="1" name="14"/>
+    <schema id="9" parent="1" name="15"/>
+    <schema id="10" parent="1" name="2"/>
+    <schema id="11" parent="1" name="3"/>
+    <schema id="12" parent="1" name="4"/>
+    <schema id="13" parent="1" name="5"/>
+    <schema id="14" parent="1" name="6"/>
+    <schema id="15" parent="1" name="7"/>
+    <schema id="16" parent="1" name="8"/>
+    <schema id="17" parent="1" name="9"/>
+    <set id="18" parent="2" name="user:tokens:Sylive0823122"/>
+    <set id="19" parent="2" name="user:tokens:dadada"/>
+    <set id="20" parent="2" name="user:tokens:dawang"/>
+    <set id="21" parent="2" name="user:tokens:mao111"/>
+    <set id="22" parent="2" name="user:tokens:mao22"/>
+    <set id="23" parent="2" name="user:tokens:maoyi"/>
+    <set id="24" parent="2" name="user:tokens:poh97"/>
+    <set id="25" parent="2" name="user:tokens:test"/>
+    <set id="26" parent="2" name="user:tokens:wahaha06"/>
+    <set id="27" parent="2" name="user:tokens:zhangsan"/>
+    <string id="28" parent="2" name="BASE_oRRAE7o_dZNdr4xLsHDx7Bu_FXyg_sessionKey"/>
+    <string id="29" parent="2" name="countdown_time"/>
+    <string id="30" parent="2" name="sys_config:app-version"/>
+    <string id="31" parent="2" name="sys_config:monitor.address"/>
+    <string id="32" parent="2" name="sys_config:sys.account.captchaEnabled"/>
+    <string id="33" parent="2" name="sys_config:sys.account.initPasswordModify"/>
+    <string id="34" parent="2" name="sys_config:sys.account.passwordValidateDays"/>
+    <string id="35" parent="2" name="sys_config:sys.account.registerUser"/>
+    <string id="36" parent="2" name="sys_config:sys.index.sideTheme"/>
+    <string id="37" parent="2" name="sys_config:sys.index.skinName"/>
+    <string id="38" parent="2" name="sys_config:sys.login.blackIPList"/>
+    <string id="39" parent="2" name="sys_config:sys.user.initPassword"/>
+    <string id="40" parent="2" name="sys_dict:bet_msg_type"/>
+    <string id="41" parent="2" name="sys_dict:commission_status"/>
+    <string id="42" parent="2" name="sys_dict:device_log_status"/>
+    <string id="43" parent="2" name="sys_dict:media_content_type"/>
+    <string id="44" parent="2" name="sys_dict:media_flie_type"/>
+    <string id="45" parent="2" name="sys_dict:message_type"/>
+    <string id="46" parent="2" name="sys_dict:news_type"/>
+    <string id="47" parent="2" name="sys_dict:order_status"/>
+    <string id="48" parent="2" name="sys_dict:order_type"/>
+    <string id="49" parent="2" name="sys_dict:play_status"/>
+    <string id="50" parent="2" name="sys_dict:play_type"/>
+    <string id="51" parent="2" name="sys_dict:push_device_type"/>
+    <string id="52" parent="2" name="sys_dict:push_status"/>
+    <string id="53" parent="2" name="sys_dict:push_type"/>
+    <string id="54" parent="2" name="sys_dict:series_status"/>
+    <string id="55" parent="2" name="sys_dict:sys_common_status"/>
+    <string id="56" parent="2" name="sys_dict:sys_job_group"/>
+    <string id="57" parent="2" name="sys_dict:sys_job_status"/>
+    <string id="58" parent="2" name="sys_dict:sys_normal_disable"/>
+    <string id="59" parent="2" name="sys_dict:sys_notice_status"/>
+    <string id="60" parent="2" name="sys_dict:sys_notice_type"/>
+    <string id="61" parent="2" name="sys_dict:sys_oper_type"/>
+    <string id="62" parent="2" name="sys_dict:sys_show_hide"/>
+    <string id="63" parent="2" name="sys_dict:sys_user_sex"/>
+    <string id="64" parent="2" name="sys_dict:sys_yes_no"/>
+    <string id="65" parent="2" name="sys_dict:trade_ype"/>
+    <string id="66" parent="2" name="sys_dict:withdraw_status"/>
+    <string id="67" parent="2" name="sys_dict:yx_device_type"/>
+    <string id="68" parent="2" name="sys_dict:yx_level"/>
+    <string id="69" parent="2" name="trade_config"/>
+  </database-model>
+</dataSource>

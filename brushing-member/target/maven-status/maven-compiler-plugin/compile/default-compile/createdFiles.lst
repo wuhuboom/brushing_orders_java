@@ -1,4 +1,6 @@
 com\brushing\member\service\impl\WelfareConfigServiceImpl.class
+com\brushing\member\service\IOrderShopService.class
+com\brushing\member\service\impl\OrderShopServiceImpl.class
 com\brushing\member\service\impl\OrderInfoServiceImpl.class
 com\brushing\member\domain\OrderGoodsType.class
 com\brushing\member\domain\OrderMemberUser.class
@@ -9,11 +11,15 @@ com\brushing\member\domain\vo\OrderInfoVo.class
 com\brushing\member\domain\OrderLotteryPrize.class
 com\brushing\member\mapper\OrderTopupMapper.class
 com\brushing\member\domain\OrderWithdrawal.class
+com\brushing\member\service\IGoodsService.class
+com\brushing\member\mapper\OrderShopMapper.class
 com\brushing\member\mapper\WelfareConfigMapper.class
 com\brushing\member\service\IOrderInfoService.class
 com\brushing\member\service\IOrderLotteryConfigService.class
 com\brushing\member\mapper\OrderGoodsMapper.class
 com\brushing\member\service\impl\OrderMemberUserServiceImpl.class
+com\brushing\member\domain\OrderShop.class
+com\brushing\member\domain\Goods.class
 com\brushing\member\service\IOrderBankWalletService.class
 com\brushing\member\service\IOrderLotteryPrizeService.class
 com\brushing\member\mapper\OrderLotteryPrizeMapper.class
@@ -32,6 +38,7 @@ com\brushing\member\domain\OrderSeries.class
 com\brushing\member\service\IOrderGoodsService.class
 com\brushing\member\domain\OrderBankWallet.class
 com\brushing\member\mapper\OrderBankWalletMapper.class
+com\brushing\member\service\impl\GoodsServiceImpl.class
 com\brushing\member\domain\WelfareConfig.class
 com\brushing\member\mapper\OrderMemberUserMapper.class
 com\brushing\member\mapper\OrderWithdrawalMapper.class
@@ -58,3 +65,4 @@ com\brushing\member\domain\OrderInfo.class
 com\brushing\member\mapper\OrderGoodsTypeMapper.class
 com\brushing\member\mapper\OrderInfoMapper.class
 com\brushing\member\service\IOrderMemberLevelService.class
+com\brushing\member\mapper\GoodsMapper.class

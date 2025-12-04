@@ -18,7 +18,7 @@ public class IpUtils
     public final static String REGX_IP = "((" + REGX_0_255 + "\\.){3}" + REGX_0_255 + ")";
     public final static String REGX_IP_WILDCARD = "(((\\*\\.){3}\\*)|(" + REGX_0_255 + "(\\.\\*){3})|(" + REGX_0_255 + "\\." + REGX_0_255 + ")(\\.\\*){2}" + "|((" + REGX_0_255 + "\\.){3}\\*))";
     // 匹配网段
-    public final static String REGX_IP_SEG = "(" + REGX_IP + "\\-" + REGX_IP + ")";
+    public final static String REGX_IP_SEG = "(" + REGX_IP + "-" + REGX_IP + ")";
 
     /**
      * 获取客户端IP
@@ -42,30 +42,43 @@ public class IpUtils
         {
             return "unknown";
         }
-        String ip = request.getHeader("x-forwarded-for");
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
+
+        // 优先级的 header 列表（常见代理/ CDN）
+        final String[] headerCandidates = new String[] {
+            "X-Forwarded-For",
+            "x-forwarded-for",
+            "X-Real-IP",
+            "x-real-ip",
+            "CF-Connecting-IP",
+            "HTTP_CLIENT_IP",
+            "HTTP_X_FORWARDED_FOR",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP"
+        };
+
+        String ipRaw = null;
+        for (String header : headerCandidates)
         {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
-        {
-            ip = request.getHeader("X-Forwarded-For");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
-        {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
-        {
-            ip = request.getHeader("X-Real-IP");
+            String val = request.getHeader(header);
+            if (StringUtils.isNotBlank(val))
+            {
+                ipRaw = val;
+                break;
+            }
         }
 
-        if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip))
+        // 最后使用 remoteAddr
+        if (StringUtils.isBlank(ipRaw))
         {
-            ip = request.getRemoteAddr();
+            ipRaw = request.getRemoteAddr();
         }
 
-        return "0:0:0:0:0:0:0:1".equals(ip) ? "127.0.0.1" : getMultistageReverseProxyIp(ip);
+        String ip = getMultistageReverseProxyIp(ipRaw);
+        if (ip == null)
+        {
+            return "unknown";
+        }
+        return ip;
     }
 
     /**
@@ -113,10 +126,9 @@ public class IpUtils
                     return true;
                 }
             case SECTION_5:
-                switch (b1)
+                if (b1 == SECTION_6)
                 {
-                    case SECTION_6:
-                        return true;
+                    return true;
                 }
             default:
                 return false;
@@ -131,7 +143,7 @@ public class IpUtils
      */
     public static byte[] textToNumericFormatV4(String text)
     {
-        if (text.length() == 0)
+        if (text.isEmpty())
         {
             return null;
         }
@@ -224,6 +236,7 @@ public class IpUtils
         }
         catch (UnknownHostException e)
         {
+            // ignore and fallback
         }
         return "127.0.0.1";
     }
@@ -241,6 +254,7 @@ public class IpUtils
         }
         catch (UnknownHostException e)
         {
+            // ignore and fallback
         }
         return "未知";
     }
@@ -253,20 +267,77 @@ public class IpUtils
      */
     public static String getMultistageReverseProxyIp(String ip)
     {
-        // 多级反向代理检测
-        if (ip != null && ip.indexOf(",") > 0)
+        if (StringUtils.isBlank(ip))
         {
-            final String[] ips = ip.trim().split(",");
-            for (String subIp : ips)
+            return null;
+        }
+        // 多级反向代理检测
+        final String[] parts = ip.trim().split(",");
+        for (String part : parts)
+        {
+            String n = normalizeIp(part);
+            if (!isUnknown(n))
             {
-                if (false == isUnknown(subIp))
-                {
-                    ip = subIp;
-                    break;
-                }
+                return StringUtils.substring(n, 0, 255);
             }
         }
-        return StringUtils.substring(ip, 0, 255);
+        return null;
+    }
+
+    /**
+     * 规范化 ip 字符串：trim、去端口、去中括号、处理 IPv6 区域和 loopback
+     */
+    private static String normalizeIp(String ip)
+    {
+        if (StringUtils.isBlank(ip))
+        {
+            return null;
+        }
+        ip = ip.trim();
+        // remove surrounding quotes
+        if (ip.length() >= 2 && ip.startsWith("\"") && ip.endsWith("\""))
+        {
+            ip = ip.substring(1, ip.length() - 1);
+        }
+        if (ip.indexOf(',') > 0)
+        {
+            ip = ip.split(",")[0];
+        }
+        ip = ip.trim();
+        if (StringUtils.isBlank(ip) || "unknown".equalsIgnoreCase(ip))
+        {
+            return null;
+        }
+        // strip IPv6 zone id (fe80::1%eth0)
+        int pct = ip.indexOf('%');
+        if (pct > 0)
+        {
+            ip = ip.substring(0, pct);
+        }
+        // bracketed IPv6 like [::1]:8080
+        if (ip.startsWith("["))
+        {
+            int idx = ip.indexOf(']');
+            if (idx > 0)
+            {
+                ip = ip.substring(1, idx);
+            }
+        }
+        // IPv4 with port (e.g. 1.2.3.4:8080)
+        if (ip.indexOf('.') >= 0)
+        {
+            int colon = ip.indexOf(':');
+            if (colon > 0)
+            {
+                ip = ip.substring(0, colon);
+            }
+        }
+        // normalize IPv6 loopback to IPv4 loopback for consistency
+        if ("::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip))
+        {
+            return "127.0.0.1";
+        }
+        return ip;
     }
 
     /**

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.brushing.common.annotation.Log;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.enums.BusinessType;
 import com.brushing.member.domain.OrderSeries;
 import com.brushing.member.service.IOrderSeriesService;
@@ -76,12 +77,18 @@ public class OrderSeriesController extends BaseController
         orderSeries.setCreateBy(getUsername());
         int i = orderSeriesService.insertOrderSeries(orderSeries);
         if (i==5){
-            return error("已设置连单");
+            return error(MessageUtils.message("series.already_set"));
         }
         if (i==6){
-            return error("商品数据错误");
+            return error(MessageUtils.message("series.product_data_error"));
         }
         return toAjax(i);
+    }
+
+    @PostMapping("/addSeries")
+    public AjaxResult addSeries(@RequestBody List<OrderSeries> orderSeries){
+
+        return toAjax(orderSeriesService.insertOrderSeries(orderSeries));
     }
 
     /**
@@ -93,7 +100,7 @@ public class OrderSeriesController extends BaseController
     {
         OrderSeries series = orderSeriesService.selectOrderSeriesById(orderSeries.getId());
         if (!series.getStatus().equals("1")){
-            return error("该订单已无法修改");
+            return error(MessageUtils.message("series.cannot_modify"));
         }
         return toAjax(orderSeriesService.updateOrderSeries(orderSeries));
     }
@@ -108,7 +115,7 @@ public class OrderSeriesController extends BaseController
        for (int i=0;i<ids.length;i++){
            OrderSeries series = orderSeriesService.selectOrderSeriesById(ids[i]);
            if (!series.getStatus().equals("1")){
-               return error("订单已无法删除");
+               return error(MessageUtils.message("series.cannot_delete"));
            }
        }
         int i = orderSeriesService.deleteOrderSeriesByIds(ids);

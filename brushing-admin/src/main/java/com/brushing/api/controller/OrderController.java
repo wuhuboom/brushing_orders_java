@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -98,6 +99,11 @@ public class OrderController extends BaseController {
 
     private static final int MAX_ATTEMPTS = 5;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+
+
 
 
     /** 为认证用户创建新订单 */
@@ -106,6 +112,7 @@ public class OrderController extends BaseController {
     @Operation(summary = "创建新订单")
     public AjaxResult createOrder(@RequestAttribute("username") String username) {
         OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
+        OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
         if (controlConfig == null) {
             return AjaxResult.error(901, "System configuration is not available");
         }
@@ -124,114 +131,134 @@ public class OrderController extends BaseController {
         if (user == null) {
             return AjaxResult.error(904, "The user does not exist");
         }
-        if (orderInfoService.countUnfinishedOrders(user.getId()) > 0) {
-            return AjaxResult.error(907, "There is an open order");
+        Boolean checkUserBalance = userService.checkUserBalance(user);
+        if (orderSiteConfig.getVipAutoShop().equals("0")){
+            if (!checkUserBalance){
+                return AjaxResult.error(916, "User balance is insufficient");
+            }
         }
-        OrderMemberLevel userLevel = user.getUserLevel();
-        if (!"0".equals(user.getTradeStatus())||(user.getDealCount()==user.getCardNumber()&&user.getCardNumber()>0)){
-            return AjaxResult.error(905, "This user is not allowed to grab orders");
+        // 添加Redis锁
+        String lockKey = "order_lock:" + user.getId();
+        String lockValue = java.util.UUID.randomUUID().toString();
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, 5, TimeUnit.SECONDS);
+        if (!Boolean.TRUE.equals(locked)) {
+            logger.warn("用户{}创建订单被锁，请稍后重试", user.getId());
+            return AjaxResult.error(908, "Please try again later (system busy)");
         }
-        BigDecimal minUserBalance = userLevel.getMinBalance();
-        if (user.getBalance().compareTo(minUserBalance) < 0) {
-            return AjaxResult.error(906, "The minimum transaction amount is: " + minUserBalance);
-        }
-
-        int currentNum = user.getDealCount() + 1;
-        List<OrderSeries> orderSeries = seriesService.selectSeriesListByUserId(user.getId());
-        OrderSeries series = findSeriesByOrderIndex(orderSeries, currentNum);
-
-        OrderInfo order = new OrderInfo();
-        String orderNo = generateUniqueOrderNo(user.getId());
-        if (orderNo == null) {
-            return AjaxResult.error(908, "Please try again later");
-        }
-        if (user.getDealCount() >= user.getUserLevel().getOrderCount()){
-            return AjaxResult.error(909, "The number of orders is full");
-        }
-
-        OrderVo response;
-        BigDecimal price;
-        BigDecimal commission ;
-        Long productId;
 
         try {
-            if (!orderSeries.isEmpty() && series != null) {
-                // 连单逻辑
-                if (series.getCommissionRatio() == null ||  series.getCommissionRatio().compareTo(0) <= 0) {
-                    return AjaxResult.error(910, "Invalid configuration");
-                }
-                productId = series.getProductId();
-                price = series.getPrice();
-
-                OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
-                if (StringUtils.isNull(orderSiteConfig)){
-                    return AjaxResult.error(908, "Please try again later");
-                }
-                BigDecimal commissionRatio ;
-                OrderGoods orderGoods;
-                if (orderSiteConfig.getSeriesStatus().equals("0")){
-                    commissionRatio = new BigDecimal(series.getCommissionRatio())
-                            .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
-                    commission = price.multiply(commissionRatio);
-                }else{
-                    BigDecimal commissionRatio1 = userLevel.getCommissionRatio().divide(new BigDecimal(100));
-                    BigDecimal multiply = commissionRatio1.multiply(new BigDecimal(series.getCommissionRatio()));
-                    commission = price.multiply(multiply);
-                }
-                orderGoods = orderGoodsService.selectOrderGoodsById(productId);
-                if (orderGoods == null) {
-                    return AjaxResult.error(908, "Please try again later");
-                }
-                order.setOrderType("1");
-                order.setSeriesId(series.getId());
-                order.setStatus(OrderStatus.PENDING_SUBMIT.getCode()); // 连单订单初始为待提交
-                order.setQuantity(currentNum);
-                setupOrderInfo(order, orderNo, user.getId(), productId, price, commission, new BigDecimal(series.getCommissionRatio()));
-                orderInfoService.insertOrderInfo(order);
-                series.setStatus(OrderStatus.PENDING_SUBMIT.getCode());
-                seriesService.updateOrderSeries(series);
-                response = createOrderResponse(order, productId, price, commission,
-                        orderGoods.getName(), orderGoods.getCoverUrl(), DateUtils.getNowDate(), order.getStatus());
-            } else {
-                // 非连单逻辑
-                BigDecimal percentRaw = randomBetween(controlConfig.getTradeRangePercentMin(),
-                        controlConfig.getTradeRangePercentMax(), 4);
-                BigDecimal percent = percentRaw.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
-
-                BigDecimal amount  = user.getBalance().multiply(percent).setScale(2, RoundingMode.DOWN);
-                OrderGoods orderGoods = orderGoodsService.selectNearestPriceGoods(amount);
-                if (orderGoods == null) {
-                    return AjaxResult.error(911, "No suitable product or insufficient balance");
-                }
-                OrderMemberLevel level = memberLevelService.selectOrderMemberLevelById(user.getLevelId());
-                if (level == null || level.getCommissionRatio() == null) {
-                    return AjaxResult.error(912, "Invalid membership tier configuration");
-                }
-                price = orderGoods.getPrice();
-                BigDecimal commissionRatio = level.getCommissionRatio()
-                        .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
-                commission = price.multiply(commissionRatio);
-                productId = orderGoods.getId();
-                order.setCommissionRate(level.getCommissionRatio());
-                order.setQuantity(currentNum);
-                order.setStatus(SeriesStatus.PENDING_SUBMIT.getCode()); // 非连单订单初始为待提交
-                setupOrderInfo(order, orderNo, user.getId(), productId, price, commission, level.getCommissionRatio());
-                orderInfoService.insertOrderInfo(order);
-                response = createOrderResponse(order, productId, price, commission,
-                        orderGoods.getName(), orderGoods.getCoverUrl(), DateUtils.getNowDate(), order.getStatus());
+            if (orderInfoService.countUnfinishedOrders(user.getId()) > 0) {
+                return AjaxResult.error(907, "There is an open order");
+            }
+            OrderMemberLevel userLevel = user.getUserLevel();
+            if (!"0".equals(user.getTradeStatus())||(user.getDealCount()==user.getCardNumber()&&user.getCardNumber()>0)){
+                return AjaxResult.error(905, "This user is not allowed to grab orders");
             }
 
-            AjaxResult balanceResult = updateBalanceAndRecordChange(
-                    user, price, ChangeType.ORDER.getCode(), "订单下单", currentNum
-            );
-            if (!balanceResult.isSuccess()) {
+
+            BigDecimal minUserBalance = userLevel.getMinBalance();
+            if (orderSiteConfig.getMinBalance().equals("1")){
+                if (user.getBalance().compareTo(minUserBalance) < 0) {
+                    return AjaxResult.error(906, "The minimum transaction amount is: " + minUserBalance);
+                }
+            }
+            int currentNum = user.getDealCount() + 1;
+            List<OrderSeries> orderSeries = seriesService.selectSeriesListByUserId(user.getId());
+            OrderSeries series = findSeriesByOrderIndex(orderSeries, currentNum);
+            OrderInfo order = new OrderInfo();
+            String orderNo = generateUniqueOrderNo(user.getId());
+            if (orderNo == null) {
+                return AjaxResult.error(908, "Please try again later");
+            }
+            if (user.getDealCount() >= user.getUserLevel().getOrderCount()){
+                return AjaxResult.error(909, "The number of orders is full");
+            }
+            OrderVo response;
+            BigDecimal price;
+            BigDecimal commission ;
+            Long productId;
+            try {
+                if (!orderSeries.isEmpty() && series != null) {
+                    // 连单逻辑
+                    if (series.getCommissionRatio() == null || series.getCommissionRatio().compareTo(0) <= 0) {
+                        return AjaxResult.error(910, "Invalid configuration");
+                    }
+                    productId = series.getProductId();
+                    if (series.getType().equals("1")){
+                        price = series.getPrice();
+                    }else{
+                        BigDecimal price1 = series.getPrice();
+                        price = user.getBalance().add(price1);
+                    }
+
+                    if (StringUtils.isNull(orderSiteConfig)){
+                        return AjaxResult.error(908, "Please try again later");
+                    }
+                    BigDecimal commissionRatio ;
+                    OrderGoods orderGoods;
+                    if (orderSiteConfig.getSeriesStatus().equals("0")){
+                        commissionRatio = userLevel.getStreakCommissionRatio()
+                                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+                        commission = price.multiply(commissionRatio);
+                    }else{
+                        BigDecimal commissionRatio1 = userLevel.getCommissionRatio().divide(new BigDecimal(100));
+                        BigDecimal multiply = commissionRatio1.multiply(new BigDecimal(series.getCommissionRatio()));
+                        commission = price.multiply(multiply);
+                    }
+                    orderGoods = orderGoodsService.selectOrderGoodsById(productId);
+                    if (orderGoods == null) {
+                        return AjaxResult.error(908, "Please try again later");
+                    }
+                    order.setOrderType("1");
+                    order.setSeriesId(series.getId());
+                    order.setStatus(OrderStatus.PENDING_SUBMIT.getCode()); // 连单订单初始为待提交
+                    order.setQuantity(currentNum);
+                    setupOrderInfo(order, orderNo, user.getId(), productId, price, commission, new BigDecimal(series.getCommissionRatio()));
+                    orderInfoService.insertOrderInfo(order);
+                    series.setStatus(OrderStatus.PENDING_SUBMIT.getCode());
+                    seriesService.updateOrderSeries(series);
+                    response = createOrderResponse(order, productId, price, commission, orderGoods.getName(), orderGoods.getCoverUrl(), DateUtils.getNowDate(), order.getStatus());
+                } else {
+                    // 非连单逻辑
+                    BigDecimal percentRaw = randomBetween(controlConfig.getTradeRangePercentMin(), controlConfig.getTradeRangePercentMax(), 4);
+                    BigDecimal percent = percentRaw.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                    BigDecimal amount = user.getBalance().multiply(percent).setScale(2, RoundingMode.DOWN);
+                    OrderGoods orderGoods = orderGoodsService.selectNearestPriceGoods(amount);
+                    if (orderGoods == null) {
+                        return AjaxResult.error(911, "No suitable product or insufficient balance");
+                    }
+                    OrderMemberLevel level = memberLevelService.selectOrderMemberLevelById(user.getLevelId());
+                    if (level == null || level.getCommissionRatio() == null) {
+                        return AjaxResult.error(912, "Invalid membership tier configuration");
+                    }
+                    price = orderGoods.getPrice();
+                    BigDecimal commissionRatio = level.getCommissionRatio()
+                            .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+                    commission = price.multiply(commissionRatio);
+                    productId = orderGoods.getId();
+                    order.setCommissionRate(level.getCommissionRatio());
+                    order.setQuantity(currentNum);
+                    order.setStatus(SeriesStatus.PENDING_SUBMIT.getCode()); // 非连单订单初始为待提交
+                    setupOrderInfo(order, orderNo, user.getId(), productId, price, commission, level.getCommissionRatio());
+                    orderInfoService.insertOrderInfo(order);
+                    response = createOrderResponse(order, productId, price, commission, orderGoods.getName(), orderGoods.getCoverUrl(), DateUtils.getNowDate(), order.getStatus());
+                }
+                AjaxResult balanceResult = updateBalanceAndRecordChange(
+                        user, price, ChangeType.ORDER.getCode(), "订单下单", currentNum );
+                if (!balanceResult.isSuccess()) {
+                    throw new RuntimeException("Please try again later");
+                }
+                return AjaxResult.success(response);
+            } catch (Exception e) {
+                logger.error("创建订单失败，用户ID: {}, 错误: {}", user.getId(), e.getMessage());
                 throw new RuntimeException("Please try again later");
             }
-
-            return AjaxResult.success(response);
-        } catch (Exception e) {
-            logger.error("创建订单失败，用户ID: {}, 错误: {}", user.getId(), e.getMessage());
-            throw new RuntimeException("Please try again later");
+        } finally {
+            // 释放锁
+            String currentValue = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(currentValue)) {
+                redisTemplate.delete(lockKey);
+            }
         }
     }
 
@@ -263,157 +290,153 @@ public class OrderController extends BaseController {
             return AjaxResult.error(914, "Invalid users");
         }
 
-        OrderInfo orderInfo = orderInfoService.selectOrderInfoById(id);
-        if (orderInfo == null) {
-            return AjaxResult.error(913, "Invalid orders");
+        // 添加Redis锁：按订单ID锁，防同一订单双提交
+        String lockKey = "submit_lock:" + id;
+        String lockValue = java.util.UUID.randomUUID().toString();
+        Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, 5, TimeUnit.SECONDS);
+        if (!Boolean.TRUE.equals(locked)) {
+            logger.warn("订单{}提交被锁，请稍后重试", id);
+            return AjaxResult.error(918, "The order status does not allow submission (system busy)");  // 复用918，避免暴露锁
         }
 
-        OrderGoods product = orderInfo.getProduct();
-        if (product == null) {
-            return AjaxResult.error(913, "Invalid orders");
-        }
-
-        OrderMemberUser user = userService.selectOrderMemberUserById(orderInfo.getUserId());
-        if (user == null) {
-            return AjaxResult.error(914, "Invalid users");
-        }
-        if (!username.equalsIgnoreCase(user.getUsername())) {
-            return AjaxResult.error(915, "User identity mismatch");
-        }
-        if (user.getBalance().compareTo(BigDecimal.ZERO) < 0) {
-            return AjaxResult.error(916, "The balance is insufficient");
-        }
-        if (OrderStatus.COMPLETED.getCode().equals(orderInfo.getStatus())) {
-            return AjaxResult.error(917, "The order is completed");
-        }
-        if (user.getFrozenBalance().compareTo(product.getPrice()) < 0) {
-            return AjaxResult.error(2007, "Contact your administrator");
-        }
-        if (!OrderStatus.PENDING_SUBMIT.getCode().equals(orderInfo.getStatus())) {
-            return AjaxResult.error(918, "The order status does not allow submission");
-        }
-
-        OrderVo response = null;
-        OrderMemberUser modifiedUser = user;  // 用于累积所有修改（传入的user副本）
-        BigDecimal newOrderPrice = null;  // 用于连单新订单的扣余额
         try {
-            if ("1".equals(orderInfo.getOrderType())) {
-                // 连单订单处理
-                int currentNum = user.getDealCount() + 1;
-                List<OrderSeries> orderSeries = seriesService.selectSeriesListByUserId(user.getId());
-                OrderSeries series = findSeriesByOrderIndex(orderSeries, currentNum);
-
-                if (series != null) {
-                    // 创建新连单订单（无余额扣除）
-                    OrderInfo newSeriesOrder = createNewSeriesOrder(modifiedUser, series, currentNum);
-                    if (newSeriesOrder == null) {
-                        throw new RuntimeException("Please try again later");
-                    }
-                    newOrderPrice = newSeriesOrder.getPrice();  // 记录价格，用于末尾扣余额
-
-                    orderInfo.setStatus(OrderStatus.FROZEN.getCode()); // 当前订单冻结
-                    // 新订单待提交
-                    series.setStatus(SeriesStatus.PENDING_SUBMIT.getCode());
-                    seriesService.updateOrderSeries(series);
-                    orderInfo.setSubmitTime(DateUtils.getNowDate());
-                    orderInfoService.updateOrderInfo(orderInfo);
-                    // 旧的连单标记冻结
-                    Long seriesId = orderInfo.getSeriesId();
-                    OrderSeries series1 = seriesService.selectOrderSeriesById(seriesId);
-                    series1.setStatus(SeriesStatus.FROZEN.getCode());
-                    seriesService.updateOrderSeries(series1);
-                    OrderGoods orderGoods = orderGoodsService.selectOrderGoodsById(newSeriesOrder.getProductId());
-                    response = createOrderResponse(
-                            newSeriesOrder, orderGoods.getId(), newSeriesOrder.getPrice(),
-                            newSeriesOrder.getCommission(), orderGoods.getName(), orderGoods.getCoverUrl(),
-                            newSeriesOrder.getCreateTime(), newSeriesOrder.getStatus()
-                    );
-                    // 注意：这里不调用processOrderCompletion（仅冻结，不返佣/返本）
-                } else {
-                    // 处理所有冻结订单（原逻辑：修改modifiedUser对象）
-                    List<OrderInfo> orderInfos = orderInfoService.selectOrderInfoBySeries(user.getId());
-                    for (OrderInfo info : orderInfos) {
-                        BigDecimal balance = modifiedUser.getBalance();
-                        BigDecimal newBalance = balance.add(info.getCommission());
-                        recordAccountChange(
-                                modifiedUser.getId(), modifiedUser.getUsername(), ChangeType.COMMISSION.getCode(),
-                                balance, info.getCommission(), newBalance, "佣金返还", info.getCommission()
-                        );
-                        BigDecimal price = info.getPrice();
-                        BigDecimal frozenBalance = modifiedUser.getFrozenBalance();
-                        BigDecimal newFrozen = frozenBalance.subtract(price);
-                        BigDecimal finalBalance = newBalance.add(price);
-                        recordAccountChange(
-                                modifiedUser.getId(), modifiedUser.getUsername(), ChangeType.REFUND.getCode(),
-                                newBalance, price, finalBalance, "本金返还", price
-                        );
-                        info.setStatus(OrderStatus.COMPLETED.getCode());
-                        info.setCommissionStatus(CommissionStatus.ISSUED.getCode());
-                        OrderSeries series1 = seriesService.selectOrderSeriesById(info.getSeriesId());
-                        if (series1 != null) {
-                            series1.setStatus(SeriesStatus.COMPLETED.getCode());
-                            seriesService.updateOrderSeries(series1);
+            OrderInfo orderInfo = orderInfoService.selectOrderInfoById(id);
+            if (orderInfo == null) {
+                return AjaxResult.error(913, "Invalid orders");
+            }
+            OrderGoods product = orderInfo.getProduct();
+            if (product == null) {
+                return AjaxResult.error(913, "Invalid orders");
+            }
+            OrderMemberUser user = userService.selectOrderMemberUserById(orderInfo.getUserId());
+            if (user == null) {
+                return AjaxResult.error(914, "Invalid users");
+            }
+            if (!username.equalsIgnoreCase(user.getUsername())) {
+                return AjaxResult.error(915, "User identity mismatch");
+            }
+            if (user.getBalance().compareTo(BigDecimal.ZERO) < 0) {
+                return AjaxResult.error(916, "The balance is insufficient");
+            }
+            if (!OrderStatus.PENDING_SUBMIT.getCode().equals(orderInfo.getStatus())) {
+                return AjaxResult.error(918, "The order status does not allow submission");
+            }
+            if (user.getFrozenBalance().compareTo(product.getPrice()) < 0) {
+                return AjaxResult.error(2007, "Contact your administrator");
+            }
+            OrderVo response = null;
+            OrderMemberUser modifiedUser = user; // 用于累积所有修改（传入的user副本）
+            BigDecimal newOrderPrice = null; // 用于连单新订单的扣余额
+            try {
+                if ("1".equals(orderInfo.getOrderType())) { // 连单订单处理
+                    int currentNum = user.getDealCount() + 1;
+                    List<OrderSeries> orderSeries = seriesService.selectSeriesListByUserId(user.getId());
+                    OrderSeries series = findSeriesByOrderIndex(orderSeries, currentNum);
+                    if (series != null) { // 创建新连单订单（无余额扣除）
+                        OrderInfo newSeriesOrder = createNewSeriesOrder(modifiedUser, series, currentNum);
+                        if (newSeriesOrder == null) {
+                            throw new RuntimeException("Please try again later");
                         }
-                        orderInfoService.updateOrderInfo(info);
-                        modifiedUser.setAllCommission(modifiedUser.getAllCommission().add(info.getCommission()));
-                        modifiedUser.setCommission(modifiedUser.getCommission().add(info.getCommission()));
-                        modifiedUser.setBalance(finalBalance);
-                        modifiedUser.setFrozenBalance(newFrozen);
+                        newOrderPrice = newSeriesOrder.getPrice(); // 记录价格，用于末尾扣余额
+                        orderInfo.setStatus(OrderStatus.FROZEN.getCode()); // 当前订单冻结
+                        // 新订单待提交
+                        series.setStatus(SeriesStatus.PENDING_SUBMIT.getCode());
+                        seriesService.updateOrderSeries(series);
+                        orderInfo.setSubmitTime(DateUtils.getNowDate());
+                        orderInfoService.updateOrderInfo(orderInfo); // 旧的连单标记冻结
+                        Long seriesId = orderInfo.getSeriesId();
+                        OrderSeries series1 = seriesService.selectOrderSeriesById(seriesId);
+                        series1.setStatus(SeriesStatus.FROZEN.getCode());
+                        seriesService.updateOrderSeries(series1);
+                        OrderGoods orderGoods = orderGoodsService.selectOrderGoodsById(newSeriesOrder.getProductId());
+                        response = createOrderResponse(
+                                newSeriesOrder, orderGoods.getId(), newSeriesOrder.getPrice(), newSeriesOrder.getCommission(),
+                                orderGoods.getName(), orderGoods.getCoverUrl(), newSeriesOrder.getCreateTime(), newSeriesOrder.getStatus()
+                        ); // 注意：这里不调用processOrderCompletion（仅冻结，不返佣/返本）
+                    } else { // 处理所有冻结订单（原逻辑：修改modifiedUser对象）
+                        List<OrderInfo> orderInfos = orderInfoService.selectOrderInfoBySeries(user.getId());
+                        for (OrderInfo info : orderInfos) {
+                            BigDecimal balance = modifiedUser.getBalance();
+                            BigDecimal newBalance = balance.add(info.getCommission());
+                            recordAccountChange(
+                                    modifiedUser.getId(), modifiedUser.getUsername(), ChangeType.COMMISSION.getCode(),
+                                    balance, info.getCommission(), newBalance, "佣金返还", info.getCommission()
+                            );
+                            BigDecimal price = info.getPrice();
+                            BigDecimal frozenBalance = modifiedUser.getFrozenBalance();
+                            BigDecimal newFrozen = frozenBalance.subtract(price);
+                            BigDecimal finalBalance = newBalance.add(price);
+                            recordAccountChange(
+                                    modifiedUser.getId(), modifiedUser.getUsername(), ChangeType.REFUND.getCode(),
+                                    newBalance, price, finalBalance, "本金返还", price
+                            );
+                            info.setStatus(OrderStatus.COMPLETED.getCode());
+                            info.setCommissionStatus(CommissionStatus.ISSUED.getCode());
+                            OrderSeries series1 = seriesService.selectOrderSeriesById(info.getSeriesId());
+                            if (series1 != null) {
+                                series1.setStatus(SeriesStatus.COMPLETED.getCode());
+                                seriesService.updateOrderSeries(series1);
+                            }
+                            orderInfoService.updateOrderInfo(info);
+                            modifiedUser.setAllCommission(modifiedUser.getAllCommission().add(info.getCommission()));
+                            modifiedUser.setCommission(modifiedUser.getCommission().add(info.getCommission()));
+                            modifiedUser.setBalance(finalBalance);
+                            modifiedUser.setFrozenBalance(newFrozen);
+                        }
+                        // 更新当前订单
+                        processOrderCompletion(orderInfo, modifiedUser, product.getPrice());
                     }
-                    // 更新当前订单
+                } else { // 非连单订单处理
                     processOrderCompletion(orderInfo, modifiedUser, product.getPrice());
                 }
-            } else {
-                // 非连单订单处理
-                processOrderCompletion(orderInfo, modifiedUser, product.getPrice());
+                // 统一用户更新（所有分支汇聚点）
+                if (newOrderPrice != null) { // 连单有新订单：预扣余额（基于modifiedUser，但实际在下面re-select后合并）
+                    BigDecimal balanceBefore = modifiedUser.getBalance();
+                    BigDecimal newBalance = balanceBefore.subtract(newOrderPrice);
+                    BigDecimal newFrozen = modifiedUser.getFrozenBalance().add(newOrderPrice);
+                    modifiedUser.setBalance(newBalance);
+                    modifiedUser.setFrozenBalance(newFrozen);
+                    modifiedUser.setDealCount(modifiedUser.getDealCount() + 1); // inc dealCount
+                    recordAccountChange(
+                            modifiedUser.getId(), modifiedUser.getUsername(), ChangeType.ORDER.getCode(),
+                            balanceBefore, newOrderPrice.negate(), newBalance, "订单下单", newOrderPrice
+                    );
+                }
+                // 核心：重新加载最新user，确保version最新，然后合并修改并更新一次
+                OrderMemberUser latestUser = userService.selectOrderMemberUserById(modifiedUser.getId());
+                if (latestUser == null) {
+                    throw new RuntimeException("User not found");
+                }
+                // 合并关键fields（假设只改这些；可扩展）
+                latestUser.setBalance(modifiedUser.getBalance());
+                latestUser.setFrozenBalance(modifiedUser.getFrozenBalance());
+                latestUser.setDealCount(modifiedUser.getDealCount());
+                latestUser.setCommission(modifiedUser.getCommission());
+                latestUser.setAllCommission(modifiedUser.getAllCommission());
+                // ... 其他可能修改的fields ...
+                int updatedRows = userService.updateOrderMemberUser(latestUser);
+                if (updatedRows == 0) {
+                    throw new RuntimeException("Please try again later (version conflict)");
+                }
+                if (response == null){
+                    return AjaxResult.success();
+                } else {
+                    AjaxResult result = new AjaxResult();
+                    result.put("code", 201);
+                    result.put("data", response);
+                    result.put("msg", "You have a new order");
+                    return result;
+                }
+            } catch (Exception e) {
+                logger.error("提交订单失败，订单ID: {}, 用户ID: {}, 错误: {}", id, user.getId(), e.getMessage());
+                throw new RuntimeException("Please try again later");
             }
-
-            // 统一用户更新（所有分支汇聚点）
-            if (newOrderPrice != null) {
-                // 连单有新订单：预扣余额（基于modifiedUser，但实际在下面re-select后合并）
-                BigDecimal balanceBefore = modifiedUser.getBalance();
-                BigDecimal newBalance = balanceBefore.subtract(newOrderPrice);
-                BigDecimal newFrozen = modifiedUser.getFrozenBalance().add(newOrderPrice);
-                modifiedUser.setBalance(newBalance);
-                modifiedUser.setFrozenBalance(newFrozen);
-                modifiedUser.setDealCount(modifiedUser.getDealCount() + 1);  // inc dealCount
-                recordAccountChange(
-                        modifiedUser.getId(), modifiedUser.getUsername(), ChangeType.ORDER.getCode(),
-                        balanceBefore, newOrderPrice.negate(), newBalance, "订单下单", newOrderPrice
-                );
+        } finally {
+            // 释放锁
+            String currentValue = redisTemplate.opsForValue().get(lockKey);
+            if (lockValue.equals(currentValue)) {
+                redisTemplate.delete(lockKey);
             }
-
-            // 核心：重新加载最新user，确保version最新，然后合并修改并更新一次
-            OrderMemberUser latestUser = userService.selectOrderMemberUserById(modifiedUser.getId());
-            if (latestUser == null) {
-                throw new RuntimeException("User not found");
-            }
-            // 合并关键fields（假设只改这些；可扩展）
-            latestUser.setBalance(modifiedUser.getBalance());
-            latestUser.setFrozenBalance(modifiedUser.getFrozenBalance());
-            latestUser.setDealCount(modifiedUser.getDealCount());
-            latestUser.setCommission(modifiedUser.getCommission());
-            latestUser.setAllCommission(modifiedUser.getAllCommission());
-            // ... 其他可能修改的fields ...
-
-            int updatedRows = userService.updateOrderMemberUser(latestUser);
-            if (updatedRows == 0) {
-                throw new RuntimeException("Please try again later (version conflict)");  // 乐观锁失败
-            }
-
-            if (response == null){
-                return AjaxResult.success();
-            } else {
-                AjaxResult result = new AjaxResult();
-                result.put("code", 201);
-                result.put("data", response);
-                result.put("msg", "You have a new order");
-                return result;
-            }
-
-        } catch (Exception e) {
-            logger.error("提交订单失败，订单ID: {}, 用户ID: {}, 错误: {}", id, user.getId(), e.getMessage());
-            throw new RuntimeException("Please try again later");
         }
     }
 
@@ -563,7 +586,8 @@ public class OrderController extends BaseController {
     }
 
     /** 更新用户余额并记录账变 */
-    private AjaxResult updateBalanceAndRecordChange(OrderMemberUser user, BigDecimal price,
+    @Transactional(propagation = Propagation.REQUIRED)
+    public AjaxResult updateBalanceAndRecordChange(OrderMemberUser user, BigDecimal price,
                                                     String changeType, String action, int currentNum) {
         BigDecimal balanceBefore = user.getBalance();
         BigDecimal newBalance = balanceBefore.subtract(price);
@@ -606,7 +630,13 @@ public class OrderController extends BaseController {
     /** 创建新连单订单（推迟余额扣除） */
     private OrderInfo createNewSeriesOrder(OrderMemberUser user, OrderSeries series, int currentNum) {
         Long productId = series.getProductId();
-        BigDecimal price = series.getPrice();
+        BigDecimal price = new BigDecimal("0");
+        if (series.getType().equals("1")){
+            price = series.getPrice();
+        }else{
+            BigDecimal price1 = series.getPrice();
+            price = user.getBalance().add(price1);
+        }
         if (series.getCommissionRatio() == null || series.getCommissionRatio().compareTo(0) <= 0) {
             logger.error("无效的连单佣金配置，系列ID: {}", series.getId());
             return null;

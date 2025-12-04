@@ -62,6 +62,7 @@ com\brushing\common\constant\CacheConstants.class
 com\brushing\common\config\serializer\SensitiveJsonSerializer.class
 com\brushing\common\core\domain\entity\SysRole.class
 com\brushing\common\utils\uuid\IdUtils.class
+com\brushing\common\config\I18nConfig.class
 com\brushing\common\utils\uuid\Seq.class
 com\brushing\common\utils\sign\Base64.class
 com\brushing\common\exception\file\FileSizeLimitExceededException.class

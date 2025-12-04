@@ -61,6 +61,8 @@ public class ResourcesConfig implements WebMvcConfigurer
         config.addAllowedHeader("*");
         // 设置访问源请求方法
         config.addAllowedMethod("*");
+        // 允许携带 cookie/认证信息（必要），前端请求需设置 credentials: 'include' 或 withCredentials = true
+        config.setAllowCredentials(true);
         // 有效期 1800秒
         config.setMaxAge(1800L);
         // 添加映射路径，拦截一切请求

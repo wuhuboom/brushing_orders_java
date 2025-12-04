@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.R;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.MessageUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -54,7 +55,7 @@ public class TestController extends BaseController
         }
         else
         {
-            return R.fail("用户不存在");
+            return R.fail(MessageUtils.message("test.user.not_found"));
         }
     }
     
@@ -64,7 +65,7 @@ public class TestController extends BaseController
     {
         if (StringUtils.isNull(user) || StringUtils.isNull(user.getUserId()))
         {
-            return R.fail("用户ID不能为空");
+            return R.fail(MessageUtils.message("test.user.id.not_blank"));
         }
         users.put(user.getUserId(), user);
         return R.ok();
@@ -77,11 +78,11 @@ public class TestController extends BaseController
     {
         if (StringUtils.isNull(user) || StringUtils.isNull(user.getUserId()))
         {
-            return R.fail("用户ID不能为空");
+            return R.fail(MessageUtils.message("test.user.id.not_blank"));
         }
         if (users.isEmpty() || !users.containsKey(user.getUserId()))
         {
-            return R.fail("用户不存在");
+            return R.fail(MessageUtils.message("test.user.not_found"));
         }
         users.remove(user.getUserId());
         users.put(user.getUserId(), user);
@@ -100,7 +101,7 @@ public class TestController extends BaseController
         }
         else
         {
-            return R.fail("用户不存在");
+            return R.fail(MessageUtils.message("test.user.not_found"));
         }
     }
 }

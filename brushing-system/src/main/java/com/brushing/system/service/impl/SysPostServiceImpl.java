@@ -10,6 +10,7 @@ import com.brushing.system.domain.SysPost;
 import com.brushing.system.mapper.SysPostMapper;
 import com.brushing.system.mapper.SysUserPostMapper;
 import com.brushing.system.service.ISysPostService;
+import com.brushing.common.utils.MessageUtils;
 
 /**
  * 岗位信息 服务层处理
@@ -146,7 +147,7 @@ public class SysPostServiceImpl implements ISysPostService
             SysPost post = selectPostById(postId);
             if (countUserPostById(postId) > 0)
             {
-                throw new ServiceException(String.format("%1$s已分配,不能删除", post.getPostName()));
+                throw new ServiceException(MessageUtils.message("post.assigned_cant_delete", post.getPostName()));
             }
         }
         return postMapper.deletePostByIds(postIds);

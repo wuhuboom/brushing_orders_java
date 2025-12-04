@@ -186,6 +186,84 @@ public class OrderGlobalConfig extends BaseEntity
     @Excel(name = "收入指南 - 中文繁体")
     private String incomeGuideZhTw;
 
+    @Excel(name = "注册协议 - 葡萄牙")
+    private String registrationAgreementPor;
+
+    @Excel(name = "关于我们 - 葡萄牙")
+    private String aboutUsPor;
+
+    @Excel(name = "证书 - 葡萄牙")
+    private String certificatePor;
+
+    @Excel(name = "常见问题 - 葡萄牙")
+    private String faqPor;
+
+    @Excel(name = "最新事件 - 葡萄牙")
+    private String latestEventsPor;
+
+    @Excel(name = "条款条规 - 葡萄牙")
+    private String termsConditionsPor;
+
+    @Excel(name = "收入指南 - 葡萄牙")
+    private String incomeGuidePor;
+
+
+    public String getRegistrationAgreementPor() {
+        return registrationAgreementPor;
+    }
+
+    public void setRegistrationAgreementPor(String registrationAgreementPor) {
+        this.registrationAgreementPor = registrationAgreementPor;
+    }
+
+    public String getAboutUsPor() {
+        return aboutUsPor;
+    }
+
+    public void setAboutUsPor(String aboutUsPor) {
+        this.aboutUsPor = aboutUsPor;
+    }
+
+    public String getCertificatePor() {
+        return certificatePor;
+    }
+
+    public void setCertificatePor(String certificatePor) {
+        this.certificatePor = certificatePor;
+    }
+
+    public String getFaqPor() {
+        return faqPor;
+    }
+
+    public void setFaqPor(String faqPor) {
+        this.faqPor = faqPor;
+    }
+
+    public String getLatestEventsPor() {
+        return latestEventsPor;
+    }
+
+    public void setLatestEventsPor(String latestEventsPor) {
+        this.latestEventsPor = latestEventsPor;
+    }
+
+    public String getTermsConditionsPor() {
+        return termsConditionsPor;
+    }
+
+    public void setTermsConditionsPor(String termsConditionsPor) {
+        this.termsConditionsPor = termsConditionsPor;
+    }
+
+    public String getIncomeGuidePor() {
+        return incomeGuidePor;
+    }
+
+    public void setIncomeGuidePor(String incomeGuidePor) {
+        this.incomeGuidePor = incomeGuidePor;
+    }
+
     public void setId(Long id)
     {
         this.id = id;

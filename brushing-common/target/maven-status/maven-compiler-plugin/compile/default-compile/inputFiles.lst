@@ -8,6 +8,7 @@ E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\anno
 E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\annotation\RepeatSubmit.java
 E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\annotation\Sensitive.java
 E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\config\BrushingConfig.java
+E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\config\I18nConfig.java
 E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\config\serializer\SensitiveJsonSerializer.java
 E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\constant\CacheConstants.java
 E:\code\brushing\brushing\brushing-common\src\main\java\com\brushing\common\constant\Constants.java

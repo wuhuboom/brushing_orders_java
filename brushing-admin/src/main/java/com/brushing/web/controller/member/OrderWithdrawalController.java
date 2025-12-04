@@ -34,6 +34,7 @@ import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.enums.BusinessType;
 import com.brushing.member.domain.OrderWithdrawal;
 import com.brushing.member.service.IOrderWithdrawalService;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.poi.ExcelUtil;
 import com.brushing.common.core.page.TableDataInfo;
 
@@ -139,6 +140,10 @@ public class OrderWithdrawalController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderWithdrawal orderWithdrawal)
     {
+        OrderWithdrawal orderWithdrawal1 = orderWithdrawalService.selectOrderWithdrawalById(orderWithdrawal.getId());
+        if (!orderWithdrawal1.getStatus().equals("1")){
+            return error("该订单已审核，不能重复操作");
+        }
         OrderWithdrawal withdrawal = orderWithdrawalService.selectOrderWithdrawalById(orderWithdrawal.getId());
         orderWithdrawal.setAuditTime(DateUtils.getNowDate());
         if (orderWithdrawal.getStatus().equals("0")){

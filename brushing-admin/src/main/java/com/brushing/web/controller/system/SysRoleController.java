@@ -22,6 +22,7 @@ import com.brushing.common.core.domain.entity.SysUser;
 import com.brushing.common.core.domain.model.LoginUser;
 import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.enums.BusinessType;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.poi.ExcelUtil;
 import com.brushing.framework.web.service.SysPermissionService;
@@ -95,11 +96,11 @@ public class SysRoleController extends BaseController
     {
         if (!roleService.checkRoleNameUnique(role))
         {
-            return error("新增角色'" + role.getRoleName() + "'失败，角色名称已存在");
+            return error(MessageUtils.message("role.add.name_exists", role.getRoleName()));
         }
         else if (!roleService.checkRoleKeyUnique(role))
         {
-            return error("新增角色'" + role.getRoleName() + "'失败，角色权限已存在");
+            return error(MessageUtils.message("role.add.key_exists", role.getRoleName()));
         }
         role.setDataScope("1");
         role.setCreateBy(getUsername());
@@ -119,11 +120,11 @@ public class SysRoleController extends BaseController
         roleService.checkRoleDataScope(role.getRoleId());
         if (!roleService.checkRoleNameUnique(role))
         {
-            return error("修改角色'" + role.getRoleName() + "'失败，角色名称已存在");
+            return error(MessageUtils.message("role.edit.name_exists", role.getRoleName()));
         }
         else if (!roleService.checkRoleKeyUnique(role))
         {
-            return error("修改角色'" + role.getRoleName() + "'失败，角色权限已存在");
+            return error(MessageUtils.message("role.edit.key_exists", role.getRoleName()));
         }
         role.setUpdateBy(getUsername());
         
@@ -139,7 +140,7 @@ public class SysRoleController extends BaseController
             }
             return success();
         }
-        return error("修改角色'" + role.getRoleName() + "'失败，请联系管理员");
+        return error(MessageUtils.message("role.edit.update_failed", role.getRoleName()));
     }
 
     /**

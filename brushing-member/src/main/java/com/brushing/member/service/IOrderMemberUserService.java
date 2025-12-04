@@ -73,4 +73,6 @@ public interface IOrderMemberUserService
     public DashboardData getDashboardData();
 
     public void updateUserLevel(Long userId, BigDecimal amount);
+
+    public Boolean checkUserBalance(OrderMemberUser orderMemberUser);
 }

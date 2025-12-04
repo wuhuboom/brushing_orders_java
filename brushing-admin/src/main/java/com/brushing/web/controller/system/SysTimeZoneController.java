@@ -87,7 +87,7 @@ public class SysTimeZoneController extends BaseController
         AjaxResult ajaxResult=new AjaxResult();
         ajaxResult.put("data",active);
         ajaxResult.put("code",200);
-        ajaxResult.put("msg","操作成功");
+        ajaxResult.put("msg","success");
         return ajaxResult;
     }
 

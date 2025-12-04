@@ -17,11 +17,13 @@
         <result property="nameJp"    column="name_jp"    />
         <result property="nameKo"    column="name_ko"    />
         <result property="nameTh"    column="name_th"    />
+        <result property="namePor"    column="name_por"    />
         <result property="nameZhTw"    column="name_zh_tw"    />
     </resultMap>
 
     <sql id="selectOrderCustomerServiceVo">
-        select id, name, link_url, icon_url, sort, status, create_time, update_time, name_zh, name_jp, name_ko, name_th, name_zh_tw from order_customer_service
+        select id, name, link_url, icon_url, sort, status, create_time, update_time, name_por,
+               name_zh, name_jp, name_ko, name_th, name_zh_tw from order_customer_service
     </sql>
 
     <select id="selectOrderCustomerServiceList" parameterType="OrderCustomerService" resultMap="OrderCustomerServiceResult">
@@ -60,6 +62,7 @@
             <if test="nameKo != null">name_ko,</if>
             <if test="nameTh != null">name_th,</if>
             <if test="nameZhTw != null">name_zh_tw,</if>
+            <if test="namePor != null">name_por,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -74,6 +77,7 @@
             <if test="nameKo != null">#{nameKo},</if>
             <if test="nameTh != null">#{nameTh},</if>
             <if test="nameZhTw != null">#{nameZhTw},</if>
+            <if test="namePor != null">#{namePor},</if>
         </trim>
     </insert>
 
@@ -92,6 +96,7 @@
             <if test="nameKo != null">name_ko = #{nameKo},</if>
             <if test="nameTh != null">name_th = #{nameTh},</if>
             <if test="nameZhTw != null">name_zh_tw = #{nameZhTw},</if>
+            <if test="namePor != null">name_por = #{namePor},</if>
         </trim>
         where id = #{id}
     </update>

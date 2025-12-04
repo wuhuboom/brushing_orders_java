@@ -3,7 +3,9 @@ package com.brushing.member.service.impl;
 import java.math.BigDecimal;
 import java.util.*;
 
+import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderGoods;
 import com.brushing.member.domain.OrderMemberLevel;
@@ -18,6 +20,7 @@ import com.brushing.member.mapper.OrderSeriesMapper;
 import com.brushing.member.domain.OrderSeries;
 import java.math.RoundingMode;
 import com.brushing.member.service.IOrderSeriesService;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 连单Service业务层处理
@@ -121,14 +124,9 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
 
                 // 创建订单
                 OrderSeries series = new OrderSeries();
-                if (userLevel.getOrderCount() <= insertStart) {
-                    insertStart = 1;
-                    series.setOrderIndex(insertStart);
-                } else {
-                    insertStart += 1;
-                    series.setOrderIndex(insertStart);
-                }
 
+                    insertStart += 1;
+                series.setOrderIndex(insertStart);
                 series.setCommissionRatio(orderSeries.getCommissionRatio());
                 series.setProductId(goodsIds[i]);
                 series.setUserId(orderSeries.getUserId());
@@ -158,11 +156,8 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
 
             Integer insertStart = orderSeries.getOrderIndex() - 1;  // 保留 -1
             OrderSeries series = new OrderSeries();
-            if (userLevel.getOrderCount() <= insertStart) {
-                insertStart = 1;
-            } else {
-                insertStart += 1;
-            }
+
+            insertStart += 1;
             series.setOrderIndex(insertStart);
             series.setCommissionRatio(orderSeries.getCommissionRatio());
             series.setProductId(goodsIds[0]);
@@ -199,12 +194,12 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
             BigDecimal price = rand.multiply(maxThis).setScale(0, RoundingMode.HALF_UP); // 整数
 
             // 确保 price <= remainingBalance，且 >0
-            if (price.compareTo(BigDecimal.ZERO) == 0) {
+            if (price.compareTo(BigDecimal.ZERO) <= 0) {
                 price = BigDecimal.ONE; // 至少1，确保 >0
             }
-            if (price.compareTo(remainingBalance) > 0) {
-                price = remainingBalance.subtract(BigDecimal.ONE); // 留1给下个，避免总和=balance
-            }
+//            if (price.compareTo(remainingBalance) > 0) {
+//                price = remainingBalance.subtract(BigDecimal.ONE); // 留1给下个，避免总和=balance
+//            }
 
             prices.add(price);
             sumFirst = sumFirst.add(price);
@@ -237,11 +232,8 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
 
             // 创建订单
             OrderSeries series = new OrderSeries();
-            if (userLevel.getOrderCount() <= insertStart) {
-                insertStart = 1;
-            } else {
-                insertStart += 1;
-            }
+
+            insertStart += 1;
             series.setOrderIndex(insertStart);
             series.setCommissionRatio(orderSeries.getCommissionRatio());
             series.setProductId(goodsIds[i]);
@@ -254,6 +246,19 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
         }
 
         return 1; // 成功插入订单
+    }
+
+    @Override
+    @Transactional
+    public int insertOrderSeries(List<OrderSeries> orderSeries) {
+        for (OrderSeries series: orderSeries){
+            List<OrderSeries> orderSeries1 = orderSeriesMapper.selectByUserIdAndOrderIndexes(series.getUserId(), Collections.singletonList(series.getOrderIndex()));
+            if (!orderSeries1.isEmpty()) {
+                throw new ServiceException(MessageUtils.message("series.already_set"));
+            }
+            orderSeriesMapper.insertOrderSeries(series);
+        }
+        return 1;
     }
 
 

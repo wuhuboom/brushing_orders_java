@@ -29,33 +29,47 @@ public class MetaVo
      */
     private String link;
 
+    private String enName;
+
+    public String getEnName() {
+        return enName;
+    }
+
+    public void setEnName(String enName) {
+        this.enName = enName;
+    }
+
     public MetaVo()
     {
     }
 
-    public MetaVo(String title, String icon)
+    public MetaVo(String title,String enName, String icon)
     {
         this.title = title;
+        this.enName = enName;
         this.icon = icon;
     }
 
-    public MetaVo(String title, String icon, boolean noCache)
+    public MetaVo(String title, String enName,String icon, boolean noCache)
     {
         this.title = title;
+        this.enName = enName;
         this.icon = icon;
         this.noCache = noCache;
     }
 
-    public MetaVo(String title, String icon, String link)
+    public MetaVo(String title,String enName, String icon, String link)
     {
         this.title = title;
+        this.enName = enName;
         this.icon = icon;
         this.link = link;
     }
 
-    public MetaVo(String title, String icon, boolean noCache, String link)
+    public MetaVo(String title, String enName, String icon, boolean noCache, String link)
     {
         this.title = title;
+        this.enName = enName;
         this.icon = icon;
         this.noCache = noCache;
         if (StringUtils.ishttp(link))

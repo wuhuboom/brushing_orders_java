@@ -1,6 +1,8 @@
 package com.brushing.member.domain;
 
 import java.math.BigDecimal;
+import java.util.List;
+
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.brushing.common.annotation.Excel;
@@ -39,6 +41,8 @@ public class OrderSeries extends BaseEntity
     @Excel(name = "状态")
     private String status;
 
+    private String type;
+
     private String productName;
 
     private Integer commissionRatio;
@@ -46,6 +50,14 @@ public class OrderSeries extends BaseEntity
     private BigDecimal frozenAmount;
 
     private Long[] goodsIds;
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 
     public BigDecimal getFrozenAmount() {
         return frozenAmount;

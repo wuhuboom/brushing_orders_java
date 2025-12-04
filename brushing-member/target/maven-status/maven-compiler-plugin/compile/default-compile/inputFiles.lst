@@ -1,4 +1,5 @@
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\DashboardData.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\Goods.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderAccountChange.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderBankWallet.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderGoods.java
@@ -10,12 +11,14 @@ E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\doma
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderMemberLevel.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderMemberUser.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderSeries.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderShop.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderTopup.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\OrderWithdrawal.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\vo\OrderInfoVo.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\vo\UserLevel.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\domain\WelfareConfig.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\DashboardMapper.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\GoodsMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderAccountChangeMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderBankWalletMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderGoodsMapper.java
@@ -27,9 +30,12 @@ E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapp
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderMemberLevelMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderMemberUserMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderSeriesMapper.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderShopMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderTopupMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\OrderWithdrawalMapper.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\mapper\WelfareConfigMapper.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IGoodsService.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\GoodsServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderAccountChangeServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderBankWalletServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderGoodsServiceImpl.java
@@ -41,6 +47,7 @@ E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\serv
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderMemberLevelServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderMemberUserServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderSeriesServiceImpl.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderShopServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderTopupServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\OrderWithdrawalServiceImpl.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\impl\WelfareConfigServiceImpl.java
@@ -55,6 +62,7 @@ E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\serv
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IOrderMemberLevelService.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IOrderMemberUserService.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IOrderSeriesService.java
+E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IOrderShopService.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IOrderTopupService.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IOrderWithdrawalService.java
 E:\code\brushing\brushing\brushing-member\src\main\java\com\brushing\member\service\IWelfareConfigService.java

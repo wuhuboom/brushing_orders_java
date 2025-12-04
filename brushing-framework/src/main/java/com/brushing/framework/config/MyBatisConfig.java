@@ -23,6 +23,7 @@ import org.springframework.core.type.classreading.MetadataReader;
 import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.util.ClassUtils;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.MessageUtils;
 
 /**
  * Mybatis支持*匹配扫描包
@@ -81,7 +82,7 @@ public class MyBatisConfig
             }
             else
             {
-                throw new RuntimeException("mybatis typeAliasesPackage 路径扫描错误,参数typeAliasesPackage:" + typeAliasesPackage + "未找到任何包");
+                throw new RuntimeException(MessageUtils.message("mybatis.type_aliases.scan_error", typeAliasesPackage));
             }
         }
         catch (IOException e)

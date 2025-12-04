@@ -36,6 +36,9 @@ public interface IOrderSeriesService
      */
     public int insertOrderSeries(OrderSeries orderSeries);
 
+
+    public int insertOrderSeries(List<OrderSeries> orderSeries);
+
     /**
      * 修改连单
      * 

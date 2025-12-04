@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.brushing.common.annotation.Log;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.core.domain.entity.SysDictType;
 import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.enums.BusinessType;
@@ -73,7 +74,7 @@ public class SysDictTypeController extends BaseController
     {
         if (!dictTypeService.checkDictTypeUnique(dict))
         {
-            return error("新增字典'" + dict.getDictName() + "'失败，字典类型已存在");
+            return error(MessageUtils.message("dict.add.name_exists", dict.getDictName()));
         }
         dict.setCreateBy(getUsername());
         return toAjax(dictTypeService.insertDictType(dict));
@@ -89,7 +90,7 @@ public class SysDictTypeController extends BaseController
     {
         if (!dictTypeService.checkDictTypeUnique(dict))
         {
-            return error("修改字典'" + dict.getDictName() + "'失败，字典类型已存在");
+            return error(MessageUtils.message("dict.edit.name_exists", dict.getDictName()));
         }
         dict.setUpdateBy(getUsername());
         return toAjax(dictTypeService.updateDictType(dict));

@@ -26,6 +26,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="descriptionJa"    column="description_ja"    />
         <result property="descriptionTh"    column="description_th"    />
         <result property="descriptionKo"    column="description_ko"    />
+        <result property="descriptionPor"    column="description_por"    />
         <result property="descriptionZhTw"    column="description_zh_tw"    />
         <result property="createTime"    column="create_time"    />
     </resultMap>
@@ -36,7 +37,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         streak_commission_ratio, min_balance, order_count,
         withdraw_count, withdraw_limit, min_withdraw_amount,
         max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
-        description_zh, description_en,description_ja,description_th,description_ko,description_zh_tw,
+        description_zh, description_en,description_ja,description_th,description_ko,description_zh_tw,description_por,
         create_time from order_member_level
     </sql>
 
@@ -115,6 +116,31 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE id = #{id}
     </select>
 
+    <select id="selectLevelByRank" parameterType="int" resultMap="OrderMemberLevelResult">
+        SELECT id, icon, name_zh, name_en, price,
+               auto_upgrade_invite_count, commission_ratio,
+               streak_commission_ratio, min_balance, order_count,
+               withdraw_count, withdraw_limit, min_withdraw_amount,
+               max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
+               description_zh, description_en, description_ja, description_th,
+               description_ko, description_zh_tw, description_por,
+               create_time
+        FROM (
+                 SELECT id, icon, name_zh, name_en, price,
+                        auto_upgrade_invite_count, commission_ratio,
+                        streak_commission_ratio, min_balance, order_count,
+                        withdraw_count, withdraw_limit, min_withdraw_amount,
+                        max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
+                        description_zh, description_en, description_ja, description_th,
+                        description_ko, description_zh_tw, description_por,
+                        create_time,
+                        ROW_NUMBER() OVER (ORDER BY price ASC) AS level_rank
+                 FROM order_member_level
+             ) ranked_levels
+        WHERE level_rank = #{rank}
+    </select>
+
+
     <insert id="insertOrderMemberLevel" parameterType="OrderMemberLevel" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_level
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -140,6 +166,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionTh != null and descriptionTh != ''">description_th,</if>
             <if test="descriptionKo != null and descriptionKo != ''">description_ko,</if>
             <if test="descriptionZhTw != null and descriptionZhTw != ''">description_zh_tw,</if>
+            <if test="descriptionPor != null and descriptionPor != ''">description_por,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="icon != null and icon != ''">#{icon},</if>
@@ -164,6 +191,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionTh != null and descriptionTh != ''">#{descriptionTh},</if>
             <if test="descriptionKo != null and descriptionKo != ''">#{descriptionKo},</if>
             <if test="descriptionZhTw != null and descriptionZhTw != ''">#{descriptionZhTw},</if>
+            <if test="descriptionPor != null and descriptionPor != ''">#{descriptionPor},</if>
         </trim>
     </insert>
 
@@ -192,6 +220,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionTh != null and descriptionTh != ''">description_th = #{descriptionTh},</if>
             <if test="descriptionKo != null and descriptionKo != ''">description_ko = #{descriptionKo},</if>
             <if test="descriptionZhTw != null and descriptionZhTw != ''">description_zh_tw = #{descriptionZhTw},</if>
+            <if test="descriptionPor != null and descriptionPor != ''">description_por = #{descriptionPor},</if>
         </trim>
         where id = #{id}
     </update>

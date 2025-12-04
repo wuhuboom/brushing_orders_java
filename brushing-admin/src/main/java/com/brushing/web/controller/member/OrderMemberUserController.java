@@ -7,6 +7,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.brushing.common.core.domain.entity.SysUser;
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.member.domain.OrderMemberLevel;
 import com.brushing.member.service.IOrderMemberLevelService;
 import com.brushing.member.service.IOrderTopupService;
@@ -133,7 +134,7 @@ public class OrderMemberUserController extends BaseController
     {
         OrderMemberUser byUsername = orderMemberUserService.findByUsername(orderMemberUser.getUsername());
         if (StringUtils.isNotNull(byUsername)){
-            return error("用户名重复，请重新输入");
+            return error(MessageUtils.message("member.user.username.duplicate"));
         }
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         orderMemberUser.setPassword(encoder.encode(orderMemberUser.getPassword()));
@@ -164,7 +165,7 @@ public class OrderMemberUserController extends BaseController
             if (!orderMemberUser.getParentId().equals(0L)) {
                 OrderMemberUser orderMemberUser1 = orderMemberUserService.selectOrderMemberUserById(orderMemberUser.getParentId());
                 if (StringUtils.isNull(orderMemberUser1)){
-                    return error("上级ID错误");
+                    return error(MessageUtils.message("member.user.parent_id.invalid"));
                 }
             }
         }
@@ -232,7 +233,7 @@ public class OrderMemberUserController extends BaseController
     public AjaxResult restDealCount(@PathVariable("id") Long userId){
         OrderMemberUser orderMemberUser = orderMemberUserService.selectOrderMemberUserById(userId);
         if (orderMemberUser.getDealCount() < orderMemberUser.getUserLevel().getOrderCount() ){
-            return error("未达到重置条件");
+            return error(MessageUtils.message("member.user.reset.not_reached"));
         }
         orderMemberUser.setDealCount(0);
         orderMemberUser.setTotalResetCount(orderMemberUser.getTotalResetCount()+1);

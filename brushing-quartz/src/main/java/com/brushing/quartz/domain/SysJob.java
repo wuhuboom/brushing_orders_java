@@ -64,8 +64,8 @@ public class SysJob extends BaseEntity
         this.jobId = jobId;
     }
 
-    @NotBlank(message = "任务名称不能为空")
-    @Size(min = 0, max = 64, message = "任务名称不能超过64个字符")
+    @NotBlank(message = "{job.name.not_blank}")
+    @Size(min = 0, max = 64, message = "{job.name.length_invalid}")
     public String getJobName()
     {
         return jobName;
@@ -86,8 +86,8 @@ public class SysJob extends BaseEntity
         this.jobGroup = jobGroup;
     }
 
-    @NotBlank(message = "调用目标字符串不能为空")
-    @Size(min = 0, max = 500, message = "调用目标字符串长度不能超过500个字符")
+    @NotBlank(message = "{job.invoke_target.not_blank}")
+    @Size(min = 0, max = 500, message = "{job.invoke_target.length_invalid}")
     public String getInvokeTarget()
     {
         return invokeTarget;
@@ -98,8 +98,8 @@ public class SysJob extends BaseEntity
         this.invokeTarget = invokeTarget;
     }
 
-    @NotBlank(message = "Cron执行表达式不能为空")
-    @Size(min = 0, max = 255, message = "Cron执行表达式不能超过255个字符")
+    @NotBlank(message = "{job.cron.not_blank}")
+    @Size(min = 0, max = 255, message = "{job.cron.length_invalid}")
     public String getCronExpression()
     {
         return cronExpression;

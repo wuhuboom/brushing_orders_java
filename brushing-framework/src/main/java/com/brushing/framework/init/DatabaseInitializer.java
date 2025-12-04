@@ -48,10 +48,10 @@ public class DatabaseInitializer {
               if (StringUtils.isEmpty(configValue)){
                   SysConfig config =new SysConfig();
                   config.setConfigKey("app-version");
-                  config.setConfigValue("1.2.3");
+                  config.setConfigValue("1.3.0");
                   configMapper.insertConfig(config);
               }else{
-                  if (configValue.equals("1.2.3")){
+                  if (configValue.equals("1.3.0")){
                       System.out.println("版本一致");
                       return;
                   }
@@ -63,9 +63,10 @@ public class DatabaseInitializer {
         addGlobalConfigColumns();
         addMemberLevelColumns();
         scheduledUpdate();
+        createOrderShopTable();
 
         addColumnIfNotExists("sys_user", "agent_user", "VARCHAR(255) NULL COMMENT '代理用户'");
-
+        addColumnIfNotExists("sys_menu", "en_name", "VARCHAR(255) NULL COMMENT '英文名称'");
         // 为 sys_user 表添加代理开关字段
         addColumnIfNotExists("sys_user", "agent_switch", "CHAR(1) DEFAULT '0' COMMENT '代理开关'");
 
@@ -79,6 +80,7 @@ public class DatabaseInitializer {
 
         // 为 order_customer_service 表添加泰文名称字段
         addColumnIfNotExists("order_customer_service", "name_th", "VARCHAR(200) NULL COMMENT '泰文名称'");
+        addColumnIfNotExists("order_customer_service", "name_por", "VARCHAR(200) NULL COMMENT '葡萄牙'");
 
         // 为 order_customer_service 表添加中文繁体名称字段
         addColumnIfNotExists("order_customer_service", "name_zh_tw", "VARCHAR(200) NULL COMMENT '中文繁体名称'");
@@ -86,6 +88,14 @@ public class DatabaseInitializer {
         addColumnIfNotExists("order_withdrawal", "wallet_id", "bigint NULL COMMENT '钱包或者银行卡id'");
 
         addColumnIfNotExists("order_site_config", "auto_reset", "CHAR(1) DEFAULT '0' COMMENT '自动重置'");
+
+        addColumnIfNotExists("order_site_config", "reset_order_count", "CHAR(1) DEFAULT '1' COMMENT '重置订单数'");
+
+        addColumnIfNotExists("order_site_config", "min_balance", "CHAR(1) DEFAULT '1' COMMENT '是否开启订单最小金额'");
+
+        addColumnIfNotExists("order_site_config", "vip_auto_shop", "CHAR(1) DEFAULT '1' COMMENT '是否通过订单数自动升级VIP'");
+
+        addColumnIfNotExists("order_series", "type", "CHAR(1) DEFAULT '1' COMMENT '价格类型'");
 
         String createTableSql = """
         CREATE TABLE `order_bank_wallet` (
@@ -107,10 +117,10 @@ public class DatabaseInitializer {
        if (StringUtils.isNull(sysConfig)){
            SysConfig config =new SysConfig();
            config.setConfigKey("app-version");
-           config.setConfigValue("1.2.3");
+           config.setConfigValue("1.3.0");
            configMapper.insertConfig(config);
        }else{
-           sysConfig.setConfigValue("1.2.3");
+           sysConfig.setConfigValue("1.3.0");
            configMapper.updateConfig(sysConfig);
        }
     }
@@ -123,23 +133,27 @@ public class DatabaseInitializer {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    private void createOrderShopTable() {
+            String createTableSql = """
+        CREATE TABLE `order_shop` (
+          `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
+          `name` varchar(255) NOT NULL COMMENT '商店名称',
+          `icon` varchar(255) NULL COMMENT '商店图标',
+          `vip_level` int(11) NOT NULL DEFAULT 0 COMMENT 'VIP 等级',
+          `auto_vip` int(11) NOT NULL DEFAULT 0 COMMENT '自动升级最小订单数',
+          `max_auto_vip` int(11) NOT NULL DEFAULT 0 COMMENT '自动升级最大订单数',
+          `min_money` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '最小交易金额',
+          `max_money` decimal(10, 2) NOT NULL DEFAULT 0.00 COMMENT '最大交易金额',
+          `commission_percentage` decimal(5, 2) NOT NULL DEFAULT 0.00 COMMENT '佣金百分比',
+          `remark` varchar(500) NULL COMMENT '备注',
+          `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+          `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+          PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+        """;
+            // 创建表，如果不存在
+            createTableIfNotExists("order_shop", createTableSql);
+    }
 
 
 
@@ -159,6 +173,7 @@ public class DatabaseInitializer {
         columnsToAdd.put("description_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '描述 - 日文'");
         columnsToAdd.put("description_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '描述 - 泰文'");
         columnsToAdd.put("description_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '描述 - 韩文'");
+        columnsToAdd.put("description_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '描述 - 葡萄牙'");
         columnsToAdd.put("description_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '描述 - 中文繁体'");
 
         // 1) 查询列是否存在并添加
@@ -215,41 +230,48 @@ public class DatabaseInitializer {
         columnsToAdd.put("registration_agreement_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '注册协议 - 泰文'");
         columnsToAdd.put("registration_agreement_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '注册协议 - 韩文'");
         columnsToAdd.put("registration_agreement_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '注册协议 - 中文繁体'");
+        columnsToAdd.put("registration_agreement_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '注册协议 - 葡萄牙'");
 
         // 关于我们 (About Us)
         columnsToAdd.put("about_us_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '关于我们 - 日文'");
         columnsToAdd.put("about_us_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '关于我们 - 泰文'");
         columnsToAdd.put("about_us_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '关于我们 - 韩文'");
         columnsToAdd.put("about_us_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '关于我们 - 中文繁体'");
+        columnsToAdd.put("about_us_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '关于我们 - 葡萄牙'");
 
         // 证书 (Certificate)
         columnsToAdd.put("certificate_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '证书 - 日文'");
         columnsToAdd.put("certificate_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '证书 - 泰文'");
         columnsToAdd.put("certificate_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '证书 - 韩文'");
+        columnsToAdd.put("certificate_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '证书 - 葡萄牙'");
         columnsToAdd.put("certificate_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '证书 - 中文繁体'");
 
         // 常见问题 (FAQ)
         columnsToAdd.put("faq_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '常见问题 - 日文'");
         columnsToAdd.put("faq_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '常见问题 - 泰文'");
         columnsToAdd.put("faq_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '常见问题 - 韩文'");
+        columnsToAdd.put("faq_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '常见问题 - 葡萄牙'");
         columnsToAdd.put("faq_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '常见问题 - 中文繁体'");
 
         // 最新事件 (Latest Events)
         columnsToAdd.put("latest_events_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '最新事件 - 日文'");
         columnsToAdd.put("latest_events_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '最新事件 - 泰文'");
         columnsToAdd.put("latest_events_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '最新事件 - 韩文'");
+        columnsToAdd.put("latest_events_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '最新事件 - 葡萄牙'");
         columnsToAdd.put("latest_events_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '最新事件 - 中文繁体'");
 
         // 条款条规 (Terms and Conditions)
         columnsToAdd.put("terms_conditions_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '条款条规 - 日文'");
         columnsToAdd.put("terms_conditions_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '条款条规 - 泰文'");
         columnsToAdd.put("terms_conditions_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '条款条规 - 韩文'");
+        columnsToAdd.put("terms_conditions_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '条款条规 - 葡萄牙'");
         columnsToAdd.put("terms_conditions_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '条款条规 - 中文繁体'");
 
         // 收入指南 (Income Guide)
         columnsToAdd.put("income_guide_ja", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '收入指南 - 日文'");
         columnsToAdd.put("income_guide_th", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '收入指南 - 泰文'");
         columnsToAdd.put("income_guide_ko", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '收入指南 - 韩文'");
+        columnsToAdd.put("income_guide_por", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '收入指南 - 葡萄牙'");
         columnsToAdd.put("income_guide_zh_tw", "LONGTEXT NOT NULL DEFAULT ('') COMMENT '收入指南 - 中文繁体'");
 
         // 1) 查询列是否存在并添加

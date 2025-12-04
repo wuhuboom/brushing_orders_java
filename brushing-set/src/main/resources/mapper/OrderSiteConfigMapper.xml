@@ -26,12 +26,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="levelStatus"    column="level_status"    />
         <result property="seriesStatus"    column="series_status"    />
         <result property="autoReset"    column="auto_reset"    />
+        <result property="resetOrderCount"    column="reset_order_count"    />
+        <result property="minBalance"    column="min_balance"    />
+        <result property="vipAutoShop"    column="vip_auto_shop"    />
     </resultMap>
 
     <sql id="selectOrderSiteConfigVo">
         select id, site_name, customer_service_url,
-        popup_message, copyright_info, register_bonus_amount,
-        maintenance_image, site_logo, favicon, currency_type,auto_reset,
+        popup_message, copyright_info, register_bonus_amount,vip_auto_shop,
+        maintenance_image, site_logo, favicon, currency_type,auto_reset,reset_order_count,min_balance,
         max_register_per_ip, ip_blacklist, register_enabled, totp_enabled,email_address,level_status,series_status,
         email_verification_enabled, create_time, update_time from order_site_config
     </sql>
@@ -61,7 +64,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="selectOrderSiteConfigByUserUpdate" parameterType="Long" resultMap="OrderSiteConfigResult">
-        select id, level_status from order_site_config
+        select id, level_status,vip_auto_shop from order_site_config
         where id = #{id}
     </select>
 
@@ -128,6 +131,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="levelStatus != null">level_status = #{levelStatus},</if>
             <if test="seriesStatus != null">series_status = #{seriesStatus},</if>
             <if test="autoReset != null">auto_reset = #{autoReset},</if>
+            <if test="resetOrderCount != null">reset_order_count = #{resetOrderCount},</if>
+            <if test="minBalance != null">min_balance = #{minBalance},</if>
+            <if test="vipAutoShop != null">vip_auto_shop = #{vipAutoShop},</if>
         </trim>
         where id = #{id}
     </update>

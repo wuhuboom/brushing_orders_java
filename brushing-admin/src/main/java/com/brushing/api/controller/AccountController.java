@@ -88,6 +88,8 @@ public class AccountController extends BaseController {
     @Autowired
     private IOrderMemberLevelService memberLevelService;
 
+    @Autowired
+    private IOrderShopService shopService;
 
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -125,6 +127,7 @@ public class AccountController extends BaseController {
         log.info("用户 {} 发起提现请求，金额: {}", username, dto.getAmount());
 
         OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
+
         if (controlConfig == null) {
             return AjaxResult.error(508, ERR_SYSTEM_CONFIG_UNAVAILABLE);
         }
@@ -142,6 +145,10 @@ public class AccountController extends BaseController {
         }
         if (controlConfig.getWithdrawEnabled().equals("1")) {
             return AjaxResult.error(512, ERR_WITHDRAWAL_STATUS);
+        }
+        BigDecimal minWithdrawCreditScore = controlConfig.getMinWithdrawCreditScore();
+        if (new BigDecimal(user.getCreditScore()).compareTo(minWithdrawCreditScore) < 0) {
+            return AjaxResult.error(519, ERR_WITHDRAWAL_STATUS);
         }
         SysTimeZone active = sysTimeZoneService.getActive();
         String tzName = active.getTzName();
@@ -181,6 +188,11 @@ public class AccountController extends BaseController {
         if (!passwordEncoder.matches(dto.getTradePassword(), user.getTradePassword())) {
             return AjaxResult.error(504, ERR_INVALID_PASSWORD);
         }*/
+      if(StringUtils.isNotEmpty(dto.getTradePassword())){
+            if (!passwordEncoder.matches(dto.getTradePassword(), user.getTradePassword())) {
+                return AjaxResult.error(504, ERR_INVALID_PASSWORD);
+            }
+        }
 
         if (user.getDealCount() < user.getUserLevel().getOrderCount()) {
             return AjaxResult.error(505, ERR_INSUFFICIENT_ORDERS);
@@ -318,8 +330,7 @@ public class AccountController extends BaseController {
         OrderMemberUser user = memberUserService.findByUsername(username);
         if (user == null) {
             return AjaxResult.error(509, ERR_USER_NOT_FOUND);
-        }
-        OrderBankWallet orderBankWallet = new OrderBankWallet();
+        }OrderBankWallet orderBankWallet = new OrderBankWallet();
         orderBankWallet.setUserId(user.getId());
         List<OrderBankWallet> list = bankWalletService.selectOrderBankWalletList(orderBankWallet);
         AjaxResult ajaxResult= new AjaxResult();
@@ -351,6 +362,33 @@ public class AccountController extends BaseController {
         return success(orderBankWallet);
     }
 
+    @GetMapping("/getShopList")
+    @Operation(summary = "获取用户店铺列表",description = "name:店铺名称，vipLevel：VIP等级，icon：店铺图标，minMoney：最小金额，maxMoney：最大金额，commissionPercentage：佣金比例")
+    public AjaxResult getShopList(@RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        List<OrderShop> orderShops = shopService.selectOrderShopList(null);
+//        int i = memberLevelService.selectLevelById(user.getLevelId());
+//        List<OrderShop> byVipLevel = shopService.findByVipLevel(i);
+        return success(orderShops);
+    }
+
+    @GetMapping("/getShopList/{vipLevel}")
+    @Operation(summary = "查询用户是否有权限访问某个等级的店铺",description = "vipLevel:对应等级")
+    public AjaxResult isAllowed(@PathVariable("vipLevel")Integer vipLevel,@RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        int i = memberLevelService.selectLevelById(user.getLevelId());
+        if (i >= vipLevel){
+            return success(true);
+        }
+        return success(false);
+
+    }
 
 
 

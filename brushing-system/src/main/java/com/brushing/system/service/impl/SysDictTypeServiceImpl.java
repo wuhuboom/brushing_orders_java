@@ -13,6 +13,7 @@ import com.brushing.common.core.domain.entity.SysDictData;
 import com.brushing.common.core.domain.entity.SysDictType;
 import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DictUtils;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.system.mapper.SysDictDataMapper;
 import com.brushing.system.mapper.SysDictTypeMapper;
@@ -124,7 +125,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
             SysDictType dictType = selectDictTypeById(dictId);
             if (dictDataMapper.countDictDataByType(dictType.getDictType()) > 0)
             {
-                throw new ServiceException(String.format("%1$s已分配,不能删除", dictType.getDictName()));
+                throw new ServiceException(MessageUtils.message("dicttype.assigned_cant_delete", dictType.getDictName()));
             }
             dictTypeMapper.deleteDictTypeById(dictId);
             DictUtils.removeDictCache(dictType.getDictType());

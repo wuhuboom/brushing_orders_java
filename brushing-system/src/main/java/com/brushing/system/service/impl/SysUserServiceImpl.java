@@ -15,6 +15,7 @@ import com.brushing.common.constant.UserConstants;
 import com.brushing.common.core.domain.entity.SysRole;
 import com.brushing.common.core.domain.entity.SysUser;
 import com.brushing.common.exception.ServiceException;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.bean.BeanValidators;
@@ -226,7 +227,7 @@ public class SysUserServiceImpl implements ISysUserService
     {
         if (StringUtils.isNotNull(user.getUserId()) && user.isAdmin())
         {
-            throw new ServiceException("不允许操作超级管理员用户");
+            throw new ServiceException(MessageUtils.message("user.not_allowed_admin"));
         }
     }
 
@@ -245,7 +246,7 @@ public class SysUserServiceImpl implements ISysUserService
             List<SysUser> users = SpringUtils.getAopProxy(this).selectUserList(user);
             if (StringUtils.isEmpty(users))
             {
-                throw new ServiceException("没有权限访问用户数据！");
+                throw new ServiceException(MessageUtils.message("user.no_permission"));
             }
         }
     }
@@ -487,7 +488,7 @@ public class SysUserServiceImpl implements ISysUserService
     {
         if (StringUtils.isNull(userList) || userList.size() == 0)
         {
-            throw new ServiceException("导入用户数据不能为空！");
+            throw new ServiceException(MessageUtils.message("user.import.empty"));
         }
         int successNum = 0;
         int failureNum = 0;
@@ -508,7 +509,7 @@ public class SysUserServiceImpl implements ISysUserService
                     user.setCreateBy(operName);
                     userMapper.insertUser(user);
                     successNum++;
-                    successMsg.append("<br/>" + successNum + "、账号 " + user.getUserName() + " 导入成功");
+                    successMsg.append(MessageUtils.message("import.record.success", successNum, user.getUserName()));
                 }
                 else if (isUpdateSupport)
                 {
@@ -520,30 +521,30 @@ public class SysUserServiceImpl implements ISysUserService
                     user.setUpdateBy(operName);
                     userMapper.updateUser(user);
                     successNum++;
-                    successMsg.append("<br/>" + successNum + "、账号 " + user.getUserName() + " 更新成功");
+                    successMsg.append(MessageUtils.message("import.record.update", successNum, user.getUserName()));
                 }
                 else
                 {
                     failureNum++;
-                    failureMsg.append("<br/>" + failureNum + "、账号 " + user.getUserName() + " 已存在");
+                    failureMsg.append(MessageUtils.message("import.record.exists", failureNum, user.getUserName()));
                 }
             }
             catch (Exception e)
             {
                 failureNum++;
-                String msg = "<br/>" + failureNum + "、账号 " + user.getUserName() + " 导入失败：";
+                String msg = MessageUtils.message("import.record.failed_prefix", failureNum, user.getUserName());
                 failureMsg.append(msg + e.getMessage());
                 log.error(msg, e);
             }
         }
         if (failureNum > 0)
         {
-            failureMsg.insert(0, "很抱歉，导入失败！共 " + failureNum + " 条数据格式不正确，错误如下：");
+            failureMsg.insert(0, MessageUtils.message("import.failure", failureNum));
             throw new ServiceException(failureMsg.toString());
         }
         else
         {
-            successMsg.insert(0, "恭喜您，数据已全部导入成功！共 " + successNum + " 条，数据如下：");
+            successMsg.insert(0, MessageUtils.message("import.success", successNum));
         }
         return successMsg.toString();
     }

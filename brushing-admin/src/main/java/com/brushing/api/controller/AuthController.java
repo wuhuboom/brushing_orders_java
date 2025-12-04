@@ -63,6 +63,8 @@ public class AuthController extends BaseController {
     private GeoIpQueryQueryService queryService;
 
 
+
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -71,13 +73,12 @@ public class AuthController extends BaseController {
     public AjaxResult login(@RequestBody LoginUserDto loginRequest){
         OrderMemberUser user = userService.findByUsername(loginRequest.getUsername());
         if (StringUtils.isNull(user)){
-            return AjaxResult.error(601, "User not found");
+            return AjaxResult.error(601, "The account or password is incorrect");
         }
         boolean matches = passwordEncoder.matches(loginRequest.getPassword(), user.getPassword());
         if (!matches) {
-            return AjaxResult.error(602, "Wrong password");
+            return AjaxResult.error(602, "The account or password is incorrect");
         }
-
         try {
             String token = frontJwtUtil.generateToken(user.getUsername());
             String ipAddr = IpUtils.getIpAddr();
@@ -126,7 +127,9 @@ public class AuthController extends BaseController {
         OrderMemberUser orderMemberUser = setUser(registerDto);
         orderMemberUser.setPassword(encoder.encode(registerDto.getPassword()));
         orderMemberUser.setSex(registerDto.getSex());
-        //orderMemberUser.setTradePassword(encoder.encode(registerDto.getTradePassword()));
+        if (StringUtils.isNotEmpty(registerDto.getTradePassword())){
+            orderMemberUser.setTradePassword(encoder.encode(registerDto.getTradePassword()));
+        }
         String register = userService.register(orderMemberUser);
         if ("200".equals(register)){
             return success("register success");

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import com.brushing.common.annotation.RateLimiter;
 import com.brushing.common.enums.LimitType;
 import com.brushing.common.exception.ServiceException;
+import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.ip.IpUtils;
 
@@ -59,7 +60,7 @@ public class RateLimiterAspect
             Long number = redisTemplate.execute(limitScript, keys, count, time);
             if (StringUtils.isNull(number) || number.intValue() > count)
             {
-                throw new ServiceException("访问过于频繁，请稍候再试");
+                throw new ServiceException(MessageUtils.message("rate.limit.too_frequent"));
             }
             log.info("限制请求'{}',当前请求'{}',缓存key'{}'", count, number.intValue(), combineKey);
         }
@@ -69,7 +70,7 @@ public class RateLimiterAspect
         }
         catch (Exception e)
         {
-            throw new RuntimeException("服务器限流异常，请稍候再试");
+            throw new RuntimeException(MessageUtils.message("rate.limit.server_error"));
         }
     }
 
