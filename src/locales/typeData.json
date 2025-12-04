@@ -1,0 +1,83 @@
+{
+  "sys_user_sex": {
+    "1": { "zh": "男", "en": "Male" },
+    "2": { "zh": "女", "en": "Female" },
+    "3": { "zh": "未知", "en": "Unknown" }
+  },
+  "sys_show_hide": {
+    "1": { "zh": "显示", "en": "Show" },
+    "2": { "zh": "隐藏", "en": "Hide" }
+  },
+  "sys_normal_disable": {
+    "1": { "zh": "正常", "en": "Normal" },
+    "2": { "zh": "停用", "en": "Disabled" }
+  },
+  "sys_job_status": {
+    "1": { "zh": "正常", "en": "Normal" },
+    "2": { "zh": "暂停", "en": "Suspended" }
+  },
+  "sys_job_group": {
+    "1": { "zh": "默认", "en": "Default" },
+    "2": { "zh": "系统", "en": "System" }
+  },
+  "sys_yes_no": {
+    "1": { "zh": "是", "en": "Yes" },
+    "2": { "zh": "否", "en": "No" }
+  },
+  "sys_notice_type": {
+    "1": { "zh": "通知", "en": "Notice" },
+    "2": { "zh": "公告", "en": "Announcement" }
+  },
+  "sys_notice_status": {
+    "1": { "zh": "正常", "en": "Active" },
+    "2": { "zh": "关闭", "en": "Closed" }
+  },
+  "sys_oper_type": {
+    "99": { "zh": "其他", "en": "Other" },
+    "1": { "zh": "新增", "en": "Add" },
+    "2": { "zh": "修改", "en": "Edit" },
+    "3": { "zh": "删除", "en": "Delete" },
+    "4": { "zh": "授权", "en": "Authorize" },
+    "5": { "zh": "导出", "en": "Export" },
+    "6": { "zh": "导入", "en": "Import" },
+    "7": { "zh": "强退", "en": "Force Logout" },
+    "9": { "zh": "清空数据", "en": "Clear Data" }
+  },
+  "sys_common_status": {
+    "1": { "zh": "成功", "en": "Success" },
+    "2": { "zh": "失败", "en": "Failure" }
+  },
+  "trade_ype": {
+    "1": { "zh": "交易下单", "en": "Order" },
+    "2": { "zh": "后台上下分", "en": "Admin Top-up/Withdrawal" },
+    "3": { "zh": "提现", "en": "Withdraw" },
+    "4": { "zh": "提现驳回", "en": "Withdrawal Rejection" },
+    "5": { "zh": "交易返佣", "en": "Commission Return" },
+    "7": { "zh": "交易本金返还", "en": "Principal Refund" },
+    "6": { "zh": "下级返佣", "en": "Sub-agent Commission" }
+  },
+  "commission_status": {
+    "0": { "zh": "已发放", "en": "Issued" },
+    "1": { "zh": "未发放", "en": "Not Issued" }
+  },
+  "order_type": {
+    "0": { "zh": "正常订单", "en": "Normal Order" },
+    "1": { "zh": "来自连单", "en": "From Continuous Orders" }
+  },
+  "order_status": {
+    "0": { "zh": "完成", "en": "Completed" },
+    "1": { "zh": "冻结", "en": "Frozen" },
+    "2": { "zh": "待提交", "en": "Pending Submission" }
+  },
+  "series_status": {
+    "0": { "zh": "已完成", "en": "Completed" },
+    "1": { "zh": "未完成", "en": "Not Completed" },
+    "2": { "zh": "待提交", "en": "Pending Submission" },
+    "3": { "zh": "冻结", "en": "Frozen" }
+  },
+  "withdraw_status": {
+    "0": { "zh": "通过", "en": "Approved" },
+    "1": { "zh": "待审核", "en": "Pending Review" },
+    "2": { "zh": "拒绝", "en": "Rejected" }
+  }
+}
