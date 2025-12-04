@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.OrderWithdrawalTypeMapper">
+    
+    <resultMap type="OrderWithdrawalType" id="OrderWithdrawalTypeResult">
+        <result property="id"    column="id"    />
+        <result property="type"    column="type"    />
+        <result property="name"    column="name"    />
+        <result property="exchangeRate"    column="exchange_rate"    />
+        <result property="sortOrder"    column="sort_order"    />
+        <result property="icon"    column="icon"    />
+        <result property="bankName"    column="bank_name"    />
+        <result property="depositType"    column="deposit_type"    />
+        <result property="branchCode"    column="branch_code"    />
+        <result property="branchName"    column="branch_name"    />
+        <result property="bankAccount"    column="bank_account"    />
+        <result property="accountHolder"    column="account_holder"    />
+        <result property="accountName"    column="account_name"    />
+        <result property="walletName"    column="wallet_name"    />
+        <result property="walletAddress"    column="wallet_address"    />
+        <result property="remarks"    column="remarks"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectOrderWithdrawalTypeVo">
+        select id, type, name, exchange_rate, sort_order, icon, bank_name, deposit_type, branch_code,
+               branch_name, bank_account, account_holder, account_name, wallet_name, wallet_address,
+               remarks, create_time from order_withdrawal_type
+    </sql>
+
+    <select id="selectOrderWithdrawalTypeList" parameterType="OrderWithdrawalType" resultMap="OrderWithdrawalTypeResult">
+        <include refid="selectOrderWithdrawalTypeVo"/>
+        <where>  
+            <if test="type != null  and type != ''"> and type = #{type}</if>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="exchangeRate != null "> and exchange_rate = #{exchangeRate}</if>
+            <if test="sortOrder != null "> and sort_order = #{sortOrder}</if>
+            <if test="icon != null  and icon != ''"> and icon = #{icon}</if>
+            <if test="bankName != null  and bankName != ''"> and bank_name like concat('%', #{bankName}, '%')</if>
+            <if test="depositType != null  and depositType != ''"> and deposit_type = #{depositType}</if>
+            <if test="branchCode != null  and branchCode != ''"> and branch_code = #{branchCode}</if>
+            <if test="branchName != null  and branchName != ''"> and branch_name like concat('%', #{branchName}, '%')</if>
+            <if test="bankAccount != null  and bankAccount != ''"> and bank_account = #{bankAccount}</if>
+            <if test="accountHolder != null  and accountHolder != ''"> and account_holder = #{accountHolder}</if>
+            <if test="accountName != null  and accountName != ''"> and account_name like concat('%', #{accountName}, '%')</if>
+            <if test="walletName != null  and walletName != ''"> and wallet_name like concat('%', #{walletName}, '%')</if>
+            <if test="walletAddress != null  and walletAddress != ''"> and wallet_address = #{walletAddress}</if>
+            <if test="remarks != null  and remarks != ''"> and remarks = #{remarks}</if>
+        </where>
+    </select>
+    
+    <select id="selectOrderWithdrawalTypeById" parameterType="Long" resultMap="OrderWithdrawalTypeResult">
+        <include refid="selectOrderWithdrawalTypeVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderWithdrawalType" parameterType="OrderWithdrawalType" useGeneratedKeys="true" keyProperty="id">
+        insert into order_withdrawal_type
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="type != null and type != ''">type,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="exchangeRate != null">exchange_rate,</if>
+            <if test="sortOrder != null">sort_order,</if>
+            <if test="icon != null">icon,</if>
+            <if test="bankName != null">bank_name,</if>
+            <if test="depositType != null">deposit_type,</if>
+            <if test="branchCode != null">branch_code,</if>
+            <if test="branchName != null">branch_name,</if>
+            <if test="bankAccount != null">bank_account,</if>
+            <if test="accountHolder != null">account_holder,</if>
+            <if test="accountName != null">account_name,</if>
+            <if test="walletName != null">wallet_name,</if>
+            <if test="walletAddress != null">wallet_address,</if>
+            <if test="remarks != null">remarks,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="type != null and type != ''">#{type},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="exchangeRate != null">#{exchangeRate},</if>
+            <if test="sortOrder != null">#{sortOrder},</if>
+            <if test="icon != null">#{icon},</if>
+            <if test="bankName != null">#{bankName},</if>
+            <if test="depositType != null">#{depositType},</if>
+            <if test="branchCode != null">#{branchCode},</if>
+            <if test="branchName != null">#{branchName},</if>
+            <if test="bankAccount != null">#{bankAccount},</if>
+            <if test="accountHolder != null">#{accountHolder},</if>
+            <if test="accountName != null">#{accountName},</if>
+            <if test="walletName != null">#{walletName},</if>
+            <if test="walletAddress != null">#{walletAddress},</if>
+            <if test="remarks != null">#{remarks},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderWithdrawalType" parameterType="OrderWithdrawalType">
+        update order_withdrawal_type
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="type != null and type != ''">type = #{type},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="exchangeRate != null">exchange_rate = #{exchangeRate},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="bankName != null">bank_name = #{bankName},</if>
+            <if test="depositType != null">deposit_type = #{depositType},</if>
+            <if test="branchCode != null">branch_code = #{branchCode},</if>
+            <if test="branchName != null">branch_name = #{branchName},</if>
+            <if test="bankAccount != null">bank_account = #{bankAccount},</if>
+            <if test="accountHolder != null">account_holder = #{accountHolder},</if>
+            <if test="accountName != null">account_name = #{accountName},</if>
+            <if test="walletName != null">wallet_name = #{walletName},</if>
+            <if test="walletAddress != null">wallet_address = #{walletAddress},</if>
+            <if test="remarks != null">remarks = #{remarks},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderWithdrawalTypeById" parameterType="Long">
+        delete from order_withdrawal_type where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderWithdrawalTypeByIds" parameterType="String">
+        delete from order_withdrawal_type where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

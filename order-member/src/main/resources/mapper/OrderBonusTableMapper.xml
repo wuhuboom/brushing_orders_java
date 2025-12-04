@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.OrderBonusTableMapper">
+
+    <resultMap type="OrderBonusTable" id="OrderBonusTableResult">
+        <result property="id"    column="id"    />
+        <result property="orderNum"    column="order_num"    />
+        <result property="userId"    column="user_id"    />
+        <result property="amount"    column="amount"    />
+        <result property="animationDuration"    column="animation_duration"    />
+        <result property="displayDuration"    column="display_duration"    />
+        <result property="distributionType"    column="distribution_type"    />
+        <result property="expiryTime"    column="expiry_time"    />
+        <result property="pushType"    column="push_type"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="isDistributed"    column="is_distributed"    />
+        <result property="isReceived"    column="is_received"    />
+        <result property="receivedTime"    column="received_time"    />
+        <result property="distributionTime"    column="distribution_time"    />
+        <result property="toUsers"    column="to_users"    />
+    </resultMap>
+
+    <sql id="selectOrderBonusTableVo">
+        select id, order_num, user_id, amount, animation_duration, display_duration, distribution_type, expiry_time, push_type, create_time, is_distributed, is_received, received_time, distribution_time, to_users from order_bonus_table
+    </sql>
+
+    <select id="selectOrderBonusTableList" parameterType="OrderBonusTable" resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        <where>
+            <if test="orderNum != null "> and order_num = #{orderNum}</if>
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="amount != null "> and amount = #{amount}</if>
+            <if test="animationDuration != null "> and animation_duration = #{animationDuration}</if>
+            <if test="displayDuration != null "> and display_duration = #{displayDuration}</if>
+            <if test="distributionType != null  and distributionType != ''"> and distribution_type = #{distributionType}</if>
+            <if test="expiryTime != null "> and expiry_time = #{expiryTime}</if>
+            <if test="pushType != null  and pushType != ''"> and push_type = #{pushType}</if>
+            <if test="isDistributed != null  and isDistributed != ''"> and is_distributed = #{isDistributed}</if>
+            <if test="isReceived != null  and isReceived != ''"> and is_received = #{isReceived}</if>
+            <if test="receivedTime != null "> and received_time = #{receivedTime}</if>
+            <if test="distributionTime != null "> and distribution_time = #{distributionTime}</if>
+            <if test="toUsers != null  and toUsers != ''"> and to_users = #{toUsers}</if>
+        </where>
+    </select>
+
+    <select id="selectOrderBonusTableById" parameterType="Long" resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderBonusTable" parameterType="OrderBonusTable" useGeneratedKeys="true" keyProperty="id">
+        insert into order_bonus_table
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="orderNum != null">order_num,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="amount != null">amount,</if>
+            <if test="animationDuration != null">animation_duration,</if>
+            <if test="displayDuration != null">display_duration,</if>
+            <if test="distributionType != null and distributionType != ''">distribution_type,</if>
+            <if test="expiryTime != null">expiry_time,</if>
+            <if test="pushType != null and pushType != ''">push_type,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="isDistributed != null">is_distributed,</if>
+            <if test="isReceived != null">is_received,</if>
+            <if test="receivedTime != null">received_time,</if>
+            <if test="distributionTime != null">distribution_time,</if>
+            <if test="toUsers != null">to_users,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="orderNum != null">#{orderNum},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="animationDuration != null">#{animationDuration},</if>
+            <if test="displayDuration != null">#{displayDuration},</if>
+            <if test="distributionType != null and distributionType != ''">#{distributionType},</if>
+            <if test="expiryTime != null">#{expiryTime},</if>
+            <if test="pushType != null and pushType != ''">#{pushType},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="isDistributed != null">#{isDistributed},</if>
+            <if test="isReceived != null">#{isReceived},</if>
+            <if test="receivedTime != null">#{receivedTime},</if>
+            <if test="distributionTime != null">#{distributionTime},</if>
+            <if test="toUsers != null">#{toUsers},</if>
+        </trim>
+    </insert>
+
+    <update id="updateOrderBonusTable" parameterType="OrderBonusTable">
+        update order_bonus_table
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="animationDuration != null">animation_duration = #{animationDuration},</if>
+            <if test="displayDuration != null">display_duration = #{displayDuration},</if>
+            <if test="distributionType != null and distributionType != ''">distribution_type = #{distributionType},</if>
+            <if test="expiryTime != null">expiry_time = #{expiryTime},</if>
+            <if test="pushType != null and pushType != ''">push_type = #{pushType},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="isDistributed != null">is_distributed = #{isDistributed},</if>
+            <if test="isReceived != null">is_received = #{isReceived},</if>
+            <if test="receivedTime != null">received_time = #{receivedTime},</if>
+            <if test="distributionTime != null">distribution_time = #{distributionTime},</if>
+            <if test="toUsers != null">to_users = #{toUsers},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderBonusTableById" parameterType="Long">
+        delete from order_bonus_table where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderBonusTableByIds" parameterType="String">
+        delete from order_bonus_table where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

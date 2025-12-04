@@ -1,0 +1,13 @@
+com\order\generator\service\GenTableColumnServiceImpl.class
+com\order\generator\config\GenConfig.class
+com\order\generator\domain\GenTableColumn.class
+com\order\generator\mapper\GenTableMapper.class
+com\order\generator\mapper\GenTableColumnMapper.class
+com\order\generator\domain\GenTable.class
+com\order\generator\util\VelocityUtils.class
+com\order\generator\service\IGenTableService.class
+com\order\generator\util\VelocityInitializer.class
+com\order\generator\util\GenUtils.class
+com\order\generator\service\IGenTableColumnService.class
+com\order\generator\controller\GenController.class
+com\order\generator\service\GenTableServiceImpl.class

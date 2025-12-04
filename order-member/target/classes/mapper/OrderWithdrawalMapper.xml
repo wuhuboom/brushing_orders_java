@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.OrderWithdrawalMapper">
+    
+    <!-- 使用已存在的 GoodsWithdrawalAccountResult（在 GoodsWithdrawalAccountMapper.xml 中定义）作为嵌套映射 -->
+
+    <resultMap type="OrderWithdrawal" id="OrderWithdrawalResult">
+        <result property="id"    column="id"    />
+        <result property="userId"    column="user_id"    />
+        <result property="amount"    column="amount"    />
+        <result property="withdrawalType"    column="withdrawal_type"    />
+        <result property="status"    column="status"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="remarks"    column="remarks"    />
+        <result property="transactionType"    column="transaction_type"    />
+        <result property="orderNumber"    column="order_number"    />
+        <result property="isHidden"    column="is_hidden"    />
+        <result property="fee"    column="fee"    />
+        <result property="withdrawalAccountId"    column="withdrawal_account_id"    />
+        <!-- 来自 order_user -->
+        <result property="username" column="username" />
+        <result property="phoneNumber" column="phone_number" />
+        <result property="parentUsername" column="parent_username" />
+        <!-- 提现账户（来自 goods_withdrawal_account），映射到 OrderWithdrawal.withdrawalAccountInfo -->
+        <!-- 使用完全限定的 resultMap 名称指向另一个 mapper 的 resultMap，并使用完全限定的 javaType -->
+        <association property="withdrawalAccountInfo" javaType="com.order.member.domain.GoodsWithdrawalAccount" resultMap="com.order.member.mapper.GoodsWithdrawalAccountMapper.GoodsWithdrawalAccountResult" columnPrefix="gwa_"/>
+    </resultMap>
+
+    <sql id="selectOrderWithdrawalVo">
+         select ow.id, ow.user_id, ow.amount, ow.withdrawal_type, ow.status,
+                ow.create_time, ow.remarks, ow.transaction_type, ow.order_number, ow.is_hidden, ow.fee,
+                ow.withdrawal_account_id,
+                ou.username as username, ou.phone_number as phone_number,
+                pu.username as parent_username,
+               -- withdrawal account fields with gwa_ prefix for nested mapping
+               gwa.id as gwa_id, gwa.user_id as gwa_user_id, gwa.type as gwa_type, gwa.withdrawal_type_id as gwa_withdrawal_type_id,
+               gwa.is_default as gwa_is_default, gwa.bank_name as gwa_bank_name, gwa.deposit_type as gwa_deposit_type,
+               gwa.branch_code as gwa_branch_code, gwa.branch_name as gwa_branch_name, gwa.bank_account as gwa_bank_account,
+               gwa.account_holder as gwa_account_holder, gwa.account_name as gwa_account_name, gwa.wallet_name as gwa_wallet_name,
+               gwa.wallet_address as gwa_wallet_address, owt.name as gwa_withdrawal_type, gwa.create_time as gwa_create_time
+        from order_withdrawal ow
+        left join order_user ou on ow.user_id = ou.id
+        left join order_user pu on ou.parent_id = pu.id
+        left join goods_withdrawal_account gwa on ow.withdrawal_account_id = gwa.id
+        left join order_withdrawal_type owt on gwa.withdrawal_type_id = owt.id
+    </sql>
+
+    <select id="selectOrderWithdrawalList" parameterType="OrderWithdrawal" resultMap="OrderWithdrawalResult">
+        <include refid="selectOrderWithdrawalVo"/>
+        <where>  
+            <if test="userId != null "> and ow.user_id = #{userId}</if>
+            <if test="phoneNumber != null "> and ou.phone_number = #{phoneNumber}</if>
+            <if test="username != null "> and ou.username = #{username}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+        order by ow.create_time desc
+    </select>
+    
+    <select id="selectOrderWithdrawalById" parameterType="Long" resultMap="OrderWithdrawalResult">
+        <include refid="selectOrderWithdrawalVo"/>
+        where ow.id = #{id}
+    </select>
+
+    <select id="selectOrderWithdrawalByUserId" parameterType="Long" resultMap="OrderWithdrawalResult">
+        <include refid="selectOrderWithdrawalVo"/>
+        where ow.user_id = #{userId} and status = '1'
+    </select>
+
+    <insert id="insertOrderWithdrawal" parameterType="OrderWithdrawal" useGeneratedKeys="true" keyProperty="id">
+        insert into order_withdrawal
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="amount != null">amount,</if>
+            <if test="withdrawalType != null and withdrawalType != ''">withdrawal_type,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="remarks != null">remarks,</if>
+            <if test="transactionType != null and transactionType != ''">transaction_type,</if>
+            <if test="orderNumber != null and orderNumber != ''">order_number,</if>
+            <if test="isHidden != null and isHidden != ''">is_hidden,</if>
+            <if test="fee != null">fee,</if>
+            <if test="withdrawalAccountId != null">withdrawal_account_id,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="withdrawalType != null and withdrawalType != ''">#{withdrawalType},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="remarks != null">#{remarks},</if>
+            <if test="transactionType != null and transactionType != ''">#{transactionType},</if>
+            <if test="orderNumber != null and orderNumber != ''">#{orderNumber},</if>
+            <if test="isHidden != null and isHidden != ''">#{isHidden},</if>
+            <if test="fee != null">#{fee},</if>
+            <if test="withdrawalAccountId != null">#{withdrawalAccountId},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderWithdrawal" parameterType="OrderWithdrawal">
+        update order_withdrawal
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="withdrawalType != null and withdrawalType != ''">withdrawal_type = #{withdrawalType},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="remarks != null">remarks = #{remarks},</if>
+            <if test="transactionType != null and transactionType != ''">transaction_type = #{transactionType},</if>
+            <if test="orderNumber != null and orderNumber != ''">order_number = #{orderNumber},</if>
+            <if test="isHidden != null and isHidden != ''">is_hidden = #{isHidden},</if>
+            <if test="fee != null">fee = #{fee},</if>
+            <if test="withdrawalAccountId != null">withdrawal_account_id = #{withdrawalAccountId},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderWithdrawalById" parameterType="Long">
+        delete from order_withdrawal where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderWithdrawalByIds" parameterType="String">
+        delete from order_withdrawal where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

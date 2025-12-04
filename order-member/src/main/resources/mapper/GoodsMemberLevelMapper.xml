@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.GoodsMemberLevelMapper">
+
+    <resultMap type="GoodsMemberLevel" id="GoodsMemberLevelResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="level"    column="level"    />
+        <result property="icon"    column="icon"    />
+        <result property="price"    column="price"    />
+        <result property="minBalance"    column="min_balance"    />
+        <result property="inviteCount"    column="invite_count"    />
+        <result property="orderCountPerDay"    column="order_count_per_day"    />
+        <result property="minCommissionRate"    column="min_commission_rate"    />
+        <result property="maxCommissionRate"    column="max_commission_rate"    />
+        <result property="minContinuousCommissionRate"    column="min_continuous_commission_rate"    />
+        <result property="maxContinuousCommissionRate"    column="max_continuous_commission_rate"    />
+        <result property="taskCountPerDay"    column="task_count_per_day"    />
+        <result property="withdrawCountPerDay"    column="withdraw_count_per_day"    />
+        <result property="withdrawFeeRate"    column="withdraw_fee_rate"    />
+        <result property="minWithdrawAmount"    column="min_withdraw_amount"    />
+        <result property="withdrawLimitPerDay"    column="withdraw_limit_per_day"    />
+        <result property="minWithdraw"    column="min_withdraw"    />
+        <result property="maxWithdraw"    column="max_withdraw"    />
+        <result property="description"    column="description"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="productMatchEnabled"    column="product_match_enabled"    />
+        <result property="productMatchMin"    column="product_match_min"    />
+        <result property="productMatchMax"    column="product_match_max"    />
+    </resultMap>
+
+    <sql id="selectGoodsMemberLevelVo">
+        select id, name, level, icon, price, min_balance, invite_count, order_count_per_day,
+        min_commission_rate, max_commission_rate, min_continuous_commission_rate, max_continuous_commission_rate,
+        task_count_per_day, withdraw_count_per_day, withdraw_fee_rate, min_withdraw_amount, withdraw_limit_per_day,
+        min_withdraw, max_withdraw, description, create_time, product_match_enabled, product_match_min, product_match_max from goods_member_level
+    </sql>
+
+    <select id="selectGoodsMemberLevelList" parameterType="GoodsMemberLevel" resultMap="GoodsMemberLevelResult">
+        <include refid="selectGoodsMemberLevelVo"/>
+        <where>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="level != null "> and level = #{level}</if>
+            <if test="icon != null  and icon != ''"> and icon = #{icon}</if>
+            <if test="price != null "> and price = #{price}</if>
+            <if test="minBalance != null "> and min_balance = #{minBalance}</if>
+            <if test="inviteCount != null "> and invite_count = #{inviteCount}</if>
+            <if test="orderCountPerDay != null "> and order_count_per_day = #{orderCountPerDay}</if>
+            <if test="minCommissionRate != null "> and min_commission_rate = #{minCommissionRate}</if>
+            <if test="maxCommissionRate != null "> and max_commission_rate = #{maxCommissionRate}</if>
+            <if test="minContinuousCommissionRate != null "> and min_continuous_commission_rate = #{minContinuousCommissionRate}</if>
+            <if test="maxContinuousCommissionRate != null "> and max_continuous_commission_rate = #{maxContinuousCommissionRate}</if>
+            <if test="taskCountPerDay != null "> and task_count_per_day = #{taskCountPerDay}</if>
+            <if test="withdrawCountPerDay != null "> and withdraw_count_per_day = #{withdrawCountPerDay}</if>
+            <if test="withdrawFeeRate != null "> and withdraw_fee_rate = #{withdrawFeeRate}</if>
+            <if test="minWithdrawAmount != null "> and min_withdraw_amount = #{minWithdrawAmount}</if>
+            <if test="withdrawLimitPerDay != null "> and withdraw_limit_per_day = #{withdrawLimitPerDay}</if>
+            <if test="minWithdraw != null "> and min_withdraw = #{minWithdraw}</if>
+            <if test="maxWithdraw != null "> and max_withdraw = #{maxWithdraw}</if>
+            <if test="description != null  and description != ''"> and description = #{description}</if>
+            <if test="productMatchEnabled != null  and productMatchEnabled != ''"> and product_match_enabled = #{productMatchEnabled}</if>
+            <if test="productMatchMin != null "> and product_match_min = #{productMatchMin}</if>
+            <if test="productMatchMax != null "> and product_match_max = #{productMatchMax}</if>
+        </where>
+    </select>
+
+    <select id="selectGoodsMemberLevelById" parameterType="Long" resultMap="GoodsMemberLevelResult">
+        <include refid="selectGoodsMemberLevelVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectLowestPriceLevel" resultMap="GoodsMemberLevelResult">
+        <include refid="selectGoodsMemberLevelVo"/>
+        order by price asc
+        limit 1
+    </select>
+
+    <insert id="insertGoodsMemberLevel" parameterType="GoodsMemberLevel" useGeneratedKeys="true" keyProperty="id">
+        insert into goods_member_level
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="level != null">level,</if>
+            <if test="icon != null and icon != ''">icon,</if>
+            <if test="price != null">price,</if>
+            <if test="minBalance != null">min_balance,</if>
+            <if test="inviteCount != null">invite_count,</if>
+            <if test="orderCountPerDay != null">order_count_per_day,</if>
+            <if test="minCommissionRate != null">min_commission_rate,</if>
+            <if test="maxCommissionRate != null">max_commission_rate,</if>
+            <if test="minContinuousCommissionRate != null">min_continuous_commission_rate,</if>
+            <if test="maxContinuousCommissionRate != null">max_continuous_commission_rate,</if>
+            <if test="taskCountPerDay != null">task_count_per_day,</if>
+            <if test="withdrawCountPerDay != null">withdraw_count_per_day,</if>
+            <if test="withdrawFeeRate != null">withdraw_fee_rate,</if>
+            <if test="minWithdrawAmount != null">min_withdraw_amount,</if>
+            <if test="withdrawLimitPerDay != null">withdraw_limit_per_day,</if>
+            <if test="minWithdraw != null">min_withdraw,</if>
+            <if test="maxWithdraw != null">max_withdraw,</if>
+            <if test="description != null and description != ''">description,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="productMatchEnabled != null">product_match_enabled,</if>
+            <if test="productMatchMin != null">product_match_min,</if>
+            <if test="productMatchMax != null">product_match_max,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="level != null">#{level},</if>
+            <if test="icon != null and icon != ''">#{icon},</if>
+            <if test="price != null">#{price},</if>
+            <if test="minBalance != null">#{minBalance},</if>
+            <if test="inviteCount != null">#{inviteCount},</if>
+            <if test="orderCountPerDay != null">#{orderCountPerDay},</if>
+            <if test="minCommissionRate != null">#{minCommissionRate},</if>
+            <if test="maxCommissionRate != null">#{maxCommissionRate},</if>
+            <if test="minContinuousCommissionRate != null">#{minContinuousCommissionRate},</if>
+            <if test="maxContinuousCommissionRate != null">#{maxContinuousCommissionRate},</if>
+            <if test="taskCountPerDay != null">#{taskCountPerDay},</if>
+            <if test="withdrawCountPerDay != null">#{withdrawCountPerDay},</if>
+            <if test="withdrawFeeRate != null">#{withdrawFeeRate},</if>
+            <if test="minWithdrawAmount != null">#{minWithdrawAmount},</if>
+            <if test="withdrawLimitPerDay != null">#{withdrawLimitPerDay},</if>
+            <if test="minWithdraw != null">#{minWithdraw},</if>
+            <if test="maxWithdraw != null">#{maxWithdraw},</if>
+            <if test="description != null and description != ''">#{description},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="productMatchEnabled != null">#{productMatchEnabled},</if>
+            <if test="productMatchMin != null">#{productMatchMin},</if>
+            <if test="productMatchMax != null">#{productMatchMax},</if>
+        </trim>
+    </insert>
+
+    <update id="updateGoodsMemberLevel" parameterType="GoodsMemberLevel">
+        update goods_member_level
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="icon != null and icon != ''">icon = #{icon},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="minBalance != null">min_balance = #{minBalance},</if>
+            <if test="inviteCount != null">invite_count = #{inviteCount},</if>
+            <if test="orderCountPerDay != null">order_count_per_day = #{orderCountPerDay},</if>
+            <if test="minCommissionRate != null">min_commission_rate = #{minCommissionRate},</if>
+            <if test="maxCommissionRate != null">max_commission_rate = #{maxCommissionRate},</if>
+            <if test="minContinuousCommissionRate != null">min_continuous_commission_rate = #{minContinuousCommissionRate},</if>
+            <if test="maxContinuousCommissionRate != null">max_continuous_commission_rate = #{maxContinuousCommissionRate},</if>
+            <if test="taskCountPerDay != null">task_count_per_day = #{taskCountPerDay},</if>
+            <if test="withdrawCountPerDay != null">withdraw_count_per_day = #{withdrawCountPerDay},</if>
+            <if test="withdrawFeeRate != null">withdraw_fee_rate = #{withdrawFeeRate},</if>
+            <if test="minWithdrawAmount != null">min_withdraw_amount = #{minWithdrawAmount},</if>
+            <if test="withdrawLimitPerDay != null">withdraw_limit_per_day = #{withdrawLimitPerDay},</if>
+            <if test="minWithdraw != null">min_withdraw = #{minWithdraw},</if>
+            <if test="maxWithdraw != null">max_withdraw = #{maxWithdraw},</if>
+            <if test="description != null and description != ''">description = #{description},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="productMatchEnabled != null">product_match_enabled = #{productMatchEnabled},</if>
+            <if test="productMatchMin != null">product_match_min = #{productMatchMin},</if>
+            <if test="productMatchMax != null">product_match_max = #{productMatchMax},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteGoodsMemberLevelById" parameterType="Long">
+        delete from goods_member_level where id = #{id}
+    </delete>
+
+    <delete id="deleteGoodsMemberLevelByIds" parameterType="String">
+        delete from goods_member_level where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

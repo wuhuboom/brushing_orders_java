@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="order-common" />
+        <module name="order-generator" />
+        <module name="order-quartz" />
+        <module name="order-framework" />
+        <module name="order-admin" />
+        <module name="order-member" />
+        <module name="order-system" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="order-set" target="17" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="order" options="-parameters" />
+      <module name="order-admin" options="-parameters" />
+      <module name="order-common" options="-parameters" />
+      <module name="order-framework" options="-parameters" />
+      <module name="order-generator" options="-parameters" />
+      <module name="order-member" options="-parameters" />
+      <module name="order-quartz" options="-parameters" />
+      <module name="order-set" options="-parameters" />
+      <module name="order-system" options="-parameters" />
+    </option>
+  </component>
+</project>

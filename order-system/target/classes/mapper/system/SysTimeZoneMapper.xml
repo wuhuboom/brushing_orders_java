@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.system.mapper.SysTimeZoneMapper">
+    
+    <resultMap type="SysTimeZone" id="SysTimeZoneResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="tzName"    column="tz_name"    />
+        <result property="status"    column="status"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectSysTimeZoneVo">
+        select id, name, tz_name, status, create_time from sys_time_zone
+    </sql>
+
+    <select id="selectSysTimeZoneList" parameterType="SysTimeZone" resultMap="SysTimeZoneResult">
+        <include refid="selectSysTimeZoneVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="tzName != null  and tzName != ''"> and tz_name like concat('%', #{tzName}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectSysTimeZoneById" parameterType="Long" resultMap="SysTimeZoneResult">
+        <include refid="selectSysTimeZoneVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectByTzName" parameterType="String" resultMap="SysTimeZoneResult">
+        SELECT id, name, tz_name, status, create_time
+        FROM sys_time_zone
+        WHERE tz_name = #{tzName}
+    </select>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM sys_time_zone
+    </select>
+
+    <select id="getActive" resultMap="SysTimeZoneResult">
+        SELECT id, name, tz_name, status, create_time
+        FROM sys_time_zone
+        WHERE status = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insertSysTimeZone" parameterType="SysTimeZone" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_time_zone
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="tzName != null and tzName != ''">tz_name,</if>
+            <if test="status != null">status,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="tzName != null and tzName != ''">#{tzName},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSysTimeZone" parameterType="SysTimeZone">
+        update sys_time_zone
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="tzName != null and tzName != ''">tz_name = #{tzName},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <update id="setActiveById" parameterType="Long">
+        UPDATE sys_time_zone
+        SET status = CASE WHEN id = #{id} THEN 0 ELSE 1 END
+    </update>
+
+    <delete id="deleteSysTimeZoneById" parameterType="String">
+        delete from sys_time_zone where id = #{id}
+    </delete>
+
+    <delete id="deleteSysTimeZoneByIds" parameterType="String">
+        delete from sys_time_zone where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
