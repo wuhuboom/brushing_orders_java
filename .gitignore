@@ -1,0 +1,24 @@
+# Maven/Gradle 构建输出
+target/
+build/
+out/
+bin/
+
+# 特定 IDE 文件
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# 操作系统生成文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
