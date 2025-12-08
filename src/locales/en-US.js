@@ -159,7 +159,7 @@ export default {
       oldPasswordRequired: "Old password cannot be empty",
       newPasswordRequired: "New password cannot be empty",
       passwordLength: "Length between 6 and 20 characters",
-      invalidPasswordChars: "Cannot contain illegal characters: < > \" ' \\ |",
+      invalidPasswordChars: "Cannot contain illegal characters",
       confirmPasswordRequired: "Confirm password cannot be empty",
       passwordMismatch: "The two passwords do not match",
       updateSuccess: "Update successful",
