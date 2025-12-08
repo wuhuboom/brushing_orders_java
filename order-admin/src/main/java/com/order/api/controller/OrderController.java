@@ -187,6 +187,8 @@ public class OrderController extends BaseController {
                     OrderInfo orderInfo = createOrderInfo(user.getId(), "0", user.getTaskProgress() + 1, price, goods.getId(), minCommissionRate1, multiply,
                             parentRebateRate, parentRebateAmount, null,
                             null, "1");
+                    orderInfo.setProductImage(goods.getImage());
+                    orderInfo.setProductTitle(goods.getTitle());
                     //记录账变信息
                     BigDecimal balance = user.getBalance();
                     BigDecimal after = balance.subtract(price);
@@ -222,6 +224,9 @@ public class OrderController extends BaseController {
                 OrderInfo orderInfo = createOrderInfo(user.getId(), "1", user.getTaskProgress(), price, orderLink.getProductId(),minCommissionRate1, multiply,
                         bigDecimal1, parentRebateAmount, orderLink.getId(),
                         orderLink.getId(), "1");
+                Goods goods = goodsService.selectGoodsById(orderLink.getProductId());
+                orderInfo.setProductImage(goods.getImage());
+                orderInfo.setProductTitle(goods.getTitle());
                 //记录账变信息
                 BigDecimal balance = user.getBalance();
                 BigDecimal after = balance.subtract(price);
