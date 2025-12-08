@@ -47,6 +47,7 @@ import java.util.Date;
                         "615: Invalid authorization header \n (请求头无效)" +
                         "616: Logout failed \n (退出登录失败)" +
                         "617: Unknown error \n (登录失败，未知错误)"+
+                        "621: 电话号码已经存在"+
                         "401: (token失效，或者未登录) \n "
 )
 @RestController
@@ -113,6 +114,9 @@ public class AuthController extends BaseController {
 //        }
         if (StringUtils.isEmpty(registerDto.getPhone())){
             return AjaxResult.error(606, "Phone number must not be blank");
+        }
+        if (userService.existsPhone(registerDto.getPhone())){
+            return AjaxResult.error(621, "Phone number already exists");
         }
         if (StringUtils.isEmpty(registerDto.getSex())){
             return AjaxResult.error(607, "Sex must not be blank");

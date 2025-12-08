@@ -28,6 +28,7 @@ public interface IOrderMemberUserService
 
     public String register(OrderMemberUser user);
 
+    public Boolean  existsPhone(String phone);
     /**
      * 查询会员用户列表
      * 

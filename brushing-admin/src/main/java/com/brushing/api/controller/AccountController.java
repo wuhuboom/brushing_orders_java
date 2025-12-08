@@ -234,8 +234,8 @@ public class AccountController extends BaseController {
         }
         user.setTodayWithdrawCount(user.getTotalWithdrawCount() + 1);
         user.setTodayWithdrawCount(user.getTodayWithdrawCount() + 1);
-        user.setTodayResetCount(user.getTotalResetCount() + 1);
-        user.setTotalResetCount(user.getTotalResetCount() + 1);
+//        user.setTodayResetCount(user.getTotalResetCount() + 1);
+//        user.setTotalResetCount(user.getTotalResetCount() + 1);
 
         int i = memberUserService.updateOrderMemberUser(user);
         if (i  == 0) {

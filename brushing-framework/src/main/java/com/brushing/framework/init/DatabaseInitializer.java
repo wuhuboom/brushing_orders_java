@@ -41,7 +41,7 @@ public class DatabaseInitializer {
     private SysConfigMapper configMapper;
 
     public void init() {
-
+        scheduledUpdate();
         SysConfig sysConfig = configMapper.checkConfigKeyUnique("app-version");
           if (StringUtils.isNotNull(sysConfig)){
               String configValue = sysConfig.getConfigValue();
@@ -62,7 +62,7 @@ public class DatabaseInitializer {
         checkAndAddTotpFields();
         addGlobalConfigColumns();
         addMemberLevelColumns();
-        scheduledUpdate();
+
         createOrderShopTable();
 
         addColumnIfNotExists("sys_user", "agent_user", "VARCHAR(255) NULL COMMENT '代理用户'");

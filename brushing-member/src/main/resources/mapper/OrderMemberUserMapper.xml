@@ -380,6 +380,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order_member_user u
     </select>
 
+    <select id="existsPhone" parameterType="String" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM order_member_user
+            WHERE phone = #{phone}
+        )
+    </select>
+
+
 
     <insert id="insertOrderMemberUser" parameterType="OrderMemberUser" useGeneratedKeys="true" keyProperty="id">
         insert into order_member_user

@@ -74,6 +74,11 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         return "200";
     }
 
+    @Override
+    public Boolean existsPhone(String phone) {
+        return orderMemberUserMapper.existsPhone(phone);
+    }
+
 
     /**
      * 查询会员用户列表

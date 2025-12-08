@@ -38,6 +38,13 @@ public interface OrderMemberUserMapper
     public OrderMemberUser findByUsername(String inviteCode);
 
     /**
+     * 查询电话号码是否存在
+     * @param phone 电话号码
+     * @return
+     */
+    public Boolean  existsPhone(String phone);
+
+    /**
      * 查询会员用户列表
      * 
      * @param orderMemberUser 会员用户
