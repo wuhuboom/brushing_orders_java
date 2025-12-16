@@ -136,6 +136,10 @@ public class OrderMemberUserController extends BaseController
         if (StringUtils.isNotNull(byUsername)){
             return error(MessageUtils.message("member.user.username.duplicate"));
         }
+        Boolean b = orderMemberUserService.existsPhone(orderMemberUser.getPhone());
+        if (b){
+            return error("Phone number already exists");
+        }
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         orderMemberUser.setPassword(encoder.encode(orderMemberUser.getPassword()));
         if(StringUtils.isNotEmpty(orderMemberUser.getTradePassword())){

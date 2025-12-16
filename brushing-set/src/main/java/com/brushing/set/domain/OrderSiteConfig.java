@@ -84,6 +84,15 @@ public class OrderSiteConfig extends BaseEntity
 
     private String minBalance;
     private String vipAutoShop;
+    private String enableFullOrder;
+
+    public String getEnableFullOrder() {
+        return enableFullOrder;
+    }
+
+    public void setEnableFullOrder(String enableFullOrder) {
+        this.enableFullOrder = enableFullOrder;
+    }
 
     public String getVipAutoShop() {
         return vipAutoShop;

@@ -154,8 +154,6 @@ public class OrderController extends BaseController {
             if (!"0".equals(user.getTradeStatus())||(user.getDealCount()==user.getCardNumber()&&user.getCardNumber()>0)){
                 return AjaxResult.error(905, "This user is not allowed to grab orders");
             }
-
-
             BigDecimal minUserBalance = userLevel.getMinBalance();
             if (orderSiteConfig.getMinBalance().equals("1")){
                 if (user.getBalance().compareTo(minUserBalance) < 0) {

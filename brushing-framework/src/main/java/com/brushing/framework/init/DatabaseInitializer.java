@@ -48,10 +48,10 @@ public class DatabaseInitializer {
               if (StringUtils.isEmpty(configValue)){
                   SysConfig config =new SysConfig();
                   config.setConfigKey("app-version");
-                  config.setConfigValue("1.3.0");
+                  config.setConfigValue("1.3.5");
                   configMapper.insertConfig(config);
               }else{
-                  if (configValue.equals("1.3.0")){
+                  if (configValue.equals("1.3.5")){
                       System.out.println("版本一致");
                       return;
                   }
@@ -95,6 +95,8 @@ public class DatabaseInitializer {
 
         addColumnIfNotExists("order_site_config", "vip_auto_shop", "CHAR(1) DEFAULT '1' COMMENT '是否通过订单数自动升级VIP'");
 
+        addColumnIfNotExists("order_site_config", "enable_full_order", "CHAR(1) DEFAULT '0' COMMENT '是否开启满单提示'");
+
         addColumnIfNotExists("order_series", "type", "CHAR(1) DEFAULT '1' COMMENT '价格类型'");
 
         String createTableSql = """
@@ -117,10 +119,10 @@ public class DatabaseInitializer {
        if (StringUtils.isNull(sysConfig)){
            SysConfig config =new SysConfig();
            config.setConfigKey("app-version");
-           config.setConfigValue("1.3.0");
+           config.setConfigValue("1.3.5");
            configMapper.insertConfig(config);
        }else{
-           sysConfig.setConfigValue("1.3.0");
+           sysConfig.setConfigValue("1.3.5");
            configMapper.updateConfig(sysConfig);
        }
     }
