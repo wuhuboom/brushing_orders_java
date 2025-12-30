@@ -181,6 +181,15 @@
             />
           </el-form-item>
 
+          <el-form-item :label="$t('siteconfig.enableFullOrder')">
+            <el-switch
+              v-model="form.enableFullOrder"
+              active-value="0"
+              inactive-value="1"
+              @change="(val) => handleSwitchChange('enableFullOrder', val)"
+            />
+          </el-form-item>
+
           <el-form-item :label="$t('siteconfig.emailVerificationEnabled')">
             <el-switch
               v-model="form.emailVerificationEnabled"
@@ -253,6 +262,7 @@ const form = reactive({
   seriesStatus: "1",
   resetOrderCount: "1",
   minBalance: "1",
+  enableFullOrder:"0" ,
 });
 
 const rules = {
@@ -364,6 +374,9 @@ function handleSwitchChange(key, newVal) {
       break;
     case "totpEnabled":
       label = "TOTP 启用";
+      break;
+    case "enableFullOrder":
+      label = "满单提示";
       break;
     default:
       label = key;

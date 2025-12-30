@@ -77,6 +77,17 @@
         align="center"
         prop="afterAmount"
       />
+       <el-table-column
+        :label="$t('member.topup.createTime')"
+        align="center"
+        width="160"
+      >
+        <template #default="scope">
+          <span>{{
+            parseTime(scope.row.createTime, "{y}-{m}-{d} {h}:{i}:{s}")
+          }}</span>
+        </template>
+      </el-table-column>
       <el-table-column
         :label="$t('account.index.description')"
         align="center"

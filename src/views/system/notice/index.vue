@@ -40,14 +40,6 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery">{{
-          $t("common.search")
-        }}</el-button>
-        <el-button icon="Refresh" @click="resetQuery">{{
-          $t("common.reset")
-        }}</el-button>
-      </el-form-item>
     </el-form>
 
     <el-row :gutter="10" class="mb8">
@@ -58,8 +50,7 @@
           icon="Plus"
           @click="handleAdd"
           v-hasPermi="['system:notice:add']"
-          >{{ $t("common.add") }}</el-button
-        >
+        >{{ $t("common.add") }}</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-button
@@ -69,8 +60,7 @@
           :disabled="single"
           @click="handleUpdate"
           v-hasPermi="['system:notice:edit']"
-          >{{ $t("common.edit") }}</el-button
-        >
+        >{{ $t("common.edit") }}</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-button
@@ -80,13 +70,9 @@
           :disabled="multiple"
           @click="handleDelete"
           v-hasPermi="['system:notice:remove']"
-          >{{ $t("common.delete") }}</el-button
-        >
+        >{{ $t("common.delete") }}</el-button>
       </el-col>
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
+      <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
     <el-table
@@ -165,29 +151,11 @@
       @pagination="getList"
     />
 
-    <!-- 添加或修改公告对话框 -->
-    <el-dialog :title="title" v-model="open" width="780px" append-to-body>
-      <el-form ref="noticeRef" :model="form" :rules="rules" label-width="80px">
-        <el-row>
+          <!-- 添加或修改公告对话框 -->
+    <el-dialog :title="title" v-model="open" width="780px" append-to-body :modal-append-to-body="true" class="notice-dialog">
+      <el-form ref="noticeRef" :model="form" :rules="rules" label-position="top">
+        <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item :label="$t('notice.noticeTitle')" prop="noticeTitle">
-              <el-input
-                v-model="form.noticeTitle"
-                :placeholder="$t('notice.enterNoticeTitle')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="$t('notice.createTime')" prop="createTime">
-              <el-date-picker
-                v-model="form.createTime"
-                type="datetime"
-                :placeholder="$t('notice.selectCreateTime')"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
             <el-form-item :label="$t('notice.status')">
               <el-radio-group v-model="form.status">
                 <el-radio
@@ -199,18 +167,86 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="24">
-            <el-form-item :label="$t('notice.content')">
-              <editor v-model="form.noticeContent" :min-height="192" />
+          <el-col :span="12">
+            <el-form-item :label="$t('notice.createTime')">
+              <el-date-picker v-model="form.createTime" type="datetime" style="width:100%" />
             </el-form-item>
+          </el-col>
+
+
+          <el-col :span="24">
+            <el-tabs type="border-card">
+              <el-tab-pane label="Default">
+                <el-form-item :label="$t('notice.noticeTitle')" prop="noticeTitle">
+                  <el-input v-model="form.noticeTitle" :placeholder="$t('notice.enterNoticeTitle')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.content')">
+                  <editor v-model="form.noticeContent" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="中文">
+                <el-form-item :label="$t('notice.titleZh')" prop="titleZh">
+                  <el-input v-model="form.titleZh" :placeholder="$t('notice.enterTitleZh')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentZh')">
+                  <editor v-model="form.contentZh" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="English">
+                <el-form-item :label="$t('notice.titleEn')" prop="titleEn">
+                  <el-input v-model="form.titleEn" :placeholder="$t('notice.enterTitleEn')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentEn')">
+                  <editor v-model="form.contentEn" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="日本語">
+                <el-form-item :label="$t('notice.titleJa')" prop="titleJa">
+                  <el-input v-model="form.titleJa" :placeholder="$t('notice.enterTitleJa')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentJa')">
+                  <editor v-model="form.contentJa" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="ไทย">
+                <el-form-item :label="$t('notice.titleTh')" prop="titleTh">
+                  <el-input v-model="form.titleTh" :placeholder="$t('notice.enterTitleTh')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentTh')">
+                  <editor v-model="form.contentTh" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="한국어">
+                <el-form-item :label="$t('notice.titleKo')" prop="titleKo">
+                  <el-input v-model="form.titleKo" :placeholder="$t('notice.enterTitleKo')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentKo')">
+                  <editor v-model="form.contentKo" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="Português">
+                <el-form-item :label="$t('notice.titlePor')" prop="titlePor">
+                  <el-input v-model="form.titlePor" :placeholder="$t('notice.enterTitlePor')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentPor')">
+                  <editor v-model="form.contentPor" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="繁體">
+                <el-form-item :label="$t('notice.titleZhTw')" prop="titleZhTw">
+                  <el-input v-model="form.titleZhTw" :placeholder="$t('notice.enterTitleZhTw')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentZhTw')">
+                  <editor v-model="form.contentZhTw" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+            </el-tabs>
           </el-col>
         </el-row>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">{{
-            $t("common.confirm")
-          }}</el-button>
+          <el-button type="primary" @click="submitForm">{{ $t("common.confirm") }}</el-button>
           <el-button @click="cancel">{{ $t("common.cancel") }}</el-button>
         </div>
       </template>
@@ -299,7 +335,24 @@ function reset() {
     noticeTitle: undefined,
     noticeType: undefined,
     noticeContent: undefined,
+    // localized titles
+    titleZh: undefined,
+    titleEn: undefined,
+    titleJa: undefined,
+    titleTh: undefined,
+    titleKo: undefined,
+    titlePor: undefined,
+    titleZhTw: undefined,
+    // localized contents
+    contentZh: undefined,
+    contentEn: undefined,
+    contentJa: undefined,
+    contentTh: undefined,
+    contentKo: undefined,
+    contentPor: undefined,
+    contentZhTw: undefined,
     status: "0",
+    createTime: undefined,
   };
   proxy.resetForm("noticeRef");
 }
@@ -379,3 +432,13 @@ function handleDelete(row) {
 
 getList();
 </script>
+
+<style scoped>
+.notice-dialog .el-dialog__body {
+  max-height: 70vh; /* allow taller dialog */
+  overflow: auto;
+}
+.notice-dialog .el-form-item {
+  margin-bottom: 16px;
+}
+</style>
