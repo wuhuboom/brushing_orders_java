@@ -561,4 +561,187 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </delete>
 
+    <resultMap type="com.brushing.member.domain.vo.MemberHierarchyStatVo" id="MemberHierarchyStatMap">
+        <result property="level" column="level_depth" />
+        <result property="totalMembers" column="total_members" />
+        <result property="newRegisterCount" column="new_register_count" />
+        <result property="orderUserCount" column="order_user_count" />
+        <result property="orderAmount" column="order_amount" />
+        <result property="totalBalance" column="total_balance" />
+        <result property="firstDepositCount" column="first_deposit_count" />
+        <result property="rechargeAmount" column="recharge_amount" />
+        <result property="withdrawAmount" column="withdraw_amount" />
+        <result property="withdrawUserCount" column="withdraw_user_count" />
+    </resultMap>
+
+    <select id="selectHierarchyStats" resultMap="MemberHierarchyStatMap">
+        WITH RECURSIVE descendants AS (
+            SELECT u.id,
+                   u.parent_id,
+                   0 AS depth
+            FROM order_member_user u
+            WHERE u.username = #{username}
+            UNION ALL
+            SELECT child.id,
+                   child.parent_id,
+                   parent.depth + 1 AS depth
+            FROM order_member_user child
+                     INNER JOIN descendants parent ON child.parent_id = parent.id
+        ),
+        hierarchy AS (
+            SELECT d.depth,
+                   u.id       AS user_id,
+                   u.create_time,
+                   IFNULL(u.balance, 0)        AS balance,
+                   IFNULL(u.frozen_balance, 0) AS frozen_balance
+            FROM descendants d
+                     JOIN order_member_user u ON u.id = d.id
+            WHERE d.depth > 0
+        ),
+        order_stats AS (
+            SELECT user_id,
+                   COUNT(*)                         AS order_count,
+                   IFNULL(SUM(price), 0)            AS order_amount
+            FROM order_info
+            WHERE order_time BETWEEN #{startTime} AND #{endTime}
+            GROUP BY user_id
+        ),
+        topup_stats AS (
+            SELECT user_id,
+                   IFNULL(SUM(amout), 0)            AS recharge_amount
+            FROM order_topup
+            WHERE create_time BETWEEN #{startTime} AND #{endTime}
+            GROUP BY user_id
+        ),
+        first_topup AS (
+            SELECT user_id,
+                   MIN(create_time)                 AS first_time
+            FROM order_topup
+            GROUP BY user_id
+        ),
+        withdraw_stats AS (
+            SELECT user_id,
+                   IFNULL(SUM(amount), 0)          AS withdraw_amount,
+                   COUNT(*)                        AS withdraw_times
+            FROM order_withdrawal
+            WHERE application_time BETWEEN #{startTime} AND #{endTime}
+            GROUP BY user_id
+        )
+        SELECT h.depth AS level_depth,
+               COUNT(*) AS total_members,
+               SUM(CASE WHEN h.create_time BETWEEN #{startTime} AND #{endTime} THEN 1 ELSE 0 END) AS new_register_count,
+               SUM(CASE WHEN os.order_count IS NOT NULL THEN 1 ELSE 0 END) AS order_user_count,
+               IFNULL(SUM(os.order_amount), 0) AS order_amount,
+               IFNULL(SUM(h.balance + h.frozen_balance), 0) AS total_balance,
+               SUM(CASE WHEN ft.first_time BETWEEN #{startTime} AND #{endTime} THEN 1 ELSE 0 END) AS first_deposit_count,
+               IFNULL(SUM(ts.recharge_amount), 0) AS recharge_amount,
+               IFNULL(SUM(ws.withdraw_amount), 0) AS withdraw_amount,
+               SUM(CASE WHEN ws.withdraw_times IS NOT NULL THEN 1 ELSE 0 END) AS withdraw_user_count
+        FROM hierarchy h
+                 LEFT JOIN order_stats os ON os.user_id = h.user_id
+                 LEFT JOIN topup_stats ts ON ts.user_id = h.user_id
+                 LEFT JOIN first_topup ft ON ft.user_id = h.user_id
+                 LEFT JOIN withdraw_stats ws ON ws.user_id = h.user_id
+        GROUP BY h.depth
+        ORDER BY h.depth
+    </select>
+
+    <resultMap type="com.brushing.member.domain.vo.TopLevelUserStatVo" id="TopLevelUserStatMap">
+        <result property="userId" column="user_id" />
+        <result property="username" column="username" />
+        <result property="totalSubCount" column="total_sub_count" />
+        <result property="directInviteCount" column="direct_invite_count" />
+        <result property="totalBalance" column="total_balance" />
+        <result property="rechargeAmount" column="recharge_amount" />
+        <result property="totalCommission" column="total_commission" />
+        <result property="withdrawAmount" column="withdraw_amount" />
+        <result property="depositWithdrawDiff" column="deposit_withdraw_diff" />
+    </resultMap>
+
+    <select id="selectTopLevelStats" resultMap="TopLevelUserStatMap" parameterType="map">
+        -- 返回所有 parent_id = 0 的顶级用户，并按 username(可选) 和时间范围聚合其下级数据
+        WITH RECURSIVE descendants AS (
+            SELECT u.id, u.parent_id, 0 AS depth
+            FROM order_member_user u
+            WHERE u.parent_id = 0
+            <if test="username != null and username != ''">
+                AND u.username = #{username}
+            </if>
+            UNION ALL
+            SELECT c.id, c.parent_id, p.depth + 1
+            FROM order_member_user c
+            INNER JOIN descendants p ON c.parent_id = p.id
+        ),
+        subtree AS (
+            SELECT d.id AS user_id, p.id AS root_id
+            FROM descendants d
+            JOIN descendants p ON (CASE WHEN d.depth = 0 THEN d.id = p.id ELSE p.depth = 0 END)
+            -- 上面的 CASE 逻辑在某些 DB 可能不工作；改为下面的更可靠实现
+        ),
+        -- 更可靠的实现：为每个顶级用户单独构建子树ID
+        roots AS (
+            SELECT u.id AS root_id, u.username AS username
+            FROM order_member_user u
+            WHERE u.parent_id = 0
+            <if test="username != null and username != ''">
+                AND u.username = #{username}
+            </if>
+        ),
+        all_desc AS (
+            SELECT r.root_id, u.id AS user_id, u.parent_id
+            FROM roots r
+            JOIN order_member_user u ON u.id = r.root_id
+            UNION ALL
+            SELECT ad.root_id, c.id, c.parent_id
+            FROM all_desc ad
+            JOIN order_member_user c ON c.parent_id = ad.user_id
+        ),
+        topup_stats AS (
+            SELECT user_id, IFNULL(SUM(amout),0) AS recharge_amount
+            FROM order_topup
+            WHERE 1=1
+            <if test="startTime != null and endTime != null">
+                AND create_time BETWEEN #{startTime} AND #{endTime}
+            </if>
+            GROUP BY user_id
+        ),
+        withdraw_stats AS (
+            SELECT user_id, IFNULL(SUM(amount),0) AS withdraw_amount
+            FROM order_withdrawal
+            WHERE 1=1
+            <if test="startTime != null and endTime != null">
+                AND application_time BETWEEN #{startTime} AND #{endTime}
+            </if>
+            GROUP BY user_id
+        ),
+        commission_stats AS (
+            SELECT user_id, IFNULL(SUM(change_amount),0) AS commission_amount
+            FROM order_account_change
+            WHERE 1=1
+            AND `type` = '6'
+            <if test="startTime != null and endTime != null">
+                AND create_time BETWEEN #{startTime} AND #{endTime}
+            </if>
+            GROUP BY user_id
+        )
+        SELECT
+            r.root_id AS user_id,
+            r.username,
+            COUNT(DISTINCT CASE WHEN ad.user_id IS NOT NULL AND ad.user_id != r.root_id THEN ad.user_id END) AS total_sub_count,
+            (SELECT COUNT(1) FROM order_member_user d WHERE d.parent_id = r.root_id) AS direct_invite_count,
+            IFNULL(SUM(COALESCE(u.balance,0)+COALESCE(u.frozen_balance,0)),0) AS total_balance,
+            IFNULL(SUM(ts.recharge_amount),0) AS recharge_amount,
+            IFNULL(SUM(cs.commission_amount),0) AS total_commission,
+            IFNULL(SUM(ws.withdraw_amount),0) AS withdraw_amount,
+            IFNULL(SUM(ts.recharge_amount),0) - IFNULL(SUM(ws.withdraw_amount),0) AS deposit_withdraw_diff
+        FROM roots r
+        LEFT JOIN all_desc ad ON ad.root_id = r.root_id
+        LEFT JOIN order_member_user u ON u.id = ad.user_id
+        LEFT JOIN topup_stats ts ON ts.user_id = u.id
+        LEFT JOIN withdraw_stats ws ON ws.user_id = u.id
+        LEFT JOIN commission_stats cs ON cs.user_id = u.id
+        GROUP BY r.root_id, r.username
+        ORDER BY r.root_id
+    </select>
+
 </mapper>

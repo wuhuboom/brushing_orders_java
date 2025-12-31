@@ -47,6 +47,7 @@ import java.util.Date;
                         "615: Invalid authorization header \n (请求头无效)" +
                         "616: Logout failed \n (退出登录失败)" +
                         "617: Unknown error \n (登录失败，未知错误)"+
+                        "618: The account disabled \n (账户禁用)"+
                         "621: 电话号码已经存在"+
                         "401: (token失效，或者未登录) \n "
 )
@@ -79,6 +80,9 @@ public class AuthController extends BaseController {
         boolean matches = passwordEncoder.matches(loginRequest.getPassword(), user.getPassword());
         if (!matches) {
             return AjaxResult.error(602, "The account or password is incorrect");
+        }
+        if (user.getAccountStatus().equals("1")){
+            return  AjaxResult.error(618, "The account disabled");
         }
         try {
             String token = frontJwtUtil.generateToken(user.getUsername());

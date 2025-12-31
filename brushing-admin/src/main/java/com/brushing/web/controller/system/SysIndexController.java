@@ -45,6 +45,6 @@ public class SysIndexController
         // 格式化为字符串
         String formattedDate = zonedDateTime.format(formatter);
 
-        return StringUtils.format("version1.3.5,time-zone：{},time：{}", systemZoneId,formattedDate);
+        return StringUtils.format("version1.3.7,time-zone：{},time：{}", systemZoneId,formattedDate);
     }
 }

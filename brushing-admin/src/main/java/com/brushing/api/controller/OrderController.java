@@ -151,8 +151,21 @@ public class OrderController extends BaseController {
                 return AjaxResult.error(907, "There is an open order");
             }
             OrderMemberLevel userLevel = user.getUserLevel();
-            if (!"0".equals(user.getTradeStatus())||(user.getDealCount()==user.getCardNumber()&&user.getCardNumber()>0)){
+            if (!"0".equals(user.getTradeStatus())){
                 return AjaxResult.error(905, "This user is not allowed to grab orders");
+            }
+            // If user reached configured card limit, return an "order is full" once.
+            // Subsequent request will clear the one-time marker and continue.
+            if (user.getDealCount() == user.getCardNumber() && user.getCardNumber() > 0) {
+                return AjaxResult.error(2000, "order is full");
+               /* String oneTimeKey = "order_full_once:" + user.getId();
+                Boolean seen = redisTemplate.hasKey(oneTimeKey);
+                if (seen) {
+                    redisTemplate.delete(oneTimeKey);
+                } else {
+                    redisTemplate.opsForValue().set(oneTimeKey, "1");
+
+                }*/
             }
             BigDecimal minUserBalance = userLevel.getMinBalance();
             if (orderSiteConfig.getMinBalance().equals("1")){
@@ -169,7 +182,11 @@ public class OrderController extends BaseController {
                 return AjaxResult.error(908, "Please try again later");
             }
             if (user.getDealCount() >= user.getUserLevel().getOrderCount()){
-                return AjaxResult.error(909, "The number of orders is full");
+                AjaxResult ajaxResult= new AjaxResult();
+                ajaxResult.put("code",909);
+                ajaxResult.put("msg","The number of orders is full");
+                ajaxResult.put("data",user.getUserLevel().getOrderCount());
+                return ajaxResult;
             }
             OrderVo response;
             BigDecimal price;

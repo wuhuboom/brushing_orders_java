@@ -524,4 +524,116 @@ public class ConfigController extends BaseController {
         ajaxResult.put("data",emailAddress);
         return ajaxResult;
     }
+
+    @GetMapping("/getNoticeListByLang")
+    @Operation(summary = "根据语言获取公告列表", description = "根据 lang 返回对应语言的标题与内容，若对应语言为空则回退到默认字段")
+    public TableDataInfo getNoticeListByLang(PageDto dto, @RequestParam(value = "lang", defaultValue = "en") String lang) {
+        PageHelper.startPage(dto.getPageNum(), dto.getPageSize());
+        List<SysNotice> list = noticeService.selectNoticeList(new SysNotice());
+
+        if (lang == null || (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) && !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang))) {
+            lang = "en";
+        }
+
+        for (SysNotice notice : list) {
+            String localizedTitle;
+            String localizedContent;
+            switch (lang) {
+                case "zh":
+                    localizedTitle = notice.getTitleZh();
+                    localizedContent = notice.getContentZh();
+                    break;
+                case "zh_tw":
+                    localizedTitle = notice.getTitleZhTw();
+                    localizedContent = notice.getContentZhTw();
+                    break;
+                case "ja":
+                    localizedTitle = notice.getTitleJa();
+                    localizedContent = notice.getContentJa();
+                    break;
+                case "th":
+                    localizedTitle = notice.getTitleTh();
+                    localizedContent = notice.getContentTh();
+                    break;
+                case "ko":
+                    localizedTitle = notice.getTitleKo();
+                    localizedContent = notice.getContentKo();
+                    break;
+                case "pt":
+                    localizedTitle = notice.getTitlePor();
+                    localizedContent = notice.getContentPor();
+                    break;
+                default:
+                    localizedTitle = notice.getTitleEn();
+                    localizedContent = notice.getContentEn();
+            }
+
+            if (localizedTitle == null || localizedTitle.isEmpty()) {
+                localizedTitle = notice.getNoticeTitle();
+            }
+            if (localizedContent == null || localizedContent.isEmpty()) {
+                localizedContent = notice.getNoticeContent();
+            }
+
+            notice.setNoticeTitle(localizedTitle);
+            notice.setNoticeContent(localizedContent);
+        }
+
+        return getDataTable(list);
+    }
+
+    @GetMapping("/getNoticeByLang/{id}")
+    @Operation(summary = "根据语言获取公告详情", description = "根据 lang 返回对应语言的标题与内容，若对应语言为空则回退到默认字段")
+    public AjaxResult getNoticeByLang(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "lang", defaultValue = "en") String lang) {
+        SysNotice notice = noticeService.selectNoticeById(id);
+        if (notice == null) {
+            return AjaxResult.error(701, "No data");
+        }
+
+        String localizedTitle;
+        String localizedContent;
+        switch (lang) {
+            case "zh":
+                localizedTitle = notice.getTitleZh();
+                localizedContent = notice.getContentZh();
+                break;
+            case "zh_tw":
+                localizedTitle = notice.getTitleZhTw();
+                localizedContent = notice.getContentZhTw();
+                break;
+            case "ja":
+                localizedTitle = notice.getTitleJa();
+                localizedContent = notice.getContentJa();
+                break;
+            case "th":
+                localizedTitle = notice.getTitleTh();
+                localizedContent = notice.getContentTh();
+                break;
+            case "ko":
+                localizedTitle = notice.getTitleKo();
+                localizedContent = notice.getContentKo();
+                break;
+            case "pt":
+                localizedTitle = notice.getTitlePor();
+                localizedContent = notice.getContentPor();
+                break;
+            default:
+                localizedTitle = notice.getTitleEn();
+                localizedContent = notice.getContentEn();
+        }
+
+        if (localizedTitle == null || localizedTitle.isEmpty()) {
+            localizedTitle = notice.getNoticeTitle();
+        }
+        if (localizedContent == null || localizedContent.isEmpty()) {
+            localizedContent = notice.getNoticeContent();
+        }
+
+        notice.setNoticeTitle(localizedTitle);
+        notice.setNoticeContent(localizedContent);
+
+        return AjaxResult.success(notice);
+    }
 }

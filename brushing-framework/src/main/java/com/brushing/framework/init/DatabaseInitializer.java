@@ -48,10 +48,10 @@ public class DatabaseInitializer {
               if (StringUtils.isEmpty(configValue)){
                   SysConfig config =new SysConfig();
                   config.setConfigKey("app-version");
-                  config.setConfigValue("1.3.5");
+                  config.setConfigValue("1.3.6");
                   configMapper.insertConfig(config);
               }else{
-                  if (configValue.equals("1.3.5")){
+                  if (configValue.equals("1.3.6")){
                       System.out.println("版本一致");
                       return;
                   }
@@ -64,6 +64,9 @@ public class DatabaseInitializer {
         addMemberLevelColumns();
 
         createOrderShopTable();
+
+        // ensure sys_notice i18n title columns exist
+        addSysNoticeColumns();
 
         addColumnIfNotExists("sys_user", "agent_user", "VARCHAR(255) NULL COMMENT '代理用户'");
         addColumnIfNotExists("sys_menu", "en_name", "VARCHAR(255) NULL COMMENT '英文名称'");
@@ -119,10 +122,10 @@ public class DatabaseInitializer {
        if (StringUtils.isNull(sysConfig)){
            SysConfig config =new SysConfig();
            config.setConfigKey("app-version");
-           config.setConfigValue("1.3.5");
+           config.setConfigValue("1.3.6");
            configMapper.insertConfig(config);
        }else{
-           sysConfig.setConfigValue("1.3.5");
+           sysConfig.setConfigValue("1.3.6");
            configMapper.updateConfig(sysConfig);
        }
     }
@@ -432,5 +435,54 @@ public class DatabaseInitializer {
         }
     }
 
-}
+    /**
+     * 为 sys_notice 表添加国际化标题字段
+     */
+    public void addSysNoticeColumns() {
+        String tableName = "sys_notice";
+        java.util.Map<String, String> columnsToAdd = new java.util.HashMap<>();
 
+        columnsToAdd.put("title_zh", "VARCHAR(255) NULL COMMENT '中文标题'");
+        columnsToAdd.put("title_en", "VARCHAR(255) NULL COMMENT '英文标题'");
+        columnsToAdd.put("title_ja", "VARCHAR(255) NULL COMMENT '日文标题'");
+        columnsToAdd.put("title_th", "VARCHAR(255) NULL COMMENT '泰文标题'");
+        columnsToAdd.put("title_ko", "VARCHAR(255) NULL COMMENT '韩文标题'");
+        columnsToAdd.put("title_por", "VARCHAR(255) NULL COMMENT '葡萄牙文标题'");
+        columnsToAdd.put("title_zh_tw", "VARCHAR(255) NULL COMMENT '繁体中文标题'");
+
+        // 内容字段使用 LONGTEXT（支持较长内容）
+        columnsToAdd.put("content_zh", "LONGTEXT NULL COMMENT '内容 - 中文'");
+        columnsToAdd.put("content_en", "LONGTEXT NULL COMMENT '内容 - 英文'");
+        columnsToAdd.put("content_ja", "LONGTEXT NULL COMMENT '内容 - 日文'");
+        columnsToAdd.put("content_th", "LONGTEXT NULL COMMENT '内容 - 泰文'");
+        columnsToAdd.put("content_ko", "LONGTEXT NULL COMMENT '内容 - 韩文'");
+        columnsToAdd.put("content_por", "LONGTEXT NULL COMMENT '内容 - 葡萄牙'");
+        columnsToAdd.put("content_zh_tw", "LONGTEXT NULL COMMENT '内容 - 繁体中文'");
+
+        String checkColumnSql =
+                "SELECT COUNT(*) " +
+                        "FROM INFORMATION_SCHEMA.COLUMNS " +
+                        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+
+        for (java.util.Map.Entry<String, String> entry : columnsToAdd.entrySet()) {
+            String columnName = entry.getKey();
+            String columnDefinition = entry.getValue();
+            Integer cnt = jdbcTemplate.queryForObject(checkColumnSql, Integer.class, tableName, columnName);
+            if (cnt == null || cnt == 0) {
+                String alterSql = "ALTER TABLE `" + tableName + "` ADD COLUMN `" + columnName + "` " + columnDefinition;
+                try {
+                    jdbcTemplate.execute(alterSql);
+                    System.out.println("成功添加列: " + tableName + "." + columnName);
+                } catch (DataAccessException e) {
+                    String msg = e.getMessage();
+                    if (msg != null && msg.contains("Duplicate column name")) {
+                        System.out.println("列 " + columnName + " 已存在或被其他实例添加，忽略。");
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+        }
+    }
+
+}

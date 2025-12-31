@@ -2,6 +2,8 @@ package com.brushing.member.mapper;
 
 import java.util.List;
 import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.vo.MemberHierarchyStatVo;
+import java.time.LocalDateTime;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -119,6 +121,26 @@ public interface OrderMemberUserMapper
 
    public int updateUserLevel(@Param("id") Long id, @Param("levelId") Long levelId);
 
+    /**
+     * 查询层级统计
+     * @param username 用户名
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @return
+     */
+    List<MemberHierarchyStatVo> selectHierarchyStats(@Param("username") String username,
+                                                    @Param("startTime") LocalDateTime startTime,
+                                                    @Param("endTime") LocalDateTime endTime);
 
+    /**
+     * 查询所有顶级用户（parent_id = 0）及其下线统计信息
+     * @param username 可选，按用户名过滤
+     * @param startTime 开始时间（可选）
+     * @param endTime 结束时间（可选）
+     * @return
+     */
+    List<com.brushing.member.domain.vo.TopLevelUserStatVo> selectTopLevelStats(@Param("username") String username,
+                                                                                 @Param("startTime") java.time.LocalDateTime startTime,
+                                                                                 @Param("endTime") java.time.LocalDateTime endTime);
 
 }

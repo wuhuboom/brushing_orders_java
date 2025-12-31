@@ -1,8 +1,10 @@
 package com.brushing.member.service.impl;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.InviteCodeGenerator;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
@@ -12,6 +14,7 @@ import com.brushing.member.service.IOrderShopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.brushing.member.service.IOrderMemberUserService;
+import com.brushing.member.domain.vo.MemberHierarchyStatVo;
 
 /**
  * 会员用户Service业务层处理
@@ -252,5 +255,42 @@ public class OrderMemberUserServiceImpl implements IOrderMemberUserService
         BigDecimal balance = user.getBalance();
         BigDecimal price = orderMemberLevel.getPrice();
         return balance.compareTo(price) >= 0;
+    }
+
+    @Override
+    public List<MemberHierarchyStatVo> getHierarchyStats(String username, LocalDateTime startTime, LocalDateTime endTime) {
+        if (StringUtils.isEmpty(username)) {
+            throw new ServiceException("用户名不能为空");
+        }
+        if (startTime == null || endTime == null) {
+            throw new ServiceException("时间范围不能为空");
+        }
+        if (endTime.isBefore(startTime)) {
+            throw new ServiceException("结束时间需大于开始时间");
+        }
+        List<MemberHierarchyStatVo> stats = orderMemberUserMapper.selectHierarchyStats(username, startTime, endTime);
+        for (MemberHierarchyStatVo stat : stats) {
+            stat.setDepositWithdrawDiff(stat.getRechargeAmount().subtract(stat.getWithdrawAmount()));
+        }
+        return stats;
+    }
+
+    @Override
+    public List<com.brushing.member.domain.vo.TopLevelUserStatVo> getTopLevelStats(String username, LocalDateTime startTime, LocalDateTime endTime) {
+        // input validation
+        List<com.brushing.member.domain.vo.TopLevelUserStatVo> stats = orderMemberUserMapper.selectTopLevelStats(username, startTime, endTime);
+        if (stats == null) {
+            return java.util.Collections.emptyList();
+        }
+        for (com.brushing.member.domain.vo.TopLevelUserStatVo s : stats) {
+            if (s.getRechargeAmount() == null) s.setRechargeAmount(java.math.BigDecimal.ZERO);
+            if (s.getWithdrawAmount() == null) s.setWithdrawAmount(java.math.BigDecimal.ZERO);
+            s.setDepositWithdrawDiff(s.getRechargeAmount().subtract(s.getWithdrawAmount()));
+            if (s.getTotalCommission() == null) s.setTotalCommission(java.math.BigDecimal.ZERO);
+            if (s.getTotalBalance() == null) s.setTotalBalance(java.math.BigDecimal.ZERO);
+            if (s.getTotalSubCount() == null) s.setTotalSubCount(0);
+            if (s.getDirectInviteCount() == null) s.setDirectInviteCount(0);
+        }
+        return stats;
     }
 }

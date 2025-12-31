@@ -2,10 +2,11 @@ package com.brushing.web.controller.member;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.brushing.common.core.domain.entity.SysUser;
-import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.MessageUtils;
 import com.brushing.member.domain.OrderMemberLevel;
@@ -35,6 +36,7 @@ import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.service.IOrderMemberUserService;
 import com.brushing.common.utils.poi.ExcelUtil;
 import com.brushing.common.core.page.TableDataInfo;
+import com.brushing.member.domain.vo.MemberHierarchyStatVo;
 
 /**
  * 会员用户Controller
@@ -57,6 +59,8 @@ public class OrderMemberUserController extends BaseController
 
     @Autowired
     private ISysUserService userService;
+
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 查询会员用户列表
@@ -273,5 +277,43 @@ public class OrderMemberUserController extends BaseController
     public AjaxResult getDashboardData(){
 
         return success(orderMemberUserService.getDashboardData());
+    }
+
+    /**
+     * 会员层级统计
+     * @param username
+     * @param beginTime
+     * @param endTime
+     * @return
+     */
+    @GetMapping("/hierarchy/stats")
+    public AjaxResult hierarchyStats(String username, String beginTime, String endTime) {
+        LocalDateTime start = LocalDateTime.parse(beginTime, DATE_TIME_FORMATTER);
+        LocalDateTime end = LocalDateTime.parse(endTime, DATE_TIME_FORMATTER);
+        List<MemberHierarchyStatVo> stats = orderMemberUserService.getHierarchyStats(username, start, end);
+        return success(stats);
+    }
+
+    /**
+     * 查询顶级节点统计（parent_id = 0）
+     * @param username 可选，按用户名过滤
+     * @param beginTime 时间范围开始，格式 yyyy-MM-dd HH:mm:ss
+     * @param endTime 时间范围结束，格式 yyyy-MM-dd HH:mm:ss
+     * @return
+     */
+    @GetMapping("/hierarchy/topLevelStats")
+    public TableDataInfo topLevelStats(String username, String beginTime, String endTime) {
+        java.time.LocalDateTime start = null;
+        java.time.LocalDateTime end = null;
+        if (beginTime != null && !beginTime.isEmpty()) {
+            start = java.time.LocalDateTime.parse(beginTime, DATE_TIME_FORMATTER);
+        }
+        if (endTime != null && !endTime.isEmpty()) {
+            end = java.time.LocalDateTime.parse(endTime, DATE_TIME_FORMATTER);
+        }
+        // enable pagination (uses PageHelper via startPage() implemented in BaseController)
+        startPage();
+        List<com.brushing.member.domain.vo.TopLevelUserStatVo> stats = orderMemberUserService.getTopLevelStats(username, start, end);
+        return getDataTable(stats);
     }
 }

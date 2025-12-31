@@ -232,10 +232,8 @@ public class AccountController extends BaseController {
         if (StringUtils.isNotNull(dto.getWalletId())){
             withdrawal.setWalletId(dto.getWalletId());
         }
-        user.setTodayWithdrawCount(user.getTotalWithdrawCount() + 1);
-        user.setTodayWithdrawCount(user.getTodayWithdrawCount() + 1);
-//        user.setTodayResetCount(user.getTotalResetCount() + 1);
-//        user.setTotalResetCount(user.getTotalResetCount() + 1);
+        user.setTotalWithdrawCount((user.getTotalWithdrawCount()==null ? 0 : user.getTotalWithdrawCount()) + 1);
+        user.setTodayWithdrawCount((user.getTodayWithdrawCount()==null ? 0 : user.getTodayWithdrawCount()) + 1);
 
         int i = memberUserService.updateOrderMemberUser(user);
         if (i  == 0) {

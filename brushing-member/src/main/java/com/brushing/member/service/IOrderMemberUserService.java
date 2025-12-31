@@ -1,10 +1,12 @@
 package com.brushing.member.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.brushing.member.domain.DashboardData;
 import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.vo.MemberHierarchyStatVo;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -76,4 +78,11 @@ public interface IOrderMemberUserService
     public void updateUserLevel(Long userId, BigDecimal amount);
 
     public Boolean checkUserBalance(OrderMemberUser orderMemberUser);
+
+    List<MemberHierarchyStatVo> getHierarchyStats(String username, LocalDateTime startTime, LocalDateTime endTime);
+
+    /**
+     * 查询顶级用户统计（parent_id = 0），支持按用户名和时间范围过滤
+     */
+    java.util.List<com.brushing.member.domain.vo.TopLevelUserStatVo> getTopLevelStats(String username, LocalDateTime startTime, LocalDateTime endTime);
 }
