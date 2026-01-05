@@ -332,6 +332,7 @@ public class AccountController extends BaseController {
             return AjaxResult.error(509, ERR_USER_NOT_FOUND);
         }OrderBankWallet orderBankWallet = new OrderBankWallet();
         orderBankWallet.setUserId(user.getId());
+        orderBankWallet.setType("2");
         List<OrderBankWallet> list = bankWalletService.selectOrderBankWalletList(orderBankWallet);
         AjaxResult ajaxResult= new AjaxResult();
         ajaxResult.put("data",list);
