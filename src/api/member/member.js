@@ -102,3 +102,21 @@ export function userBankList(userId) {
     method: "get",
   });
 }
+
+// 层级统计
+export function hierarchyStats(query) {
+  return request({
+    url: "/member/member/hierarchy/stats",
+    method: "get",
+    params: query,
+  });
+}
+
+// 查询顶级节点统计（parent_id = 0）
+export function topLevelStats(query) {
+  return request({
+    url: "/member/member/hierarchy/topLevelStats",
+    method: "get",
+    params: query,
+  });
+}

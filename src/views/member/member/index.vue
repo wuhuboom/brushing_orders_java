@@ -1424,7 +1424,7 @@ const columns = ref([
     label: t("member.index.operation"),
     visible: true,
     prop: null,
-    width: "480",
+    width: "320",
     fixed: "right",
     className: "operation-buttons",
   },
@@ -2487,8 +2487,20 @@ getList();
 <style scoped>
 .operation-buttons {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
+  flex-wrap: wrap;
+  margin: -5px;  /* 抵消子元素的外边距 */
+}
+
+.operation-buttons button {
+  flex: 0 0 50%;  /* 每个占50%宽度 */
+  box-sizing: border-box;
+  padding: 5px;   /* 按钮之间的间距 */
+}
+
+/* 或者使用外边距 */
+.operation-buttons button {
+  flex: 0 0 calc(50% - 10px);
+  margin: 5px;
 }
 .score-row {
   display: flex;

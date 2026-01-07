@@ -273,17 +273,24 @@ const selectedUserId = ref(null);
 
 // 获取列表（改为 scopeList(userId, scope)）
 function getList() {
-  console.log(props.userId);
-  if (!props.userId) return;
+  console.log("ScopeUser.getList() - props.userId:", props.userId);
+  if (!props.userId) {
+    console.warn("ScopeUser: no userId provided");
+    memberList.value = [];
+    total.value = 0;
+    return;
+  }
   loading.value = true;
-  console.log(queryParams.value);
+  console.log("ScopeUser.queryParams:", queryParams.value);
   scopeList(queryParams.value)
     .then((response) => {
+      console.log("scopeList response:", response);
       memberList.value = response.rows || response.data || [];
       total.value = response.total || memberList.value.length || 0;
       loading.value = false;
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error("scopeList error:", err);
       loading.value = false;
     });
 }
