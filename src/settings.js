@@ -5,19 +5,34 @@ export default {
   title: import.meta.env.VITE_APP_TITLE,
 
   /**
+   * 布局配置版本，用于淘汰旧版本地缓存
+   */
+  layoutVersion: 'ant-pro-layout-20260710-shell-align-v3',
+
+  /**
+   * 主题色
+   */
+  theme: '#1890ff',
+
+  /**
    * 侧边栏主题 深色主题theme-dark，浅色主题theme-light
    */
-  sideTheme: 'theme-dark',
+  sideTheme: 'theme-light',
+
+  /**
+   * 导航模式 side/top/mix
+   */
+  layoutMode: 'mix',
 
   /**
    * 是否系统布局配置
    */
-  showSettings: true,
+  showSettings: import.meta.env.DEV,
 
   /**
    * 是否显示顶部导航
    */
-  topNav: false,
+  topNav: true,
 
   /**
    * 是否显示 tagsView
@@ -32,12 +47,47 @@ export default {
   /**
    * 是否固定头部
    */
-  fixedHeader: false,
+  fixedHeader: true,
+
+  /**
+   * 是否固定侧边菜单
+   */
+  fixedSidebar: true,
 
   /**
    * 是否显示logo
    */
   sidebarLogo: true,
+
+  /**
+   * 是否显示顶栏
+   */
+  headerVisible: true,
+
+  /**
+   * 是否显示菜单
+   */
+  menuVisible: true,
+
+  /**
+   * 是否显示菜单头
+   */
+  menuHeaderVisible: false,
+
+  /**
+   * 是否自动分割菜单
+   */
+  splitMenus: true,
+
+  /**
+   * 内容区域宽度 Fluid/Fixed
+   */
+  contentWidth: 'Fluid',
+
+  /**
+   * 色弱模式
+   */
+  colorWeak: false,
 
   /**
    * 是否显示动态标题
@@ -47,7 +97,7 @@ export default {
   /**
    * 是否显示底部版权
    */
-  footerVisible: false,
+  footerVisible: true,
 
   /**
    * 底部版权文本内容

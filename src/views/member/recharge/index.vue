@@ -1,146 +1,130 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table
+      title="充值记录"
+      :columns="rechargeColumns"
+      :data-source="rechargeList"
+      :loading="loading"
+      row-key="id"
+      :row-selection="rowSelection"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      :scroll="{ x: 1600 }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
     >
-      <el-form-item label="用户名" prop="userId">
-        <el-input
-          v-model="queryParams.userName"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="手机号码" prop="userId">
-        <el-input
-          v-model="queryParams.userName"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="用户名">
+                <a-input
+                  v-model:value="queryParams.userName"
+                  placeholder="请输入用户名"
+                  allow-clear
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="手机号">
+                <a-input
+                  v-model:value="queryParams.phoneNumber"
+                  placeholder="请输入手机号"
+                  allow-clear
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="订单号">
+                <a-input
+                  v-model:value="queryParams.orderNumber"
+                  placeholder="请输入订单号"
+                  allow-clear
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col flex="auto" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+        </a-form>
+      </template>
 
-      <el-form-item label="订单号" prop="orderNumber">
-        <el-input
-          v-model="queryParams.orderNumber"
-          placeholder="请输入订单号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+      <template #toolbar>
+        <a-button :disabled="multiple" @click="handleHidden('0')" v-hasPermi="['member:recharge:edit']">显示</a-button>
+        <a-button :disabled="multiple" @click="handleHidden('1')" v-hasPermi="['member:recharge:edit']">隐藏</a-button>
+      </template>
 
-    <el-row :gutter="10" class="mb8">
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'status'">
+          <dict-tag :options="apply_status" :value="record.status" />
+        </template>
+        <template v-else-if="column.dataIndex === 'createTime'">
+          {{ parseTime(record.createTime) }}
+        </template>
+        <template v-else-if="column.dataIndex === 'transactionType'">
+          <dict-tag :options="transaction_type" :value="record.transactionType" />
+        </template>
+        <template v-else-if="column.dataIndex === 'isHidden'">
+          <dict-tag :options="user_yes_no" :value="record.isHidden" />
+        </template>
+        <template v-else-if="column.key === 'operation'">
+          <a-space :size="4">
+            <a-button
+              type="link"
+              size="small"
+              :disabled="String(record.status) !== '1'"
+              @click="handleApprove(record)"
+              v-hasPermi="['member:recharge:edit']"
+            >通过</a-button>
+            <a-button
+              type="link"
+              danger
+              size="small"
+              :disabled="String(record.status) !== '1'"
+              @click="handleReject(record)"
+              v-hasPermi="['member:recharge:edit']"
+            >拒绝</a-button>
+            <a-button
+              type="link"
+              size="small"
+              @click="handleUpdate(record)"
+              v-hasPermi="['member:recharge:edit']"
+            >备注</a-button>
+          </a-space>
+        </template>
+      </template>
+    </ant-pro-table>
 
-    <el-table
-      v-loading="loading"
-      :data="rechargeList"
-      @selection-change="handleSelectionChange"
-      :border="true"
+    <a-modal
+      :title="title"
+      v-model:open="open"
+      width="500px"
+      ok-text="确 定"
+      cancel-text="取 消"
+      :confirm-loading="submitting"
+      @ok="submitForm"
+      @cancel="cancel"
     >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="用户名" align="center" prop="username" />
-      <el-table-column label="手机号" align="center" prop="phoneNumber" />
-      <el-table-column
-        label="上级用户名"
-        align="center"
-        prop="parentUsername"
-      />
-      <el-table-column label="金额" align="center" prop="amount" />
-      <el-table-column label="出金类型" align="center" prop="withdrawalType" />
-      <el-table-column label="赠送金额" align="center" prop="giftAmount" />
-      <el-table-column label="到账金额" align="center" prop="receivedAmount" />
-      <el-table-column label="状态" align="center" prop="status">
-        <template #default="scope">
-          <el-tag effect="dark" type="success">已通过 </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="创建时间"
-        align="center"
-        prop="createTime"
-        width="180"
-      >
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.createTime) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="备注" align="center" prop="remark" />
-      <el-table-column label="交易类型" align="center" prop="transactionType">
-        <template #default="scope">
-          <dict-tag
-            :options="transaction_type"
-            :value="scope.row.transactionType"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="订单号" align="center" prop="orderNumber" />
-      <el-table-column label="是否隐藏" align="center" prop="isHidden">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isHidden" />
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:recharge:edit']"
-          ></el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-
-    <!-- 添加或修改充值记录对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form
+      <a-form
         ref="rechargeRef"
         :model="form"
         :rules="rules"
-        label-width="80px"
+        layout="vertical"
       >
-        <el-form-item label="备注" prop="remark">
-          <el-input
-            v-model="form.remark"
-            type="textarea"
+        <a-form-item label="备注" name="remark">
+          <a-textarea
+            v-model:value="form.remark"
             placeholder="请输入内容"
           />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -154,9 +138,10 @@ import {
 } from "@/api/member/recharge";
 
 const { proxy } = getCurrentInstance();
-const { transaction_type, user_yes_no } = proxy.useDict(
+const { transaction_type, user_yes_no, apply_status } = proxy.useDict(
   "transaction_type",
-  "user_yes_no"
+  "user_yes_no",
+  "apply_status"
 );
 
 const rechargeList = ref([]);
@@ -168,12 +153,38 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const submitting = ref(false);
+const rechargeRef = ref();
+
+const rechargeColumns = [
+  { title: "用户名", dataIndex: "username", align: "center", width: 140 },
+  { title: "手机号", dataIndex: "phoneNumber", align: "center", width: 140 },
+  { title: "上级用户名", dataIndex: "parentUsername", align: "center", width: 150 },
+  { title: "金额", dataIndex: "amount", align: "center", width: 120 },
+  { title: "充值类型", dataIndex: "withdrawalType", align: "center", width: 130 },
+  { title: "赠送金额", dataIndex: "giftAmount", align: "center", width: 130 },
+  { title: "到账金额", dataIndex: "receivedAmount", align: "center", width: 130 },
+  { title: "状态", key: "status", dataIndex: "status", align: "center", width: 110 },
+  { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
+  { title: "备注", dataIndex: "remark", align: "center", width: 150 },
+  { title: "交易类型", dataIndex: "transactionType", align: "center", width: 130 },
+  { title: "订单号", dataIndex: "orderNumber", align: "center", width: 180 },
+  { title: "是否隐藏", dataIndex: "isHidden", align: "center", width: 120 },
+  { title: "操作", key: "operation", align: "center", fixed: "right", width: 100 },
+];
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: ids.value,
+  onChange: (_, selectedRows) => handleSelectionChange(selectedRows),
+}));
 
 const data = reactive({
   form: {},
   queryParams: {
     pageNum: 1,
     pageSize: 10,
+    userName: null,
+    phoneNumber: null,
     userId: null,
     amount: null,
     withdrawalType: null,
@@ -188,19 +199,11 @@ const data = reactive({
   rules: {
     userId: [{ required: true, message: "用户ID不能为空", trigger: "blur" }],
     amount: [{ required: true, message: "金额不能为空", trigger: "blur" }],
-    withdrawalType: [
-      { required: true, message: "出金类型不能为空", trigger: "change" },
-    ],
-    receivedAmount: [
-      { required: true, message: "到账金额不能为空", trigger: "blur" },
-    ],
+    withdrawalType: [{ required: true, message: "充值类型不能为空", trigger: "change" }],
+    receivedAmount: [{ required: true, message: "到账金额不能为空", trigger: "blur" }],
     status: [{ required: true, message: "状态不能为空", trigger: "change" }],
-    transactionType: [
-      { required: true, message: "交易类型不能为空", trigger: "change" },
-    ],
-    orderNumber: [
-      { required: true, message: "订单号不能为空", trigger: "blur" },
-    ],
+    transactionType: [{ required: true, message: "交易类型不能为空", trigger: "change" }],
+    orderNumber: [{ required: true, message: "订单号不能为空", trigger: "blur" }],
   },
 });
 
@@ -238,7 +241,7 @@ function reset() {
     orderNumber: null,
     isHidden: null,
   };
-  proxy.resetForm("rechargeRef");
+  nextTick(() => rechargeRef.value?.clearValidate?.());
 }
 
 /** 搜索按钮操作 */
@@ -249,8 +252,16 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.userName = null;
+  queryParams.value.phoneNumber = null;
+  queryParams.value.orderNumber = null;
   handleQuery();
+}
+
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
 }
 
 // 多选框选中数据
@@ -264,7 +275,7 @@ function handleSelectionChange(selection) {
 function handleAdd() {
   reset();
   open.value = true;
-  title.value = "添加充值记录";
+  title.value = "修改备注";
 }
 
 /** 修改按钮操作 */
@@ -278,40 +289,71 @@ function handleUpdate(row) {
   });
 }
 
+function handleApprove(row) {
+  proxy.$modal
+    .confirm("确认通过该充值申请？")
+    .then(() => updateRecharge({ id: row.id, status: "0" }))
+    .then(() => {
+      proxy.$modal.msgSuccess("操作成功");
+      getList();
+    })
+    .catch(() => {});
+}
+
+function handleReject(row) {
+  proxy.$modal
+    .confirm("确认拒绝该充值申请？")
+    .then(() => updateRecharge({ id: row.id, status: "2" }))
+    .then(() => {
+      proxy.$modal.msgSuccess("操作成功");
+      getList();
+    })
+    .catch(() => {});
+}
+
 /** 提交按钮 */
-function submitForm() {
-  proxy.$refs["rechargeRef"].validate((valid) => {
-    if (valid) {
-      if (form.value.id != null) {
-        updateRecharge(form.value).then((response) => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addRecharge(form.value).then((response) => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
+async function submitForm() {
+  try {
+    await rechargeRef.value?.validate();
+  } catch {
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    if (form.value.id != null) {
+      await updateRecharge(form.value);
+    } else {
+      await addRecharge(form.value);
     }
-  });
+    proxy.$modal.msgSuccess("操作成功");
+    open.value = false;
+    getList();
+  } finally {
+    submitting.value = false;
+  }
 }
 
 /** 删除按钮操作 */
 function handleDelete(row) {
   const _ids = row.id || ids.value;
   proxy.$modal
-    .confirm('是否确认删除充值记录编号为"' + _ids + '"的数据项？')
+    .confirm(`是否确认删除充值记录编号为 "${_ids}" 的数据项？`)
     .then(function () {
       return delRecharge(_ids);
     })
     .then(() => {
       getList();
-      proxy.$modal.msgSuccess("删除成功");
+      proxy.$modal.msgSuccess("操作成功");
     })
     .catch(() => {});
+}
+
+function handleHidden(isHidden) {
+  Promise.all(ids.value.map((id) => updateRecharge({ id, isHidden }))).then(() => {
+    proxy.$modal.msgSuccess("操作成功");
+    getList();
+  });
 }
 
 /** 导出按钮操作 */

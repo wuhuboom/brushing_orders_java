@@ -1,219 +1,68 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table
+      title="订单列表"
+      :columns="orderinfoColumns"
+      :data-source="orderinfoList"
+      :loading="loading"
+      row-key="id"
+      :row-selection="rowSelection"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      :scroll="{ x: 2200 }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
     >
-      <el-form-item label="订单编号" prop="orderNumber">
-        <el-input
-          v-model="queryParams.orderNumber"
-          placeholder="请输入订单编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="用户名" prop="userId">
-        <el-input
-          v-model="queryParams.userId"
-          placeholder="请输入用户ID"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-
-    <el-table
-      v-loading="loading"
-      :data="orderinfoList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="明细编号" align="center" prop="orderNumber" />
-      <el-table-column label="用户名" align="center" prop="username" />
-      <el-table-column label="类型" align="center" prop="type">
-        <template #default="scope">
-          <dict-tag :options="order_type" :value="scope.row.type" />
-        </template>
-      </el-table-column>
-      <el-table-column label="单数" align="center" prop="orderCount" />
-      <el-table-column label="金额" align="center" prop="amount" />
-      <el-table-column
-        label="返佣百分比"
-        align="center"
-        prop="rebatePercentage"
-      />
-      <el-table-column label="返佣" align="center" prop="rebate" />
-      <el-table-column
-        label="上级返佣百分比"
-        align="center"
-        prop="upperRebatePercentage"
-      />
-      <el-table-column label="上级返佣" align="center" prop="upperRebate" />
-      <el-table-column label="状态" align="center" prop="status">
-        <template #default="scope">
-          <dict-tag :options="order_status" :value="scope.row.status" />
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="过期时间"
-        align="center"
-        prop="expiryTime"
-        width="180"
-      >
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.expiryTime, "{y}-{m}-{d}") }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="商品图片" align="center" prop="productImage">
-        <template #default="scope">
-          <image-preview
-            :src="scope.row.productImage"
-            :width="50"
-            :height="50"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="商品标题" align="center" prop="productTitle" />
-      <el-table-column
-        label="额外佣金"
-        align="center"
-        prop="extraCommissionId"
-      />
-      <el-table-column label="备注" align="center" prop="remarks" />
-      <!-- <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:orderinfo:edit']"
-          ></el-button>
-          <el-button
-            circle
-            type="danger"
-            icon="Delete"
-            @click="handleDelete(scope.row)"
-            v-hasPermi="['member:orderinfo:remove']"
-          ></el-button>
-        </template>
-      </el-table-column> -->
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-
-    <!-- 添加或修改订单对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form
-        ref="orderinfoRef"
-        :model="form"
-        :rules="rules"
-        label-width="80px"
-      >
-        <el-form-item label="订单标号" prop="orderNumber">
-          <el-input v-model="form.orderNumber" placeholder="请输入订单标号" />
-        </el-form-item>
-        <el-form-item label="用户ID" prop="userId">
-          <el-input v-model="form.userId" placeholder="请输入用户ID" />
-        </el-form-item>
-        <el-form-item label="类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择类型">
-            <el-option
-              v-for="dict in order_type"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="单数" prop="orderCount">
-          <el-input v-model="form.orderCount" placeholder="请输入单数" />
-        </el-form-item>
-        <el-form-item label="金额" prop="amount">
-          <el-input v-model="form.amount" placeholder="请输入金额" />
-        </el-form-item>
-        <el-form-item label="返佣百分比" prop="rebatePercentage">
-          <el-input
-            v-model="form.rebatePercentage"
-            placeholder="请输入返佣百分比"
-          />
-        </el-form-item>
-        <el-form-item label="返佣" prop="rebate">
-          <el-input v-model="form.rebate" placeholder="请输入返佣" />
-        </el-form-item>
-        <el-form-item label="上级返佣百分比" prop="upperRebatePercentage">
-          <el-input
-            v-model="form.upperRebatePercentage"
-            placeholder="请输入上级返佣百分比"
-          />
-        </el-form-item>
-        <el-form-item label="上级返佣" prop="upperRebate">
-          <el-input v-model="form.upperRebate" placeholder="请输入上级返佣" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio
-              v-for="dict in order_status"
-              :key="dict.value"
-              :label="dict.value"
-              >{{ dict.label }}</el-radio
-            >
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="过期时间" prop="expiryTime">
-          <el-date-picker
-            clearable
-            v-model="form.expiryTime"
-            type="date"
-            value-format="YYYY-MM-DD"
-            placeholder="请选择过期时间"
-          >
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="商品ID" prop="productId">
-          <el-input v-model="form.productId" placeholder="请输入商品ID" />
-        </el-form-item>
-        <el-form-item label="额外佣金ID" prop="extraCommissionId">
-          <el-input
-            v-model="form.extraCommissionId"
-            placeholder="请输入额外佣金ID"
-          />
-        </el-form-item>
-        <el-form-item label="备注" prop="remarks">
-          <el-input v-model="form.remarks" placeholder="请输入备注" />
-        </el-form-item>
-        <el-form-item label="评论ID" prop="commentId">
-          <el-input v-model="form.commentId" placeholder="请输入评论ID" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams">
+          <a-row :gutter="24" align="middle">
+            <a-col :span="7">
+              <a-form-item label="订单编号">
+                <a-input
+                  v-model:value="queryParams.orderNumber"
+                  placeholder="请输入订单编号"
+                  allow-clear
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="7">
+              <a-form-item label="用户名">
+                <a-input
+                  v-model:value="queryParams.username"
+                  placeholder="请输入用户名"
+                  allow-clear
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="10" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+        </a-form>
       </template>
-    </el-dialog>
+
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.dataIndex === 'type'">
+          <dict-tag :options="order_type" :value="record.type" />
+        </template>
+        <template v-else-if="column.dataIndex === 'status'">
+          <dict-tag :options="order_status" :value="record.status" />
+        </template>
+        <template v-else-if="column.dataIndex === 'expiryTime'">
+          {{ parseTime(record.expiryTime) }}
+        </template>
+        <template v-else-if="column.dataIndex === 'createTime'">
+          {{ parseTime(record.createTime) }}
+        </template>
+        <template v-else-if="column.dataIndex === 'productImage'">
+          <image-preview :src="record.productImage" :width="50" :height="50" />
+        </template>
+      </template>
+    </ant-pro-table>
   </div>
 </template>
 
@@ -242,12 +91,37 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 
+const orderinfoColumns = [
+  { title: "订单编号", dataIndex: "orderNumber", align: "center", width: 200 },
+  { title: "用户名", dataIndex: "username", align: "center", width: 160 },
+  { title: "类型", dataIndex: "type", align: "center", width: 100 },
+  { title: "单数", dataIndex: "orderCount", align: "center", width: 100 },
+  { title: "金额", dataIndex: "amount", align: "center", width: 120 },
+  { title: "返佣百分比", dataIndex: "rebatePercentage", align: "center", width: 130 },
+  { title: "返佣", dataIndex: "rebate", align: "center", width: 100 },
+  { title: "上级返佣百分比", dataIndex: "upperRebatePercentage", align: "center", width: 160 },
+  { title: "上级返佣", dataIndex: "upperRebate", align: "center", width: 130 },
+  { title: "状态", dataIndex: "status", align: "center", width: 120 },
+  { title: "过期时间", dataIndex: "expiryTime", align: "center", width: 180 },
+  { title: "商品图片", dataIndex: "productImage", align: "center", width: 120 },
+  { title: "商品标题", dataIndex: "productTitle", align: "center", width: 320 },
+  { title: "额外佣金", dataIndex: "extraCommissionId", align: "center", width: 120 },
+  { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
+  { title: "备注", dataIndex: "remarks", align: "center", width: 200 },
+];
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: ids.value,
+  onChange: (_, selectedRows) => handleSelectionChange(selectedRows),
+}));
+
 const data = reactive({
   form: {},
   queryParams: {
     pageNum: 1,
     pageSize: 10,
     orderNumber: null,
+    username: null,
     userId: null,
     type: null,
     orderCount: null,
@@ -264,37 +138,25 @@ const data = reactive({
     commentId: null,
   },
   rules: {
-    orderNumber: [
-      { required: true, message: "订单标号不能为空", trigger: "blur" },
-    ],
+    orderNumber: [{ required: true, message: "订单编号不能为空", trigger: "blur" }],
     userId: [{ required: true, message: "用户ID不能为空", trigger: "blur" }],
     type: [{ required: true, message: "类型不能为空", trigger: "change" }],
     orderCount: [{ required: true, message: "单数不能为空", trigger: "blur" }],
     amount: [{ required: true, message: "金额不能为空", trigger: "blur" }],
-    rebatePercentage: [
-      { required: true, message: "返佣百分比不能为空", trigger: "blur" },
-    ],
+    rebatePercentage: [{ required: true, message: "返佣百分比不能为空", trigger: "blur" }],
     rebate: [{ required: true, message: "返佣不能为空", trigger: "blur" }],
-    upperRebatePercentage: [
-      { required: true, message: "上级返佣百分比不能为空", trigger: "blur" },
-    ],
-    upperRebate: [
-      { required: true, message: "上级返佣不能为空", trigger: "blur" },
-    ],
+    upperRebatePercentage: [{ required: true, message: "上级返佣百分比不能为空", trigger: "blur" }],
+    upperRebate: [{ required: true, message: "上级返佣不能为空", trigger: "blur" }],
     status: [{ required: true, message: "状态不能为空", trigger: "change" }],
-    expiryTime: [
-      { required: true, message: "过期时间不能为空", trigger: "blur" },
-    ],
+    expiryTime: [{ required: true, message: "过期时间不能为空", trigger: "blur" }],
     productId: [{ required: true, message: "商品ID不能为空", trigger: "blur" }],
-    extraCommissionId: [
-      { required: true, message: "额外佣金ID不能为空", trigger: "blur" },
-    ],
+    extraCommissionId: [{ required: true, message: "额外佣金ID不能为空", trigger: "blur" }],
   },
 });
 
 const { queryParams, form, rules } = toRefs(data);
 
-/** 查询订单列表 */
+/** 鏌ヨ璁㈠崟鍒楄〃 */
 function getList() {
   loading.value = true;
   listOrderinfo(queryParams.value).then((response) => {
@@ -304,13 +166,13 @@ function getList() {
   });
 }
 
-// 取消按钮
+// 鍙栨秷鎸夐挳
 function cancel() {
   open.value = false;
   reset();
 }
 
-// 表单重置
+// 琛ㄥ崟閲嶇疆
 function reset() {
   form.value = {
     id: null,
@@ -334,33 +196,40 @@ function reset() {
   proxy.resetForm("orderinfoRef");
 }
 
-/** 搜索按钮操作 */
+/** 鎼滅储鎸夐挳鎿嶄綔 */
 function handleQuery() {
   queryParams.value.pageNum = 1;
   getList();
 }
 
-/** 重置按钮操作 */
+/** 閲嶇疆鎸夐挳鎿嶄綔 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.orderNumber = null;
+  queryParams.value.username = null;
   handleQuery();
 }
 
-// 多选框选中数据
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
+}
+
+// 澶氶€夋閫変腑鏁版嵁
 function handleSelectionChange(selection) {
   ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 }
 
-/** 新增按钮操作 */
+/** 鏂板鎸夐挳鎿嶄綔 */
 function handleAdd() {
   reset();
   open.value = true;
-  title.value = "添加订单";
+  title.value = "修改订单";
 }
 
-/** 修改按钮操作 */
+/** 淇敼鎸夐挳鎿嶄綔 */
 function handleUpdate(row) {
   reset();
   const _id = row.id || ids.value;
@@ -371,19 +240,19 @@ function handleUpdate(row) {
   });
 }
 
-/** 提交按钮 */
+/** 鎻愪氦鎸夐挳 */
 function submitForm() {
   proxy.$refs["orderinfoRef"].validate((valid) => {
     if (valid) {
       if (form.value.id != null) {
         updateOrderinfo(form.value).then((response) => {
-          proxy.$modal.msgSuccess("修改成功");
+          proxy.$modal.msgSuccess("操作成功");
           open.value = false;
           getList();
         });
       } else {
         addOrderinfo(form.value).then((response) => {
-          proxy.$modal.msgSuccess("新增成功");
+          proxy.$modal.msgSuccess("操作成功");
           open.value = false;
           getList();
         });
@@ -392,22 +261,22 @@ function submitForm() {
   });
 }
 
-/** 删除按钮操作 */
+/** 鍒犻櫎鎸夐挳鎿嶄綔 */
 function handleDelete(row) {
   const _ids = row.id || ids.value;
   proxy.$modal
-    .confirm('是否确认删除订单编号为"' + _ids + '"的数据项？')
+    .confirm(`是否确认删除订单编号为 "${_ids}" 的数据项？`)
     .then(function () {
       return delOrderinfo(_ids);
     })
     .then(() => {
       getList();
-      proxy.$modal.msgSuccess("删除成功");
+      proxy.$modal.msgSuccess("操作成功");
     })
     .catch(() => {});
 }
 
-/** 导出按钮操作 */
+/** 瀵煎嚭鎸夐挳鎿嶄綔 */
 function handleExport() {
   proxy.download(
     "member/orderinfo/export",
@@ -420,3 +289,5 @@ function handleExport() {
 
 getList();
 </script>
+
+

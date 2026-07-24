@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { apiPathParam } from '@/utils/apiPath'
 
 // 查询在线用户列表
 export function list(query) {
@@ -12,7 +13,7 @@ export function list(query) {
 // 强退用户
 export function forceLogout(tokenId) {
   return request({
-    url: '/monitor/online/' + tokenId,
+    url: '/monitor/online/' + apiPathParam(tokenId),
     method: 'delete'
   })
 }

@@ -1,677 +1,533 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
+  <div class="app-container member-orderuser-page ant-pro-member-page">
+    <ant-pro-table
+      title="会员列表"
+      :columns="memberColumns"
+      :data-source="orderuserList"
+      :loading="loading"
+      row-key="id"
+      :row-selection="rowSelection"
+      :scroll="{ x: 5600, y: 460 }"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
+      @change="handleTableChange"
     >
-      <el-form-item label="用户名" prop="username">
-        <el-input
-          v-model="queryParams.username"
-          placeholder="请输入用户名"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="手机号" prop="phoneNumber">
-        <el-input
-          v-model="queryParams.phoneNumber"
-          placeholder="请输入手机号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="关键字">
+                <a-input
+                  v-model:value="queryParams.keyword"
+                  allow-clear
+                  placeholder="用户名/手机号码/IP/邀请码"
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="上级用户名">
+                <a-input
+                  v-model:value="queryParams.parentUsername"
+                  allow-clear
+                  placeholder="请输入"
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="5">
+              <a-form-item label="是否在线">
+                <a-select v-model:value="queryParams.isOnline" allow-clear placeholder="请选择">
+                  <a-select-option value="1">是</a-select-option>
+                  <a-select-option value="0">否</a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col flex="auto" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button type="link" class="ant-pro-expand-btn" @click="advancedSearchVisible = !advancedSearchVisible">
+                  {{ advancedSearchVisible ? "收起" : "展开" }}
+                  <UpOutlined v-if="advancedSearchVisible" />
+                  <DownOutlined v-else />
+                </a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+          <a-row v-if="advancedSearchVisible" :gutter="[24, 16]" class="advanced-query-row">
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="ID">
+                <a-input-number v-model:value="queryParams.id" :min="1" :precision="0" class="full-width" placeholder="请输入" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="VIP等级">
+                <a-select v-model:value="queryParams.vipId" allow-clear placeholder="请选择">
+                  <a-select-option v-for="item in levelList" :key="item.id" :value="item.id">
+                    {{ item.name }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="用户名列表">
+                <a-input v-model:value="queryParams.usernameList" allow-clear placeholder="多个用户名用逗号分隔" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="上级邀请码">
+                <a-input v-model:value="queryParams.parentInviteCode" allow-clear placeholder="请输入" />
+              </a-form-item>
+            </a-col>
 
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['member:orderuser:add']"
-          >新增</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['member:orderuser:edit']"
-          >修改</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['member:orderuser:remove']"
-          >删除</el-button
-        >
-      </el-col>
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
-
-    <el-table
-      v-loading="loading"
-      :data="orderuserList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" fixed="left" />
-      <el-table-column label="ID" prop="id" fixed="left" align="center" />
-      <el-table-column
-        label="用户名"
-        prop="username"
-        align="center"
-        width="180"
-      />
-      <el-table-column
-        label="手机号"
-        prop="phoneNumber"
-        align="center"
-        width="180"
-      />
-      <el-table-column
-        label="会员等级"
-        prop="memberLevel.name"
-        align="center"
-        width="100"
-      />
-
-      <el-table-column label="上级信息" width="180">
-        <template #default="scope">
-          <div>上级邀请码：{{ scope.row.parentInviteCode || "无" }}</div>
-          <div>上级用户名：{{ scope.row.parentUsername || "无" }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="重置次数" width="180">
-        <template #default="scope">
-          <div>今日重置次数：{{ scope.row.todayRest }}</div>
-          <div>累计重置次数：{{ scope.row.totalRest }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="余额信息" width="180">
-        <template #default="scope">
-          <div>总余额：{{ scope.row.balance + scope.row.frozenBalance }}</div>
-          <div>余额：{{ scope.row.balance }}</div>
-          <div>冻结余额：{{ scope.row.frozenBalance }}</div>
-          <div>底薪：{{ scope.row.baseSalary }}</div>
-          <div>今日佣金：{{ scope.row.todayCommission }}</div>
-          <div>今日上级佣金：{{ scope.row.todayParentCommission }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="任务进度"
-        align="center"
-        prop="taskProgress"
-        width="100"
-      >
-        <template #default="scope">
-          <div>
-            {{ scope.row.taskProgress }} /
-            {{ scope.row.memberLevel.orderCountPerDay }}
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column label="登录信息" width="280">
-        <template #default="scope">
-          <div>最后登录IP：{{ scope.row.lastLoginIp }}</div>
-          <div>最后登录地址：{{ scope.row.lastLoginAddress }}</div>
-          <div>最后登录时间：{{ parseTime(scope.row.lastLoginTime) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="签到信息" width="180">
-        <template #default="scope">
-          <div>签到天数：0</div>
-          <div>今日签到次数：0</div>
-          <div>累计签到天数：0</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="统计信息" width="180">
-        <template #default="scope">
-          <div>直属下级数量：{{ scope.row.directChildrenCount }}</div>
-          <div>今日提现次数：{{ scope.row.todayWithdrawalCount }}</div>
-          <div>累计提现金额：{{ scope.row.totalWithdrawalAmount }}</div>
-          <div>累计充值金额：{{ scope.row.totalRechargeAmount }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="信誉分" align="center" prop="reputationScore" />
-      <el-table-column
-        label="邀请码"
-        align="center"
-        prop="inviteCode"
-        width="150"
-      />
-      <el-table-column label="性别" align="center" prop="gender">
-        <template #default="scope">
-          <dict-tag :options="sys_user_sex" :value="scope.row.gender" />
-        </template>
-      </el-table-column>
-      <el-table-column label="邮箱" align="center" prop="email" width="180" />
-      <el-table-column label="生日" align="center" prop="birthday" width="180">
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.birthday, "{y}-{m}-{d}") }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="是否启用" align="center" prop="isEnabled">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isEnabled" />
-        </template>
-      </el-table-column>
-      <el-table-column label="允许邀请" align="center" prop="allowInvite">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.allowInvite" />
-        </template>
-      </el-table-column>
-      <el-table-column label="是否冻结" align="center" prop="isFrozen">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isFrozen" />
-        </template>
-      </el-table-column>
-      <el-table-column label="是否假人" align="center" prop="isFake">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isFake" />
-        </template>
-      </el-table-column>
-      <el-table-column label="禁止工作" align="center" prop="isBanned">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isBanned" />
-        </template>
-      </el-table-column>
-      <el-table-column label="工作限额" prop="workLimit" align="center" />
-      <el-table-column
-        label="关闭提现通知"
-        align="center"
-        prop="isWithdrawalNotification"
-        width="120px"
-      >
-        <template #default="scope">
-          <dict-tag
-            :options="user_yes_no"
-            :value="scope.row.isWithdrawalNotification"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="产品匹配" align="center" prop="productMatching">
-        <template #default="scope">
-          <dict-tag :options="sys_enabled" :value="scope.row.productMatching" />
-        </template>
-      </el-table-column>
-      <el-table-column label="账户状态" align="center" prop="accountStatus">
-        <template #default="scope">
-          <dict-tag :options="sys_enabled" :value="scope.row.accountStatus" />
-        </template>
-      </el-table-column>
-
-      <el-table-column label="交易状态" align="center" prop="transactionStatus">
-        <template #default="scope">
-          <dict-tag
-            :options="sys_enabled"
-            :value="scope.row.transactionStatus"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="提现状态" align="center" prop="withdrawalStatus">
-        <template #default="scope">
-          <dict-tag
-            :options="sys_enabled"
-            :value="scope.row.withdrawalStatus"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="协助金提现状态"
-        prop="assistWithdrawalStatus"
-        align="center"
-        width="140px"
-      >
-        <template #default="scope">
-          <dict-tag
-            :options="sys_enabled"
-            :value="scope.row.assistWithdrawalStatus"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="充值后禁止提现"
-        align="center"
-        width="140px"
-        prop="depositBlockWithdrawal"
-      >
-        <template #default="scope">
-          <dict-tag
-            :options="user_yes_no"
-            :value="scope.row.depositBlockWithdrawal"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="创建时间"
-        align="center"
-        prop="createTime"
-        width="180"
-      >
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.createTime) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="备注" prop="remarks" width="180" />
-      <el-table-column
-        label="操作"
-        class-name="small-padding fixed-width"
-        fixed="right"
-        width="360"
-      >
-        <template #default="scope">
-          <div class="button-flex">
-            <div>
-              <el-button type="warning" @click="handleTransaction(scope.row)">
-                上下分
-              </el-button>
-              <el-button type="primary" @click="handleOpenLink(scope.row)">
-                连单设置
-              </el-button>
-              <el-button type="primary" @click="handleReset(scope.row)">
-                重置单数
-              </el-button>
-              <el-button type="primary" @click="handleUpdate(scope.row)">
-                修 改
-              </el-button>
-            </div>
-            <div>
-              <el-button type="primary" @click="openModifyCount(scope.row)">
-                修改单数
-              </el-button>
-              <el-button type="success" @click="handleOpenBonus(scope.row)">
-                彩金设置
-              </el-button>
-              <el-button
-                type="primary"
-                @click="handleModifyLoginPassword(scope.row)"
-              >
-                修改登录密码
-              </el-button>
-            </div>
-            <div>
-              <el-button
-                type="primary"
-                @click="handleModifyTradePassword(scope.row)"
-              >
-                修改交易密码
-              </el-button>
-              <el-button type="primary" @click="handleOpenFlow(scope.row)">
-                查看交易流水
-              </el-button>
-            </div>
-            <div>
-              <el-button
-                type="primary"
-                @click="handleOpenWithdrawal(scope.row)"
-              >
-                修改提现账户
-              </el-button>
-              <el-button
-                type="primary"
-                @click="handleModifyReputation(scope.row)"
-              >
-                修改信誉分
-              </el-button>
-              <el-button type="primary" @click="handleModifyParent(scope.row)">
-                修改上级
-              </el-button>
-            </div>
-            <div class="bt-button">
-              <el-button type="primary" @click="handleModifyVip(scope.row)">
-                修改等级
-              </el-button>
-              <el-dropdown trigger="click">
-                <el-button type="primary">
-                  更多
-                  <el-icon class="el-icon--right"><arrow-down /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="handleGift(scope.row)">
-                      <span class="other-item">赠送</span>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="handleSubMembers(scope.row)">
-                      <span class="other-item">查看下级会员</span>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="handleModifySignDays(scope.row)">
-                      <span class="other-item">修改签到天数</span>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="handleOrderDetails(scope.row)">
-                      <span class="other-item">查看订单明细</span>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="handleExtraCommission(scope.row)">
-                      <span class="other-item">额外佣金设置</span>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="handleToggleFake(scope.row)">
-                      <div
-                        :class="
-                          scope.row.isFake === '1'
-                            ? 'danger-item'
-                            : 'success-item'
-                        "
-                      >
-                        {{ scope.row.isFake === "1" ? "设为假人" : "设为真人" }}
-                      </div>
-                    </el-dropdown-item>
-                    <el-dropdown-item
-                      @click="handleToggleAccountStatus(scope.row)"
-                    >
-                      <div
-                        :class="
-                          scope.row.accountStatus == '1'
-                            ? 'success-item'
-                            : 'danger-item'
-                        "
-                      >
-                        {{
-                          scope.row.accountStatus === "1"
-                            ? "启用账户"
-                            : "禁用账户"
-                        }}
-                      </div>
-                    </el-dropdown-item>
-                    <el-dropdown-item
-                      @click="handleToggleTransactionStatus(scope.row)"
-                    >
-                      <div
-                        :class="
-                          scope.row.transactionStatus === '1'
-                            ? 'success-item'
-                            : 'danger-item'
-                        "
-                      >
-                        {{
-                          scope.row.transactionStatus === "1"
-                            ? "启用交易"
-                            : "禁用交易"
-                        }}
-                      </div>
-                    </el-dropdown-item>
-                    <el-dropdown-item
-                      @click="handleToggleWithdrawalStatus(scope.row)"
-                    >
-                      <div
-                        :class="
-                          scope.row.withdrawalStatus === '1'
-                            ? 'success-item'
-                            : 'danger-item'
-                        "
-                      >
-                        {{
-                          scope.row.withdrawalStatus === "1"
-                            ? "启用提现"
-                            : "禁用提现"
-                        }}
-                      </div>
-                    </el-dropdown-item>
-                    <el-dropdown-item
-                      @click="handleToggleAssistWithdrawalStatus(scope.row)"
-                    >
-                      <div
-                        :class="
-                          scope.row.assistWithdrawalStatus === '1'
-                            ? 'success-item'
-                            : 'danger-item'
-                        "
-                      >
-                        {{
-                          scope.row.assistWithdrawalStatus === "1"
-                            ? "启用协助金提现"
-                            : "禁用协助金提现"
-                        }}
-                      </div>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <el-dialog
-      title="修改单数"
-      v-model="modifyModalVisible"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        :model="modifyForm"
-        :rules="modifyRules"
-        label-position="top"
-        label-width="100px"
-        ref="modifyFormRef"
-      >
-        <el-form-item label="任务进度">
-          <el-input
-            v-model="modifyForm.orderCount"
-            :disabled="true"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="单数" prop="taskProgress">
-          <el-input-number
-            v-model="modifyForm.taskProgress"
-            :min="1"
-            style="width: 100%"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="modifyModalVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitModifyCount">确定</el-button>
-        </div>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="余额">
+                <a-space-compact block>
+                  <a-input-number v-model:value="queryParams.balanceMin" :min="0" placeholder="最小值" class="range-input" />
+                  <a-input class="range-separator" value="~" disabled />
+                  <a-input-number v-model:value="queryParams.balanceMax" :min="0" placeholder="最大值" class="range-input" />
+                </a-space-compact>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="最后登录IP">
+                <a-input v-model:value="queryParams.lastLoginIp" allow-clear placeholder="请输入" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="信誉分">
+                <a-space-compact block>
+                  <a-input-number v-model:value="queryParams.reputationMin" :min="0" :precision="0" placeholder="最小值" class="range-input" />
+                  <a-input class="range-separator" value="~" disabled />
+                  <a-input-number v-model:value="queryParams.reputationMax" :min="0" :precision="0" placeholder="最大值" class="range-input" />
+                </a-space-compact>
+              </a-form-item>
+            </a-col>
+            <a-col
+              v-for="field in advancedSelectFieldsBeforeWorkLimit"
+              :key="field.key"
+              :xs="24"
+              :sm="12"
+              :lg="6"
+            >
+              <a-form-item :label="field.label">
+                <a-select v-model:value="queryParams[field.key]" allow-clear placeholder="请选择">
+                  <a-select-option v-for="option in field.options" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="工作限额">
+                <a-input-number v-model:value="queryParams.workLimit" :min="0" class="full-width" placeholder="请输入" />
+              </a-form-item>
+            </a-col>
+            <a-col
+              v-for="field in advancedSelectFieldsAfterWorkLimit"
+              :key="field.key"
+              :xs="24"
+              :sm="12"
+              :lg="6"
+            >
+              <a-form-item :label="field.label">
+                <a-select v-model:value="queryParams[field.key]" allow-clear placeholder="请选择">
+                  <a-select-option v-for="option in field.options" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="创建时间">
+                <a-range-picker
+                  v-model:value="queryParams.createTimeRange"
+                  value-format="YYYY-MM-DD"
+                  class="full-width"
+                  allow-clear
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </a-form>
       </template>
-    </el-dialog>
+
+      <template #toolbar>
+        <a-button type="primary" :disabled="multiple" @click="handleUnlock" v-hasPermi="['member:orderuser:unlock']">
+          <UnlockOutlined />
+          登录解冻
+        </a-button>
+        <a-button type="primary" @click="handleAdd" v-hasPermi="['member:orderuser:add']">
+          <PlusOutlined />
+          创建
+        </a-button>
+      </template>
+
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'id'">
+          <a class="table-action-link" @click="handleView(record)">{{ record.id }}</a>
+        </template>
+        <template v-else-if="column.key === 'username'">
+          <span
+            class="member-dot"
+            :class="{ 'member-dot-online': String(record.isOnline) === '1' }"
+          ></span>{{ record.username || '-' }}
+        </template>
+        <template v-else-if="column.key === 'phoneNumber'">
+          {{ record.phoneNumber || '-' }}
+        </template>
+        <template v-else-if="column.key === 'vip'">
+          {{ record.memberLevel?.name || '-' }}
+        </template>
+        <template v-else-if="column.key === 'parentInfo'">
+          <div>
+            <a
+              v-if="record.parentInviteCode"
+              class="table-action-link"
+              @click="handleModifyParent(record)"
+            >
+              上级邀请码: {{ record.parentInviteCode }}
+            </a>
+            <span v-else>上级邀请码: -</span>
+            <a-tooltip v-if="record.parentInviteCode" title="复制上级邀请码">
+              <a-button
+                type="text"
+                size="small"
+                class="copy-button"
+                aria-label="复制"
+                @click="copyText(record.parentInviteCode)"
+              >
+                <CopyOutlined />
+              </a-button>
+            </a-tooltip>
+          </div>
+          <div>上级用户名: {{ record.parentUsername || '-' }}</div>
+        </template>
+        <template v-else-if="column.key === 'resetInfo'">
+          <div>今日重置次数: {{ record.todayRest || 0 }}</div>
+          <div>累计重置次数: {{ record.totalRest || 0 }}</div>
+        </template>
+        <template v-else-if="column.key === 'balanceInfo'">
+          <div>总余额: {{ Number(record.balance || 0) + Number(record.frozenBalance || 0) }}</div>
+          <div>余额: {{ record.balance || 0 }}</div>
+          <div>冻结余额: {{ record.frozenBalance || 0 }}</div>
+          <div>底薪: {{ record.baseSalary || 0 }}</div>
+          <div>今日佣金: {{ record.todayCommission || 0 }}</div>
+          <div>今日上级佣金: {{ record.todayParentCommission || 0 }}</div>
+        </template>
+        <template v-else-if="column.key === 'taskProgress'">
+          <a class="table-action-link" @click="openModifyCount(record)">
+            {{ record.taskProgress || 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'completeGroupNum'">
+          {{ completeGroupText(record) }}
+        </template>
+        <template v-else-if="column.key === 'loginInfo'">
+          <div>最后登录IP: {{ record.lastLoginIp || '-' }}</div>
+          <div>最后登录地址: {{ record.lastLoginAddress || '-' }}</div>
+          <div>最后登录时间: {{ parseTime(record.lastLoginTime) || '-' }}</div>
+        </template>
+        <template v-else-if="column.key === 'signinInfo'">
+          <div>
+            <a class="table-action-link" @click="handleModifySignDays(record)">
+              签到天数: {{ record.signDays || 0 }}
+            </a>
+          </div>
+          <div>今日签到次数: {{ record.todaySignCount || 0 }}</div>
+          <div>累计签到次数: {{ record.totalSignDays || 0 }}</div>
+        </template>
+        <template v-else-if="column.key === 'statInfo'">
+          <div>直属下级数量: {{ record.directChildrenCount || 0 }}</div>
+          <div>今日提现次数: {{ record.todayWithdrawalCount || 0 }}</div>
+          <div>累计提现金额: {{ record.totalWithdrawalAmount || 0 }}</div>
+          <div>累计充值金额: {{ record.totalRechargeAmount || 0 }}</div>
+        </template>
+        <template v-else-if="column.key === 'gender'">
+          {{ dictText(sys_user_sex, record.gender) }}
+        </template>
+        <template v-else-if="column.key === 'birthday'">
+          {{ parseTime(record.birthday, '{y}-{m}-{d}') || '-' }}
+        </template>
+        <template v-else-if="column.key === 'reputationScore'">
+          <a class="table-action-link" @click="handleModifyReputation(record)">
+            {{ record.reputationScore ?? 100 }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'inviteCode'">
+          {{ record.inviteCode || '-' }}
+          <a-tooltip v-if="record.inviteCode" title="复制邀请码">
+            <a-button
+              type="text"
+              size="small"
+              class="copy-button"
+              aria-label="复制"
+              @click="copyText(record.inviteCode)"
+            >
+              <CopyOutlined />
+            </a-button>
+          </a-tooltip>
+        </template>
+        <template v-else-if="column.key === 'email'">
+          {{ record.email || '-' }}
+        </template>
+        <template v-else-if="column.key === 'workLimit'">
+          {{ record.workLimit ?? 0 }}
+        </template>
+        <template v-else-if="column.key === 'isFake'">
+          <a class="table-action-link" @click="handleToggleFake(record)">
+            {{ dictText(user_yes_no, record.isFake) }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'productMatching'">
+          <a class="table-action-link" @click="handleToggleProductMatching(record)">
+            {{ dictText(sys_enabled, record.productMatching) }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'accountStatus'">
+          <a class="table-action-link" @click="handleToggleAccountStatus(record)">
+            {{ dictText(sys_enabled, record.accountStatus) }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'transactionStatus'">
+          <a class="table-action-link" @click="handleToggleTransactionStatus(record)">
+            {{ dictText(sys_enabled, record.transactionStatus) }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'withdrawalStatus'">
+          <a class="table-action-link" @click="handleToggleWithdrawalStatus(record)">
+            {{ dictText(sys_enabled, record.withdrawalStatus) }}
+          </a>
+        </template>
+        <template v-else-if="column.key === 'assistWithdrawalStatus'">
+          <a class="table-action-link" @click="handleToggleAssistWithdrawalStatus(record)">
+            {{ dictText(sys_enabled, record.assistWithdrawalStatus) }}
+          </a>
+        </template>
+        <template v-else-if="column.dict === 'yesNo'">
+          {{ dictText(user_yes_no, record[column.dataIndex]) }}
+        </template>
+        <template v-else-if="column.dict === 'enabled'">
+          {{ dictText(sys_enabled, record[column.dataIndex]) }}
+        </template>
+        <template v-else-if="column.key === 'createTime'">
+          {{ parseTime(record.createTime) || '-' }}
+        </template>
+        <template v-else-if="column.key === 'withdrawalBlockRemark' || column.key === 'remarks'">
+          {{ record[column.dataIndex] || '-' }}
+        </template>
+        <template v-else-if="column.key === 'operation'">
+          <div class="ant-action-grid">
+            <a-space :size="6" wrap>
+              <a-button size="small" type="primary" class="ant-action-warning" @click="handleTransaction(record)">上下分</a-button>
+              <a-button size="small" type="primary" @click="handleOpenLink(record)">连单设置</a-button>
+              <a-button size="small" type="primary" danger @click="handleReset(record)">重置单数</a-button>
+              <a-button size="small" type="primary" @click="handleUpdate(record)">修 改</a-button>
+              <a-button size="small" type="primary" @click="openModifyCount(record)">修改单数</a-button>
+              <a-button size="small" type="primary" class="ant-action-success" @click="handleOpenBonus(record)">彩金设置</a-button>
+              <a-button size="small" type="primary" @click="handleModifyLoginPassword(record)">修改登录密码</a-button>
+              <a-button size="small" type="primary" @click="handleModifyTradePassword(record)">修改交易密码</a-button>
+              <a-button size="small" type="primary" @click="handleOpenFlow(record)">查看交易流水</a-button>
+              <a-button size="small" type="primary" @click="handleOpenWithdrawal(record)">修改提现账户</a-button>
+              <a-button size="small" type="primary" @click="handleModifyReputation(record)">修改信誉分</a-button>
+              <a-button size="small" type="primary" @click="handleModifyParent(record)">修改上级</a-button>
+              <a-button size="small" type="primary" @click="handleModifyVip(record)">修改等级</a-button>
+              <a-dropdown :trigger="['click']">
+                <a-button size="small" type="primary">
+                  更多
+                  <DownOutlined />
+                </a-button>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item @click="handleCopyMember(record)">复制</a-menu-item>
+                    <a-menu-item @click="handleGift(record)">赠送</a-menu-item>
+                    <a-menu-item @click="handleSubMembers(record)">查看下级会员</a-menu-item>
+                    <a-menu-item @click="handleModifySignDays(record)">修改签到天数</a-menu-item>
+                    <a-menu-item @click="handleOrderDetails(record)">查看订单明细</a-menu-item>
+                    <a-menu-item @click="handleExtraCommission(record)">额外佣金设置</a-menu-item>
+                    <a-menu-item @click="handleToggleFake(record)">设为{{ record.isFake === '1' ? '\u771f\u4eba' : '\u5047\u4eba' }}</a-menu-item>
+                    <a-menu-item @click="handleToggleAccountStatus(record)">{{ record.accountStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}账户</a-menu-item>
+                    <a-menu-item @click="handleToggleTransactionStatus(record)">{{ record.transactionStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}交易</a-menu-item>
+                    <a-menu-item @click="handleToggleWithdrawalStatus(record)">{{ record.withdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}提现</a-menu-item>
+                    <a-menu-item @click="handleToggleAssistWithdrawalStatus(record)">{{ record.assistWithdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}协助金提现</a-menu-item>
+                    <a-menu-item @click="handleEditIdentity(record)">编辑身份信息</a-menu-item>
+                    <a-menu-item @click="handleEditContract(record)">编辑合同</a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+            </a-space>
+          </div>
+        </template>
+      </template>
+    </ant-pro-table>
+
+    <a-modal
+      v-model:open="modifyModalVisible"
+      title="修改单数"
+      width="416px"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitModifyCount"
+    >
+      <a-form ref="modifyFormRef" :model="modifyForm" :rules="modifyRules" layout="vertical">
+        <a-form-item label="任务进度">
+          <a-input-number
+            v-model:value="modifyForm.orderCount"
+            placeholder="任务进度"
+            disabled
+            class="full-width"
+          />
+        </a-form-item>
+        <a-form-item label="单数" name="taskProgress">
+          <a-input-number
+            v-model:value="modifyForm.taskProgress"
+            :min="0"
+            :precision="0"
+            placeholder="单数"
+            class="full-width"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 修改登录密码对话框 -->
-    <el-dialog
+    <a-modal
+      v-model:open="loginPasswordVisible"
       title="修改登录密码"
-      v-model="loginPasswordVisible"
       width="500px"
-      :close-on-click-modal="false"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitLoginPassword"
     >
-      <el-form
-        :model="loginForm"
-        :rules="loginRules"
-        label-position="top"
-        label-width="100px"
-        ref="loginFormRef"
-      >
-        <el-form-item label="登录密码" prop="password">
-          <el-input
-            v-model="loginForm.password"
-            type="password"
+      <a-form ref="loginFormRef" :model="loginForm" :rules="loginRules" layout="vertical">
+        <a-form-item label="登录密码" name="password">
+          <a-input-password
+            v-model:value="loginForm.password"
             placeholder="请输入新登录密码（不少于6位）"
-            show-password
-            style="width: 100%"
+            allow-clear
           />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="loginPasswordVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitLoginPassword"
-            >确定</el-button
-          >
-        </div>
-      </template>
-    </el-dialog>
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 修改交易密码对话框 -->
-    <el-dialog
+    <a-modal
+      v-model:open="tradePasswordVisible"
       title="修改交易密码"
-      v-model="tradePasswordVisible"
       width="500px"
-      :close-on-click-modal="false"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitTradePassword"
     >
-      <el-form
-        :model="tradeForm"
-        :rules="tradeRules"
-        label-position="top"
-        label-width="100px"
-        ref="tradeFormRef"
-      >
-        <el-form-item label="交易密码" prop="tradePassword">
-          <el-input
-            v-model="tradeForm.tradePassword"
-            type="password"
+      <a-form ref="tradeFormRef" :model="tradeForm" :rules="tradeRules" layout="vertical">
+        <a-form-item label="交易密码" name="tradePassword">
+          <a-input-password
+            v-model:value="tradeForm.tradePassword"
             placeholder="请输入新交易密码（不少于6位）"
-            show-password
-            style="width: 100%"
+            allow-clear
           />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="tradePasswordVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitTradePassword"
-            >确定</el-button
-          >
-        </div>
-      </template>
-    </el-dialog>
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 修改上级对话框 -->
-    <el-dialog
+    <a-modal
+      v-model:open="parentVisible"
       title="修改上级"
-      v-model="parentVisible"
       width="500px"
-      :close-on-click-modal="false"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitModifyParent"
     >
-      <el-form
-        :model="parentForm"
-        :rules="parentRules"
-        label-position="top"
-        label-width="100px"
-        ref="parentFormRef"
-      >
-        <el-form-item label="上级ID" prop="parentId">
-          <el-input
-            v-model="parentForm.parentId"
-            placeholder="请输入上级ID"
-            style="width: 100%"
+      <a-form ref="parentFormRef" :model="parentForm" :rules="parentRules" layout="vertical">
+        <a-form-item label="用户层级">
+          <a-radio-group v-model:value="parentTopLevel" @change="handleParentTypeChange">
+            <a-radio :value="true">顶级用户</a-radio>
+            <a-radio :value="false">下级用户</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="上级邀请码" name="parentInviteCode">
+          <a-input
+            v-model:value="parentForm.parentInviteCode"
+            :disabled="parentTopLevel"
+            :placeholder="parentTopLevel ? '顶级用户无需填写' : '请输入上级邀请码'"
+            allow-clear
           />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="parentVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitModifyParent">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 修改等级对话框 -->
-    <el-dialog
+    <a-modal
+      v-model:open="vipVisible"
       title="修改等级"
-      v-model="vipVisible"
       width="500px"
-      :close-on-click-modal="false"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitModifyVip"
     >
-      <el-form
-        :model="vipForm"
-        :rules="vipRules"
-        label-position="top"
-        label-width="100px"
-        ref="vipFormRef"
-      >
-        <el-form-item label="会员等级" prop="vipId">
-          <el-select
-            v-model="vipForm.vipId"
-            placeholder="请选择会员等级"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="item in levelList"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="vipVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitModifyVip">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
+      <a-form ref="vipFormRef" :model="vipForm" :rules="vipRules" layout="vertical">
+        <a-form-item label="会员等级" name="vipId">
+          <a-select v-model:value="vipForm.vipId" placeholder="请选择会员等级" allow-clear>
+            <a-select-option v-for="item in levelList" :key="item.id" :value="item.id">
+              {{ item.name }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 修改信誉分对话框 -->
-    <el-dialog
+    <a-modal
+      v-model:open="reputationVisible"
       title="修改信誉分"
-      v-model="reputationVisible"
-      width="500px"
-      :close-on-click-modal="false"
+      width="416px"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitModifyReputation"
     >
-      <el-form
-        :model="reputationForm"
-        :rules="reputationRules"
-        label-position="top"
-        label-width="100px"
-        ref="reputationFormRef"
-      >
-        <el-form-item label="当前信誉分">
-          <el-input
-            v-model="reputationForm.currentReputation"
-            :disabled="true"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="修改后的信誉分" prop="newReputation">
-          <el-input-number
-            v-model="reputationForm.newReputation"
-            :min="0"
-            :max="100"
-            style="width: 100%"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="reputationVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitModifyReputation"
-            >确定</el-button
-          >
-        </div>
-      </template>
-    </el-dialog>
+      <a-form ref="reputationFormRef" :model="reputationForm" :rules="reputationRules" layout="vertical">
+        <a-form-item label="当前信誉分">
+          <a-input v-model:value="reputationForm.currentReputation" disabled />
+        </a-form-item>
+        <a-form-item label="信誉分" name="newReputation">
+          <a-input-number v-model:value="reputationForm.newReputation" :min="0" :max="100" class="full-width" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
+    <a-modal
+      v-model:open="signDaysVisible"
+      title="修改签到天数"
+      width="416px"
+      :mask-closable="false"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="submitModifySignDays"
+    >
+      <a-form ref="signDaysFormRef" :model="signDaysForm" :rules="signDaysRules" layout="vertical">
+        <a-form-item label="当前签到天数">
+          <a-input-number v-model:value="signDaysForm.currentSignDays" :min="0" disabled class="full-width" />
+        </a-form-item>
+        <a-form-item label="签到天数" name="signDays">
+          <a-input-number v-model:value="signDaysForm.signDays" :min="0" :precision="0" class="full-width" />
+        </a-form-item>
+        <a-form-item label="是否包含今日签到" name="includeToday">
+          <a-radio-group v-model:value="signDaysForm.includeToday">
+            <a-radio value="0">否</a-radio>
+            <a-radio value="1">是</a-radio>
+          </a-radio-group>
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 添加或修改订单用户对话框 -->
     <orderuser-form
@@ -679,6 +535,7 @@
       :title="title"
       :form-data="form"
       :level-list="levelList"
+      :readonly="formReadonly"
       @success="getList"
     />
     <orderuser-transaction-modal
@@ -727,6 +584,16 @@
       @open-flow="handleOpenFlow"
       @success="getList"
     />
+    <orderuser-identity-modal
+      v-model="identityVisible"
+      :user-id="identityUserId"
+      @success="getList"
+    />
+    <orderuser-contract-modal
+      v-model="contractVisible"
+      :user-id="contractUserId"
+      @success="getList"
+    />
   </div>
 </template>
 
@@ -741,8 +608,15 @@ import {
   editPassword,
   editTradePassword,
   editParentId,
-  giftAmount,
+  unlockOrderusers,
 } from "@/api/member/orderuser";
+import {
+  CopyOutlined,
+  DownOutlined,
+  PlusOutlined,
+  UnlockOutlined,
+  UpOutlined,
+} from "@ant-design/icons-vue";
 import OrderuserForm from "./components/OrderuserForm.vue";
 import OrderuserTransactionModal from "./components/OrderuserTransactionModal.vue";
 import OrderlinkDrawer from "./components/OrderlinkDrawer.vue";
@@ -753,6 +627,8 @@ import OrderuserGiftModal from "./components/OrderuserGiftModal.vue";
 import OrderuserSubDrawer from "./components/OrderuserSubDrawer.vue";
 import OrderuserExtracommissionDrawer from "./components/OrderuserExtracommissionDrawer.vue";
 import OrderuserOrderinfoDrawer from "./components/OrderuserOrderinfoDrawer.vue";
+import OrderuserIdentityModal from "./components/OrderuserIdentityModal.vue";
+import OrderuserContractModal from "./components/OrderuserContractModal.vue";
 
 const { proxy } = getCurrentInstance();
 const { user_yes_no, sys_user_sex, sys_enabled } = proxy.useDict(
@@ -770,6 +646,7 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const formReadonly = ref(false);
 const levelList = ref([]);
 
 const transactionModalVisible = ref(false);
@@ -805,6 +682,11 @@ const modifyForm = reactive({
 
 const giftVisible = ref(false);
 const giftUserId = ref(null);
+const identityVisible = ref(false);
+const identityUserId = ref(null);
+const contractVisible = ref(false);
+const contractUserId = ref(null);
+const advancedSearchVisible = ref(false);
 
 const modifyRules = reactive({
   taskProgress: [{ required: true, message: "请输入单数", trigger: "blur" }],
@@ -842,12 +724,19 @@ const tradeFormRef = ref(null);
 
 // 修改上级相关
 const parentVisible = ref(false);
+const parentTopLevel = ref(false);
 const parentForm = reactive({
   id: null,
   parentId: null,
+  parentInviteCode: null,
 });
 const parentRules = reactive({
-  parentId: [{ required: true, message: "请输入上级ID", trigger: "blur" }],
+  parentInviteCode: [{
+    validator: (_rule, value) => parentTopLevel.value || String(value || "").trim()
+      ? Promise.resolve()
+      : Promise.reject(new Error("请输入上级邀请码")),
+    trigger: "blur",
+  }],
 });
 const parentFormRef = ref(null);
 
@@ -876,24 +765,272 @@ const reputationRules = reactive({
 });
 const reputationFormRef = ref(null);
 
+const signDaysVisible = ref(false);
+const signDaysFormRef = ref(null);
+const signDaysForm = reactive({
+  id: null,
+  currentSignDays: 0,
+  signDays: 0,
+  includeToday: "0",
+  todaySignCount: 0,
+  totalSignDays: 0,
+});
+const nonNegativeIntegerRule = {
+  validator: (_rule, value) => Number.isInteger(value) && value >= 0
+    ? Promise.resolve()
+    : Promise.reject(new Error("请输入不小于 0 的整数")),
+  trigger: "change",
+};
+const signDaysRules = reactive({
+  signDays: [nonNegativeIntegerRule],
+  includeToday: [{ required: true, message: "请选择是否包含今日签到", trigger: "change" }],
+});
+
+const advancedSelectFields = computed(() => [
+  { key: "gender", label: "性别", options: sys_user_sex.value || [] },
+  { key: "isEnabled", label: "是否启用", options: sys_enabled.value || [] },
+  { key: "allowInvite", label: "允许邀请", options: user_yes_no.value || [] },
+  { key: "isFrozen", label: "是否冻结", options: user_yes_no.value || [] },
+  { key: "isFake", label: "是否假人", options: user_yes_no.value || [] },
+  { key: "isBanned", label: "禁止工作", options: user_yes_no.value || [] },
+  { key: "isWithdrawalNotification", label: "关闭提现通知", options: user_yes_no.value || [] },
+  { key: "productMatching", label: "产品匹配", options: sys_enabled.value || [] },
+  { key: "accountStatus", label: "账户状态", options: sys_enabled.value || [] },
+  { key: "transactionStatus", label: "交易状态", options: sys_enabled.value || [] },
+  { key: "withdrawalStatus", label: "提现状态", options: sys_enabled.value || [] },
+  { key: "assistWithdrawalStatus", label: "协助金提现状态", options: sys_enabled.value || [] },
+  { key: "depositBlockWithdrawal", label: "充值后禁止提现", options: user_yes_no.value || [] },
+  { key: "web3AuthEnabled", label: "启用Web3授权", options: user_yes_no.value || [] },
+  { key: "isInvalid", label: "是否无效", options: user_yes_no.value || [] },
+  { key: "isActivity", label: "是否活动", options: user_yes_no.value || [] },
+  { key: "verifyIdentityBeforeTask", label: "任务前验证身份", options: user_yes_no.value || [] },
+  { key: "userContractEnabled", label: "启用用户合同", options: user_yes_no.value || [] },
+  { key: "userContractSigned", label: "签署用户合同", options: user_yes_no.value || [] },
+  { key: "formalContractEnabled", label: "启用正式合同", options: user_yes_no.value || [] },
+  { key: "formalContractSigned", label: "签署正式合同", options: user_yes_no.value || [] },
+]);
+const advancedSelectFieldsBeforeWorkLimit = computed(() => advancedSelectFields.value.slice(0, 6));
+const advancedSelectFieldsAfterWorkLimit = computed(() => advancedSelectFields.value.slice(6));
+
+function createDefaultQueryParams() {
+  return {
+    pageNum: 1,
+    pageSize: 20,
+    keyword: null,
+    parentUsername: null,
+    isOnline: null,
+    id: null,
+    vipId: null,
+    usernameList: null,
+    parentInviteCode: null,
+    balanceMin: null,
+    balanceMax: null,
+    lastLoginIp: null,
+    reputationMin: null,
+    reputationMax: null,
+    gender: null,
+    isEnabled: null,
+    allowInvite: null,
+    isFrozen: null,
+    isFake: null,
+    isBanned: null,
+    workLimit: null,
+    isWithdrawalNotification: null,
+    productMatching: null,
+    accountStatus: null,
+    transactionStatus: null,
+    withdrawalStatus: null,
+    assistWithdrawalStatus: null,
+    depositBlockWithdrawal: null,
+    web3AuthEnabled: null,
+    isInvalid: null,
+    isActivity: null,
+    verifyIdentityBeforeTask: null,
+    userContractEnabled: null,
+    userContractSigned: null,
+    formalContractEnabled: null,
+    formalContractSigned: null,
+    createTimeRange: [],
+    orderByColumn: null,
+    isAsc: null,
+  };
+}
+
 const data = reactive({
   form: {},
-  queryParams: {
-    pageNum: 1,
-    pageSize: 10,
-    username: null,
-    phoneNumber: null,
-  },
+  queryParams: createDefaultQueryParams(),
 });
 
 const { queryParams, form } = toRefs(data);
 
+const sortableColumnKeys = new Set([
+  "vip",
+  "taskProgress",
+  "reputationScore",
+  "gender",
+  "isEnabled",
+  "allowInvite",
+  "isFrozen",
+  "isFake",
+  "isBanned",
+  "workLimit",
+  "isWithdrawalNotification",
+  "productMatching",
+  "accountStatus",
+  "transactionStatus",
+  "withdrawalStatus",
+  "assistWithdrawalStatus",
+  "depositBlockWithdrawal",
+  "web3AuthEnabled",
+  "isInvalid",
+  "isActivity",
+  "withdrawalPasswordFailLimit",
+  "withdrawalPasswordFailCount",
+  "maxSingleWithdrawal",
+  "verifyIdentityBeforeTask",
+  "userContractEnabled",
+  "userContractSigned",
+  "formalContractEnabled",
+  "formalContractSigned",
+  "createTime",
+]);
+
+const memberColumns = [
+  { title: "ID", dataIndex: "id", key: "id", width: 80, fixed: "left" },
+  { title: "用户名", dataIndex: "username", key: "username", width: 150 },
+  { title: "手机号码", dataIndex: "phoneNumber", key: "phoneNumber", width: 150 },
+  { title: "VIP等级", dataIndex: ["memberLevel", "name"], key: "vip", width: 100 },
+  { title: "上级信息", key: "parentInfo", width: 180 },
+  { title: "重置次数", key: "resetInfo", width: 170 },
+  { title: "余额信息", key: "balanceInfo", width: 190 },
+  { title: "任务进度", key: "taskProgress", width: 110 },
+  { title: "完成组数", key: "completeGroupNum", width: 110 },
+  { title: "登录信息", key: "loginInfo", width: 280 },
+  { title: "签到信息", key: "signinInfo", width: 170 },
+  { title: "统计信息", key: "statInfo", width: 190 },
+  { title: "信誉分", dataIndex: "reputationScore", key: "reputationScore", width: 100 },
+  { title: "邀请码", dataIndex: "inviteCode", key: "inviteCode", width: 140 },
+  { title: "性别", dataIndex: "gender", key: "gender", width: 90 },
+  { title: "邮箱", dataIndex: "email", key: "email", width: 160 },
+  { title: "生日", dataIndex: "birthday", key: "birthday", width: 130 },
+  { title: "是否启用", dataIndex: "isEnabled", key: "isEnabled", dict: "enabled", width: 110 },
+  { title: "允许邀请", dataIndex: "allowInvite", key: "allowInvite", dict: "yesNo", width: 110 },
+  { title: "是否冻结", dataIndex: "isFrozen", key: "isFrozen", dict: "yesNo", width: 110 },
+  { title: "是否假人", dataIndex: "isFake", key: "isFake", dict: "yesNo", width: 110 },
+  { title: "禁止工作", dataIndex: "isBanned", key: "isBanned", dict: "yesNo", width: 110 },
+  { title: "工作限额", dataIndex: "workLimit", key: "workLimit", width: 110 },
+  { title: "关闭提现通知", dataIndex: "isWithdrawalNotification", key: "isWithdrawalNotification", dict: "yesNo", width: 140 },
+  { title: "产品匹配", dataIndex: "productMatching", key: "productMatching", dict: "enabled", width: 110 },
+  { title: "账户状态", dataIndex: "accountStatus", key: "accountStatus", dict: "enabled", width: 110 },
+  { title: "交易状态", dataIndex: "transactionStatus", key: "transactionStatus", dict: "enabled", width: 110 },
+  { title: "提现状态", dataIndex: "withdrawalStatus", key: "withdrawalStatus", dict: "enabled", width: 110 },
+  { title: "协助金提现状态", dataIndex: "assistWithdrawalStatus", key: "assistWithdrawalStatus", dict: "enabled", width: 150 },
+  { title: "充值后禁止提现", dataIndex: "depositBlockWithdrawal", key: "depositBlockWithdrawal", dict: "yesNo", width: 150 },
+  { title: "启用Web3授权", dataIndex: "web3AuthEnabled", key: "web3AuthEnabled", dict: "yesNo", width: 140 },
+  { title: "是否无效", dataIndex: "isInvalid", key: "isInvalid", dict: "yesNo", width: 110 },
+  { title: "是否活动", dataIndex: "isActivity", key: "isActivity", dict: "yesNo", width: 110 },
+  { title: "禁止客户提现所需交易密码失败次数(0-不限制)", dataIndex: "withdrawalPasswordFailLimit", key: "withdrawalPasswordFailLimit", width: 270 },
+  { title: "禁止客户提现交易密码连续失败次数", dataIndex: "withdrawalPasswordFailCount", key: "withdrawalPasswordFailCount", width: 240 },
+  { title: "单次最大提现金额(0-不限制)", dataIndex: "maxSingleWithdrawal", key: "maxSingleWithdrawal", width: 210 },
+  { title: "任务开始前是否验证身份信息", dataIndex: "verifyIdentityBeforeTask", key: "verifyIdentityBeforeTask", dict: "yesNo", width: 210 },
+  { title: "是否启用用户合同", dataIndex: "userContractEnabled", key: "userContractEnabled", dict: "yesNo", width: 160 },
+  { title: "是否签署用户合同", dataIndex: "userContractSigned", key: "userContractSigned", dict: "yesNo", width: 160 },
+  { title: "是否启用正式合同", dataIndex: "formalContractEnabled", key: "formalContractEnabled", dict: "yesNo", width: 160 },
+  { title: "是否签署正式合同", dataIndex: "formalContractSigned", key: "formalContractSigned", dict: "yesNo", width: 160 },
+  { title: "禁止提现备注", dataIndex: "withdrawalBlockRemark", key: "withdrawalBlockRemark", width: 180 },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180 },
+  { title: "备注", dataIndex: "remarks", key: "remarks", width: 160 },
+  { title: "操作", key: "operation", width: 360, fixed: "right" },
+].map((column) => sortableColumnKeys.has(column.key)
+  ? { ...column, sorter: true }
+  : column);
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: ids.value,
+  onChange: (_selectedRowKeys, selectedRows) => {
+    handleSelectionChange(selectedRows);
+  },
+}));
+
+function dictText(options, value) {
+  return proxy.selectDictLabel(options, value) || value || "-";
+}
+
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
+}
+
+const sortColumnMap = {
+  vip: "gml.level",
+  taskProgress: "ou.taskProgress",
+  reputationScore: "ou.reputationScore",
+  gender: "ou.gender",
+  isEnabled: "ou.isEnabled",
+  allowInvite: "ou.allowInvite",
+  isFrozen: "ou.isFrozen",
+  isFake: "ou.isFake",
+  isBanned: "ou.isBanned",
+  workLimit: "ou.workLimit",
+  isWithdrawalNotification: "ou.isWithdrawalNotification",
+  productMatching: "ou.productMatching",
+  accountStatus: "ou.accountStatus",
+  transactionStatus: "ou.transactionStatus",
+  withdrawalStatus: "ou.withdrawalStatus",
+  assistWithdrawalStatus: "ou.assistWithdrawalStatus",
+  depositBlockWithdrawal: "ou.depositBlockWithdrawal",
+  web3AuthEnabled: "ou.web3AuthEnabled",
+  isInvalid: "ou.isInvalid",
+  isActivity: "ou.isActivity",
+  withdrawalPasswordFailLimit: "ou.withdrawalPasswordFailLimit",
+  withdrawalPasswordFailCount: "ou.withdrawalPasswordFailCount",
+  maxSingleWithdrawal: "ou.maxSingleWithdrawal",
+  verifyIdentityBeforeTask: "ou.verifyIdentityBeforeTask",
+  userContractEnabled: "ou.userContractEnabled",
+  userContractSigned: "ou.userContractSigned",
+  formalContractEnabled: "ou.formalContractEnabled",
+  formalContractSigned: "ou.formalContractSigned",
+  createTime: "ou.createTime",
+};
+
+function handleTableChange(_pagination, _filters, sorter) {
+  const columnKey = sorter?.columnKey;
+  queryParams.value.orderByColumn = sorter?.order ? sortColumnMap[columnKey] || null : null;
+  queryParams.value.isAsc = sorter?.order === "ascend"
+    ? "asc"
+    : sorter?.order === "descend"
+      ? "desc"
+      : null;
+  queryParams.value.pageNum = 1;
+  getList();
+}
+
+function completeGroupText(record) {
+  const completed = record.completeGroupNum ?? record.completedGroupNum ?? record.completedGroups ?? 0;
+  const configuredLimit = record.completeGroupLimit
+    ?? record.totalGroupNum
+    ?? record.memberLevel?.taskCountPerDay
+    ?? 0;
+  const hasStarted = Number(record.taskProgress || 0) > 0
+    || Number(record.todayRest || 0) > 0
+    || Number(completed || 0) > 0;
+  return `${completed} / ${hasStarted ? configuredLimit : 0}`;
+}
+
 /** 查询订单用户列表 */
 function getList() {
   loading.value = true;
-  listOrderuser(queryParams.value).then((response) => {
+  const requestParams = {
+    ...queryParams.value,
+    params: {
+      beginTime: queryParams.value.createTimeRange?.[0] || null,
+      endTime: queryParams.value.createTimeRange?.[1] || null,
+    },
+  };
+  delete requestParams.createTimeRange;
+  listOrderuser(requestParams).then((response) => {
     orderuserList.value = response.rows;
-    console.log(orderuserList.value);
     total.value = response.total;
     loading.value = false;
   });
@@ -911,6 +1048,7 @@ function reset() {
     avatar: null,
     vipId: null,
     parentId: null,
+    parentInviteCode: null,
     balance: null,
     frozenBalance: null,
     baseSalary: null,
@@ -922,16 +1060,16 @@ function reset() {
     birthday: null,
     isEnabled: "0",
     allowInvite: "0",
-    isFrozen: "0",
+    isFrozen: "1",
     isFake: "0",
     isBanned: "1",
-    workLimit: null,
+    workLimit: 0,
     isWithdrawalNotification: "1",
-    productMatching: "0",
+    productMatching: "1",
     accountStatus: "0",
     transactionStatus: "0",
     withdrawalStatus: "0",
-    depositBlockWithdrawal: "0",
+    depositBlockWithdrawal: "1",
     remarks: null,
     version: null,
     createTime: null,
@@ -939,6 +1077,21 @@ function reset() {
     password: null,
     tradePassword: null,
     assistWithdrawalStatus: "0",
+    web3AuthEnabled: "1",
+    isInvalid: "1",
+    isActivity: "0",
+    withdrawalPasswordFailLimit: 0,
+    withdrawalPasswordFailCount: 0,
+    maxSingleWithdrawal: 0,
+    verifyIdentityBeforeTask: "1",
+    userContractEnabled: "1",
+    userContractSigned: "1",
+    formalContractEnabled: "1",
+    formalContractSigned: "1",
+    withdrawalBlockRemark: null,
+    signDays: 0,
+    todaySignCount: 0,
+    totalSignDays: 0,
   };
 }
 
@@ -950,8 +1103,19 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  Object.assign(queryParams.value, createDefaultQueryParams());
   handleQuery();
+}
+
+function handleUnlock() {
+  const selectedIds = [...ids.value];
+  proxy.$modal.confirm(`是否确认解冻选中的 ${selectedIds.length} 个会员登录？`)
+    .then(() => unlockOrderusers(selectedIds))
+    .then(() => {
+      proxy.$modal.msgSuccess("登录解冻成功");
+      getList();
+    })
+    .catch(() => {});
 }
 
 // 多选框选中数据
@@ -964,16 +1128,37 @@ function handleSelectionChange(selection) {
 /** 新增按钮操作 */
 function handleAdd() {
   reset();
+  formReadonly.value = false;
   open.value = true;
-  title.value = "添加用户";
+  title.value = "创建";
+}
+
+/** 查看用户 */
+function handleView(row) {
+  reset();
+  getOrderuser(row.id).then((response) => {
+    form.value = response.data;
+    form.value.birthday = response.data.birthday
+      ? proxy.parseTime(response.data.birthday, "{y}-{m}-{d}")
+      : null;
+    form.value.password = "********";
+    form.value.tradePassword = "********";
+    formReadonly.value = true;
+    open.value = true;
+    title.value = "查看";
+  });
 }
 
 /** 修改按钮操作 */
 function handleUpdate(row) {
   reset();
+  formReadonly.value = false;
   const _id = row.id || ids.value;
   getOrderuser(_id).then((response) => {
     form.value = response.data;
+    form.value.birthday = response.data.birthday
+      ? proxy.parseTime(response.data.birthday, "{y}-{m}-{d}")
+      : null;
     form.value.password = "******";
     form.value.tradePassword = "******";
     open.value = true;
@@ -993,7 +1178,6 @@ function handleOpenFlow(rowOrId) {
   // 支持接收 row 对象或直接的 id
   const maybeId = typeof rowOrId === "object" && rowOrId ? rowOrId.id : rowOrId;
   const _id = maybeId || ids.value;
-  console.log("handleOpenFlow, user id:", _id);
   flowDrawerUserId.value = _id;
   flowDrawerVisible.value = true;
 }
@@ -1008,7 +1192,6 @@ function handleOpenLink(row) {
 /** 彩金设置抽屉 */
 function handleOpenBonus(row) {
   const _id = row.id || ids.value;
-  console.log("handleOpenBonus id:", _id);
   bonusDrawerUserId.value = _id;
   bonusDrawerVisible.value = true;
 }
@@ -1021,7 +1204,7 @@ function handleOpenWithdrawal(row) {
 }
 
 /** 删除按钮操作 */
-function handleDelete(row) {
+function handleDelete(row = {}) {
   const _ids = row.id || ids.value;
   proxy.$modal
     .confirm('是否确认删除订单用户编号为"' + _ids + '"的数据项？')
@@ -1075,8 +1258,7 @@ function openModifyCount(row) {
 }
 
 async function submitModifyCount() {
-  modifyFormRef?.value?.validate?.(async (valid) => {
-    if (!valid) return;
+  modifyFormRef?.value?.validate?.().then(async () => {
     try {
       await updateOrderuser(modifyForm);
       getList();
@@ -1086,7 +1268,7 @@ async function submitModifyCount() {
       proxy.$modal.msgError &&
         proxy.$modal.msgError(err?.message || "修改失败");
     }
-  });
+  }).catch(() => {});
 }
 
 // 修改登录密码
@@ -1097,8 +1279,7 @@ function handleModifyLoginPassword(row) {
 }
 
 async function submitLoginPassword() {
-  loginFormRef?.value?.validate?.(async (valid) => {
-    if (!valid) return;
+  loginFormRef?.value?.validate?.().then(async () => {
     try {
       await editPassword({ id: loginForm.id, password: loginForm.password });
       getList();
@@ -1108,7 +1289,7 @@ async function submitLoginPassword() {
       proxy.$modal.msgError &&
         proxy.$modal.msgError(err?.message || "修改登录密码失败");
     }
-  });
+  }).catch(() => {});
 }
 
 // 修改交易密码
@@ -1119,8 +1300,7 @@ function handleModifyTradePassword(row) {
 }
 
 async function submitTradePassword() {
-  tradeFormRef?.value?.validate?.(async (valid) => {
-    if (!valid) return;
+  tradeFormRef?.value?.validate?.().then(async () => {
     try {
       await editTradePassword({
         id: tradeForm.id,
@@ -1133,21 +1313,38 @@ async function submitTradePassword() {
       proxy.$modal.msgError &&
         proxy.$modal.msgError(err?.message || "修改交易密码失败");
     }
-  });
+  }).catch(() => {});
 }
 
 // 修改上级
 function handleModifyParent(row) {
   parentForm.id = row.id;
-  parentForm.parentId = null;
+  parentTopLevel.value = Number(row.parentId || 0) === 0;
+  parentForm.parentId = row.parentId ?? null;
+  parentForm.parentInviteCode = row.parentInviteCode || null;
   parentVisible.value = true;
 }
 
+function handleParentTypeChange(event) {
+  if (event.target.value) {
+    parentForm.parentId = 0;
+    parentForm.parentInviteCode = null;
+    parentFormRef.value?.clearValidate?.("parentInviteCode");
+    return;
+  }
+  parentForm.parentId = null;
+}
+
 async function submitModifyParent() {
-  parentFormRef?.value?.validate?.(async (valid) => {
-    if (!valid) return;
+  parentFormRef?.value?.validate?.().then(async () => {
     try {
-      await editParentId({ id: parentForm.id, parentId: parentForm.parentId });
+      await editParentId({
+        id: parentForm.id,
+        parentId: parentTopLevel.value ? 0 : null,
+        parentInviteCode: parentTopLevel.value
+          ? null
+          : String(parentForm.parentInviteCode || "").trim(),
+      });
       getList();
       parentVisible.value = false;
       proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改上级成功");
@@ -1155,7 +1352,7 @@ async function submitModifyParent() {
       proxy.$modal.msgError &&
         proxy.$modal.msgError(err?.message || "修改上级失败");
     }
-  });
+  }).catch(() => {});
 }
 
 // 修改等级
@@ -1166,8 +1363,7 @@ function handleModifyVip(row) {
 }
 
 async function submitModifyVip() {
-  vipFormRef?.value?.validate?.(async (valid) => {
-    if (!valid) return;
+  vipFormRef?.value?.validate?.().then(async () => {
     try {
       await updateOrderuser({ id: vipForm.id, vipId: vipForm.vipId });
       getList();
@@ -1177,7 +1373,7 @@ async function submitModifyVip() {
       proxy.$modal.msgError &&
         proxy.$modal.msgError(err?.message || "修改等级失败");
     }
-  });
+  }).catch(() => {});
 }
 
 // 修改信誉分
@@ -1189,8 +1385,7 @@ function handleModifyReputation(row) {
 }
 
 async function submitModifyReputation() {
-  reputationFormRef?.value?.validate?.(async (valid) => {
-    if (!valid) return;
+  reputationFormRef?.value?.validate?.().then(async () => {
     try {
       await updateOrderuser({
         id: reputationForm.id,
@@ -1203,14 +1398,66 @@ async function submitModifyReputation() {
       proxy.$modal.msgError &&
         proxy.$modal.msgError(err?.message || "修改信誉分失败");
     }
+  }).catch(() => {});
+}
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    proxy.$modal.msgSuccess("复制成功");
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+    proxy.$modal.msgSuccess("复制成功");
+  }
+}
+
+function handleCopyMember(row) {
+  reset();
+  getOrderuser(row.id).then((response) => {
+    const source = response.data || {};
+    form.value = {
+      ...source,
+      id: null,
+      username: null,
+      phoneNumber: null,
+      inviteCode: null,
+      password: null,
+      tradePassword: null,
+      version: null,
+      createTime: null,
+      updateTime: null,
+      birthday: source.birthday
+        ? proxy.parseTime(source.birthday, "{y}-{m}-{d}")
+        : null,
+    };
+    open.value = true;
+    title.value = "复制会员";
   });
+}
+
+function handleEditIdentity(row) {
+  identityUserId.value = row.id;
+  identityVisible.value = true;
+}
+
+function handleEditContract(row) {
+  contractUserId.value = row.id;
+  contractVisible.value = true;
 }
 
 // 更多菜单操作
 function handleGift(row) {
   giftUserId.value = row.id;
   giftVisible.value = true;
-  console.log(123);
 }
 
 function handleSubMembers(row) {
@@ -1220,8 +1467,32 @@ function handleSubMembers(row) {
 }
 
 function handleModifySignDays(row) {
-  console.log("修改签到天数", row.id);
-  // TODO: 实现修改签到天数功能
+  Object.assign(signDaysForm, {
+    id: row.id,
+    currentSignDays: Number(row.signDays || 0),
+    signDays: Number(row.signDays || 0),
+    includeToday: Number(row.todaySignCount || 0) > 0 ? "1" : "0",
+    todaySignCount: Number(row.todaySignCount || 0),
+    totalSignDays: Number(row.totalSignDays || 0),
+  });
+  signDaysVisible.value = true;
+}
+
+async function submitModifySignDays() {
+  try {
+    await signDaysFormRef.value?.validate();
+    await updateOrderuser({
+      id: signDaysForm.id,
+      signDays: signDaysForm.signDays,
+      todaySignCount: signDaysForm.includeToday === "1" ? Math.max(signDaysForm.todaySignCount, 1) : 0,
+      totalSignDays: signDaysForm.totalSignDays,
+    });
+    signDaysVisible.value = false;
+    proxy.$modal.msgSuccess("修改签到天数成功");
+    getList();
+  } catch (error) {
+    if (error?.errorFields) return;
+  }
 }
 
 function handleOrderDetails(row) {
@@ -1249,6 +1520,23 @@ async function handleToggleFake(row) {
         getList();
       } catch (err) {
         proxy.$modal.msgError(err.message || `${action}失败`);
+      }
+    })
+    .catch(() => {});
+}
+
+async function handleToggleProductMatching(row) {
+  const newValue = row.productMatching === "0" ? "1" : "0";
+  const action = row.productMatching === "0" ? "启用" : "禁用";
+  proxy.$modal
+    .confirm(`是否确认${action}产品匹配？`)
+    .then(async () => {
+      try {
+        await updateOrderuser({ id: row.id, productMatching: newValue });
+        proxy.$modal.msgSuccess(`${action}产品匹配成功`);
+        getList();
+      } catch (err) {
+        proxy.$modal.msgError(err.message || `${action}产品匹配失败`);
       }
     })
     .catch(() => {});
@@ -1325,22 +1613,110 @@ async function handleToggleAssistWithdrawalStatus(row) {
 getList();
 </script>
 <style scoped>
-.button-flex {
+.ant-pro-member-page {
+  margin: 16px 40px 32px;
+}
+
+.ant-pro-query-form :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.ant-pro-query-actions {
   display: flex;
-  flex-wrap: wrap; /* 允许换行 */
-  justify-content: flex-start; /* 左对齐按钮 */
-  gap: 10px 0; /* 设置按钮之间的间距 */
+  justify-content: flex-end;
 }
-.el-button {
-  height: 26px;
-  font-size: 12px; /* 设置按钮字体大小 */
-  padding: 6px 12px; /* 设置按钮内边距 */
+
+.ant-pro-expand-btn {
+  padding-right: 0;
 }
-.bt-button {
-  display: flex;
-  justify-content: flex-start;
-  gap: 10px;
+
+.advanced-query-row {
+  margin-top: 16px;
 }
+
+.range-input {
+  width: calc(50% - 20px);
+}
+
+.range-separator {
+  width: 40px;
+  padding: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.copy-button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: #1677ff;
+}
+
+.table-action-link {
+  color: #1677ff;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.table-action-link:hover,
+.table-action-link:focus-visible {
+  color: #4096ff;
+}
+
+.table-action-link:active {
+  color: #0958d9;
+}
+
+.table-action-link:focus-visible {
+  outline: 2px solid rgba(22, 119, 255, 0.25);
+  outline-offset: 2px;
+}
+
+.member-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: #bfbfbf;
+  border-radius: 50%;
+}
+
+.member-dot-online {
+  background: #52c41a;
+}
+
+.ant-action-grid {
+  max-width: 336px;
+}
+
+.ant-action-warning {
+  background: #faad14;
+  border-color: #faad14;
+}
+
+.ant-action-warning:hover,
+.ant-action-warning:focus {
+  background: #ffc53d;
+  border-color: #ffc53d;
+}
+
+.ant-action-success {
+  background: #52c41a;
+  border-color: #52c41a;
+}
+
+.ant-action-success:hover,
+.ant-action-success:focus {
+  background: #73d13d;
+  border-color: #73d13d;
+}
+
+.full-width {
+  width: 100%;
+}
+
 .other-item {
   font-weight: 600;
   color: #409eff !important;

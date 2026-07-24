@@ -1,4 +1,5 @@
 import request from "@/utils/request";
+import { apiPathParam } from "@/utils/apiPath";
 
 // 查询时区管理列表
 export function listZone(query) {
@@ -12,7 +13,7 @@ export function listZone(query) {
 // 查询时区管理详细
 export function getZone(id) {
   return request({
-    url: "/system/zone/" + id,
+    url: "/system/zone/" + apiPathParam(id),
     method: "get",
   });
 }
@@ -38,14 +39,14 @@ export function updateZone(data) {
 // 删除时区管理
 export function delZone(id) {
   return request({
-    url: "/system/zone/" + id,
+    url: "/system/zone/" + apiPathParam(id),
     method: "delete",
   });
 }
 
 export function setActiveZone(id) {
   return request({
-    url: `/system/zone/active/${id}`, // 如你的后端是 /system/timezone/active/{id} 就改这行
+    url: `/system/zone/active/${apiPathParam(id)}`,
     method: "post",
   });
 }

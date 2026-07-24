@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { apiPathParam } from '@/utils/apiPath'
 
 // 查询参数列表
 export function listConfig(query) {
@@ -12,7 +13,7 @@ export function listConfig(query) {
 // 查询参数详细
 export function getConfig(configId) {
   return request({
-    url: '/system/config/' + configId,
+    url: '/system/config/' + apiPathParam(configId),
     method: 'get'
   })
 }
@@ -20,7 +21,7 @@ export function getConfig(configId) {
 // 根据参数键名查询参数值
 export function getConfigKey(configKey) {
   return request({
-    url: '/system/config/configKey/' + configKey,
+    url: '/system/config/configKey/' + apiPathParam(configKey),
     method: 'get'
   })
 }
@@ -46,7 +47,7 @@ export function updateConfig(data) {
 // 删除参数配置
 export function delConfig(configId) {
   return request({
-    url: '/system/config/' + configId,
+    url: '/system/config/' + apiPathParam(configId),
     method: 'delete'
   })
 }

@@ -38,10 +38,11 @@ function addIframe() {
 <style lang="scss" scoped>
 .app-main {
   /* 50= navbar  50  */
-  min-height: calc(100vh - 50px);
+  min-height: calc(100vh - 56px);
   width: 100%;
   position: relative;
   overflow: hidden;
+  background: var(--page-bg);
 }
 
 .app-main:has(.copyright) {
@@ -49,24 +50,22 @@ function addIframe() {
 }
 
 .fixed-header + .app-main {
-  padding-top: 50px;
+  padding-top: 56px;
 }
 
 .hasTagsView {
   .app-main {
-    /* 84 = navbar + tags-view = 50 + 34 */
-    min-height: calc(100vh - 84px);
+    min-height: calc(100vh - 94px);
   }
 
   .fixed-header + .app-main {
-    padding-top: 84px;
+    padding-top: 94px;
   }
 }
 </style>
 
 <style lang="scss">
-// fix css style bug in open el-dialog
-.el-popup-parent--hidden {
+.ant-scrolling-effect {
   .fixed-header {
     padding-right: 6px;
   }

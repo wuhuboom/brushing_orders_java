@@ -1,72 +1,63 @@
-<!-- notification-config.vue (子组件，全代码) -->
 <template>
-  <el-form
-    ref="notificationFormRef"
-    :model="localForm"
-    :rules="localRules"
-    label-position="top"
-  >
-    <!-- 通知设置标签页（动态渲染） -->
-    <el-tabs v-model="activeTab" type="card" style="margin-bottom: 20px">
-      <el-tab-pane
-        v-for="tab in tabs"
-        :key="tab.key"
-        :label="tab.label"
-        :name="tab.key"
-      >
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item
+  <a-form ref="notificationFormRef" :model="localForm" layout="vertical" class="config-form">
+    <a-tabs v-model:activeKey="activeTab" type="card" class="config-tabs">
+      <a-tab-pane v-for="tab in tabs" :key="tab.key" :tab="tab.label">
+        <a-row :gutter="[20, 0]">
+          <a-col :span="8">
+            <a-form-item
               :label="`${tab.label}是否启用`"
-              :prop="`${tab.key}.enabled`"
+              :name="[tab.key, 'enabled']"
+              :rules="[{ required: true, message: `请选择${tab.label}是否启用`, trigger: 'change' }]"
             >
-              <el-radio-group v-model="localForm[tab.key].enabled">
-                <el-radio :label="0">启用</el-radio>
-                <el-radio :label="1">停用</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="24">
-          <el-col :span="24">
-            <el-form-item
+              <a-radio-group v-model:value="localForm[tab.key].enabled">
+                <a-radio :value="0">启用</a-radio>
+                <a-radio :value="1">停用</a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+          <a-col :span="16">
+            <a-form-item
               :label="`${tab.label}标题`"
-              :prop="`${tab.key}.title`"
+              :name="[tab.key, 'title']"
+              :rules="[{ required: true, message: `请输入${tab.label}标题`, trigger: 'blur' }]"
             >
-              <el-input
-                v-model="localForm[tab.key].title"
-                placeholder="请输入标题"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item :label="`${tab.label}内容`" :prop="`${tab.key}.content`">
-          <editor v-model="localForm[tab.key].content" :min-height="200" />
-        </el-form-item>
-      </el-tab-pane>
-    </el-tabs>
-  </el-form>
+              <a-input v-model:value="localForm[tab.key].title" placeholder="请输入标题" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item
+              :label="`${tab.label}内容`"
+              :name="[tab.key, 'content']"
+              :rules="[
+                { required: true, message: `请输入${tab.label}内容`, trigger: 'blur' },
+                { min: 10, message: '内容长度不能少于10字符', trigger: 'blur' }
+              ]"
+            >
+              <editor v-model="localForm[tab.key].content" :min-height="200" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-tab-pane>
+    </a-tabs>
+  </a-form>
 </template>
 
 <script setup>
-import { ref, reactive, watch, computed } from "vue";
-import { ElMessage } from "element-plus";
+import { reactive, ref, watch } from "vue"
+import { message } from "ant-design-vue"
 
 const props = defineProps({
   form: {
     type: Object,
-    default: () => ({}),
+    default: () => ({})
   },
-  loading: Boolean,
-});
+  loading: Boolean
+})
 
-const emit = defineEmits(["update:form", "submit", "cancel"]);
+const emit = defineEmits(["update:form", "submit", "cancel"])
+const notificationFormRef = ref()
+const activeTab = ref("gift")
 
-const notificationFormRef = ref();
-const activeTab = ref("gift"); // 默认第一个 tab
-
-// 标签页配置（简洁定义所有23个）
 const tabs = [
   { key: "gift", label: "赠送" },
   { key: "deduction", label: "扣款" },
@@ -91,102 +82,71 @@ const tabs = [
   { key: "balanceIn", label: "余额宝转入" },
   { key: "workBonus", label: "工作奖金" },
   { key: "upgradeBonus", label: "升级奖金" },
-  { key: "other", label: "其他" },
-];
+  { key: "other", label: "其他" }
+]
 
-// 动态规则（基于 tabs）
-const localRules = computed(() => {
-  const rules = {};
-  tabs.forEach((tab) => {
-    rules[`${tab.key}.enabled`] = [
-      {
-        required: true,
-        message: `请选择${tab.label}是否启用`,
-        trigger: "change",
-      },
-    ];
-    rules[`${tab.key}.title`] = [
-      { required: true, message: `请输入${tab.label}标题`, trigger: "blur" },
-    ];
-    rules[`${tab.key}.content`] = [
-      { required: true, message: `请输入${tab.label}内容`, trigger: "blur" },
-      { min: 10, message: "内容长度不能少于10字符", trigger: "blur" },
-    ];
-  });
-  return rules;
-});
-
-// localForm 初始化（动态基于 tabs）
-const localForm = reactive({});
-tabs.forEach((tab) => {
-  localForm[tab.key] = reactive({
-    enabled: "", // 默认启用
+const localForm = reactive({})
+tabs.forEach(tab => {
+  localForm[tab.key] = {
+    enabled: 1,
     title: "",
-    content: "",
-  });
-});
+    content: ""
+  }
+})
 
-// 初始化：监听父 form 变化，parse content 到 localForm
 watch(
   () => props.form.content,
-  (newContent) => {
-    if (newContent) {
-      try {
-        const parsed = JSON.parse(newContent);
-        tabs.forEach((tab) => {
-          if (parsed[tab.key]) {
-            Object.assign(localForm[tab.key], parsed[tab.key]);
-          }
-        });
-      } catch (e) {
-        ElMessage.error("解析配置失败");
-        // 重置默认值
-        tabs.forEach((tab) => {
-          localForm[tab.key].enabled = 1;
-          localForm[tab.key].title = "";
-          localForm[tab.key].content = "";
-        });
-      }
+  newContent => {
+    if (!newContent) {
+      return
+    }
+    try {
+      const parsed = JSON.parse(newContent)
+      tabs.forEach(tab => {
+        Object.assign(localForm[tab.key], parsed[tab.key] || {})
+      })
+    } catch (e) {
+      message.error("解析配置失败")
     }
   },
   { immediate: true }
-);
+)
 
-// 更新父 form：localForm 变化时，stringify 到 content
 watch(
   localForm,
   () => {
-    const data = {};
-    tabs.forEach((tab) => {
-      data[tab.key] = { ...localForm[tab.key] };
-    });
+    const data = {}
+    tabs.forEach(tab => {
+      data[tab.key] = { ...localForm[tab.key] }
+    })
     emit("update:form", {
       ...props.form,
-      content: JSON.stringify(data),
-    });
+      content: JSON.stringify(data)
+    })
   },
   { deep: true }
-);
+)
 
-// 提交
 function handleSubmit() {
-  notificationFormRef.value.validate((valid) => {
-    if (valid) {
-      emit("submit");
-    }
-  });
+  notificationFormRef.value?.validate?.().then(() => {
+    emit("submit")
+  }).catch(() => {})
 }
 
-// 取消
 function handleCancel() {
-  emit("cancel");
+  emit("cancel")
 }
+
+defineExpose({ handleSubmit, handleCancel })
 </script>
 
 <style scoped>
-/* 样式调整 editor 容器 */
+.config-tabs {
+  margin-top: 4px;
+}
+
 :deep(.editor-container) {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
 }
 </style>

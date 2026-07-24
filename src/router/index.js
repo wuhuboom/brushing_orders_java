@@ -2,6 +2,15 @@ import { createWebHistory, createRouter } from 'vue-router'
 /* Layout */
 import Layout from '@/layout'
 
+// 启动阶段先由兜底路由承接深链接，权限路由加载后精确路由会自动获得更高优先级。
+// 这样既不会在刷新新路径时产生“未匹配”警告，也不会让未授权页面绕过动态权限。
+export const notFoundRoute = {
+  path: '/:pathMatch(.*)*',
+  name: 'NotFound',
+  component: () => import('@/views/error/404'),
+  hidden: true
+}
+
 /**
  * Note: 路由配置项
  *
@@ -48,7 +57,7 @@ export const constantRoutes = [
     hidden: true
   },
   {
-    path: "/:pathMatch(.*)*",
+    path: '/404',
     component: () => import('@/views/error/404'),
     hidden: true
   },
@@ -66,7 +75,7 @@ export const constantRoutes = [
         path: '/index',
         component: () => import('@/views/index'),
         name: 'Index',
-        meta: { title: '首页', icon: 'dashboard', affix: true }
+        meta: { title: '首页', icon: 'dashboard' }
       }
     ]
   },
@@ -83,7 +92,8 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
-  }
+  },
+  notFoundRoute
 ]
 
 // 动态路由，基于用户权限动态去加载
@@ -98,7 +108,7 @@ export const dynamicRoutes = [
         path: 'role/:userId(\\d+)',
         component: () => import('@/views/system/user/authRole'),
         name: 'AuthRole',
-        meta: { title: '分配角色', activeMenu: '/system/user' }
+        meta: { title: '分配角色', activeMenu: '/system/users/user' }
       }
     ]
   },
@@ -112,7 +122,7 @@ export const dynamicRoutes = [
         path: 'user/:roleId(\\d+)',
         component: () => import('@/views/system/role/authUser'),
         name: 'AuthUser',
-        meta: { title: '分配用户', activeMenu: '/system/role' }
+        meta: { title: '分配用户', activeMenu: '/system/permissions/role' }
       }
     ]
   },

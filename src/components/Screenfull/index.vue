@@ -5,9 +5,22 @@
 </template>
 
 <script setup>
-import { useFullscreen } from '@vueuse/core'
+const isFullscreen = ref(Boolean(document.fullscreenElement))
 
-const { isFullscreen, enter, exit, toggle } = useFullscreen()
+function syncFullscreenState() {
+  isFullscreen.value = Boolean(document.fullscreenElement)
+}
+
+async function toggle() {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen()
+  } else {
+    await document.documentElement.requestFullscreen()
+  }
+}
+
+onMounted(() => document.addEventListener('fullscreenchange', syncFullscreenState))
+onBeforeUnmount(() => document.removeEventListener('fullscreenchange', syncFullscreenState))
 </script>
 
 <style lang='scss' scoped>

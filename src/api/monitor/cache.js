@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { apiPathParam } from '@/utils/apiPath'
 
 // 查询缓存详细
 export function getCache() {
@@ -19,7 +20,7 @@ export function listCacheName() {
 // 查询缓存键名列表
 export function listCacheKey(cacheName) {
   return request({
-    url: '/monitor/cache/getKeys/' + cacheName,
+    url: '/monitor/cache/getKeys/' + apiPathParam(cacheName),
     method: 'get'
   })
 }
@@ -27,7 +28,7 @@ export function listCacheKey(cacheName) {
 // 查询缓存内容
 export function getCacheValue(cacheName, cacheKey) {
   return request({
-    url: '/monitor/cache/getValue/' + cacheName + '/' + cacheKey,
+    url: '/monitor/cache/getValue/' + apiPathParam(cacheName) + '/' + apiPathParam(cacheKey),
     method: 'get'
   })
 }
@@ -35,7 +36,7 @@ export function getCacheValue(cacheName, cacheKey) {
 // 清理指定名称缓存
 export function clearCacheName(cacheName) {
   return request({
-    url: '/monitor/cache/clearCacheName/' + cacheName,
+    url: '/monitor/cache/clearCacheName/' + apiPathParam(cacheName),
     method: 'delete'
   })
 }
@@ -43,7 +44,7 @@ export function clearCacheName(cacheName) {
 // 清理指定键名缓存
 export function clearCacheKey(cacheKey) {
   return request({
-    url: '/monitor/cache/clearCacheKey/' + cacheKey,
+    url: '/monitor/cache/clearCacheKey/' + apiPathParam(cacheKey),
     method: 'delete'
   })
 }

@@ -1,69 +1,78 @@
-import router from './router'
-import { ElMessage } from 'element-plus'
-import NProgress from 'nprogress'
-import 'nprogress/nprogress.css'
-import { getToken } from '@/utils/auth'
-import { isHttp, isPathMatch } from '@/utils/validate'
-import { isRelogin } from '@/utils/request'
-import useUserStore from '@/store/modules/user'
-import useSettingsStore from '@/store/modules/settings'
-import usePermissionStore from '@/store/modules/permission'
+import router, { notFoundRoute } from "./router";
+import { message } from "ant-design-vue";
+import NProgress from "nprogress";
+import "nprogress/nprogress.css";
+import { getToken } from "@/utils/auth";
+import { isHttp, isPathMatch } from "@/utils/validate";
+import { isRelogin } from "@/utils/request";
+import useUserStore from "@/store/modules/user";
+import useSettingsStore from "@/store/modules/settings";
+import usePermissionStore from "@/store/modules/permission";
 
-NProgress.configure({ showSpinner: false })
+NProgress.configure({ showSpinner: false });
 
-const whiteList = ['/login', '/register']
+const whiteList = ["/login", "/register"];
 
-const isWhiteList = (path) => {
-  return whiteList.some(pattern => isPathMatch(pattern, path))
-}
+const isWhiteList = (path) => whiteList.some((pattern) => isPathMatch(pattern, path));
 
 router.beforeEach((to, from, next) => {
-  NProgress.start()
+  NProgress.start();
   if (getToken()) {
-    to.meta.title && useSettingsStore().setTitle(to.meta.title)
-    /* has token*/
-    if (to.path === '/login') {
-      next({ path: '/' })
-      NProgress.done()
-    } else if (isWhiteList(to.path)) {
-      next()
-    } else {
-      if (useUserStore().roles.length === 0) {
-        isRelogin.show = true
-        // 判断当前用户是否已拉取完user_info信息
-        useUserStore().getInfo().then(() => {
-          isRelogin.show = false
-          usePermissionStore().generateRoutes().then(accessRoutes => {
-            // 根据roles权限生成可访问的路由表
-            accessRoutes.forEach(route => {
-              if (!isHttp(route.path)) {
-                router.addRoute(route) // 动态添加可访问路由表
-              }
-            })
-            next({ ...to, replace: true }) // hack方法 确保addRoutes已完成
-          })
-        }).catch(err => {
-          useUserStore().logOut().then(() => {
-            ElMessage.error(err)
-            next({ path: '/' })
-          })
-        })
-      } else {
-        next()
-      }
+    if (to.meta.title) {
+      useSettingsStore().setTitle(to.meta.title);
     }
-  } else {
-    // 没有token
+
+    if (to.path === "/login") {
+      next({ path: "/" });
+      NProgress.done();
+      return;
+    }
+
     if (isWhiteList(to.path)) {
-      // 在免登录白名单，直接进入
-      next()
-    } else {
-      next(`/login?redirect=${to.fullPath}`) // 否则全部重定向到登录页
-      NProgress.done()
+      next();
+      return;
     }
+
+    if (useUserStore().roles.length === 0) {
+      isRelogin.show = true;
+      useUserStore()
+        .getInfo()
+        .then(() => {
+          isRelogin.show = false;
+          usePermissionStore().generateRoutes().then((accessRoutes) => {
+            accessRoutes.forEach((route) => {
+              if (!isHttp(route.path)) {
+                router.addRoute(route);
+              }
+            });
+            if (!router.hasRoute("NotFound")) {
+              router.addRoute(notFoundRoute);
+            }
+            // 按原始地址重新解析，避免启动阶段命中的 NotFound 路由名称被一并重放。
+            next({ path: to.path, query: to.query, hash: to.hash, replace: true });
+          });
+        })
+        .catch((error) => {
+          useUserStore().logOut().then(() => {
+            message.error(error);
+            next({ path: "/" });
+          });
+        });
+      return;
+    }
+
+    next();
+    return;
   }
-})
+
+  if (isWhiteList(to.path)) {
+    next();
+  } else {
+    next(`/login?redirect=${to.fullPath}`);
+    NProgress.done();
+  }
+});
 
 router.afterEach(() => {
-  NProgress.done()
-})
+  NProgress.done();
+});

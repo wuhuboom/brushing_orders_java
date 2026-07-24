@@ -1,20 +1,19 @@
 <template>
   <div class="icon-body">
-    <el-input
-      v-model="iconName"
+    <a-input
+      v-model:value="iconName"
       class="icon-search"
-      clearable
+      allow-clear
       placeholder="请输入图标名称"
-      @clear="filterIcons"
       @input="filterIcons"
     >
-      <template #suffix><i class="el-icon-search el-input__icon" /></template>
-    </el-input>
+      <template #prefix><SearchOutlined /></template>
+    </a-input>
     <div class="icon-list">
       <div class="list-container">
-        <div v-for="(item, index) in iconList" class="icon-item-wrapper" :key="index" @click="selectedIcon(item)">
+        <div v-for="(item, index) in iconList" :key="index" class="icon-item-wrapper" @click="selectedIcon(item)">
           <div :class="['icon-item', { active: activeIcon === item }]">
-            <svg-icon :icon-class="item" class-name="icon" style="height: 25px;width: 16px;"/>
+            <svg-icon :icon-class="item" class-name="icon" style="height: 25px;width: 16px;" />
             <span>{{ item }}</span>
           </div>
         </div>
@@ -24,32 +23,31 @@
 </template>
 
 <script setup>
-import icons from './requireIcons'
+import { SearchOutlined } from "@ant-design/icons-vue"
+import icons from "./requireIcons"
 
-const props = defineProps({
+defineProps({
   activeIcon: {
     type: String
   }
 })
 
-const iconName = ref('')
+const iconName = ref("")
 const iconList = ref(icons)
-const emit = defineEmits(['selected'])
+const emit = defineEmits(["selected"])
 
 function filterIcons() {
-  iconList.value = icons
-  if (iconName.value) {
-    iconList.value = icons.filter(item => item.indexOf(iconName.value) !== -1)
-  }
+  iconList.value = iconName.value
+    ? icons.filter(item => item.includes(iconName.value))
+    : icons
 }
 
 function selectedIcon(name) {
-  emit('selected', name)
-  document.body.click()
+  emit("selected", name)
 }
 
 function reset() {
-  iconName.value = ''
+  iconName.value = ""
   iconList.value = icons
 }
 
@@ -58,54 +56,60 @@ defineExpose({
 })
 </script>
 
-<style lang='scss' scoped>
-   .icon-body {
-    width: 100%;
-    padding: 10px;
-    .icon-search {
-      position: relative;
-      margin-bottom: 5px;
-    }
-    .icon-list {
-      height: 200px;
-      overflow: auto;
-      .list-container {
+<style lang="scss" scoped>
+.icon-body {
+  width: 100%;
+  padding: 10px;
+
+  .icon-search {
+    position: relative;
+    margin-bottom: 8px;
+  }
+
+  .icon-list {
+    height: 220px;
+    overflow: auto;
+
+    .list-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 0;
+
+      .icon-item-wrapper {
+        width: calc(100% / 3);
+        height: 28px;
+        line-height: 28px;
+        cursor: pointer;
         display: flex;
-        flex-wrap: wrap;
-        .icon-item-wrapper {
-          width: calc(100% / 3);
-          height: 25px;
-          line-height: 25px;
-          cursor: pointer;
+
+        .icon-item {
           display: flex;
-          .icon-item {
-            display: flex;
-            max-width: 100%;
-            height: 100%;
-            padding: 0 5px;
-            &:hover {
-              background: #ececec;
-              border-radius: 5px;
-            }
-            .icon {
-              flex-shrink: 0;
-            }
-            span {
-              display: inline-block;
-              vertical-align: -0.15em;
-              fill: currentColor;
-              padding-left: 2px;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
+          align-items: center;
+          max-width: 100%;
+          height: 100%;
+          padding: 0 6px;
+          border-radius: 4px;
+
+          &:hover,
+          &.active {
+            background: #f0f5ff;
+            color: #1677ff;
           }
-          .icon-item.active {
-            background: #ececec;
-            border-radius: 5px;
+
+          .icon {
+            flex-shrink: 0;
+          }
+
+          span {
+            display: inline-block;
+            padding-left: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
         }
       }
     }
   }
+}
 </style>

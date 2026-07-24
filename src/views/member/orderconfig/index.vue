@@ -1,387 +1,573 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
+  <div class="app-container ant-pro-member-page settings-page">
+    <ant-pro-table
+      title="设置列表"
+      :columns="orderconfigColumns"
+      :data-source="orderconfigList"
+      :loading="loading"
+      row-key="id"
+      :pagination="{
+        current: queryParams.pageNum,
+        pageSize: queryParams.pageSize,
+        total,
+        pageSizeOptions: ['10', '20', '50', '100', '200', '500', '1000'],
+        showQuickJumper: true,
+      }"
+      :scroll="{ x: 1050, y: 'calc(100vh - 440px)' }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
     >
-      <el-form-item label="序号" prop="sort">
-        <el-input
-          v-model="queryParams.sort"
-          placeholder="请输入序号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="配置名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          placeholder="请输入配置名称"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams">
+          <a-row :gutter="24" align="middle">
+            <a-col :xs="24" :sm="12" :lg="8">
+              <a-form-item label="类型">
+                <a-select
+                  v-model:value="queryParams.type"
+                  :options="typeOptions"
+                  placeholder="请选择类型"
+                  allow-clear
+                  show-search
+                  :filter-option="filterTypeOption"
+                  @change="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="8">
+              <a-form-item label="创建时间">
+                <a-range-picker
+                  v-model:value="createdDateRange"
+                  value-format="YYYY-MM-DD"
+                  class="full-width"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :lg="8" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+        </a-form>
+      </template>
 
-    <el-table
-      v-loading="loading"
-      :data="orderconfigList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="配置名称" align="center" prop="name" />
-      <el-table-column label="序号" align="center" prop="sort" />
-      <el-table-column label="创建时间" align="center" prop="createTime" />
-      <el-table-column label="修改时间" align="center" prop="updateTime" />
-      <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:orderconfig:edit']"
-          ></el-button>
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.dataIndex === 'name'">
+          <a class="settings-kind-link" @click="handleView(record)">
+            <span class="settings-kind-dot"></span>
+            {{ displayName(record) }}
+          </a>
         </template>
-      </el-table-column>
-    </el-table>
+        <template v-else-if="column.dataIndex === 'createTime'">
+          {{ formatDateTime(record.createTime) }}
+        </template>
+        <template v-else-if="column.dataIndex === 'updateTime'">
+          {{ formatDateTime(record.updateTime) }}
+        </template>
+        <template v-else-if="column.key === 'operation'">
+          <a-space :size="8">
+            <a-button
+              type="link"
+              size="small"
+              class="operation-link"
+              @click="handleUpdate(record)"
+              v-hasPermi="['member:orderconfig:edit']"
+            >
+              修改
+            </a-button>
+            <a-button
+              type="link"
+              size="small"
+              class="operation-link"
+              :disabled="!isI18nType(record.type)"
+              @click="openTranslationDialog(record)"
+              v-hasPermi="['member:orderconfig:edit']"
+            >
+              国际化
+            </a-button>
+          </a-space>
+        </template>
+      </template>
+    </ant-pro-table>
 
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
+    <a-drawer
+      v-model:open="open"
+      :title="title"
+      width="85%"
+      size="large"
+      destroy-on-close
+      :mask-closable="drawerReadonly"
+      :body-style="{ paddingBottom: drawerReadonly ? '24px' : '72px' }"
+      class="settings-form-drawer"
+      @close="cancel"
+    >
+      <a-form
+        ref="baseFormRef"
+        :model="form"
+        :rules="baseRules"
+        layout="vertical"
+        class="settings-base-form"
+      >
+        <a-row :gutter="24">
+          <a-col :span="24">
+            <a-form-item label="类型" name="type">
+              <a-select
+                v-model:value="form.type"
+                :options="typeOptions"
+                disabled
+                placeholder="类型"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="24">
+          <a-col :span="24">
+            <a-form-item label="序号" name="sort">
+              <a-input-number
+                v-model:value="form.sort"
+                :min="0"
+                :precision="0"
+                :disabled="drawerReadonly"
+                placeholder="序号"
+                class="full-width"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-form>
 
-    <!-- 添加或修改网站设置对话框 -->
-    <el-drawer :title="title" v-model="open" size="80%" append-to-body>
-      <!-- 动态渲染子组件 -->
-      <component
-        :is="dialogComponent"
-        v-if="open && currentType"
-        :form="form"
-        :loading="loading"
-        @update:form="handleFormUpdate"
-        @submit="handleSubmit"
-        @cancel="cancel"
-      />
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="cancel">取 消</el-button>
-          <el-button type="primary" @click="handleSubmit" :loading="loading">
-            确 定
-          </el-button>
+      <div :class="{ 'settings-readonly-content': drawerReadonly }">
+        <component
+          :is="dialogComponent"
+          v-if="open && currentType && dialogComponent"
+          ref="componentRef"
+          :form="form"
+          :loading="saving"
+          :readonly="drawerReadonly"
+          @update:form="handleFormUpdate"
+          @submit="persistForm"
+          @cancel="cancel"
+        />
+      </div>
+
+      <template v-if="!drawerReadonly" #footer>
+        <div class="drawer-footer">
+          <a-space>
+            <a-button @click="cancel">取 消</a-button>
+            <a-button type="primary" :loading="saving" @click="handleDrawerSubmit">
+              确 定
+            </a-button>
+          </a-space>
         </div>
       </template>
-    </el-drawer>
+    </a-drawer>
+
+    <translation-dialog
+      v-model="translationOpen"
+      :title="translationTitle"
+      :translations="translationForm"
+      :type="currentTranslationRow?.type"
+      :setting-id="currentTranslationRow?.id"
+      @submit="submitTranslations"
+    />
   </div>
 </template>
 
 <script setup name="Orderconfig">
+import { getCurrentInstance, reactive, ref, toRefs } from "vue";
 import {
-  listOrderconfig,
   getOrderconfig,
-  delOrderconfig,
-  addOrderconfig,
+  listOrderconfig,
   updateOrderconfig,
 } from "@/api/member/orderconfig";
-import WebsiteConfigDialog from "./components/website-config.vue"; // 导入子组件（动态导入见下方）
+import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
+import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
 
-const orderconfigList = ref([]);
-const open = ref(false);
-const loading = ref(true);
-const showSearch = ref(true);
-const ids = ref([]);
-const single = ref(true);
-const multiple = ref(true);
-const total = ref(0);
-const title = ref("");
-const currentType = ref(""); // 当前类型，用于选择子组件
-const dialogComponent = ref(null); // 动态组件
+const typeDefinitions = [
+  ["website", "网站设置"],
+  ["trade", "交易设置"],
+  ["signin", "签到设置"],
+  ["register", "注册协议"],
+  ["about", "关于我们"],
+  ["certificate", "证书"],
+  ["help", "帮助中心"],
+  ["terms", "条款"],
+  ["event", "事件"],
+  ["transaction", "交易说明"],
+  ["order", "订单说明"],
+  ["usage", "使用说明"],
+  ["points", "积分设置"],
+  ["task", "任务设置"],
+  ["notification", "通知设置"],
+  ["backend", "后端安全设置"],
+  ["front", "前端安全设置"],
+  ["bonus", "彩金规则"],
+  ["balance", "余额宝设置"],
+  ["telegram", "Telegram机器人设置"],
+  ["work", "工作奖金设置"],
+  ["privacy", "隐私协议"],
+  ["email", "邮箱"],
+  ["reward", "等级奖金"],
+  ["error", "错误代码"],
+  ["backendRateLimit", "后端限流设置"],
+  ["frontendRateLimit", "前端限流设置"],
+];
 
-const data = reactive({
-  form: {
-    id: null,
-    type: null,
-    sort: null,
-    name: null,
-    content: null, // JSON 字符串
-    createTime: null,
-    updateTime: null,
+const typeOptions = typeDefinitions.map(([value, label]) => ({ value, label }));
+const typeNameMap = Object.fromEntries(typeDefinitions);
+const i18nTypes = new Set([
+  "register",
+  "about",
+  "certificate",
+  "help",
+  "terms",
+  "event",
+  "transaction",
+  "order",
+  "usage",
+  "task",
+  "notification",
+  "bonus",
+  "balance",
+  "privacy",
+  "email",
+  "error",
+]);
+
+const componentLoaders = {
+  website: () => import("./components/website-config.vue"),
+  trade: () => import("./components/trade-config.vue"),
+  signin: () => import("./components/sign-in-config.vue"),
+  register: () => import("./components/register-protocol-config.vue"),
+  about: () => import("./components/about-us-config.vue"),
+  certificate: () => import("./components/certificate-config.vue"),
+  help: () => import("./components/help-center-config.vue"),
+  terms: () => import("./components/terms-config.vue"),
+  event: () => import("./components/event-config.vue"),
+  transaction: () => import("./components/transaction-description-config.vue"),
+  order: () => import("./components/order-description-config.vue"),
+  usage: () => import("./components/usage-description-config.vue"),
+  points: () => import("./components/points-config.vue"),
+  task: () => import("./components/task-config.vue"),
+  notification: () => import("./components/notification-config.vue"),
+  backend: () => import("./components/backend-security-config.vue"),
+  front: () => import("./components/backend-security-config.vue"),
+  bonus: () => import("./components/bonus-config.vue"),
+  balance: () => import("./components/balance-treasure-config.vue"),
+  telegram: () => import("./components/telegram-bot-config.vue"),
+  work: () => import("./components/work-bonus-config.vue"),
+  privacy: () => import("./components/privacy-protocol-config.vue"),
+  email: () => import("./components/email-config.vue"),
+  reward: () => import("./components/reward-config.vue"),
+  error: () => import("./components/error-code-config.vue"),
+  backendRateLimit: () => import("./components/rate-limiter-config.vue"),
+  frontendRateLimit: () => import("./components/rate-limiter-config.vue"),
+};
+
+const orderconfigColumns = [
+  {
+    title: "类型",
+    dataIndex: "name",
+    align: "left",
+    fixed: "left",
+    width: 500,
+    sorter: true,
   },
-  queryParams: {
-    pageNum: 1,
-    pageSize: 30,
-    type: null,
-    sort: null,
-    name: null,
-    content: null,
+  {
+    title: "序号",
+    dataIndex: "sort",
+    align: "center",
+    width: 100,
+    sorter: true,
   },
-  rules: {
-    name: [{ required: true, message: "配置名称不能为空", trigger: "blur" }], // 只保留通用规则
+  {
+    title: "创建时间",
+    dataIndex: "createTime",
+    align: "center",
+    width: 170,
+    sorter: true,
   },
+  {
+    title: "最后修改时间",
+    dataIndex: "updateTime",
+    align: "center",
+    width: 170,
+    sorter: true,
+  },
+  {
+    title: "操作",
+    key: "operation",
+    align: "center",
+    fixed: "right",
+    width: 100,
+  },
+];
+
+const emptyForm = () => ({
+  id: null,
+  type: null,
+  sort: null,
+  name: null,
+  content: null,
+  translationsId: null,
+  translations: null,
+  createTime: null,
+  updateTime: null,
 });
 
-const { queryParams, form, rules } = toRefs(data);
+const data = reactive({
+  form: emptyForm(),
+  queryParams: {
+    pageNum: 1,
+    pageSize: 100,
+    type: null,
+  },
+});
+const { queryParams, form } = toRefs(data);
 
-// 组件映射：根据 type 动态导入子组件
-const componentMap = {
-  website: WebsiteConfigDialog, // 静态导入，或用 defineAsyncComponent 动态
-  // 其他类型如 'email': EmailConfigDialog, ...
+const orderconfigList = ref([]);
+const loading = ref(true);
+const saving = ref(false);
+const total = ref(0);
+const open = ref(false);
+const title = ref("");
+const drawerReadonly = ref(false);
+const currentType = ref("");
+const dialogComponent = ref(null);
+const componentRef = ref();
+const baseFormRef = ref();
+const createdDateRange = ref([]);
+const translationOpen = ref(false);
+const translationTitle = ref("");
+const translationForm = ref(createEmptyTranslations());
+const currentTranslationRow = ref(null);
+const baseRules = {
+  type: [{ required: true, message: "类型为必填项", trigger: "change" }],
+  sort: [{ required: true, message: "序号为必填项", trigger: "blur" }],
 };
 
-// 使用动态导入（推荐，避免打包大）
-const loadComponent = async (type) => {
-  if (type === "website") {
-    const { default: comp } = await import("./components/website-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "trade") {
-    const { default: comp } = await import("./components/trade-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "signin") {
-    // 新增 signin
-    const { default: comp } = await import("./components/sign-in-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "register") {
-    const { default: comp } = await import(
-      "./components/register-protocol-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "about") {
-    const { default: comp } = await import("./components/about-us-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "certificate") {
-    const { default: comp } = await import(
-      "./components/certificate-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "help") {
-    // 新增 help-center
-    const { default: comp } = await import(
-      "./components/help-center-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "terms") {
-    // 新增 terms
-    const { default: comp } = await import("./components/terms-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "event") {
-    // 新增 event
-    const { default: comp } = await import("./components/event-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "transaction") {
-    // 新增 transaction-description
-    const { default: comp } = await import(
-      "./components/transaction-description-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "order") {
-    // 新增 order-description
-    const { default: comp } = await import(
-      "./components/order-description-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "usage") {
-    // 新增 usage-description
-    const { default: comp } = await import(
-      "./components/usage-description-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "points") {
-    // 新增 points
-    const { default: comp } = await import("./components/points-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "task") {
-    // 新增 task
-    const { default: comp } = await import("./components/task-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "notification") {
-    // 新增 task
-    const { default: comp } = await import(
-      "./components/notification-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "backend" || type === "front") {
-    // 新增 task
-    const { default: comp } = await import(
-      "./components/backend-security-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "bonus") {
-    // 新增 task
-    const { default: comp } = await import("./components/bonus-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "balance") {
-    // 新增 task
-    const { default: comp } = await import(
-      "./components/balance-treasure-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "telegram") {
-    // 新增 task
-    const { default: comp } = await import(
-      "./components/telegram-bot-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "work") {
-    // 新增 task
-    const { default: comp } = await import(
-      "./components/work-bonus-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "privacy") {
-    // 新增 task
-    const { default: comp } = await import(
-      "./components/privacy-protocol-config.vue"
-    );
-    dialogComponent.value = comp;
-  } else if (type === "email") {
-    // 新增 task
-    const { default: comp } = await import("./components/email-config.vue");
-    dialogComponent.value = comp;
-  } else if (type === "reward") {
-    // 新增 task
-    const { default: comp } = await import("./components/reward-config.vue");
-    dialogComponent.value = comp;
-  } else {
-    return;
-  }
-};
-
-/** 查询网站设置列表 */
-function getList() {
-  loading.value = true;
-  listOrderconfig(queryParams.value).then((response) => {
-    orderconfigList.value = response.rows;
-    total.value = response.total;
-    loading.value = false;
-  });
+function displayName(record) {
+  return typeNameMap[record?.type] || record?.name || "-";
 }
 
-// 取消按钮
+function isI18nType(type) {
+  return i18nTypes.has(type);
+}
+
+function filterTypeOption(input, option) {
+  return String(option?.label || "")
+    .toLowerCase()
+    .includes(String(input || "").toLowerCase());
+}
+
+function formatDateTime(value) {
+  return value ? proxy.parseTime(value) : "-";
+}
+
+async function loadComponent(type) {
+  const loader = componentLoaders[type];
+  if (!loader) {
+    dialogComponent.value = null;
+    proxy.$modal.msgError(`暂不支持配置类型：${type}`);
+    return false;
+  }
+  const module = await loader();
+  dialogComponent.value = module.default;
+  return true;
+}
+
+async function getList() {
+  loading.value = true;
+  try {
+    const params = {
+      ...queryParams.value,
+      beginCreateTime: createdDateRange.value?.[0],
+      endCreateTime: createdDateRange.value?.[1],
+    };
+    const response = await listOrderconfig(params);
+    orderconfigList.value = response.rows || [];
+    total.value = response.total || 0;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function reset() {
+  Object.assign(form.value, emptyForm());
+}
+
 function cancel() {
   open.value = false;
   currentType.value = "";
   dialogComponent.value = null;
+  componentRef.value = null;
+  drawerReadonly.value = false;
   reset();
 }
 
-// 表单重置
-function reset() {
-  Object.assign(form.value, {
-    id: null,
-    type: null,
-    sort: null,
-    name: null,
-    content: null,
-    createTime: null,
-    updateTime: null,
-  });
-  proxy.resetForm("orderconfigRef");
-}
-
-/** 搜索按钮操作 */
 function handleQuery() {
   queryParams.value.pageNum = 1;
   getList();
 }
 
-/** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.type = null;
+  createdDateRange.value = [];
   handleQuery();
 }
 
-// 多选框选中数据
-function handleSelectionChange(selection) {
-  ids.value = selection.map((item) => item.id);
-  single.value = selection.length != 1;
-  multiple.value = !selection.length;
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
 }
 
-/** 新增按钮操作 */
-function handleAdd() {
+async function openSettingsDrawer(row, readonly) {
   reset();
-  // 新增时需选择类型，暂用通用或弹类型选择；这里假设新增不支持动态，先保持原样
-  open.value = true;
-  title.value = "添加网站设置";
-  // 对于新增，可扩展类型选择
-}
-
-/** 修改按钮操作 */
-async function handleUpdate(row) {
-  reset();
-  const _id = row.id || ids.value;
-  const response = await getOrderconfig(_id);
+  const response = await getOrderconfig(row.id);
   Object.assign(form.value, response.data);
-  currentType.value = row.type || "website"; // 根据 type 设置
-  title.value = `${row.name}`;
-  await loadComponent(currentType.value); // 动态加载子组件
+  currentType.value = response.data.type || row.type;
+  if (!(await loadComponent(currentType.value))) {
+    return;
+  }
+  drawerReadonly.value = readonly;
+  title.value = `${readonly ? "查看" : "修改"}${displayName(response.data)}`;
   open.value = true;
 }
 
-/** 子组件更新 form 事件 */
+function handleView(row) {
+  openSettingsDrawer(row, true);
+}
+
+function handleUpdate(row) {
+  openSettingsDrawer(row, false);
+}
+
+async function openTranslationDialog(row) {
+  if (!isI18nType(row.type)) {
+    return;
+  }
+  const response = await getOrderconfig(row.id);
+  currentTranslationRow.value = response.data;
+  translationForm.value = {
+    ...createEmptyTranslations(),
+    ...(response.data.translations || {}),
+  };
+  translationTitle.value = `修改${displayName(response.data)}`;
+  translationOpen.value = true;
+}
+
+async function submitTranslations(translations) {
+  const row = currentTranslationRow.value;
+  if (!row) {
+    return;
+  }
+  saving.value = true;
+  try {
+    const translationsId = translations.id || row.translationsId;
+    await updateOrderconfig({
+      id: row.id,
+      translationsId,
+      translations: {
+        ...translations,
+        id: translationsId,
+      },
+    });
+    proxy.$modal.msgSuccess("修改成功");
+    translationOpen.value = false;
+    currentTranslationRow.value = null;
+    await getList();
+  } finally {
+    saving.value = false;
+  }
+}
+
 function handleFormUpdate(updatedForm) {
   Object.assign(form.value, updatedForm);
 }
 
-/** 提交按钮（通用，子组件可 emit） */
-async function handleSubmit() {
-  // 校验由子组件处理，这里直接提交
-  if (form.value.id != null) {
+async function handleDrawerSubmit() {
+  try {
+    await baseFormRef.value?.validate?.();
+  } catch {
+    return;
+  }
+  if (componentRef.value?.handleSubmit) {
+    componentRef.value.handleSubmit();
+  } else {
+    await persistForm();
+  }
+}
+
+async function persistForm() {
+  if (saving.value || !form.value.id) {
+    return;
+  }
+  saving.value = true;
+  try {
     await updateOrderconfig(form.value);
     proxy.$modal.msgSuccess("修改成功");
-  } else {
-    await addOrderconfig(form.value);
-    proxy.$modal.msgSuccess("新增成功");
+    open.value = false;
+    currentType.value = "";
+    dialogComponent.value = null;
+    await getList();
+  } finally {
+    saving.value = false;
   }
-  open.value = false;
-  currentType.value = "";
-  dialogComponent.value = null;
-  getList();
-}
-
-/** 删除按钮操作 */
-function handleDelete(row) {
-  const _ids = row.id || ids.value;
-  proxy.$modal
-    .confirm('是否确认删除网站设置编号为"' + _ids + '"的数据项？')
-    .then(function () {
-      return delOrderconfig(_ids);
-    })
-    .then(() => {
-      getList();
-      proxy.$modal.msgSuccess("删除成功");
-    })
-    .catch(() => {});
-}
-
-/** 导出按钮操作 */
-function handleExport() {
-  proxy.download(
-    "member/orderconfig/export",
-    {
-      ...queryParams.value,
-    },
-    `orderconfig_${new Date().getTime()}.xlsx`
-  );
 }
 
 getList();
 </script>
+
+<style scoped>
+.full-width {
+  width: 100%;
+}
+
+.settings-kind-link {
+  color: rgba(0, 0, 0, 0.88);
+  cursor: pointer;
+}
+
+.settings-kind-link:hover {
+  color: #1677ff;
+}
+
+.settings-kind-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  vertical-align: 2px;
+  background: #1677ff;
+  border-radius: 50%;
+}
+
+.operation-link {
+  height: auto;
+  padding: 0;
+}
+
+.drawer-footer {
+  text-align: right;
+}
+
+.settings-base-form :deep(.ant-form-item) {
+  margin-bottom: 24px;
+}
+
+.settings-readonly-content {
+  pointer-events: none;
+}
+
+.settings-readonly-content :deep(.ant-input),
+.settings-readonly-content :deep(.ant-input-number),
+.settings-readonly-content :deep(.ant-select-selector),
+.settings-readonly-content :deep(.ql-toolbar),
+.settings-readonly-content :deep(.ql-container) {
+  background: #f5f5f5;
+}
+</style>

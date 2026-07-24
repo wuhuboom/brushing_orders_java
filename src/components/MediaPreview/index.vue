@@ -1,127 +1,103 @@
 <template>
-  <div>
-    <template v-if="isVideo">
-      <video
+  <div class="media-preview">
+    <video
+      v-if="isVideo"
+      :src="realSrc"
+      controls
+      :style="{ width: realWidth, height: realHeight }"
+    />
+    <a-image-preview-group v-else :items="realSrcList">
+      <a-image
         :src="realSrc"
-        controls
-        :style="`width:${realWidth};height:${realHeight};`"
+        :style="{ width: realWidth, height: realHeight }"
+        class="preview-image"
       />
-    </template>
-    <template v-else>
-      <el-image
-        :src="`${realSrc}`"
-        fit="cover"
-        :style="`width:${realWidth};height:${realHeight};`"
-        :preview-src-list="realSrcList"
-        preview-teleported
-      >
-        <template #error>
-          <div class="image-slot">
-            <el-icon><picture-filled /></el-icon>
-          </div>
-        </template>
-      </el-image>
-    </template>
+    </a-image-preview-group>
   </div>
 </template>
 
 <script setup>
-import { isExternal } from "@/utils/validate";
+import { isExternal } from "@/utils/validate"
 
 const props = defineProps({
   src: {
     type: String,
-    default: "",
+    default: ""
   },
   width: {
     type: [Number, String],
-    default: "",
+    default: ""
   },
   height: {
     type: [Number, String],
-    default: "",
-  },
-});
+    default: ""
+  }
+})
 
-const config = window.APP_CONFIG;
-// compute first src (for preview / display)
+const config = window.APP_CONFIG
+
 const realSrc = computed(() => {
   if (!props.src) {
-    return;
+    return ""
   }
-  let real_src = props.src.split(",")[0];
-  if (isExternal(real_src)) {
-    return real_src;
+  const firstSrc = props.src.split(",")[0]
+  if (isExternal(firstSrc)) {
+    return firstSrc
   }
-  return config.baseApiUrl + real_src;
-});
+  return config.baseApiUrl + firstSrc
+})
 
 const realSrcList = computed(() => {
   if (!props.src) {
-    return;
+    return []
   }
-  let real_src_list = props.src.split(",");
-  let srcList = [];
-  real_src_list.forEach((item) => {
-    if (isExternal(item)) {
-      return srcList.push(item);
-    }
-    return srcList.push(config.baseApiUrl + item);
-  });
-  return srcList;
-});
+  return props.src.split(",").map(item => (isExternal(item) ? item : config.baseApiUrl + item))
+})
 
-const realWidth = computed(() =>
-  typeof props.width == "string" ? props.width : `${props.width}px`
-);
+const realWidth = computed(() => (typeof props.width === "string" ? props.width : `${props.width}px`))
+const realHeight = computed(() => (typeof props.height === "string" ? props.height : `${props.height}px`))
 
-const realHeight = computed(() =>
-  typeof props.height == "string" ? props.height : `${props.height}px`
-);
-
-// detect if the first item is a video by extension
 const isVideo = computed(() => {
-  if (!props.src) return false;
-  const first = props.src.split(",")[0].toLowerCase();
-  const videoExtRegex = /\.(mp4|mov|webm|ogg|mkv)$/;
-  if (videoExtRegex.test(first)) return true;
-  // if it's an absolute url, check path
-  try {
-    const url = first;
-    if (url.indexOf("data:") === 0) {
-      return url.indexOf("video") > -1;
-    }
-  } catch (e) {}
-  return false;
-});
+  if (!props.src) {
+    return false
+  }
+  const first = props.src.split(",")[0].toLowerCase()
+  if (/\.(mp4|mov|webm|ogg|mkv)$/.test(first)) {
+    return true
+  }
+  return first.indexOf("data:video") === 0
+})
 </script>
 
 <style scoped lang="scss">
-.el-image {
+.media-preview {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.preview-image {
+  overflow: hidden;
   border-radius: 5px;
-  background-color: #ebeef5;
-  box-shadow: 0 0 5px 1px #ccc;
-  :deep(.el-image__inner) {
-    transition: all 0.3s;
-    cursor: pointer;
-    &:hover {
-      transform: scale(1.2);
-    }
-  }
-  :deep(.image-slot) {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  background-color: #f5f5f5;
+  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.16);
+  object-fit: cover;
+  cursor: pointer;
+
+  :deep(.ant-image-img) {
     width: 100%;
     height: 100%;
-    color: #909399;
-    font-size: 30px;
+    object-fit: cover;
+    transition: transform 0.3s;
+  }
+
+  &:hover :deep(.ant-image-img) {
+    transform: scale(1.08);
   }
 }
 
 video {
   border-radius: 5px;
   background-color: #000;
-  box-shadow: 0 0 5px 1px #ccc;
+  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.16);
 }
 </style>

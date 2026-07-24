@@ -1,48 +1,49 @@
-<template>
-   <div class="app-container">
-      <h4 class="form-header h4">基本信息</h4>
-      <el-form :model="form" label-width="80px">
-         <el-row>
-            <el-col :span="8" :offset="2">
-               <el-form-item label="用户昵称" prop="nickName">
-                  <el-input v-model="form.nickName" disabled />
-               </el-form-item>
-            </el-col>
-            <el-col :span="8" :offset="2">
-               <el-form-item label="登录账号" prop="userName">
-                  <el-input v-model="form.userName" disabled />
-               </el-form-item>
-            </el-col>
-         </el-row>
-      </el-form>
+﻿<template>
+  <div class="app-container">
+    <h4 class="form-header h4">基本信息</h4>
+    <a-form :model="form" layout="vertical" class="auth-user-form">
+      <a-row :gutter="24">
+        <a-col :span="8" :offset="2">
+          <a-form-item label="用户昵称" name="nickName">
+            <a-input v-model:value="form.nickName" disabled />
+          </a-form-item>
+        </a-col>
+        <a-col :span="8" :offset="2">
+          <a-form-item label="登录账号" name="userName">
+            <a-input v-model:value="form.userName" disabled />
+          </a-form-item>
+        </a-col>
+      </a-row>
+    </a-form>
 
-      <h4 class="form-header h4">角色信息</h4>
-      <el-table v-loading="loading" :row-key="getRowKey" @row-click="clickRow" ref="roleRef" @selection-change="handleSelectionChange" :data="roles.slice((pageNum - 1) * pageSize, pageNum * pageSize)">
-         <el-table-column label="序号" width="55" type="index" align="center">
-            <template #default="scope">
-               <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
-            </template>
-         </el-table-column>
-         <el-table-column type="selection" :reserve-selection="true" :selectable="checkSelectable" width="55"></el-table-column>
-         <el-table-column label="角色编号" align="center" prop="roleId" />
-         <el-table-column label="角色名称" align="center" prop="roleName" />
-         <el-table-column label="权限字符" align="center" prop="roleKey" />
-         <el-table-column label="创建时间" align="center" prop="createTime" width="180">
-            <template #default="scope">
-               <span>{{ parseTime(scope.row.createTime) }}</span>
-            </template>
-         </el-table-column>
-      </el-table>
+    <ant-pro-table
+      row-key="roleId"
+      title="角色信息"
+      :columns="roleColumns"
+      :data-source="pagedRoles"
+      :loading="loading"
+      :row-selection="rowSelection"
+      :pagination="{ current: pageNum, pageSize, total }"
+      :custom-row="customRow"
+      @page-change="handleAntPageChange"
+    >
+      <template #bodyCell="{ column, record, index }">
+        <template v-if="column.key === 'index'">
+          {{ (pageNum - 1) * pageSize + index + 1 }}
+        </template>
+        <template v-else-if="column.key === 'createTime'">
+          {{ parseTime(record.createTime) }}
+        </template>
+      </template>
+    </ant-pro-table>
 
-      <pagination v-show="total > 0" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
-
-      <el-form label-width="100px">
-         <div style="text-align: center;margin-left:-120px;margin-top:30px;">
-            <el-button type="primary" @click="submitForm()">提交</el-button>
-            <el-button @click="close()">返回</el-button>
-         </div>
-      </el-form>
-   </div>
+    <div class="auth-role-actions">
+      <a-space>
+        <a-button type="primary" @click="submitForm">提交</a-button>
+        <a-button @click="close">返回</a-button>
+      </a-space>
+    </div>
+  </div>
 </template>
 
 <script setup name="AuthRole">
@@ -63,39 +64,66 @@ const form = ref({
   userId: undefined
 })
 
-/** 单击选中行数据 */
-function clickRow(row) {
-  if (checkSelectable(row)) {
-    proxy.$refs["roleRef"].toggleRowSelection(row)
+const roleColumns = [
+  { title: "序号", key: "index", width: 80 },
+  { title: "角色编号", dataIndex: "roleId", width: 120 },
+  { title: "角色名称", dataIndex: "roleName", width: 160 },
+  { title: "权限字符", dataIndex: "roleKey", width: 180 },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180 }
+]
+
+const pagedRoles = computed(() => roles.value.slice((pageNum.value - 1) * pageSize.value, pageNum.value * pageSize.value))
+const rowSelection = computed(() => ({
+  selectedRowKeys: roleIds.value,
+  preserveSelectedRowKeys: true,
+  getCheckboxProps: record => ({ disabled: !checkSelectable(record) }),
+  onChange: selectedRowKeys => {
+    roleIds.value = selectedRowKeys
+  }
+}))
+
+function customRow(record) {
+  return {
+    onClick: () => clickRow(record)
   }
 }
 
-/** 多选框选中数据 */
+function clickRow(row) {
+  if (!checkSelectable(row)) return
+  const index = roleIds.value.indexOf(row.roleId)
+  if (index >= 0) {
+    roleIds.value = roleIds.value.filter(id => id !== row.roleId)
+  } else {
+    roleIds.value = [...roleIds.value, row.roleId]
+  }
+}
+
 function handleSelectionChange(selection) {
   roleIds.value = selection.map(item => item.roleId)
 }
 
-/** 保存选中的数据编号 */
 function getRowKey(row) {
   return row.roleId
 }
 
-// 检查角色状态
 function checkSelectable(row) {
-  return row.status === "0" ? true : false
+  return row.status === "0"
 }
 
-/** 关闭按钮 */
+function handleAntPageChange({ page, pageSize: size }) {
+  pageNum.value = page
+  pageSize.value = size
+}
+
 function close() {
-  const obj = { path: "/system/user" }
+  const obj = { path: "/system/users/user" }
   proxy.$tab.closeOpenPage(obj)
 }
 
-/** 提交按钮 */
 function submitForm() {
   const userId = form.value.userId
   const rIds = roleIds.value.join(",")
-  updateAuthRole({ userId: userId, roleIds: rIds }).then(response => {
+  updateAuthRole({ userId: userId, roleIds: rIds }).then(() => {
     proxy.$modal.msgSuccess("授权成功")
     close()
   })
@@ -109,15 +137,20 @@ function submitForm() {
       form.value = response.user
       roles.value = response.roles
       total.value = roles.value.length
-      nextTick(() => {
-        roles.value.forEach(row => {
-          if (row.flag) {
-            proxy.$refs["roleRef"].toggleRowSelection(row)
-          }
-        })
-      })
+      roleIds.value = roles.value.filter(row => row.flag).map(row => row.roleId)
       loading.value = false
     })
   }
 })()
 </script>
+
+<style scoped>
+.auth-user-form {
+  margin-bottom: 16px;
+}
+
+.auth-role-actions {
+  margin-top: 28px;
+  text-align: center;
+}
+</style>

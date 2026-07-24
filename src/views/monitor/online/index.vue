@@ -1,109 +1,137 @@
 <template>
-   <div class="app-container">
-      <el-form :model="queryParams" ref="queryRef" :inline="true">
-         <el-form-item label="登录地址" prop="ipaddr">
-            <el-input
-               v-model="queryParams.ipaddr"
-               placeholder="请输入登录地址"
-               clearable
-               style="width: 200px"
-               @keyup.enter="handleQuery"
-            />
-         </el-form-item>
-         <el-form-item label="用户名称" prop="userName">
-            <el-input
-               v-model="queryParams.userName"
-               placeholder="请输入用户名称"
-               clearable
-               style="width: 200px"
-               @keyup.enter="handleQuery"
-            />
-         </el-form-item>
-         <el-form-item>
-            <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
-            <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-         </el-form-item>
-      </el-form>
-      <el-table
-         v-loading="loading"
-         :data="onlineList.slice((pageNum - 1) * pageSize, pageNum * pageSize)"
-         style="width: 100%;"
-      >
-         <el-table-column label="序号" width="50" type="index" align="center">
-            <template #default="scope">
-               <span>{{ (pageNum - 1) * pageSize + scope.$index + 1 }}</span>
-            </template>
-         </el-table-column>
-         <el-table-column label="会话编号" align="center" prop="tokenId" :show-overflow-tooltip="true" />
-         <el-table-column label="登录名称" align="center" prop="userName" :show-overflow-tooltip="true" />
-         <el-table-column label="所属部门" align="center" prop="deptName" :show-overflow-tooltip="true" />
-         <el-table-column label="主机" align="center" prop="ipaddr" :show-overflow-tooltip="true" />
-         <el-table-column label="登录地点" align="center" prop="loginLocation" :show-overflow-tooltip="true" />
-         <el-table-column label="操作系统" align="center" prop="os" :show-overflow-tooltip="true" />
-         <el-table-column label="浏览器" align="center" prop="browser" :show-overflow-tooltip="true" />
-         <el-table-column label="登录时间" align="center" prop="loginTime" width="180">
-            <template #default="scope">
-               <span>{{ parseTime(scope.row.loginTime) }}</span>
-            </template>
-         </el-table-column>
-         <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
-            <template #default="scope">
-               <el-button link type="primary" icon="Delete" @click="handleForceLogout(scope.row)" v-hasPermi="['monitor:online:forceLogout']">强退</el-button>
-            </template>
-         </el-table-column>
-      </el-table>
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table
+      title="在线用户列表"
+      :columns="onlineColumns"
+      :data-source="pagedOnlineList"
+      :loading="loading"
+      row-key="tokenId"
+      :pagination="{ current: pageNum, pageSize, total }"
+      :scroll="{ x: 1280 }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
+    >
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="登录地址">
+                <a-input
+                  v-model:value="queryParams.ipaddr"
+                  allow-clear
+                  placeholder="请输入登录地址"
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="用户名称">
+                <a-input
+                  v-model:value="queryParams.userName"
+                  allow-clear
+                  placeholder="请输入用户名称"
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col flex="auto" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">搜 索</a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+        </a-form>
+      </template>
 
-      <pagination v-show="total > 0" :total="total" v-model:page="pageNum" v-model:limit="pageSize" />
-   </div>
+      <template #bodyCell="{ column, record, index }">
+        <template v-if="column.dataIndex === 'index'">
+          {{ (pageNum - 1) * pageSize + index + 1 }}
+        </template>
+        <template v-else-if="column.dataIndex === 'loginTime'">
+          {{ parseTime(record.loginTime) }}
+        </template>
+        <template v-else-if="column.dataIndex === 'action'">
+          <a-button type="link" danger size="small" @click="handleForceLogout(record)" v-hasPermi="['monitor:online:forceLogout']">
+            强退
+          </a-button>
+        </template>
+      </template>
+    </ant-pro-table>
+  </div>
 </template>
 
 <script setup name="Online">
-import { forceLogout, list as initData } from "@/api/monitor/online"
+import { forceLogout, list as initData } from "@/api/monitor/online";
 
-const { proxy } = getCurrentInstance()
+const { proxy } = getCurrentInstance();
 
-const onlineList = ref([])
-const loading = ref(true)
-const total = ref(0)
-const pageNum = ref(1)
-const pageSize = ref(10)
+const onlineList = ref([]);
+const loading = ref(true);
+const total = ref(0);
+const pageNum = ref(1);
+const pageSize = ref(10);
 
 const queryParams = ref({
   ipaddr: undefined,
-  userName: undefined
-})
+  userName: undefined,
+});
 
-/** 查询登录日志列表 */
+const onlineColumns = [
+  { title: "序号", dataIndex: "index", width: 80, align: "center" },
+  { title: "会话编号", dataIndex: "tokenId", width: 260, ellipsis: true },
+  { title: "登录名称", dataIndex: "userName", width: 140, ellipsis: true },
+  { title: "所属部门", dataIndex: "deptName", width: 150, ellipsis: true },
+  { title: "主机", dataIndex: "ipaddr", width: 150, ellipsis: true },
+  { title: "登录地点", dataIndex: "loginLocation", width: 160, ellipsis: true },
+  { title: "操作系统", dataIndex: "os", width: 150, ellipsis: true },
+  { title: "浏览器", dataIndex: "browser", width: 150, ellipsis: true },
+  { title: "登录时间", dataIndex: "loginTime", width: 180, align: "center" },
+  { title: "操作", dataIndex: "action", width: 100, fixed: "right", align: "center" },
+];
+
+const pagedOnlineList = computed(() =>
+  onlineList.value.slice((pageNum.value - 1) * pageSize.value, pageNum.value * pageSize.value)
+);
+
 function getList() {
-  loading.value = true
-  initData(queryParams.value).then(response => {
-    onlineList.value = response.rows
-    total.value = response.total
-    loading.value = false
-  })
+  loading.value = true;
+  initData(queryParams.value)
+    .then((response) => {
+      onlineList.value = response.rows || [];
+      total.value = response.total || onlineList.value.length;
+    })
+    .finally(() => {
+      loading.value = false;
+    });
 }
 
-/** 搜索按钮操作 */
 function handleQuery() {
-  pageNum.value = 1
-  getList()
+  pageNum.value = 1;
+  getList();
 }
 
-/** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef")
-  handleQuery()
+  queryParams.value.ipaddr = undefined;
+  queryParams.value.userName = undefined;
+  handleQuery();
 }
 
-/** 强退按钮操作 */
+function handleAntPageChange({ page, pageSize: nextPageSize }) {
+  pageNum.value = page;
+  pageSize.value = nextPageSize;
+}
+
 function handleForceLogout(row) {
-    proxy.$modal.confirm('是否确认强退名称为"' + row.userName + '"的用户?').then(function () {
-  return forceLogout(row.tokenId)
-  }).then(() => {
-    getList()
-    proxy.$modal.msgSuccess("删除成功")
-  }).catch(() => {})
+  proxy.$modal
+    .confirm('是否确认强退名称为"' + row.userName + '"的用户?')
+    .then(() => forceLogout(row.tokenId))
+    .then(() => {
+      getList();
+      proxy.$modal.msgSuccess("删除成功");
+    })
+    .catch(() => {});
 }
 
-getList()
+getList();
 </script>

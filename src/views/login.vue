@@ -1,81 +1,127 @@
 <template>
   <div class="login">
-    <el-form
-      ref="loginRef"
-      :model="loginForm"
-      :rules="loginRules"
-      class="login-form"
-    >
+    <a-form ref="loginRef" :model="loginForm" :rules="loginRules" class="login-form">
       <h3 class="title">{{ title }}</h3>
-      <el-form-item prop="username">
-        <el-input
-          v-model="loginForm.username"
-          type="text"
-          size="large"
-          auto-complete="off"
-          placeholder="账号"
-        >
-          <template #prefix
-            ><svg-icon icon-class="user" class="el-input__icon input-icon"
-          /></template>
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="password">
-        <el-input
-          v-model="loginForm.password"
-          type="password"
-          size="large"
-          auto-complete="off"
-          placeholder="密码"
-          @keyup.enter="handleLogin"
-        >
-          <template #prefix
-            ><svg-icon icon-class="password" class="el-input__icon input-icon"
-          /></template>
-        </el-input>
-      </el-form-item>
 
-      <el-checkbox
-        v-model="loginForm.rememberMe"
-        style="margin: 0px 0px 25px 0px"
-        >记住密码</el-checkbox
-      >
-      <el-form-item style="width: 100%">
-        <el-button
-          :loading="loading"
+      <a-form-item name="username">
+        <a-input
+          v-model:value="loginForm.username"
+          autocomplete="off"
+          placeholder="账号"
           size="large"
-          type="primary"
-          style="width: 100%"
-          @click.prevent="handleLogin"
         >
-          <span v-if="!loading">登 录</span>
-          <span v-else>登 录 中...</span>
-        </el-button>
-        <div style="float: right" v-if="register">
-          <router-link class="link-type" :to="'/register'"
-            >立即注册</router-link
-          >
+          <template #prefix><svg-icon icon-class="user" class="input-icon" /></template>
+        </a-input>
+      </a-form-item>
+
+      <a-form-item name="password">
+        <a-input-password
+          v-model:value="loginForm.password"
+          autocomplete="off"
+          placeholder="密码"
+          size="large"
+          @pressEnter="handleLogin"
+        >
+          <template #prefix><svg-icon icon-class="lock" class="input-icon" /></template>
+        </a-input-password>
+      </a-form-item>
+
+      <a-form-item v-if="showGoogleCodeInput" name="googleCode">
+        <a-input
+          v-model:value="loginForm.googleCode"
+          autocomplete="off"
+          :maxlength="6"
+          placeholder="谷歌验证码（6位数字）"
+          size="large"
+          @pressEnter="handleLogin"
+        >
+          <template #prefix><svg-icon icon-class="validCode" class="input-icon" /></template>
+        </a-input>
+      </a-form-item>
+
+      <a-checkbox v-model:checked="loginForm.rememberMe" class="remember-check">
+        记住密码
+      </a-checkbox>
+
+      <a-form-item class="login-action">
+        <a-button :loading="loading" block size="large" type="primary" @click.prevent="handleLogin">
+          {{ loading ? "登录中..." : "登录" }}
+        </a-button>
+        <div v-if="register" class="register-link">
+          <router-link class="link-type" to="/register">立即注册</router-link>
         </div>
-      </el-form-item>
-    </el-form>
-    <!--  底部  -->
-    <div class="el-login-footer">
-      <span> © 2025 DataCenter</span>
+      </a-form-item>
+    </a-form>
+
+    <a-modal
+      v-model:open="googleBindDialog.visible"
+      title="绑定谷歌验证器"
+      width="420px"
+      :mask-closable="false"
+      :keyboard="false"
+      @cancel="handleGoogleDialogClose"
+    >
+      <div class="google-bind-content">
+        <div class="qr-section">
+          <p class="tips">请使用 Google Authenticator 扫描下方二维码：</p>
+          <div class="qr-code">
+            <img :src="googleBindDialog.qrCodeBase64" alt="Google Authenticator QR Code" />
+          </div>
+        </div>
+
+        <div class="manual-section">
+          <p class="tips">或手动输入以下密钥：</p>
+          <a-input :value="googleBindDialog.otpAuthUrl" readonly size="small">
+            <template #addonAfter>
+              <a-button type="link" size="small" @click="copyOtpUrl">
+                <svg-icon icon-class="clipboard" />复制
+              </a-button>
+            </template>
+          </a-input>
+        </div>
+
+        <div class="verify-section">
+          <p class="tips">扫描后，请输入验证器显示的 6 位验证码：</p>
+          <a-input
+            v-model:value="googleBindDialog.verifyCode"
+            :maxlength="6"
+            placeholder="请输入 6 位验证码"
+            size="large"
+            @pressEnter="handleGoogleConfirm"
+          />
+        </div>
+
+        <a-alert v-if="googleBindDialog.errorMsg" :message="googleBindDialog.errorMsg" type="error" show-icon />
+      </div>
+
+      <template #footer>
+        <a-space>
+          <a-button @click="handleGoogleDialogClose">取消</a-button>
+          <a-button type="primary" :loading="googleBindDialog.loading" @click="handleGoogleConfirm">
+            确认绑定
+          </a-button>
+        </a-space>
+      </template>
+    </a-modal>
+
+    <div class="login-footer">
+      <span>Copyright © 2025 DataCenter</span>
     </div>
   </div>
 </template>
 
 <script setup>
-import { getCodeImg } from "@/api/login";
-import Cookies from "js-cookie";
-import { encrypt, decrypt } from "@/utils/jsencrypt";
-import useUserStore from "@/store/modules/user";
+import Cookies from "js-cookie"
+import { message } from "ant-design-vue"
+import { getCodeImg } from "@/api/login"
+import { encrypt, decrypt } from "@/utils/jsencrypt"
+import useUserStore from "@/store/modules/user"
 
-const title = import.meta.env.VITE_APP_TITLE;
-const userStore = useUserStore();
-const route = useRoute();
-const router = useRouter();
-const { proxy } = getCurrentInstance();
+const title = import.meta.env.VITE_APP_TITLE
+const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
+const loginRef = ref(null)
 
 const loginForm = ref({
   username: "admin",
@@ -83,160 +129,265 @@ const loginForm = ref({
   rememberMe: false,
   code: "",
   uuid: "",
-});
+  googleCode: ""
+})
 
 const loginRules = {
   username: [{ required: true, trigger: "blur", message: "请输入您的账号" }],
   password: [{ required: true, trigger: "blur", message: "请输入您的密码" }],
-  code: [{ required: true, trigger: "change", message: "请输入验证码" }],
-};
+  code: [{ required: true, trigger: "change", message: "请输入验证码" }]
+}
 
-const codeUrl = ref("");
-const loading = ref(false);
-// 验证码开关
-const captchaEnabled = ref(true);
-// 注册开关
-const register = ref(false);
-const redirect = ref(undefined);
+const codeUrl = ref("")
+const loading = ref(false)
+const captchaEnabled = ref(true)
+const register = ref(false)
+const redirect = ref(undefined)
+const showGoogleCodeInput = ref(true)
+
+const googleBindDialog = ref({
+  visible: false,
+  qrCodeBase64: "",
+  otpAuthUrl: "",
+  verifyCode: "",
+  username: "",
+  loading: false,
+  errorMsg: ""
+})
 
 watch(
   route,
-  (newRoute) => {
-    redirect.value = newRoute.query && newRoute.query.redirect;
+  newRoute => {
+    redirect.value = newRoute.query && newRoute.query.redirect
   },
   { immediate: true }
-);
+)
 
 function handleLogin() {
-  proxy.$refs.loginRef.validate((valid) => {
-    if (valid) {
-      loading.value = true;
-      // 勾选了需要记住密码设置在 cookie 中设置记住用户名和密码
-      if (loginForm.value.rememberMe) {
-        Cookies.set("username", loginForm.value.username, { expires: 30 });
-        Cookies.set("password", encrypt(loginForm.value.password), {
-          expires: 30,
-        });
-        Cookies.set("rememberMe", loginForm.value.rememberMe, { expires: 30 });
-      } else {
-        // 否则移除
-        Cookies.remove("username");
-        Cookies.remove("password");
-        Cookies.remove("rememberMe");
-      }
-      // 调用action的登录方法
-      userStore
-        .login(loginForm.value)
-        .then(() => {
-          const query = route.query;
-          const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
-            if (cur !== "redirect") {
-              acc[cur] = query[cur];
-            }
-            return acc;
-          }, {});
-          router.push({ path: redirect.value || "/", query: otherQueryParams });
-        })
-        .catch(() => {
-          loading.value = false;
-          // 重新获取验证码
-          if (captchaEnabled.value) {
-            getCode();
+  loginRef.value?.validate().then(() => {
+    loading.value = true
+    persistRememberedLogin()
+    userStore
+      .login(loginForm.value)
+      .then(res => {
+        if (res && res.firstTimeGoogleSetup) {
+          loading.value = false
+          googleBindDialog.value = {
+            visible: true,
+            qrCodeBase64: res.qrCodeBase64?.startsWith("data:")
+              ? res.qrCodeBase64
+              : `data:image/png;base64,${res.qrCodeBase64}`,
+            otpAuthUrl: res.otpAuthUrl,
+            verifyCode: "",
+            username: res.username,
+            loading: false,
+            errorMsg: ""
           }
-        });
+          return
+        }
+        navigateAfterLogin()
+      })
+      .catch(() => {
+        loading.value = false
+        if (captchaEnabled.value) {
+          getCode()
+        }
+      })
+  }).catch(() => {})
+}
+
+function persistRememberedLogin() {
+  if (loginForm.value.rememberMe) {
+    Cookies.set("username", loginForm.value.username, { expires: 30 })
+    Cookies.set("password", encrypt(loginForm.value.password), { expires: 30 })
+    Cookies.set("rememberMe", "true", { expires: 30 })
+  } else {
+    Cookies.remove("username")
+    Cookies.remove("password")
+    Cookies.remove("rememberMe")
+  }
+}
+
+function navigateAfterLogin() {
+  const query = route.query
+  const otherQueryParams = Object.keys(query).reduce((acc, cur) => {
+    if (cur !== "redirect") {
+      acc[cur] = query[cur]
     }
-  });
+    return acc
+  }, {})
+  router.push({ path: redirect.value || "/", query: otherQueryParams })
+}
+
+function handleGoogleConfirm() {
+  const { verifyCode, username } = googleBindDialog.value
+  if (!verifyCode || verifyCode.length !== 6) {
+    googleBindDialog.value.errorMsg = "请输入 6 位验证码"
+    return
+  }
+
+  googleBindDialog.value.loading = true
+  googleBindDialog.value.errorMsg = ""
+
+  userStore
+    .confirmGoogleAuth(username, verifyCode)
+    .then(() => {
+      googleBindDialog.value.loading = false
+      googleBindDialog.value.visible = false
+      message.success("谷歌验证绑定成功")
+      navigateAfterLogin()
+    })
+    .catch(error => {
+      googleBindDialog.value.loading = false
+      googleBindDialog.value.errorMsg = getGoogleAuthErrorMessage(error)
+    })
+}
+
+function getGoogleAuthErrorMessage(error) {
+  const rawMessage = error?.message || ""
+  if (rawMessage.includes("过期")) {
+    return "二维码已过期，请重新登录获取新的二维码"
+  }
+  if (rawMessage.includes("验证失败") || rawMessage.includes("验证码")) {
+    return "验证码错误，请检查后重试"
+  }
+  if (rawMessage.includes("时钟") || rawMessage.includes("时间")) {
+    return "设备时间不同步，请校准手机时间后重试"
+  }
+  return rawMessage || "验证失败，请重试"
+}
+
+function copyOtpUrl() {
+  navigator.clipboard.writeText(googleBindDialog.value.otpAuthUrl).then(() => {
+    message.success("已复制到剪贴板")
+  }).catch(() => {
+    message.error("复制失败，请手动复制")
+  })
+}
+
+function handleGoogleDialogClose() {
+  googleBindDialog.value.visible = false
+  googleBindDialog.value.verifyCode = ""
+  googleBindDialog.value.errorMsg = ""
 }
 
 function getCode() {
-  getCodeImg().then((res) => {
-    captchaEnabled.value =
-      res.captchaEnabled === undefined ? true : res.captchaEnabled;
+  getCodeImg().then(res => {
+    captchaEnabled.value = res.captchaEnabled === undefined ? true : res.captchaEnabled
     if (captchaEnabled.value) {
-      codeUrl.value = "data:image/gif;base64," + res.img;
-      loginForm.value.uuid = res.uuid;
+      codeUrl.value = "data:image/gif;base64," + res.img
+      loginForm.value.uuid = res.uuid
     }
-  });
+  })
 }
 
 function getCookie() {
-  const username = Cookies.get("username");
-  const password = Cookies.get("password");
-  const rememberMe = Cookies.get("rememberMe");
+  const username = Cookies.get("username")
+  const password = Cookies.get("password")
+  const rememberMe = Cookies.get("rememberMe")
   loginForm.value = {
     username: username === undefined ? loginForm.value.username : username,
-    password:
-      password === undefined ? loginForm.value.password : decrypt(password),
-    rememberMe: rememberMe === undefined ? false : Boolean(rememberMe),
-  };
+    password: password === undefined ? loginForm.value.password : decrypt(password),
+    rememberMe: rememberMe === "true",
+    code: "",
+    uuid: "",
+    googleCode: ""
+  }
 }
 
-getCode();
-getCookie();
+getCode()
+getCookie()
 </script>
 
 <style lang="scss" scoped>
 .login {
   display: flex;
-  justify-content: right;
+  justify-content: flex-end;
   align-items: center;
   height: 100%;
   background-image: url("../assets/images/login-background.jpg");
   background-size: cover;
+  background-position: center;
 }
+
 .title {
-  margin: 0px auto 30px auto;
+  margin: 0 auto 32px auto;
   text-align: center;
-  color: #707070;
+  color: #1f3f77;
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .login-form {
-  margin: 50px;
+  margin: 6vw;
+  border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 6px;
-  background: #ffffff;
-  width: 350px;
-  padding: 25px 25px 5px 25px;
+  background: rgba(255, 255, 255, 0.82);
+  width: 392px;
+  padding: 38px 32px 18px;
   z-index: 1;
-  .el-input {
-    height: 40px;
-    input {
-      height: 40px;
-    }
-  }
-  .input-icon {
-    height: 39px;
-    width: 14px;
-    margin-left: 0px;
-  }
+  box-shadow: 0 18px 45px rgba(24, 144, 255, 0.16);
+  backdrop-filter: blur(10px);
 }
-.login-tip {
-  font-size: 13px;
-  text-align: center;
-  color: #bfbfbf;
+
+.input-icon {
+  color: #8c8c8c;
 }
-.login-code {
-  width: 33%;
-  height: 40px;
-  float: right;
-  img {
-    cursor: pointer;
-    vertical-align: middle;
-  }
+
+.remember-check {
+  margin: 0 0 25px;
 }
-.el-login-footer {
+
+.login-action {
+  width: 100%;
+}
+
+.register-link {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.login-footer {
   height: 40px;
   line-height: 40px;
   position: fixed;
   bottom: 0;
   width: 100%;
   text-align: center;
-  color: #fff;
-  font-family: Arial;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: Arial, sans-serif;
   font-size: 12px;
   letter-spacing: 1px;
 }
-.login-code-img {
-  height: 40px;
-  padding-left: 12px;
+
+.google-bind-content {
+  .qr-section {
+    text-align: center;
+    margin-bottom: 20px;
+
+    .qr-code {
+      display: inline-block;
+      padding: 10px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 4px;
+
+      img {
+        width: 200px;
+        height: 200px;
+      }
+    }
+  }
+
+  .manual-section,
+  .verify-section {
+    margin-bottom: 20px;
+  }
+
+  .tips {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+  }
 }
 </style>

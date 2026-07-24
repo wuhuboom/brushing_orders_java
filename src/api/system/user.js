@@ -134,3 +134,32 @@ export function deptTreeSelect() {
     method: 'get'
   })
 }
+
+// 启用/停用用户的谷歌验证
+export function toggleGoogleAuth(userId, googleEnabled) {
+  const data = {
+    userId,
+    googleEnabled
+  }
+  return request({
+    url: '/system/user/googleAuth/toggle',
+    method: 'put',
+    data: data
+  })
+}
+
+// 重置用户的谷歌验证
+export function resetGoogleAuth(userId) {
+  const data = {
+    userId
+  }
+  return request({
+    url: '/system/user/googleAuth/reset',
+    method: 'put',
+    data: data
+  })
+}
+
+export function unlockUsers(userIds) {
+  return request({ url: '/system/user/unlock/' + userIds, method: 'put' })
+}

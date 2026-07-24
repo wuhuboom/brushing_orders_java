@@ -1,15 +1,15 @@
 <template>
   <div :class="{ 'hidden': hidden }" class="pagination-container">
-    <el-pagination
-      :background="background"
-      v-model:current-page="currentPage"
+    <a-pagination
+      v-model:current="currentPage"
       v-model:page-size="pageSize"
-      :layout="layout"
-      :page-sizes="pageSizes"
-      :pager-count="pagerCount"
+      :page-size-options="pageSizeOptions"
       :total="total"
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
+      show-size-changer
+      show-quick-jumper
+      :show-total="showTotal"
+      @change="handlePageChange"
+      @showSizeChange="handlePageChange"
     />
   </div>
 </template>
@@ -77,18 +77,17 @@ const pageSize = computed({
   }
 })
 
-function handleSizeChange(val) {
-  if (currentPage.value * val > props.total) {
-    currentPage.value = 1
-  }
-  emit('pagination', { page: currentPage.value, limit: val })
-  if (props.autoScroll) {
-    scrollTo(0, 800)
-  }
+const pageSizeOptions = computed(() => props.pageSizes.map(item => String(item)))
+
+function showTotal(total) {
+  return `共 ${total} 条`
 }
 
-function handleCurrentChange(val) {
-  emit('pagination', { page: val, limit: pageSize.value })
+function handlePageChange(page, limit) {
+  if (page * limit > props.total) {
+    currentPage.value = 1
+  }
+  emit('pagination', { page: currentPage.value, limit })
   if (props.autoScroll) {
     scrollTo(0, 800)
   }
@@ -97,6 +96,9 @@ function handleCurrentChange(val) {
 
 <style scoped>
 .pagination-container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 0;
   background: #fff;
 }
 .pagination-container.hidden {

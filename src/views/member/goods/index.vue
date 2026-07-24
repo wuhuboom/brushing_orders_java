@@ -1,295 +1,140 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table
+      title="商品列表"
+      :columns="goodsColumns"
+      :data-source="goodsList"
+      :loading="loading"
+      row-key="id"
+      :row-selection="rowSelection"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
     >
-      <el-form-item label="标题" prop="title">
-        <el-input
-          v-model="queryParams.title"
-          placeholder="请输入标题"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="是否启用" prop="isEnabled">
-        <el-select
-          v-model="queryParams.isEnabled"
-          placeholder="请选择是否启用"
-          clearable
-          style="width: 220px"
-        >
-          <el-option
-            v-for="dict in goods_enabled"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['member:goods:add']"
-          >新增</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['member:goods:edit']"
-          >修改</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['member:goods:remove']"
-          >删除</el-button
-        >
-      </el-col>
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
-
-    <el-table
-      v-loading="loading"
-      :data="goodsList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="ID" align="center" prop="id" />
-      <el-table-column label="标题" align="center" prop="title" />
-      <el-table-column label="类目" align="center" prop="typeTitle" />
-      <el-table-column label="是否启用" align="center" prop="isEnabled">
-        <template #default="scope">
-          <dict-tag :options="goods_enabled" :value="scope.row.isEnabled" />
-        </template>
-      </el-table-column>
-      <el-table-column label="价格" align="center" prop="price" />
-      <el-table-column label="序号" align="center" prop="serialNumber" />
-      <el-table-column label="图片" align="center" prop="image" width="100">
-        <template #default="scope">
-          <image-preview :src="scope.row.image" :width="50" :height="50" />
-        </template>
-      </el-table-column>
-      <el-table-column label="创建时间" align="center" prop="createTime" />
-
-      <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:goods:edit']"
-          ></el-button>
-          <el-button
-            circle
-            type="danger"
-            icon="Delete"
-            @click="handleDelete(scope.row)"
-            v-hasPermi="['member:goods:remove']"
-          ></el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-
-    <!-- 添加或修改商品对话框 -->
-    <el-dialog :title="title" v-model="open" width="40%" append-to-body>
-      <el-form
-        ref="goodsRef"
-        label-position="top"
-        :model="form"
-        :rules="rules"
-        label-width="80px"
-      >
-        <!-- 第一行 -->
-        <el-row :gutter="20">
-          <el-col :span="22">
-            <el-form-item label="标题" prop="title">
-              <el-input
-                type="textarea"
-                v-model="form.title"
-                placeholder="请输入标题"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第二行 -->
-        <el-row :gutter="20">
-          <el-col :span="11">
-            <el-form-item label="类目" prop="typeId">
-              <el-select
-                v-model="form.typeId"
-                placeholder="请选择商品类型"
-                clearable
-              >
-                <el-option
-                  v-for="item in typeDatas"
-                  :key="item.id"
-                  :label="item.title"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item label="是否启用" prop="isEnabled">
-              <el-radio-group v-model="form.isEnabled">
-                <el-radio
-                  v-for="dict in goods_enabled"
-                  :key="dict.value"
-                  :label="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="11">
-            <el-form-item label="价格" prop="price">
-              <el-input-number
-                v-model="form.price"
-                placeholder="请输入价格"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item label="序号" prop="serialNumber">
-              <el-input v-model="form.serialNumber" placeholder="请输入序号" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第三行 -->
-        <el-row :gutter="20">
-          <el-col :span="11">
-            <el-form-item label="图片" prop="image">
-              <image-upload v-model="form.image" :limit="1" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item label="二级标题" prop="subTitle">
-              <el-input
-                type="textarea"
-                v-model="form.subTitle"
-                placeholder="请输入二级标题"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第四行 -->
-        <el-row :gutter="20">
-          <el-col :span="11">
-            <el-form-item label="单价" prop="unitPrice">
-              <el-input-number
-                v-model="form.unitPrice"
-                controls-position="right"
-                placeholder="请输入单价"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item label="数量" prop="quantity">
-              <el-input-number
-                v-model="form.quantity"
-                controls-position="right"
-                placeholder="请输入数量"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第五行 -->
-        <el-row :gutter="20">
-          <el-col :span="11">
-            <el-form-item label="星级" prop="starRating">
-              <el-input-number
-                v-model="form.starRating"
-                controls-position="right"
-                placeholder="请输入星级"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item label="评分" prop="rating">
-              <el-input-number
-                v-model="form.rating"
-                controls-position="right"
-                placeholder="请输入评分"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第六行 -->
-        <el-row :gutter="20">
-          <el-col :span="22">
-            <el-form-item label="说明" prop="description">
-              <el-input
-                v-model="form.description"
-                type="textarea"
-                placeholder="请输入内容"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="标题">
+                <a-input v-model:value="queryParams.title" allow-clear placeholder="请输入标题" @pressEnter="handleQuery" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="是否启用">
+                <a-select v-model:value="queryParams.isEnabled" allow-clear placeholder="请选择是否启用">
+                  <a-select-option v-for="dict in goods_enabled" :key="dict.value" :value="dict.value">{{ dict.label }}</a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col flex="auto" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+        </a-form>
       </template>
-    </el-dialog>
+
+      <template #toolbar>
+        <a-button type="primary" @click="handleAdd" v-hasPermi="['member:goods:add']">新增</a-button>
+        <a-button :disabled="single" @click="handleUpdate" v-hasPermi="['member:goods:edit']">修改</a-button>
+        <a-button danger :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:goods:remove']">删除</a-button>
+      </template>
+
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'enabled'">
+          <a-tag color="blue">{{ dictText(goods_enabled, record.isEnabled) }}</a-tag>
+        </template>
+        <template v-else-if="column.key === 'image'">
+          <image-preview :src="record.image" :width="50" :height="50" />
+        </template>
+        <template v-else-if="column.key === 'createTime'">
+          {{ parseTime(record.createTime) }}
+        </template>
+        <template v-else-if="column.key === 'operation'">
+          <a-space :size="8">
+            <a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:goods:edit']">修改</a-button>
+            <a-button type="link" danger @click="handleDelete(record)" v-hasPermi="['member:goods:remove']">删除</a-button>
+          </a-space>
+        </template>
+      </template>
+    </ant-pro-table>
+
+    <a-modal v-model:open="open" :title="title" width="860px" destroy-on-close @ok="submitForm" @cancel="cancel">
+      <a-form ref="goodsRef" :model="form" :rules="rules" layout="vertical">
+        <a-row :gutter="[20, 0]">
+          <a-col :span="24">
+            <a-form-item label="标题" name="title">
+              <a-textarea v-model:value="form.title" placeholder="请输入标题" :rows="2" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="类目" name="typeId">
+              <a-select v-model:value="form.typeId" placeholder="请选择商品类型" allow-clear>
+                <a-select-option v-for="item in typeDatas" :key="item.id" :value="item.id">
+                  {{ item.title }}
+                </a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="是否启用" name="isEnabled">
+              <a-radio-group v-model:value="form.isEnabled">
+                <a-radio v-for="dict in goods_enabled" :key="dict.value" :value="dict.value">
+                  {{ dict.label }}
+                </a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="价格" name="price">
+              <a-input-number v-model:value="form.price" placeholder="请输入价格" class="full-width" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="序号" name="serialNumber">
+              <a-input v-model:value="form.serialNumber" placeholder="请输入序号" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="图片" name="image">
+              <image-upload v-model="form.image" :limit="1" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="二级标题" name="subTitle">
+              <a-textarea v-model:value="form.subTitle" placeholder="请输入二级标题" :rows="3" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="单价" name="unitPrice">
+              <a-input-number v-model:value="form.unitPrice" placeholder="请输入单价" class="full-width" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="数量" name="quantity">
+              <a-input-number v-model:value="form.quantity" placeholder="请输入数量" class="full-width" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="星级" name="starRating">
+              <a-input-number v-model:value="form.starRating" placeholder="请输入星级" class="full-width" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="评分" name="rating">
+              <a-input-number v-model:value="form.rating" placeholder="请输入评分" class="full-width" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item label="说明" name="description">
+              <a-textarea v-model:value="form.description" placeholder="请输入内容" :rows="3" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -340,6 +185,33 @@ const data = reactive({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const goodsColumns = [
+  { title: "ID", dataIndex: "id", key: "id", width: 80 },
+  { title: "标题", dataIndex: "title", key: "title", width: 260 },
+  { title: "类目", dataIndex: "typeTitle", key: "typeTitle", width: 140 },
+  { title: "是否启用", dataIndex: "isEnabled", key: "enabled", width: 120 },
+  { title: "价格", dataIndex: "price", key: "price", width: 120 },
+  { title: "序号", dataIndex: "serialNumber", key: "serialNumber", width: 140 },
+  { title: "图片", dataIndex: "image", key: "image", width: 120 },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 190 },
+  { title: "操作", key: "operation", width: 160 },
+];
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: ids.value,
+  onChange: (_selectedRowKeys, selectedRows) => handleSelectionChange(selectedRows),
+}));
+
+function dictText(options, value) {
+  return proxy.selectDictLabel(options, value) || value || "-";
+}
+
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
+}
 
 /** 查询商品列表 */
 function getList() {
@@ -393,7 +265,8 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.title = null;
+  queryParams.value.isEnabled = null;
   handleQuery();
 }
 
@@ -426,8 +299,7 @@ function handleUpdate(row) {
 
 /** 提交按钮 */
 function submitForm() {
-  proxy.$refs["goodsRef"].validate((valid) => {
-    if (valid) {
+  proxy.$refs["goodsRef"]?.validate?.().then(() => {
       if (form.value.id != null) {
         updateGoods(form.value).then((response) => {
           proxy.$modal.msgSuccess("修改成功");
@@ -441,12 +313,11 @@ function submitForm() {
           getList();
         });
       }
-    }
-  });
+  }).catch(() => {});
 }
 
 /** 删除按钮操作 */
-function handleDelete(row) {
+function handleDelete(row = {}) {
   const _ids = row.id || ids.value;
   proxy.$modal
     .confirm('是否确认删除商品编号为"' + _ids + '"的数据项？')
@@ -473,3 +344,9 @@ function handleExport() {
 
 getList();
 </script>
+
+<style scoped>
+.full-width {
+  width: 100%;
+}
+</style>

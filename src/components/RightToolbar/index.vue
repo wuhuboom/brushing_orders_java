@@ -1,66 +1,95 @@
 <template>
-  <div class="top-right-btn" :style="style">
-    <el-row>
-      <el-tooltip class="item" effect="dark" :content="showSearch ? '隐藏搜索' : '显示搜索'" placement="top" v-if="search">
-        <el-button circle icon="Search" @click="toggleSearch()" />
-      </el-tooltip>
-      <el-tooltip class="item" effect="dark" content="刷新" placement="top">
-        <el-button circle icon="Refresh" @click="refresh()" />
-      </el-tooltip>
-      <el-tooltip class="item" effect="dark" content="显隐列" placement="top" v-if="columns">
-        <el-button circle icon="Menu" @click="showColumn()" v-if="showColumnsType == 'transfer'"/>
-        <el-dropdown trigger="click" :hide-on-click="false" style="padding-left: 12px" v-if="showColumnsType == 'checkbox'">
-          <el-button circle icon="Menu" />
-          <template #dropdown>
-            <el-dropdown-menu>
-              <!-- 全选/反选 按钮 -->
-              <el-dropdown-item>
-                <el-checkbox :indeterminate="isIndeterminate" v-model="isChecked" @change="toggleCheckAll"> 列展示 </el-checkbox>
-              </el-dropdown-item>
-              <div class="check-line"></div>
-              <template v-for="item in columns" :key="item.key">
-                <el-dropdown-item>
-                  <el-checkbox v-model="item.visible" @change="checkboxChange($event, item.label)" :label="item.label" />
-                </el-dropdown-item>
-              </template>
-            </el-dropdown-menu>
+  <div ref="toolbarRef" class="top-right-btn" :style="style">
+    <a-space :size="8">
+      <a-tooltip title="刷新">
+        <a-button shape="circle" size="small" aria-label="刷新" @click="refresh">
+          <ReloadOutlined />
+        </a-button>
+      </a-tooltip>
+      <a-tooltip title="密度">
+        <a-button shape="circle" size="small" aria-label="密度" @click="toggleDensity">
+          <ColumnHeightOutlined />
+        </a-button>
+      </a-tooltip>
+      <a-tooltip title="列设置">
+        <a-button
+          v-if="showColumnsType === 'transfer'"
+          shape="circle"
+          size="small"
+          aria-label="列设置"
+          @click="showColumn"
+        >
+          <SettingOutlined />
+        </a-button>
+        <a-dropdown v-else-if="columns" :trigger="['click']">
+          <a-button shape="circle" size="small" aria-label="列设置">
+            <MenuOutlined />
+          </a-button>
+          <template #overlay>
+            <a-menu class="column-dropdown-menu">
+              <a-menu-item>
+                <a-checkbox :indeterminate="isIndeterminate" :checked="isChecked" @change="toggleCheckAll">
+                  列展示
+                </a-checkbox>
+              </a-menu-item>
+              <a-menu-divider />
+              <a-menu-item v-for="item in columns" :key="item.key || item.label">
+                <a-checkbox :checked="item.visible !== false" @change="checkboxChange($event, item.label)">
+                  {{ item.label }}
+                </a-checkbox>
+              </a-menu-item>
+            </a-menu>
           </template>
-        </el-dropdown>
-      </el-tooltip>
-    </el-row>
-    <el-dialog :title="title" v-model="open" append-to-body>
-      <el-transfer
+        </a-dropdown>
+        <a-button v-else shape="circle" size="small" aria-label="列设置">
+          <SettingOutlined />
+        </a-button>
+      </a-tooltip>
+      <a-tooltip title="全屏">
+        <a-button shape="circle" size="small" aria-label="全屏" @click="toggleFullscreen">
+          <FullscreenOutlined />
+        </a-button>
+      </a-tooltip>
+    </a-space>
+
+    <a-modal v-model:open="open" :title="title" width="640px" @ok="open = false">
+      <a-transfer
+        v-model:target-keys="value"
+        :data-source="transferColumns"
         :titles="['显示', '隐藏']"
-        v-model="value"
-        :data="columns"
+        :render="(item) => item.title"
         @change="dataChange"
-      ></el-transfer>
-    </el-dialog>
+      />
+    </a-modal>
   </div>
 </template>
 
 <script setup>
+import {
+  ColumnHeightOutlined,
+  FullscreenOutlined,
+  MenuOutlined,
+  ReloadOutlined,
+  SettingOutlined,
+} from '@ant-design/icons-vue'
+
 const props = defineProps({
-  /* 是否显示检索条件 */
   showSearch: {
     type: Boolean,
     default: true
   },
-  /* 显隐列信息 */
   columns: {
-    type: Array
+    type: Array,
+    default: undefined
   },
-  /* 是否显示检索图标 */
   search: {
     type: Boolean,
     default: true
   },
-  /* 显隐列类型（transfer穿梭框、checkbox复选框） */
   showColumnsType: {
     type: String,
-    default: "checkbox"
+    default: 'checkbox'
   },
-  /* 右外边距 */
   gutter: {
     type: Number,
     default: 10
@@ -68,13 +97,20 @@ const props = defineProps({
 })
 
 const emits = defineEmits(['update:showSearch', 'queryTable'])
-
-// 显隐数据
+const toolbarRef = ref()
 const value = ref([])
-// 弹出层标题
-const title = ref("显示/隐藏")
-// 是否显示弹出层
+const title = ref('显示/隐藏')
 const open = ref(false)
+
+const safeColumns = computed(() => props.columns || [])
+
+const transferColumns = computed(() =>
+  safeColumns.value.map((item, index) => ({
+    ...item,
+    key: String(item.key ?? index),
+    title: item.label || item.title || String(item.key ?? index)
+  }))
+)
 
 const style = computed(() => {
   const ret = {}
@@ -84,74 +120,63 @@ const style = computed(() => {
   return ret
 })
 
-// 是否全选/半选 状态
-const isChecked = computed({
-  get: () => props.columns.every(col => col.visible),
-  set: () => {}
-})
-const isIndeterminate = computed(() => props.columns.some((col) => col.visible) && !isChecked.value)
+const isChecked = computed(() => safeColumns.value.length > 0 && safeColumns.value.every(col => col.visible !== false))
+const isIndeterminate = computed(() => safeColumns.value.some(col => col.visible !== false) && !isChecked.value)
 
-// 搜索
-function toggleSearch() {
-  emits("update:showSearch", !props.showSearch)
-}
-
-// 刷新
 function refresh() {
-  emits("queryTable")
+  emits('queryTable')
 }
 
-// 右侧列表元素变化
-function dataChange(data) {
-  for (let item in props.columns) {
-    const key = props.columns[item].key
-    props.columns[item].visible = !data.includes(key)
+function getPageContainer() {
+  return toolbarRef.value?.closest('.app-container')
+}
+
+function toggleDensity() {
+  getPageContainer()?.classList.toggle('ant-pro-compact-table')
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen()
+    return
   }
+  getPageContainer()?.requestFullscreen()
 }
 
-// 打开显隐列dialog
+function dataChange(targetKeys) {
+  safeColumns.value.forEach((item, index) => {
+    const key = String(item.key ?? index)
+    item.visible = !targetKeys.includes(key)
+  })
+}
+
 function showColumn() {
+  value.value = transferColumns.value
+    .filter((item) => item.visible === false)
+    .map((item) => item.key)
   open.value = true
 }
 
-if (props.showColumnsType == 'transfer') {
-  // 显隐列初始默认隐藏列
-  for (let item in props.columns) {
-    if (props.columns[item].visible === false) {
-      value.value.push(parseInt(item))
-    }
+function checkboxChange(event, label) {
+  const column = safeColumns.value.find(item => item.label === label)
+  if (column) {
+    column.visible = event.target.checked
   }
 }
 
-// 单勾选
-function checkboxChange(event, label) {
-  props.columns.filter(item => item.label == label)[0].visible = event
-}
-
-// 切换全选/反选
 function toggleCheckAll() {
   const newValue = !isChecked.value
-  props.columns.forEach((col) => (col.visible = newValue))
+  safeColumns.value.forEach((col) => (col.visible = newValue))
 }
 </script>
 
-<style lang='scss' scoped>
-:deep(.el-transfer__button) {
-  border-radius: 50%;
-  display: block;
-  margin-left: 0px;
+<style lang="scss" scoped>
+.top-right-btn {
+  display: inline-flex;
+  align-items: center;
 }
-:deep(.el-transfer__button:first-child) {
-  margin-bottom: 10px;
-}
-:deep(.el-dropdown-menu__item) {
-  line-height: 30px;
-  padding: 0 17px;
-}
-.check-line {
-  width: 90%;
-  height: 1px;
-  background-color: #ccc;
-  margin: 3px auto;
+
+.column-dropdown-menu {
+  min-width: 148px;
 }
 </style>

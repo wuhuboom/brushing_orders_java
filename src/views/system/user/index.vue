@@ -1,877 +1,152 @@
 <template>
-  <div class="app-container">
-    <el-row :gutter="20">
-      <splitpanes
-        :horizontal="appStore.device === 'mobile'"
-        class="default-theme"
-      >
-        <pane size="84">
-          <el-col>
-            <el-form
-              :model="queryParams"
-              ref="queryRef"
-              :inline="true"
-              v-show="showSearch"
-              label-width="68px"
-            >
-              <el-form-item label="用户名称" prop="userName">
-                <el-input
-                  v-model="queryParams.userName"
-                  placeholder="请输入用户名称"
-                  clearable
-                  style="width: 240px"
-                  @keyup.enter="handleQuery"
-                />
-              </el-form-item>
-              <el-form-item label="手机号码" prop="phonenumber">
-                <el-input
-                  v-model="queryParams.phonenumber"
-                  placeholder="请输入手机号码"
-                  clearable
-                  style="width: 240px"
-                  @keyup.enter="handleQuery"
-                />
-              </el-form-item>
-              <el-form-item label="状态" prop="status">
-                <el-select
-                  v-model="queryParams.status"
-                  placeholder="用户状态"
-                  clearable
-                  style="width: 240px"
-                >
-                  <el-option
-                    v-for="dict in sys_normal_disable"
-                    :key="dict.value"
-                    :label="dict.label"
-                    :value="dict.value"
-                  />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="创建时间" style="width: 308px">
-                <el-date-picker
-                  v-model="dateRange"
-                  value-format="YYYY-MM-DD"
-                  type="daterange"
-                  range-separator="-"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                ></el-date-picker>
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" icon="Search" @click="handleQuery"
-                  >搜索</el-button
-                >
-                <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-              </el-form-item>
-            </el-form>
-
-            <el-row :gutter="10" class="mb8">
-              <el-col :span="1.5">
-                <el-button
-                  type="primary"
-                  plain
-                  icon="Plus"
-                  @click="handleAdd"
-                  v-hasPermi="['system:user:add']"
-                  >新增</el-button
-                >
-              </el-col>
-              <el-col :span="1.5">
-                <el-button
-                  type="success"
-                  plain
-                  icon="Edit"
-                  :disabled="single"
-                  @click="handleUpdate"
-                  v-hasPermi="['system:user:edit']"
-                  >修改</el-button
-                >
-              </el-col>
-              <el-col :span="1.5">
-                <el-button
-                  type="danger"
-                  plain
-                  icon="Delete"
-                  :disabled="multiple"
-                  @click="handleDelete"
-                  v-hasPermi="['system:user:remove']"
-                  >删除</el-button
-                >
-              </el-col>
-              <right-toolbar
-                v-model:showSearch="showSearch"
-                @queryTable="getList"
-                :columns="columns"
-              ></right-toolbar>
-            </el-row>
-
-            <el-table
-              v-loading="loading"
-              :data="userList"
-              @selection-change="handleSelectionChange"
-            >
-              <el-table-column type="selection" width="50" align="center" />
-              <el-table-column
-                label="用户编号"
-                align="center"
-                key="userId"
-                prop="userId"
-                v-if="columns[0].visible"
-              />
-              <el-table-column
-                label="用户名称"
-                align="center"
-                key="userName"
-                prop="userName"
-                v-if="columns[1].visible"
-                :show-overflow-tooltip="true"
-              />
-              <el-table-column
-                label="手机号码"
-                align="center"
-                key="phonenumber"
-                prop="phonenumber"
-                v-if="columns[4].visible"
-                width="120"
-              />
-
-              <el-table-column
-                label="组织"
-                align="center"
-                key="deptName"
-                prop="dept.deptName"
-                v-if="columns[3].visible"
-                :show-overflow-tooltip="true"
-              />
-              <el-table-column
-                label="头像地址"
-                align="center"
-                prop="avatar"
-                width="100"
-              >
-                <template #default="scope">
-                  <image-preview
-                    :src="scope.row.avatar"
-                    :width="50"
-                    :height="50"
-                  />
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="名称"
-                align="center"
-                key="nickName"
-                prop="nickName"
-                v-if="columns[2].visible"
-                :show-overflow-tooltip="true"
-              />
-              <el-table-column label="性别" align="center" prop="sex">
-                <template #default="scope">
-                  <dict-tag :options="sys_user_sex" :value="scope.row.sex" />
-                </template>
-              </el-table-column>
-
-              <el-table-column label="登录信息" prop="loginDate" width="280">
-                <template #default="scope">
-                  <div>最后登录IP: {{ scope.row.loginIp }}</div>
-                  <div>最后登录地址: XX.XX</div>
-                  <div>最后登录时间: {{ parseTime(scope.row.loginDate) }}</div>
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="是否启用"
-                align="center"
-                key="status"
-                v-if="columns[5].visible"
-              >
-                <template #default="scope">
-                  <el-switch
-                    v-model="scope.row.status"
-                    active-value="0"
-                    inactive-value="1"
-                    @change="handleStatusChange(scope.row)"
-                  ></el-switch>
-                </template>
-              </el-table-column>
-              <el-table-column label="是否冻结" align="center" prop="isLocked">
-                <template #default="scope">
-                  <dict-tag :options="sys_yes_no" :value="scope.row.isLocked" />
-                </template>
-              </el-table-column>
-              <el-table-column label="是否内置" align="center" prop="isBuiltin">
-                <template #default="scope">
-                  <dict-tag
-                    :options="sys_yes_no"
-                    :value="scope.row.isBuiltin"
-                  />
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="创建时间"
-                align="center"
-                prop="createTime"
-                v-if="columns[6].visible"
-                width="160"
-              >
-                <template #default="scope">
-                  <span>{{ parseTime(scope.row.createTime) }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column
-                label="操作"
-                align="center"
-                width="150"
-                class-name="small-padding fixed-width"
-              >
-                <template #default="scope">
-                  <el-tooltip
-                    content="修改"
-                    placement="top"
-                    v-if="scope.row.userId !== 1"
-                  >
-                    <el-button
-                      link
-                      type="primary"
-                      icon="Edit"
-                      @click="handleUpdate(scope.row)"
-                      v-hasPermi="['system:user:edit']"
-                    ></el-button>
-                  </el-tooltip>
-                  <el-tooltip
-                    content="删除"
-                    placement="top"
-                    v-if="scope.row.userId !== 1"
-                  >
-                    <el-button
-                      link
-                      type="primary"
-                      icon="Delete"
-                      @click="handleDelete(scope.row)"
-                      v-hasPermi="['system:user:remove']"
-                    ></el-button>
-                  </el-tooltip>
-                  <el-tooltip
-                    content="重置密码"
-                    placement="top"
-                    v-if="scope.row.userId !== 1"
-                  >
-                    <el-button
-                      link
-                      type="primary"
-                      icon="Key"
-                      @click="handleResetPwd(scope.row)"
-                      v-hasPermi="['system:user:resetPwd']"
-                    ></el-button>
-                  </el-tooltip>
-                </template>
-              </el-table-column>
-            </el-table>
-            <pagination
-              v-show="total > 0"
-              :total="total"
-              v-model:page="queryParams.pageNum"
-              v-model:limit="queryParams.pageSize"
-              @pagination="getList"
-            />
-          </el-col>
-        </pane>
-      </splitpanes>
-    </el-row>
-
-    <!-- 添加或修改用户配置对话框 -->
-    <el-drawer
-      :title="title"
-      v-model="open"
-      direction="rtl"
-      :size="'50%'"
-      :before-close="cancel"
-    >
-      <el-form
-        :model="form"
-        :rules="rules"
-        ref="userRef"
-        label-position="top"
-        label-width="80px"
-      >
-        <el-row :gutter="20">
-          <el-col :span="8" v-if="form.userId == undefined">
-            <el-form-item label="用户名" prop="userName">
-              <el-input
-                v-model="form.userName"
-                placeholder="请输入用户名"
-                maxlength="30"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="手机号码" prop="phonenumber">
-              <el-input
-                v-model="form.phonenumber"
-                placeholder="请输入手机号码"
-                maxlength="11"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="组织" prop="deptId">
-              <el-tree-select
-                v-model="form.deptId"
-                :data="enabledDeptOptions"
-                :props="{ value: 'id', label: 'label', children: 'children' }"
-                value-key="id"
-                placeholder="请选择组织"
-                check-strictly
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="8" v-if="form.userId == undefined">
-            <el-form-item label="登录密码" prop="password">
-              <el-input
-                v-model="form.password"
-                placeholder="请输入登录密码"
-                type="password"
-                maxlength="20"
-                show-password
-              />
-            </el-form-item>
-          </el-col>
-
-          <el-col :span="8">
-            <el-form-item label="名称" prop="nickName">
-              <el-input
-                v-model="form.nickName"
-                placeholder="请输入名称"
-                maxlength="30"
-              />
-            </el-form-item>
-          </el-col>
-
-          <el-col :span="8">
-            <el-form-item label="性别">
-              <el-radio
-                v-model="form.sex"
-                v-for="dict in sys_user_sex"
-                :key="dict.value"
-                :label="dict.label"
-                :value="dict.value"
-              ></el-radio>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="是否启用">
-              <el-radio-group v-model="form.status">
-                <el-radio
-                  v-for="dict in sys_normal_disable"
-                  :key="dict.value"
-                  :value="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="是否冻结" prop="isLocked">
-              <el-radio-group v-model="form.isLocked">
-                <el-radio
-                  v-for="dict in sys_yes_no"
-                  :key="dict.value"
-                  :label="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="邮箱" prop="email">
-              <el-input
-                v-model="form.email"
-                placeholder="请输入邮箱"
-                maxlength="50"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="是否内置" prop="isBuiltin">
-              <el-radio-group v-model="form.isBuiltin">
-                <el-radio
-                  disabled
-                  v-for="dict in sys_yes_no"
-                  :key="dict.value"
-                  :label="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="头像地址" prop="avatar">
-              <image-upload v-model="form.avatar" :limit="1" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="备注">
-              <el-input
-                v-model="form.remark"
-                type="textarea"
-                placeholder="请输入备注内容"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="职位">
-              <el-select v-model="form.postIds" multiple placeholder="请选择">
-                <el-option
-                  v-for="item in postOptions"
-                  :key="item.postId"
-                  :label="item.postName"
-                  :value="item.postId"
-                  :disabled="item.status == 1"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="角色">
-              <el-select v-model="form.roleIds" multiple placeholder="请选择">
-                <el-option
-                  v-for="item in roleOptions"
-                  :key="item.roleId"
-                  :label="item.roleName"
-                  :value="item.roleId"
-                  :disabled="item.status == 1"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row> </el-row>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确定</el-button>
-          <el-button @click="cancel">取消</el-button>
-        </div>
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table title="用户列表" row-key="userId" :columns="columns" :data-source="rows" :loading="loading" :row-selection="rowSelection" :pagination="{ current: query.pageNum, pageSize: query.pageSize, total }" :scroll="{ x: 2300 }" @page-change="pageChange" @refresh="load">
+      <template #search>
+        <a-form layout="horizontal" size="large" class="ant-pro-query-form"><a-row :gutter="[24, 16]" align="middle">
+          <a-col :span="7"><a-form-item label="用户名"><a-input v-model:value="query.userName" allow-clear placeholder="请输入" @pressEnter="search" /></a-form-item></a-col>
+          <a-col :span="7"><a-form-item label="手机号码"><a-input v-model:value="query.phonenumber" allow-clear placeholder="请输入" @pressEnter="search" /></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="是否在线"><a-select v-model:value="query.online" allow-clear placeholder="请选择"><a-select-option value="1">是</a-select-option><a-select-option value="0">否</a-select-option></a-select></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="组织"><a-tree-select v-model:value="query.deptId" :tree-data="deptOptions" :field-names="{ value: 'id', label: 'label', children: 'children' }" allow-clear tree-default-expand-all placeholder="请选择组织" /></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="名称"><a-input v-model:value="query.nickName" allow-clear placeholder="请输入" /></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="性别"><a-select v-model:value="query.sex" allow-clear placeholder="请选择"><a-select-option value="0">男</a-select-option><a-select-option value="1">女</a-select-option><a-select-option value="2">未知</a-select-option></a-select></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="最后登录IP"><a-input v-model:value="query.loginIp" allow-clear placeholder="请输入" /></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="是否启用"><a-select v-model:value="query.status" allow-clear placeholder="请选择"><a-select-option value="0">启用</a-select-option><a-select-option value="1">禁用</a-select-option></a-select></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="是否冻结"><a-select v-model:value="query.isLocked" allow-clear placeholder="请选择"><a-select-option value="0">是</a-select-option><a-select-option value="1">否</a-select-option></a-select></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="邮箱"><a-input v-model:value="query.email" allow-clear placeholder="请输入" /></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="是否内置"><a-select v-model:value="query.isBuiltin" allow-clear placeholder="请选择"><a-select-option value="Y">是</a-select-option><a-select-option value="N">否</a-select-option></a-select></a-form-item></a-col>
+          <a-col v-show="queryExpanded" :span="7"><a-form-item label="创建时间"><a-range-picker v-model:value="dateRange" value-format="YYYY-MM-DD" /></a-form-item></a-col>
+          <a-col flex="auto" class="ant-pro-query-actions"><a-space><a-button @click="resetQuery">重置</a-button><a-button type="primary" @click="search">查询</a-button><a-button type="link" @click="queryExpanded = !queryExpanded">{{ queryExpanded ? '收起' : '展开' }}</a-button></a-space></a-col>
+        </a-row></a-form>
       </template>
-    </el-drawer>
+      <template #toolbar>
+        <a-button :disabled="!selected.length" v-hasPermi="['system:user:edit']" @click="unlock"><UnlockOutlined />登录解冻</a-button>
+        <a-button danger :disabled="!selected.length" v-hasPermi="['system:user:remove']" @click="remove"><DeleteOutlined />删除</a-button>
+        <a-button type="primary" v-hasPermi="['system:user:add']" @click="create"><PlusOutlined />创建</a-button>
+      </template>
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'username'"><span class="online-dot" :class="{ online: isOnline(record) }" />{{ record.userName }}</template>
+        <template v-else-if="column.key === 'dept'">{{ record.dept?.deptName || '-' }}</template>
+        <template v-else-if="column.key === 'avatar'"><image-preview v-if="record.avatar" :src="record.avatar" :width="48" :height="48" /><span v-else>-</span></template>
+        <template v-else-if="column.key === 'sex'">{{ sexLabel(record.sex) }}</template>
+        <template v-else-if="column.key === 'login'"><div class="login-info"><span>最后登录IP: {{ record.loginIp || '-' }}</span><span>最后登录地址: {{ record.loginLocation || '-' }}</span><span>最后登录时间: {{ parseTime(record.loginDate) || '-' }}</span></div></template>
+        <template v-else-if="column.key === 'enabled'">{{ record.status === '0' ? '启用' : '禁用' }}</template>
+        <template v-else-if="column.key === 'locked'">{{ record.isLocked === '0' ? '是' : '否' }}</template>
+        <template v-else-if="column.key === 'builtin'">{{ isBuiltin(record.isBuiltin) ? '是' : '否' }}</template>
+        <template v-else-if="column.key === 'time'">{{ parseTime(record.createTime) }}</template>
+        <template v-else-if="column.key === 'operation'"><a-space><a-button type="link" v-hasPermi="['system:user:edit']" @click="edit(record)">修改</a-button><a-button type="link" v-hasPermi="['system:user:add']" @click="copy(record)">复制</a-button><a-button type="link" v-hasPermi="['system:user:edit']" @click="openGoogle(record)">谷歌验证器</a-button></a-space></template>
+      </template>
+    </ant-pro-table>
+
+    <a-drawer v-model:open="open" :title="title" width="1000px" destroy-on-close :body-style="{ paddingBottom: '72px' }" @close="close">
+      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large">
+        <a-row :gutter="24">
+          <a-col :span="8"><a-form-item label="用户名" name="userName"><a-input v-model:value="form.userName" placeholder="用户名" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="手机号码" name="phonenumber"><a-input v-model:value="form.phonenumber" placeholder="手机号码" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="组织" name="deptId"><a-tree-select v-model:value="form.deptId" :tree-data="deptOptions" :field-names="{ value: 'id', label: 'label', children: 'children' }" tree-default-expand-all placeholder="组织" /></a-form-item></a-col>
+          <a-col v-if="!form.userId" :span="8"><a-form-item label="登录密码" name="password"><a-input-password v-model:value="form.password" placeholder="登录密码" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="名称" name="nickName"><a-input v-model:value="form.nickName" placeholder="名称" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="性别" name="sex"><a-radio-group v-model:value="form.sex"><a-radio value="2" disabled>未知</a-radio><a-radio value="0">男</a-radio><a-radio value="1">女</a-radio></a-radio-group></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="是否启用" name="status"><a-radio-group v-model:value="form.status"><a-radio value="1">禁用</a-radio><a-radio value="0">启用</a-radio></a-radio-group></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="是否冻结" name="isLocked"><a-radio-group v-model:value="form.isLocked"><a-radio value="1">否</a-radio><a-radio value="0">是</a-radio></a-radio-group></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="邮箱"><a-input v-model:value="form.email" placeholder="邮箱" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="是否内置"><a-radio-group v-model:value="form.isBuiltin" disabled><a-radio value="N">否</a-radio><a-radio value="Y">是</a-radio></a-radio-group></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="头像"><image-upload v-model="form.avatar" :limit="1" :is-show-tip="false" :data="{ referenceType: 'USER_AVATAR', referenceTargetId: form.userId }" /></a-form-item></a-col>
+          <a-col :span="8"><a-form-item label="备注"><a-textarea v-model:value="form.remark" :rows="3" placeholder="备注" /></a-form-item></a-col>
+          <a-col :span="24"><a-form-item label="角色列表"><a-checkbox-group v-model:value="form.roleIds" class="legacy-checkbox-list"><a-checkbox v-for="item in roleOptions" :key="item.roleId" :value="item.roleId" :disabled="item.status === '1'">{{ item.roleName }}[{{ item.roleKey }}]</a-checkbox></a-checkbox-group></a-form-item></a-col>
+          <a-col :span="24"><a-form-item label="职位列表"><a-checkbox-group v-model:value="form.postIds" class="legacy-checkbox-list"><a-checkbox v-for="item in postOptions" :key="item.postId" :value="item.postId" :disabled="item.status === '1'">{{ item.postName }}<template v-if="item.postCode">[{{ item.postCode }}]</template></a-checkbox></a-checkbox-group></a-form-item></a-col>
+          <a-col :span="24"><a-form-item label="分组列表"><a-checkbox-group v-model:value="form.groupIds" class="legacy-checkbox-list"><a-checkbox v-for="item in groupOptions" :key="item.value" :value="item.value">{{ item.label }}</a-checkbox></a-checkbox-group></a-form-item></a-col>
+        </a-row>
+      </a-form>
+      <template #footer><div class="legacy-drawer-footer"><a-space><a-button size="large" @click="close">取消</a-button><a-button type="primary" size="large" @click="submit">确定</a-button></a-space></div></template>
+    </a-drawer>
+
+    <a-modal v-model:open="googleOpen" title="谷歌验证器" width="480px" @cancel="googleOpen = false">
+      <a-form :label-col="{ style: { width: '140px' } }"><a-form-item label="启用谷歌验证器"><a-select v-model:value="googleForm.googleEnabled" style="width:100%"><a-select-option value="0">是</a-select-option><a-select-option value="1">否</a-select-option></a-select></a-form-item></a-form>
+      <template #footer><a-space><a-button @click="googleOpen = false">取消</a-button><a-button type="primary" @click="saveGoogle">确定</a-button></a-space></template>
+    </a-modal>
   </div>
 </template>
 
 <script setup name="User">
-import { getToken } from "@/utils/auth";
-import useAppStore from "@/store/modules/app";
-import {
-  changeUserStatus,
-  listUser,
-  resetUserPwd,
-  delUser,
-  getUser,
-  updateUser,
-  addUser,
-  deptTreeSelect,
-} from "@/api/system/user";
-import { Splitpanes, Pane } from "splitpanes";
-import "splitpanes/dist/splitpanes.css";
+import { addUser, delUser, deptTreeSelect, getUser, listUser, toggleGoogleAuth, unlockUsers, updateUser } from '@/api/system/user'
+import { listGroups } from '@/api/system/alignment'
+import { DeleteOutlined, PlusOutlined, UnlockOutlined } from '@ant-design/icons-vue'
 
-const router = useRouter();
-const appStore = useAppStore();
-const { proxy } = getCurrentInstance();
-const { sys_normal_disable, sys_user_sex, sys_yes_no } = proxy.useDict(
-  "sys_normal_disable",
-  "sys_user_sex",
-  "sys_yes_no"
-);
-
-const userList = ref([]);
-const open = ref(false);
-const loading = ref(true);
-const showSearch = ref(true);
-const ids = ref([]);
-const single = ref(true);
-const multiple = ref(true);
-const total = ref(0);
-const title = ref("");
-const dateRange = ref([]);
-const deptName = ref("");
-const deptOptions = ref(undefined);
-const enabledDeptOptions = ref(undefined);
-const initPassword = ref(undefined);
-const postOptions = ref([]);
-const roleOptions = ref([]);
-const config = window.APP_CONFIG;
-/*** 用户导入参数 */
-const upload = reactive({
-  // 是否显示弹出层（用户导入）
-  open: false,
-  // 弹出层标题（用户导入）
-  title: "",
-  // 是否禁用上传
-  isUploading: false,
-  // 是否更新已经存在的用户数据
-  updateSupport: 0,
-  // 设置上传的请求头部
-  headers: { Authorization: "Bearer " + getToken() },
-  // 上传的地址
-  url: config.baseApiUrl + "/system/user/importData",
-});
-// 列显隐信息
-const columns = ref([
-  { key: 0, label: `用户编号`, visible: true },
-  { key: 1, label: `用户名称`, visible: true },
-  { key: 2, label: `用户昵称`, visible: true },
-  { key: 3, label: `部门`, visible: true },
-  { key: 4, label: `手机号码`, visible: true },
-  { key: 5, label: `状态`, visible: true },
-  { key: 6, label: `创建时间`, visible: true },
-]);
-
-const data = reactive({
-  form: {},
-  queryParams: {
-    pageNum: 1,
-    pageSize: 10,
-    userName: undefined,
-    phonenumber: undefined,
-    status: undefined,
-    deptId: undefined,
-  },
-  rules: {
-    userName: [
-      { required: true, message: "用户名称不能为空", trigger: "blur" },
-      {
-        min: 2,
-        max: 20,
-        message: "用户名称长度必须介于 2 和 20 之间",
-        trigger: "blur",
-      },
-    ],
-    nickName: [
-      { required: true, message: "用户昵称不能为空", trigger: "blur" },
-    ],
-    password: [
-      { required: true, message: "用户密码不能为空", trigger: "blur" },
-      {
-        min: 5,
-        max: 20,
-        message: "用户密码长度必须介于 5 和 20 之间",
-        trigger: "blur",
-      },
-      {
-        pattern: /^[^<>"'|\\]+$/,
-        message: "不能包含非法字符：< > \" ' \\\ |",
-        trigger: "blur",
-      },
-    ],
-    email: [
-      {
-        type: "email",
-        message: "请输入正确的邮箱地址",
-        trigger: ["blur", "change"],
-      },
-    ],
-    phonenumber: [
-      {
-        pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/,
-        message: "请输入正确的手机号码",
-        trigger: "blur",
-      },
-    ],
-  },
-});
-
-const { queryParams, form, rules } = toRefs(data);
-
-/** 通过条件过滤节点  */
-const filterNode = (value, data) => {
-  if (!value) return true;
-  return data.label.indexOf(value) !== -1;
-};
-
-/** 根据名称筛选部门树 */
-watch(deptName, (val) => {
-  proxy.$refs["deptTreeRef"].filter(val);
-});
-
-/** 查询用户列表 */
-function getList() {
-  loading.value = true;
-  listUser(proxy.addDateRange(queryParams.value, dateRange.value)).then(
-    (res) => {
-      loading.value = false;
-      userList.value = res.rows;
-      total.value = res.total;
-    }
-  );
+const { proxy } = getCurrentInstance()
+const rows = ref([])
+const selected = ref([])
+const dateRange = ref([])
+const loading = ref(false)
+const total = ref(0)
+const open = ref(false)
+const title = ref('')
+const queryExpanded = ref(false)
+const formRef = ref()
+const deptOptions = ref([])
+const postOptions = ref([])
+const roleOptions = ref([])
+const groupOptions = ref([])
+const initPassword = ref('')
+const googleOpen = ref(false)
+const googleForm = reactive({ userId: undefined, googleEnabled: '1' })
+const query = reactive({ pageNum: 1, pageSize: 20, userName: undefined, phonenumber: undefined, online: undefined, deptId: undefined, nickName: undefined, sex: undefined, loginIp: undefined, status: undefined, isLocked: undefined, email: undefined, isBuiltin: undefined })
+const form = reactive({ userId: undefined, userName: '', phonenumber: '', deptId: undefined, password: '', nickName: '', sex: '0', status: '0', isLocked: '1', email: '', isBuiltin: 'N', avatar: '', remark: '', roleIds: [], postIds: [], groupIds: [] })
+const rules = {
+  userName: [{ required: true, message: '用户名不能为空' }],
+  phonenumber: [{ required: true, message: '手机号码不能为空' }],
+  deptId: [{ required: true, message: '组织不能为空' }],
+  password: [{ required: true, message: '登录密码不能为空' }, { min: 5, max: 20, message: '密码长度必须为 5 到 20 个字符' }],
+  nickName: [{ required: true, message: '名称不能为空' }],
+  sex: [{ required: true, message: '性别不能为空' }], status: [{ required: true, message: '请选择是否启用' }], isLocked: [{ required: true, message: '请选择是否冻结' }]
 }
+const columns = [
+  { title: 'ID', dataIndex: 'userId', width: 90, fixed: 'left' },
+  { title: '用户名', dataIndex: 'userName', key: 'username', width: 160 },
+  { title: '手机号码', dataIndex: 'phonenumber', width: 140 },
+  { title: '组织', key: 'dept', width: 160 },
+  { title: '头像', key: 'avatar', width: 90 },
+  { title: '名称', dataIndex: 'nickName', width: 150 },
+  { title: '性别', dataIndex: 'sex', key: 'sex', width: 80 },
+  { title: '登录信息', key: 'login', width: 280 },
+  { title: '是否启用', dataIndex: 'status', key: 'enabled', width: 100 },
+  { title: '是否冻结', dataIndex: 'isLocked', key: 'locked', width: 100 },
+  { title: '邮箱', dataIndex: 'email', width: 210 },
+  { title: '是否内置', dataIndex: 'isBuiltin', key: 'builtin', width: 100 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'time', width: 180 },
+  { title: '备注', dataIndex: 'remark', width: 240, ellipsis: true },
+  { title: '操作', key: 'operation', width: 260, fixed: 'right' }
+]
+const rowSelection = computed(() => ({ selectedRowKeys: selected.value, onChange: keys => { selected.value = keys } }))
 
-/** 查询部门下拉树结构 */
-function getDeptTree() {
-  deptTreeSelect().then((response) => {
-    deptOptions.value = response.data;
-    enabledDeptOptions.value = filterDisabledDept(
-      JSON.parse(JSON.stringify(response.data))
-    );
-  });
-}
+function params() { const value = { ...query }; if (dateRange.value?.length) [value.beginTime, value.endTime] = dateRange.value; return value }
+async function load() { loading.value = true; try { const result = await listUser(params()); rows.value = result.rows || []; total.value = result.total || 0 } finally { loading.value = false } }
+function search() { query.pageNum = 1; load() }
+function resetQuery() { Object.assign(query, { pageNum: 1, userName: undefined, phonenumber: undefined, online: undefined, deptId: undefined, nickName: undefined, sex: undefined, loginIp: undefined, status: undefined, isLocked: undefined, email: undefined, isBuiltin: undefined }); dateRange.value = []; load() }
+function pageChange({ page, pageSize }) { query.pageNum = page; query.pageSize = pageSize; load() }
+function isOnline(record) { return record.online === '1' || record.online === true }
+function isBuiltin(value) { return value === 'Y' || value === '0' || value === true }
+function sexLabel(value) { return ({ '0': '男', '1': '女', '2': '未知' })[value] || '未知' }
+function clear() { Object.assign(form, { userId: undefined, userName: '', phonenumber: '', deptId: undefined, password: initPassword.value, nickName: '', sex: '0', status: '0', isLocked: '1', email: '', isBuiltin: 'N', avatar: '', remark: '', roleIds: [], postIds: [], groupIds: [] }); formRef.value?.clearValidate?.() }
+async function loadEditor(id) { const [user, groups] = await Promise.all([getUser(id), listGroups({ pageNum: 1, pageSize: 1000 })]); postOptions.value = user.posts || []; roleOptions.value = user.roles || []; groupOptions.value = (groups.rows || []).map(item => ({ label: item.groupCode ? `${item.groupName}[${item.groupCode}]` : item.groupName, value: item.groupId })); return user }
+async function create() { clear(); const detail = await loadEditor(); title.value = '创建'; open.value = true; postOptions.value = detail.posts || []; roleOptions.value = detail.roles || [] }
+async function fill(id, asCopy = false) { clear(); const detail = await loadEditor(id); Object.assign(form, detail.data || {}); form.postIds = detail.postIds || []; form.roleIds = detail.roleIds || []; form.groupIds = detail.groupIds || []; if (asCopy) { form.userId = undefined; form.userName = `${form.userName}_copy`; form.password = ''; form.isBuiltin = 'N' } else form.password = ''; title.value = asCopy ? '复制' : '修改'; open.value = true }
+const edit = row => fill(row.userId)
+const copy = row => fill(row.userId, true)
+async function submit() { await formRef.value?.validate(); form.userId ? await updateUser(form) : await addUser(form); proxy.$modal.msgSuccess('保存成功'); close(); load() }
+function close() { open.value = false; clear() }
+async function unlock() { await proxy.$modal.confirm(`确认解冻所选用户 ${selected.value} 的登录状态吗？`); await unlockUsers(selected.value); proxy.$modal.msgSuccess('解冻成功'); load() }
+async function remove() { const ids = selected.value; await proxy.$modal.confirm(`确认删除用户 ${ids} 吗？`); await delUser(ids); proxy.$modal.msgSuccess('删除成功'); selected.value = []; load() }
+function openGoogle(row) { Object.assign(googleForm, { userId: row.userId, googleEnabled: row.googleEnabled || '1' }); googleOpen.value = true }
+async function saveGoogle() { await toggleGoogleAuth(googleForm.userId, googleForm.googleEnabled); proxy.$modal.msgSuccess('保存成功'); googleOpen.value = false; load() }
 
-/** 过滤禁用的部门 */
-function filterDisabledDept(deptList) {
-  return deptList.filter((dept) => {
-    if (dept.disabled) {
-      return false;
-    }
-    if (dept.children && dept.children.length) {
-      dept.children = filterDisabledDept(dept.children);
-    }
-    return true;
-  });
-}
-
-/** 节点单击事件 */
-function handleNodeClick(data) {
-  queryParams.value.deptId = data.id;
-  handleQuery();
-}
-
-/** 搜索按钮操作 */
-function handleQuery() {
-  queryParams.value.pageNum = 1;
-  getList();
-}
-
-/** 重置按钮操作 */
-function resetQuery() {
-  dateRange.value = [];
-  proxy.resetForm("queryRef");
-  queryParams.value.deptId = undefined;
-  proxy.$refs.deptTreeRef.setCurrentKey(null);
-  handleQuery();
-}
-
-/** 删除按钮操作 */
-function handleDelete(row) {
-  const userIds = row.userId || ids.value;
-  proxy.$modal
-    .confirm('是否确认删除用户编号为"' + userIds + '"的数据项？')
-    .then(function () {
-      return delUser(userIds);
-    })
-    .then(() => {
-      getList();
-      proxy.$modal.msgSuccess("删除成功");
-    })
-    .catch(() => {});
-}
-
-/** 导出按钮操作 */
-function handleExport() {
-  proxy.download(
-    "system/user/export",
-    {
-      ...queryParams.value,
-    },
-    `user_${new Date().getTime()}.xlsx`
-  );
-}
-
-/** 用户状态修改  */
-function handleStatusChange(row) {
-  let text = row.status === "0" ? "启用" : "停用";
-  proxy.$modal
-    .confirm('确认要"' + text + '""' + row.userName + '"用户吗?')
-    .then(function () {
-      return changeUserStatus(row.userId, row.status);
-    })
-    .then(() => {
-      proxy.$modal.msgSuccess(text + "成功");
-    })
-    .catch(function () {
-      row.status = row.status === "0" ? "1" : "0";
-    });
-}
-
-/** 更多操作 */
-function handleCommand(command, row) {
-  switch (command) {
-    case "handleResetPwd":
-      handleResetPwd(row);
-      break;
-    case "handleAuthRole":
-      handleAuthRole(row);
-      break;
-    default:
-      break;
-  }
-}
-
-/** 跳转角色分配 */
-function handleAuthRole(row) {
-  const userId = row.userId;
-  router.push("/system/user-auth/role/" + userId);
-}
-
-/** 重置密码按钮操作 */
-function handleResetPwd(row) {
-  proxy
-    .$prompt('请输入"' + row.userName + '"的新密码', "提示", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      closeOnClickModal: false,
-      inputPattern: /^.{5,20}$/,
-      inputErrorMessage: "用户密码长度必须介于 5 和 20 之间",
-      inputValidator: (value) => {
-        if (/<|>|"|'|\||\\/.test(value)) {
-          return "不能包含非法字符：< > \" ' \\\ |";
-        }
-      },
-    })
-    .then(({ value }) => {
-      resetUserPwd(row.userId, value).then((response) => {
-        proxy.$modal.msgSuccess("修改成功，新密码是：" + value);
-      });
-    })
-    .catch(() => {});
-}
-
-/** 选择条数  */
-function handleSelectionChange(selection) {
-  ids.value = selection.map((item) => item.userId);
-  single.value = selection.length != 1;
-  multiple.value = !selection.length;
-}
-
-/** 导入按钮操作 */
-function handleImport() {
-  upload.title = "用户导入";
-  upload.open = true;
-}
-
-/** 下载模板操作 */
-function importTemplate() {
-  proxy.download(
-    "system/user/importTemplate",
-    {},
-    `user_template_${new Date().getTime()}.xlsx`
-  );
-}
-
-/**文件上传中处理 */
-const handleFileUploadProgress = (event, file, fileList) => {
-  upload.isUploading = true;
-};
-
-/** 文件上传成功处理 */
-const handleFileSuccess = (response, file, fileList) => {
-  upload.open = false;
-  upload.isUploading = false;
-  proxy.$refs["uploadRef"].handleRemove(file);
-  proxy.$alert(
-    "<div style='overflow: auto;overflow-x: hidden;max-height: 70vh;padding: 10px 20px 0;'>" +
-      response.msg +
-      "</div>",
-    "导入结果",
-    { dangerouslyUseHTMLString: true }
-  );
-  getList();
-};
-
-/** 提交上传文件 */
-function submitFileForm() {
-  proxy.$refs["uploadRef"].submit();
-}
-
-/** 重置操作表单 */
-function reset() {
-  form.value = {
-    userId: undefined,
-    deptId: undefined,
-    userName: undefined,
-    nickName: undefined,
-    password: undefined,
-    phonenumber: undefined,
-    email: undefined,
-    sex: undefined,
-    status: "0",
-    remark: undefined,
-    postIds: [],
-    roleIds: [],
-  };
-  proxy.resetForm("userRef");
-}
-
-/** 取消按钮 */
-function cancel() {
-  open.value = false;
-  reset();
-}
-
-/** 新增按钮操作 */
-function handleAdd() {
-  reset();
-  getUser().then((response) => {
-    postOptions.value = response.posts;
-    roleOptions.value = response.roles;
-    open.value = true;
-    title.value = "添加用户";
-    form.value.password = initPassword.value;
-  });
-}
-
-/** 修改按钮操作 */
-function handleUpdate(row) {
-  reset();
-  const userId = row.userId || ids.value;
-  getUser(userId).then((response) => {
-    form.value = response.data;
-    postOptions.value = response.posts;
-    roleOptions.value = response.roles;
-    form.value.postIds = response.postIds;
-    form.value.roleIds = response.roleIds;
-    open.value = true;
-    title.value = "修改用户";
-    form.password = "";
-  });
-}
-
-/** 提交按钮 */
-function submitForm() {
-  proxy.$refs["userRef"].validate((valid) => {
-    if (valid) {
-      if (form.value.userId != undefined) {
-        updateUser(form.value).then((response) => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addUser(form.value).then((response) => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
-    }
-  });
-}
-
-onMounted(() => {
-  getDeptTree();
-  getList();
-  proxy.getConfigKey("sys.user.initPassword").then((response) => {
-    initPassword.value = response.msg;
-  });
-});
+onMounted(async () => { const tree = await deptTreeSelect(); deptOptions.value = tree.data || []; load() })
 </script>
+
+<style scoped>
+.online-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: #bfbfbf; }
+.online-dot.online { background: #52c41a; }
+.login-info { display: flex; flex-direction: column; line-height: 22px; }
+.legacy-drawer-footer { display: flex; justify-content: flex-end; }
+.legacy-checkbox-list { display: flex; flex-wrap: wrap; gap: 12px 20px; width: 100%; }
+.legacy-checkbox-list :deep(.ant-checkbox-wrapper) { margin-inline-start: 0; }
+</style>

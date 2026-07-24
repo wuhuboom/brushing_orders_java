@@ -1,31 +1,82 @@
 import defaultSettings from '@/settings'
-import { useDark, useToggle } from '@vueuse/core'
 import { useDynamicTitle } from '@/utils/dynamicTitle'
 
-const isDark = useDark()
-const toggleDark = useToggle(isDark)
+const colorSchemeStorageKey = 'vueuse-color-scheme'
 
-const { sideTheme, showSettings, topNav, tagsView, tagsIcon, fixedHeader, sidebarLogo, dynamicTitle, footerVisible, footerContent } = defaultSettings
+function getInitialDarkMode() {
+  const stored = localStorage.getItem(colorSchemeStorageKey)
+  if (stored === 'dark') return true
+  return false
+}
 
-const storageSetting = JSON.parse(localStorage.getItem('layout-setting')) || ''
+function applyDarkMode(value) {
+  document.documentElement.classList.toggle('dark', value)
+  localStorage.setItem(colorSchemeStorageKey, value ? 'dark' : 'light')
+}
+
+const initialDarkMode = getInitialDarkMode()
+applyDarkMode(initialDarkMode)
+
+const {
+  layoutVersion,
+  theme,
+  sideTheme,
+  showSettings,
+  topNav,
+  tagsView,
+  tagsIcon,
+  fixedHeader,
+  fixedSidebar,
+  sidebarLogo,
+  dynamicTitle,
+  footerVisible,
+  footerContent,
+  headerVisible,
+  menuVisible,
+  menuHeaderVisible,
+  splitMenus,
+  contentWidth,
+  layoutMode,
+  colorWeak
+} = defaultSettings
+
+function getStorageSetting() {
+  try {
+    const setting = JSON.parse(localStorage.getItem('layout-setting')) || {}
+    return setting.layoutVersion === defaultSettings.layoutVersion ? setting : {}
+  } catch (error) {
+    return {}
+  }
+}
+
+const storageSetting = getStorageSetting()
 
 const useSettingsStore = defineStore(
   'settings',
   {
     state: () => ({
       title: '',
-      theme: storageSetting.theme || '#409EFF',
+      layoutVersion,
+      theme: storageSetting.theme || theme,
       sideTheme: storageSetting.sideTheme || sideTheme,
       showSettings: showSettings,
+      layoutMode: storageSetting.layoutMode || layoutMode,
       topNav: storageSetting.topNav === undefined ? topNav : storageSetting.topNav,
       tagsView: storageSetting.tagsView === undefined ? tagsView : storageSetting.tagsView,
       tagsIcon: storageSetting.tagsIcon === undefined ? tagsIcon : storageSetting.tagsIcon,
       fixedHeader: storageSetting.fixedHeader === undefined ? fixedHeader : storageSetting.fixedHeader,
+      fixedSidebar: storageSetting.fixedSidebar === undefined ? fixedSidebar : storageSetting.fixedSidebar,
       sidebarLogo: storageSetting.sidebarLogo === undefined ? sidebarLogo : storageSetting.sidebarLogo,
       dynamicTitle: storageSetting.dynamicTitle === undefined ? dynamicTitle : storageSetting.dynamicTitle,
       footerVisible: storageSetting.footerVisible === undefined ? footerVisible : storageSetting.footerVisible,
       footerContent: footerContent,
-      isDark: isDark.value
+      headerVisible: storageSetting.headerVisible === undefined ? headerVisible : storageSetting.headerVisible,
+      menuVisible: storageSetting.menuVisible === undefined ? menuVisible : storageSetting.menuVisible,
+      menuHeaderVisible: storageSetting.menuHeaderVisible === undefined ? menuHeaderVisible : storageSetting.menuHeaderVisible,
+      splitMenus: storageSetting.splitMenus === undefined ? splitMenus : storageSetting.splitMenus,
+      contentWidth: storageSetting.contentWidth || contentWidth,
+      colorWeak: storageSetting.colorWeak === undefined ? colorWeak : storageSetting.colorWeak,
+      isDark: initialDarkMode
     }),
     actions: {
       // 修改布局设置
@@ -42,8 +93,12 @@ const useSettingsStore = defineStore(
       },
       // 切换暗黑模式
       toggleTheme() {
-        this.isDark = !this.isDark
-        toggleDark()
+        this.setDark(!this.isDark)
+      },
+      // 设置整体暗黑模式
+      setDark(value) {
+        this.isDark = value
+        applyDarkMode(value)
       }
     }
   })

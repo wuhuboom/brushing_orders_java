@@ -29,9 +29,20 @@ export function addWithdrawal(data) {
 // 修改提现
 export function updateWithdrawal(data) {
   return request({
-    url: '/member/withdrawal',
+    url: '/member/withdrawal/' + data.id + '/status',
     method: 'put',
-    data: data
+    data: {
+      status: data.status,
+      remarks: data.remarks
+    }
+  })
+}
+
+// 查看完整付款账户（需要独立敏感信息权限）
+export function getSensitiveWithdrawalAccount(id) {
+  return request({
+    url: '/member/withdrawal/' + id + '/sensitive-account',
+    method: 'get'
   })
 }
 

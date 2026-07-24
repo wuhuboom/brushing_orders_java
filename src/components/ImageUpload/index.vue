@@ -1,94 +1,77 @@
 <template>
-  <div class="component-upload-image">
-    <el-upload
-      multiple
-      :disabled="disabled"
+  <div ref="uploadRoot" class="component-upload-image">
+    <a-upload
+      v-model:file-list="fileList"
       :action="uploadImgUrl"
-      list-type="picture-card"
-      :on-success="handleUploadSuccess"
-      :before-upload="handleBeforeUpload"
       :data="data"
-      :limit="limit"
-      :on-error="handleUploadError"
-      :on-exceed="handleExceed"
-      ref="imageUpload"
-      :before-remove="handleDelete"
-      :show-file-list="true"
       :headers="headers"
-      :file-list="fileList"
-      :on-preview="handlePictureCardPreview"
-      :class="{ hide: fileList.length >= limit }"
+      :disabled="disabled"
+      :max-count="limit"
+      :multiple="limit > 1"
+      list-type="picture-card"
+      accept="image/*"
+      @change="handleUploadChange"
+      @preview="handlePictureCardPreview"
+      :before-upload="handleBeforeUpload"
     >
-      <el-icon class="avatar-uploader-icon"><plus /></el-icon>
-    </el-upload>
-    <!-- 上传提示 -->
-    <div class="el-upload__tip" v-if="showTip && !disabled">
+      <div v-if="!disabled && fileList.length < limit" class="upload-card-trigger">
+        <PlusOutlined />
+        <div class="upload-card-text">上传</div>
+      </div>
+    </a-upload>
+
+    <div class="upload-tip" v-if="showTip && !disabled">
       请上传
       <template v-if="fileSize">
-        大小不超过 <b style="color: #f56c6c">{{ fileSize }}MB</b>
+        大小不超过 <b>{{ fileSize }}MB</b>
       </template>
       <template v-if="fileType">
-        格式为 <b style="color: #f56c6c">{{ fileType.join("/") }}</b>
+        格式为 <b>{{ fileType.join("/") }}</b>
       </template>
       的文件
     </div>
 
-    <el-dialog
-      v-model="dialogVisible"
-      title="预览"
-      width="800px"
-      append-to-body
-    >
-      <img
-        :src="dialogImageUrl"
-        style="display: block; max-width: 100%; margin: 0 auto"
-      />
-    </el-dialog>
+    <a-modal v-model:open="dialogVisible" title="预览" :footer="null" width="800px">
+      <img :src="dialogImageUrl" class="preview-image" />
+    </a-modal>
   </div>
 </template>
 
 <script setup>
+import { PlusOutlined } from "@ant-design/icons-vue";
 import { getToken } from "@/utils/auth";
 import { isExternal } from "@/utils/validate";
 import Sortable from "sortablejs";
 
 const props = defineProps({
   modelValue: [String, Object, Array],
-  // 上传接口地址
   action: {
     type: String,
     default: "/common/upload",
   },
-  // 上传携带的参数
   data: {
     type: Object,
   },
-  // 图片数量限制
   limit: {
     type: Number,
     default: 5,
   },
-  // 大小限制(MB)
   fileSize: {
     type: Number,
     default: 5,
   },
-  // 文件类型, 例如['png', 'jpg', 'jpeg']
   fileType: {
     type: Array,
     default: () => ["png", "jpg", "jpeg"],
   },
-  // 是否显示提示
   isShowTip: {
     type: Boolean,
     default: true,
   },
-  // 禁用组件（仅查看图片）
   disabled: {
     type: Boolean,
     default: false,
   },
-  // 拖动排序
   drag: {
     type: Boolean,
     default: true,
@@ -97,172 +80,198 @@ const props = defineProps({
 
 const { proxy } = getCurrentInstance();
 const config = window.APP_CONFIG;
-const emit = defineEmits();
-const number = ref(0);
-const uploadList = ref([]);
+const emit = defineEmits(["update:modelValue"]);
+const baseUrl = config.baseApiUrl;
+const uploadRoot = ref();
 const dialogImageUrl = ref("");
 const dialogVisible = ref(false);
-const baseUrl = config.baseApiUrl;
-const uploadImgUrl = ref(config.baseApiUrl + props.action); // 上传的图片服务器地址
+const uploadImgUrl = ref(config.baseApiUrl + props.action);
 const headers = ref({ Authorization: "Bearer " + getToken() });
 const fileList = ref([]);
-const showTip = computed(
-  () => props.isShowTip && (props.fileType || props.fileSize)
-);
+const showTip = computed(() => props.isShowTip && (props.fileType || props.fileSize));
+let sortableInstance = null;
 
 watch(
   () => props.modelValue,
   (val) => {
-    if (val) {
-      // 首先将值转为数组
-      const list = Array.isArray(val) ? val : props.modelValue.split(",");
-      // 然后将数组转为对象数组
-      fileList.value = list.map((item) => {
-        if (typeof item === "string") {
-          if (item.indexOf(baseUrl) === -1 && !isExternal(item)) {
-            item = { name: baseUrl + item, url: baseUrl + item };
-          } else {
-            item = { name: item, url: item };
-          }
-        }
-        return item;
-      });
-    } else {
-      fileList.value = [];
-      return [];
-    }
+    fileList.value = normalizeModelValue(val);
+    nextTick(initSortable);
   },
   { deep: true, immediate: true }
 );
 
-// 上传前loading加载
-function handleBeforeUpload(file) {
-  let isImg = false;
-  if (props.fileType.length) {
-    let fileExtension = "";
-    if (file.name.lastIndexOf(".") > -1) {
-      fileExtension = file.name.slice(file.name.lastIndexOf(".") + 1);
-    }
-    isImg = props.fileType.some((type) => {
-      if (file.type.indexOf(type) > -1) return true;
-      if (fileExtension && fileExtension.indexOf(type) > -1) return true;
-      return false;
-    });
-  } else {
-    isImg = file.type.indexOf("image") > -1;
+function normalizeModelValue(value) {
+  if (!value) return [];
+  const list = Array.isArray(value) ? value : String(value).split(",");
+  return list.filter(Boolean).map((item, index) => {
+    const rawUrl = typeof item === "string" ? item : item.url || item.name || "";
+    const url = normalizeUrl(rawUrl);
+    return {
+      uid: item.uid || `${Date.now()}-${index}`,
+      name: item.name || rawUrl,
+      status: "done",
+      url,
+    };
+  });
+}
+
+function normalizeUrl(url) {
+  if (!url) return "";
+  if (isExternal(url) || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
   }
-  if (!isImg) {
-    proxy.$modal.msgError(
-      `文件格式不正确，请上传${props.fileType.join("/")}图片格式文件!`
-    );
+  return url.startsWith(baseUrl) ? url : baseUrl + url;
+}
+
+function handleBeforeUpload(file) {
+  if (fileList.value.length >= props.limit) {
+    proxy.$modal.msgError(`上传文件数量不能超过 ${props.limit} 个`);
     return false;
   }
+
+  const extension = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "";
+  const mimeType = (file.type || "").toLowerCase();
+  const isImg = props.fileType.length
+    ? props.fileType.some((type) => {
+        const normalizedType = String(type).toLowerCase();
+        return mimeType.includes(normalizedType) || extension === normalizedType;
+      })
+    : mimeType.includes("image");
+
+  if (!isImg) {
+    proxy.$modal.msgError(`文件格式不正确，请上传 ${props.fileType.join("/")} 图片格式文件!`);
+    return false;
+  }
+
   if (file.name.includes(",")) {
     proxy.$modal.msgError("文件名不正确，不能包含英文逗号!");
     return false;
   }
-  if (props.fileSize) {
-    const isLt = file.size / 1024 / 1024 < props.fileSize;
-    if (!isLt) {
-      proxy.$modal.msgError(`上传头像图片大小不能超过 ${props.fileSize} MB!`);
-      return false;
-    }
-  }
-  proxy.$modal.loading("正在上传图片，请稍候...");
-  number.value++;
-}
 
-// 文件个数超出
-function handleExceed() {
-  proxy.$modal.msgError(`上传文件数量不能超过 ${props.limit} 个!`);
-}
-
-// 上传成功回调
-function handleUploadSuccess(res, file) {
-  if (res.code === 200) {
-    uploadList.value.push({ name: res.fileName, url: res.fileName });
-    uploadedSuccessfully();
-  } else {
-    number.value--;
-    proxy.$modal.closeLoading();
-    proxy.$modal.msgError(res.msg);
-    proxy.$refs.imageUpload.handleRemove(file);
-    uploadedSuccessfully();
-  }
-}
-
-// 删除图片
-function handleDelete(file) {
-  const findex = fileList.value.map((f) => f.name).indexOf(file.name);
-  if (findex > -1 && uploadList.value.length === number.value) {
-    fileList.value.splice(findex, 1);
-    emit("update:modelValue", listToString(fileList.value));
+  if (props.fileSize && file.size / 1024 / 1024 >= props.fileSize) {
+    proxy.$modal.msgError(`上传图片大小不能超过 ${props.fileSize} MB!`);
     return false;
   }
+
+  proxy.$modal.loading("正在上传图片，请稍候...");
+  return true;
 }
 
-// 上传结束处理
-function uploadedSuccessfully() {
-  if (number.value > 0 && uploadList.value.length === number.value) {
-    fileList.value = fileList.value
-      .filter((f) => f.url !== undefined)
-      .concat(uploadList.value);
-    uploadList.value = [];
-    number.value = 0;
-    emit("update:modelValue", listToString(fileList.value));
+function handleUploadChange({ file, fileList: nextFileList }) {
+  fileList.value = nextFileList.slice(0, props.limit);
+
+  if (file.status === "done") {
     proxy.$modal.closeLoading();
+    if (file.response?.code === 200) {
+      file.url = normalizeUrl(file.response.fileName);
+      file.name = file.response.fileName;
+      syncModelValue();
+      return;
+    }
+    fileList.value = fileList.value.filter((item) => item.uid !== file.uid);
+    proxy.$modal.msgError(file.response?.msg || "上传图片失败");
+    syncModelValue();
+    return;
+  }
+
+  if (file.status === "error") {
+    proxy.$modal.closeLoading();
+    proxy.$modal.msgError("上传图片失败");
+    fileList.value = fileList.value.filter((item) => item.uid !== file.uid);
+    syncModelValue();
+    return;
+  }
+
+  if (file.status === "removed") {
+    syncModelValue();
   }
 }
 
-// 上传失败
-function handleUploadError() {
-  proxy.$modal.msgError("上传图片失败");
-  proxy.$modal.closeLoading();
-}
-
-// 预览
 function handlePictureCardPreview(file) {
-  dialogImageUrl.value = file.url;
+  dialogImageUrl.value = file.url || file.thumbUrl;
   dialogVisible.value = true;
 }
 
-// 对象转成指定字符串分隔
-function listToString(list, separator) {
-  let strs = "";
-  separator = separator || ",";
-  for (let i in list) {
-    if (undefined !== list[i].url && list[i].url.indexOf("blob:") !== 0) {
-      strs += list[i].url.replace(baseUrl, "") + separator;
-    }
-  }
-  return strs != "" ? strs.substr(0, strs.length - 1) : "";
+function syncModelValue() {
+  emit("update:modelValue", listToString(fileList.value));
+  nextTick(initSortable);
 }
 
-// 初始化拖拽排序
-onMounted(() => {
-  if (props.drag && !props.disabled) {
-    nextTick(() => {
-      const element =
-        proxy.$refs.imageUpload?.$el?.querySelector(".el-upload-list");
-      Sortable.create(element, {
-        onEnd: (evt) => {
-          const movedItem = fileList.value.splice(evt.oldIndex, 1)[0];
-          fileList.value.splice(evt.newIndex, 0, movedItem);
-          emit("update:modelValue", listToString(fileList.value));
-        },
-      });
-    });
-  }
+function listToString(list, separator = ",") {
+  return list
+    .map((item) => {
+      const url = item.response?.fileName || item.url || item.name || "";
+      return url && !url.startsWith("blob:") ? url.replace(baseUrl, "") : "";
+    })
+    .filter(Boolean)
+    .join(separator);
+}
+
+function initSortable() {
+  if (!props.drag || props.disabled || sortableInstance || !uploadRoot.value) return;
+  const element = uploadRoot.value.querySelector(".ant-upload-list");
+  if (!element) return;
+  sortableInstance = Sortable.create(element, {
+    animation: 150,
+    onEnd: (evt) => {
+      if (evt.oldIndex === evt.newIndex) return;
+      const movedItem = fileList.value.splice(evt.oldIndex, 1)[0];
+      fileList.value.splice(evt.newIndex, 0, movedItem);
+      syncModelValue();
+    },
+  });
+}
+
+onBeforeUnmount(() => {
+  sortableInstance?.destroy();
+  sortableInstance = null;
 });
 </script>
 
 <style scoped lang="scss">
-// .el-upload--picture-card 控制加号部分
-:deep(.hide .el-upload--picture-card) {
-  display: none;
+.component-upload-image {
+  :deep(.ant-upload-list-picture-card) {
+    gap: 8px;
+  }
+
+  :deep(.ant-upload-list-picture-card .ant-upload-list-item-container),
+  :deep(.ant-upload.ant-upload-select-picture-card) {
+    width: 86px;
+    height: 86px;
+  }
+
+  :deep(.ant-upload-select),
+  :deep(.ant-upload.ant-upload-select-picture-card),
+  :deep(.ant-upload-list-picture-card .ant-upload-list-item) {
+    background: var(--control-alt-bg) !important;
+    border-color: var(--border-color) !important;
+  }
 }
 
-:deep(.el-upload.el-upload--picture-card.is-disabled) {
-  display: none !important;
+.upload-card-trigger {
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.upload-card-text {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.upload-tip {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+
+  b {
+    color: #ff4d4f;
+    font-weight: 500;
+  }
+}
+
+.preview-image {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
 }
 </style>

@@ -1,20 +1,22 @@
 <template>
-  <el-image
-    :src="`${realSrc}`"
-    fit="cover"
-    :style="`width:${realWidth};height:${realHeight};`"
-    :preview-src-list="realSrcList"
-    preview-teleported
-  >
-    <template #error>
-      <div class="image-slot">
-        <el-icon><picture-filled /></el-icon>
-      </div>
-    </template>
-  </el-image>
+  <div class="image-preview" :style="{ width: realWidth, height: realHeight }">
+    <a-image-preview-group v-if="realSrcList.length" :items="realSrcList">
+      <a-image :src="realSrc" :width="realWidth" :height="realHeight" :preview="true">
+        <template #placeholder>
+          <div class="image-slot">
+            <PictureOutlined />
+          </div>
+        </template>
+      </a-image>
+    </a-image-preview-group>
+    <div v-else class="image-slot">
+      <PictureOutlined />
+    </div>
+  </div>
 </template>
 
 <script setup>
+import { PictureOutlined } from "@ant-design/icons-vue";
 import { isExternal } from "@/utils/validate";
 
 const props = defineProps({
@@ -31,62 +33,63 @@ const props = defineProps({
     default: "",
   },
 });
+
 const config = window.APP_CONFIG;
+
 const realSrc = computed(() => {
-  if (!props.src) {
-    return;
-  }
-  let real_src = props.src.split(",")[0];
-  if (isExternal(real_src)) {
-    return real_src;
-  }
-  return config.baseApiUrl + real_src;
+  if (!props.src) return "";
+  const firstSrc = props.src.split(",")[0];
+  return normalizeSrc(firstSrc);
 });
 
 const realSrcList = computed(() => {
-  if (!props.src) {
-    return;
-  }
-  let real_src_list = props.src.split(",");
-  let srcList = [];
-  real_src_list.forEach((item) => {
-    if (isExternal(item)) {
-      return srcList.push(item);
-    }
-    return srcList.push(config.baseApiUrl + item);
-  });
-  return srcList;
+  if (!props.src) return [];
+  return props.src.split(",").filter(Boolean).map(normalizeSrc);
 });
 
-const realWidth = computed(() =>
-  typeof props.width == "string" ? props.width : `${props.width}px`
-);
+const realWidth = computed(() => (typeof props.width === "string" ? props.width : `${props.width}px`));
+const realHeight = computed(() => (typeof props.height === "string" ? props.height : `${props.height}px`));
 
-const realHeight = computed(() =>
-  typeof props.height == "string" ? props.height : `${props.height}px`
-);
+function normalizeSrc(src) {
+  if (isExternal(src)) return src;
+  return config.baseApiUrl + src;
+}
 </script>
 
 <style lang="scss" scoped>
-.el-image {
-  border-radius: 5px;
-  background-color: #ebeef5;
-  box-shadow: 0 0 5px 1px #ccc;
-  :deep(.el-image__inner) {
-    transition: all 0.3s;
+.image-preview {
+  display: inline-flex;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #f5f7fa;
+  box-shadow: 0 0 0 1px #e5e7eb;
+
+  :deep(.ant-image),
+  :deep(.ant-image-img) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  :deep(.ant-image-img) {
+    object-fit: cover;
+    transition: transform 0.2s ease;
     cursor: pointer;
-    &:hover {
-      transform: scale(1.2);
-    }
   }
-  :deep(.image-slot) {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-    color: #909399;
-    font-size: 30px;
+
+  :deep(.ant-image-img:hover) {
+    transform: scale(1.08);
   }
+}
+
+.image-slot {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 22px;
 }
 </style>

@@ -14,29 +14,34 @@
       >
         <svg-icon v-if="tagsIcon && tag.meta && tag.meta.icon && tag.meta.icon !== '#'" :icon-class="tag.meta.icon" />
         {{ tag.title }}
-        <span v-if="!isAffix(tag)" @click.prevent.stop="closeSelectedTag(tag)">
-          <close class="el-icon-close" style="width: 1em; height: 1em;vertical-align: middle;" />
+        <span
+          v-if="!isAffix(tag)"
+          class="tags-view-close"
+          aria-label="关闭"
+          @click.prevent.stop="closeSelectedTag(tag)"
+        >
+          ×
         </span>
       </router-link>
     </scroll-pane>
     <ul v-show="visible" :style="{ left: left + 'px', top: top + 'px' }" class="contextmenu">
       <li @click="refreshSelectedTag(selectedTag)">
-        <refresh-right style="width: 1em; height: 1em;" /> 刷新页面
+        <span class="context-icon" aria-hidden="true">↻</span> 刷新页面
       </li>
       <li v-if="!isAffix(selectedTag)" @click="closeSelectedTag(selectedTag)">
-        <close style="width: 1em; height: 1em;" /> 关闭当前
+        <span class="context-icon" aria-hidden="true">×</span> 关闭当前
       </li>
       <li @click="closeOthersTags">
-        <circle-close style="width: 1em; height: 1em;" /> 关闭其他
+        <span class="context-icon" aria-hidden="true">⊗</span> 关闭其他
       </li>
       <li v-if="!isFirstView()" @click="closeLeftTags">
-        <back style="width: 1em; height: 1em;" /> 关闭左侧
+        <span class="context-icon" aria-hidden="true">←</span> 关闭左侧
       </li>
       <li v-if="!isLastView()" @click="closeRightTags">
-        <right style="width: 1em; height: 1em;" /> 关闭右侧
+        <span class="context-icon" aria-hidden="true">→</span> 关闭右侧
       </li>
       <li @click="closeAllTags(selectedTag)">
-        <circle-close style="width: 1em; height: 1em;" /> 全部关闭
+        <span class="context-icon" aria-hidden="true">⊗</span> 全部关闭
       </li>
     </ul>
   </div>
@@ -88,11 +93,7 @@ function isActive(r) {
 }
 
 function activeStyle(tag) {
-  if (!isActive(tag)) return {}
-  return {
-    "background-color": theme.value,
-    "border-color": theme.value
-  }
+  return {}
 }
 
 function isAffix(tag) {
@@ -261,29 +262,33 @@ function handleScroll() {
 
 <style lang="scss" scoped>
 .tags-view-container {
-  height: 34px;
+  height: 38px;
   width: 100%;
   background: var(--tags-bg, #fff);
-  border-bottom: 1px solid var(--tags-item-border, #d8dce5);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .12), 0 0 3px 0 rgba(0, 0, 0, .04);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: none;
 
   .tags-view-wrapper {
     .tags-view-item {
       display: inline-block;
       position: relative;
       cursor: pointer;
-      height: 26px;
-      line-height: 26px;
-      border: 1px solid var(--tags-item-border, #d8dce5);
-      color: var(--tags-item-text, #495060);
+      height: 38px;
+      line-height: 38px;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      color: var(--tags-item-text, var(--text-primary));
       background: var(--tags-item-bg, #fff);
-      padding: 0 8px;
-      font-size: 12px;
-      margin-left: 5px;
-      margin-top: 4px;
+      padding: 0 15px;
+      font-size: 14px;
+      font-weight: 400;
+      margin-left: 0;
+      margin-top: 0;
+      border-radius: 6px 6px 0 0;
+      vertical-align: top;
 
       &:first-of-type {
-        margin-left: 15px;
+        margin-left: 0;
       }
 
       &:last-of-type {
@@ -291,19 +296,13 @@ function handleScroll() {
       }
 
       &.active {
-        background-color: #42b983;
-        color: #fff;
-        border-color: #42b983;
+        color: var(--primary-color);
+        background: var(--card-bg);
+        border-color: var(--border-color);
+        font-weight: 600;
 
         &::before {
-          content: '';
-          background: #fff;
-          display: inline-block;
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          position: relative;
-          margin-right: 5px;
+          content: none;
         }
       }
     }
@@ -315,8 +314,8 @@ function handleScroll() {
 
   .contextmenu {
     margin: 0;
-    background: var(--el-bg-color-overlay, #fff);
-    z-index: 3000;
+    background: var(--card-bg, #fff);
+    z-index: 850;
     position: absolute;
     list-style-type: none;
     padding: 5px 0;
@@ -325,9 +324,12 @@ function handleScroll() {
     font-weight: 400;
     color: var(--tags-item-text, #333);
     box-shadow: 2px 2px 3px 0 rgba(0, 0, 0, .3);
-    border: 1px solid var(--el-border-color-light, #e4e7ed);
+    border: 1px solid var(--border-color, #e4e7ed);
 
     li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       margin: 0;
       padding: 7px 16px;
       cursor: pointer;
@@ -341,31 +343,44 @@ function handleScroll() {
 </style>
 
 <style lang="scss">
-//reset element css of el-icon-close
 .tags-view-wrapper {
   .tags-view-item {
-    .el-icon-close {
-      width: 16px;
-      height: 16px;
-      vertical-align: 2px;
+    .tags-view-close {
+      width: 14px;
+      height: 14px;
+      margin-left: 8px;
+      vertical-align: -2px;
       border-radius: 50%;
       text-align: center;
       transition: all .3s cubic-bezier(.645, .045, .355, 1);
       transform-origin: 100% 50%;
 
-      &:before {
-        transform: scale(.6);
-        display: inline-block;
-        vertical-align: -3px;
-      }
-
       &:hover {
-        background-color: var(--tags-close-hover, #b4bccc);
-        color: #fff;
-        width: 12px !important;
-        height: 12px !important;
+        background-color: var(--tags-close-hover, var(--menu-hover));
+        color: var(--text-primary);
       }
     }
   }
+}
+</style>
+
+<style scoped>
+.tags-view-close,
+.context-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.tags-view-close {
+  width: 14px;
+  height: 14px;
+}
+
+.context-icon {
+  flex: 0 0 14px;
+  width: 14px;
+  font-size: 14px;
 }
 </style>

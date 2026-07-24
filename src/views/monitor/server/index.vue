@@ -1,187 +1,169 @@
 <template>
-  <div class="app-container">
-    <el-row :gutter="10">
-      <el-col :span="12" class="card-box">
-        <el-card>
-          <template #header><Cpu style="width: 1em; height: 1em; vertical-align: middle;" /> <span style="vertical-align: middle;">CPU</span></template>
-          <div class="el-table el-table--enable-row-hover el-table--medium">
-            <table cellspacing="0" style="width: 100%;">
-              <thead>
-                <tr>
-                  <th class="el-table__cell is-leaf"><div class="cell">属性</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">值</div></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">核心数</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.cpu">{{ server.cpu.cpuNum }}</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">用户使用率</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.cpu">{{ server.cpu.used }}%</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">系统使用率</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.cpu">{{ server.cpu.sys }}%</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">当前空闲率</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.cpu">{{ server.cpu.free }}%</div></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </el-card>
-      </el-col>
+  <div class="app-container ant-pro-member-page">
+    <a-row :gutter="[16, 16]">
+      <a-col :xs="24" :lg="12">
+        <a-card title="CPU" :bordered="false">
+          <a-table
+            size="middle"
+            row-key="label"
+            :columns="cpuColumns"
+            :data-source="cpuRows"
+            :pagination="false"
+          />
+        </a-card>
+      </a-col>
 
-      <el-col :span="12" class="card-box">
-        <el-card>
-          <template #header><Tickets style="width: 1em; height: 1em; vertical-align: middle;" /> <span style="vertical-align: middle;">内存</span></template>
-          <div class="el-table el-table--enable-row-hover el-table--medium">
-            <table cellspacing="0" style="width: 100%;">
-              <thead>
-                <tr>
-                  <th class="el-table__cell is-leaf"><div class="cell">属性</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">内存</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">JVM</div></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">总内存</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.mem">{{ server.mem.total }}G</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.total }}M</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">已用内存</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.mem">{{ server.mem.used}}G</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.used}}M</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">剩余内存</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.mem">{{ server.mem.free }}G</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.free }}M</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">使用率</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.mem" :class="{'text-danger': server.mem.usage > 80}">{{ server.mem.usage }}%</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm" :class="{'text-danger': server.jvm.usage > 80}">{{ server.jvm.usage }}%</div></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </el-card>
-      </el-col>
+      <a-col :xs="24" :lg="12">
+        <a-card title="内存" :bordered="false">
+          <a-table
+            size="middle"
+            row-key="label"
+            :columns="memoryColumns"
+            :data-source="memoryRows"
+            :pagination="false"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.dataIndex === 'mem'">
+                <span :class="{ 'text-danger': record.memDanger }">{{ record.mem }}</span>
+              </template>
+              <template v-else-if="column.dataIndex === 'jvm'">
+                <span :class="{ 'text-danger': record.jvmDanger }">{{ record.jvm }}</span>
+              </template>
+            </template>
+          </a-table>
+        </a-card>
+      </a-col>
 
-      <el-col :span="24" class="card-box">
-        <el-card>
-          <template #header><Monitor style="width: 1em; height: 1em; vertical-align: middle;" /> <span style="vertical-align: middle;">服务器信息</span></template>
-          <div class="el-table el-table--enable-row-hover el-table--medium">
-            <table cellspacing="0" style="width: 100%;">
-              <tbody>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">服务器名称</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.sys">{{ server.sys.computerName }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">操作系统</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.sys">{{ server.sys.osName }}</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">服务器IP</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.sys">{{ server.sys.computerIp }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">系统架构</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.sys">{{ server.sys.osArch }}</div></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </el-card>
-      </el-col>
+      <a-col :span="24">
+        <a-card title="服务器信息" :bordered="false">
+          <a-descriptions bordered size="small" :column="2">
+            <a-descriptions-item label="服务器名称">{{ server.sys?.computerName }}</a-descriptions-item>
+            <a-descriptions-item label="操作系统">{{ server.sys?.osName }}</a-descriptions-item>
+            <a-descriptions-item label="服务器IP">{{ server.sys?.computerIp }}</a-descriptions-item>
+            <a-descriptions-item label="系统架构">{{ server.sys?.osArch }}</a-descriptions-item>
+          </a-descriptions>
+        </a-card>
+      </a-col>
 
-      <el-col :span="24" class="card-box">
-        <el-card>
-          <template #header><CoffeeCup style="width: 1em; height: 1em; vertical-align: middle;" /> <span style="vertical-align: middle;">Java虚拟机信息</span></template>
-          <div class="el-table el-table--enable-row-hover el-table--medium">
-            <table cellspacing="0" style="width: 100%;table-layout:fixed;">
-              <tbody>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">Java名称</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.name }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">Java版本</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.version }}</div></td>
-                </tr>
-                <tr>
-                  <td class="el-table__cell is-leaf"><div class="cell">启动时间</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.startTime }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">运行时长</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.runTime }}</div></td>
-                </tr>
-                <tr>
-                  <td colspan="1" class="el-table__cell is-leaf"><div class="cell">安装路径</div></td>
-                  <td colspan="3" class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.home }}</div></td>
-                </tr>
-                <tr>
-                  <td colspan="1" class="el-table__cell is-leaf"><div class="cell">项目路径</div></td>
-                  <td colspan="3" class="el-table__cell is-leaf"><div class="cell" v-if="server.sys">{{ server.sys.userDir }}</div></td>
-                </tr>
-                <tr>
-                  <td colspan="1" class="el-table__cell is-leaf"><div class="cell">运行参数</div></td>
-                  <td colspan="3" class="el-table__cell is-leaf"><div class="cell" v-if="server.jvm">{{ server.jvm.inputArgs }}</div></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </el-card>
-      </el-col>
+      <a-col :span="24">
+        <a-card title="Java虚拟机信息" :bordered="false">
+          <a-descriptions bordered size="small" :column="2">
+            <a-descriptions-item label="Java名称">{{ server.jvm?.name }}</a-descriptions-item>
+            <a-descriptions-item label="Java版本">{{ server.jvm?.version }}</a-descriptions-item>
+            <a-descriptions-item label="启动时间">{{ server.jvm?.startTime }}</a-descriptions-item>
+            <a-descriptions-item label="运行时长">{{ server.jvm?.runTime }}</a-descriptions-item>
+            <a-descriptions-item label="安装路径" :span="2">{{ server.jvm?.home }}</a-descriptions-item>
+            <a-descriptions-item label="项目路径" :span="2">{{ server.sys?.userDir }}</a-descriptions-item>
+            <a-descriptions-item label="运行参数" :span="2">{{ server.jvm?.inputArgs }}</a-descriptions-item>
+          </a-descriptions>
+        </a-card>
+      </a-col>
 
-      <el-col :span="24" class="card-box">
-        <el-card>
-          <template #header><MessageBox style="width: 1em; height: 1em; vertical-align: middle;" /> <span style="vertical-align: middle;">磁盘状态</span></template>
-          <div class="el-table el-table--enable-row-hover el-table--medium">
-            <table cellspacing="0" style="width: 100%;">
-              <thead>
-                <tr>
-                  <th class="el-table__cell el-table__cell is-leaf"><div class="cell">盘符路径</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">文件系统</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">盘符类型</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">总大小</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">可用大小</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">已用大小</div></th>
-                  <th class="el-table__cell is-leaf"><div class="cell">已用百分比</div></th>
-                </tr>
-              </thead>
-              <tbody v-if="server.sysFiles">
-                <tr v-for="(sysFile, index) in server.sysFiles" :key="index">
-                  <td class="el-table__cell is-leaf"><div class="cell">{{ sysFile.dirName }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">{{ sysFile.sysTypeName }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">{{ sysFile.typeName }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">{{ sysFile.total }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">{{ sysFile.free }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell">{{ sysFile.used }}</div></td>
-                  <td class="el-table__cell is-leaf"><div class="cell" :class="{'text-danger': sysFile.usage > 80}">{{ sysFile.usage }}%</div></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+      <a-col :span="24">
+        <a-card title="磁盘状态" :bordered="false">
+          <a-table
+            size="middle"
+            row-key="dirName"
+            :columns="diskColumns"
+            :data-source="server.sysFiles || []"
+            :pagination="false"
+            :scroll="{ x: 1000 }"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.dataIndex === 'usage'">
+                <span :class="{ 'text-danger': record.usage > 80 }">{{ record.usage }}%</span>
+              </template>
+            </template>
+          </a-table>
+        </a-card>
+      </a-col>
+    </a-row>
   </div>
 </template>
 
 <script setup>
-import { getServer } from '@/api/monitor/server'
+import { getServer } from "@/api/monitor/server";
 
-const server = ref([])
-const { proxy } = getCurrentInstance()
+const server = ref({
+  cpu: {},
+  mem: {},
+  jvm: {},
+  sys: {},
+  sysFiles: [],
+});
+const { proxy } = getCurrentInstance();
 
-function getList() {
-  proxy.$modal.loading("正在加载服务监控数据，请稍候！")
-  getServer().then(response => {
-    server.value = response.data
-    proxy.$modal.closeLoading()
-  })
+const cpuColumns = [
+  { title: "属性", dataIndex: "label", width: 180 },
+  { title: "值", dataIndex: "value" },
+];
+
+const memoryColumns = [
+  { title: "属性", dataIndex: "label", width: 180 },
+  { title: "内存", dataIndex: "mem" },
+  { title: "JVM", dataIndex: "jvm" },
+];
+
+const diskColumns = [
+  { title: "盘符路径", dataIndex: "dirName", width: 180 },
+  { title: "文件系统", dataIndex: "sysTypeName", width: 160 },
+  { title: "盘符类型", dataIndex: "typeName", width: 160 },
+  { title: "总大小", dataIndex: "total", width: 120 },
+  { title: "可用大小", dataIndex: "free", width: 120 },
+  { title: "已用大小", dataIndex: "used", width: 120 },
+  { title: "已用百分比", dataIndex: "usage", width: 140 },
+];
+
+const cpuRows = computed(() => [
+  { label: "核心数", value: server.value.cpu?.cpuNum },
+  { label: "用户使用率", value: formatPercent(server.value.cpu?.used) },
+  { label: "系统使用率", value: formatPercent(server.value.cpu?.sys) },
+  { label: "当前空闲率", value: formatPercent(server.value.cpu?.free) },
+]);
+
+const memoryRows = computed(() => [
+  {
+    label: "总内存",
+    mem: formatSize(server.value.mem?.total, "G"),
+    jvm: formatSize(server.value.jvm?.total, "M"),
+  },
+  {
+    label: "已用内存",
+    mem: formatSize(server.value.mem?.used, "G"),
+    jvm: formatSize(server.value.jvm?.used, "M"),
+  },
+  {
+    label: "剩余内存",
+    mem: formatSize(server.value.mem?.free, "G"),
+    jvm: formatSize(server.value.jvm?.free, "M"),
+  },
+  {
+    label: "使用率",
+    mem: formatPercent(server.value.mem?.usage),
+    jvm: formatPercent(server.value.jvm?.usage),
+    memDanger: server.value.mem?.usage > 80,
+    jvmDanger: server.value.jvm?.usage > 80,
+  },
+]);
+
+function formatPercent(value) {
+  return value === undefined ? "" : `${value}%`;
 }
 
-getList()
+function formatSize(value, unit) {
+  return value === undefined ? "" : `${value}${unit}`;
+}
+
+function getList() {
+  proxy.$modal.loading("正在加载服务监控数据，请稍候！");
+  getServer()
+    .then((response) => {
+      server.value = response.data || server.value;
+    })
+    .finally(() => {
+      proxy.$modal.closeLoading();
+    });
+}
+
+getList();
 </script>

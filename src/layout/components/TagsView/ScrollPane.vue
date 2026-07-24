@@ -1,33 +1,24 @@
 <template>
-  <el-scrollbar
-    ref="scrollContainer"
-    :vertical="false"
-    class="scroll-container"
-    @wheel.prevent="handleScroll"
-  >
-    <slot />
-  </el-scrollbar>
+  <div ref="scrollContainer" class="scroll-container" @wheel.prevent="handleScroll">
+    <div ref="scrollWrapper" class="scroll-wrapper" @scroll="emitScroll">
+      <slot />
+    </div>
+  </div>
 </template>
 
 <script setup>
 import useTagsViewStore from '@/store/modules/tagsView'
 
 const tagAndTagSpacing = ref(4)
-const { proxy } = getCurrentInstance()
-
-const scrollWrapper = computed(() => proxy.$refs.scrollContainer.$refs.wrapRef)
-
-onMounted(() => {
-  scrollWrapper.value.addEventListener('scroll', emitScroll, true)
-})
-
-onBeforeUnmount(() => {
-  scrollWrapper.value.removeEventListener('scroll', emitScroll)
-})
+const scrollContainer = ref(null)
+const scrollWrapper = ref(null)
 
 function handleScroll(e) {
   const eventDelta = e.wheelDelta || -e.deltaY * 40
   const $scrollWrapper = scrollWrapper.value
+  if (!$scrollWrapper) {
+    return
+  }
   $scrollWrapper.scrollLeft = $scrollWrapper.scrollLeft + eventDelta / 4
 }
 
@@ -40,9 +31,12 @@ const tagsViewStore = useTagsViewStore()
 const visitedViews = computed(() => tagsViewStore.visitedViews)
 
 function moveToTarget(currentTag) {
-  const $container = proxy.$refs.scrollContainer.$el
-  const $containerWidth = $container.offsetWidth
+  const $container = scrollContainer.value
   const $scrollWrapper = scrollWrapper.value
+  if (!$container || !$scrollWrapper) {
+    return
+  }
+  const $containerWidth = $container.offsetWidth
 
   let firstTag = null
   let lastTag = null
@@ -64,13 +58,17 @@ function moveToTarget(currentTag) {
     let nextTag = null
     for (const k in tagListDom) {
       if (k !== 'length' && Object.hasOwnProperty.call(tagListDom, k)) {
-        if (tagListDom[k].dataset.path === visitedViews.value[currentIndex - 1].path) {
+        if (visitedViews.value[currentIndex - 1] && tagListDom[k].dataset.path === visitedViews.value[currentIndex - 1].path) {
           prevTag = tagListDom[k]
         }
-        if (tagListDom[k].dataset.path === visitedViews.value[currentIndex + 1].path) {
+        if (visitedViews.value[currentIndex + 1] && tagListDom[k].dataset.path === visitedViews.value[currentIndex + 1].path) {
           nextTag = tagListDom[k]
         }
       }
+    }
+
+    if (!prevTag || !nextTag) {
+      return
     }
 
     // the tag's offsetLeft after of nextTag
@@ -97,11 +95,18 @@ defineExpose({
   position: relative;
   overflow: hidden;
   width: 100%;
-  :deep(.el-scrollbar__bar) {
-    bottom: 0px;
-  }
-  :deep(.el-scrollbar__wrap) {
-    height: 39px;
+  height: 39px;
+}
+
+.scroll-wrapper {
+  width: 100%;
+  height: 39px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
   }
 }
 </style>

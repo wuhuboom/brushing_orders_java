@@ -1,292 +1,104 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
-    >
-      <el-form-item label="类型" prop="type">
-        <el-select
-          v-model="queryParams.type"
-          placeholder="请选择类型"
-          clearable
-          style="width: 220px"
-        >
-          <el-option
-            v-for="dict in order_zhlx"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          placeholder="请输入名称"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['member:withdrawaltype:add']"
-          >新增</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['member:withdrawaltype:edit']"
-          >修改</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['member:withdrawaltype:remove']"
-          >删除</el-button
-        >
-      </el-col>
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
-
-    <el-table
-      v-loading="loading"
-      :data="withdrawaltypeList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="ID" align="center" prop="id" />
-      <el-table-column label="类型" align="center" prop="type">
-        <template #default="scope">
-          <dict-tag :options="order_zhlx" :value="scope.row.type" />
-        </template>
-      </el-table-column>
-      <el-table-column label="名称" align="center" prop="name" />
-      <el-table-column label="汇率" align="center" prop="exchangeRate" />
-      <el-table-column label="序号" align="center" prop="sortOrder" />
-      <el-table-column label="图标" align="center" prop="icon" width="100">
-        <template #default="scope">
-          <image-preview :src="scope.row.icon" :width="50" :height="50" />
-        </template>
-      </el-table-column>
-
-      <el-table-column label="创建时间" align="center" prop="createTime" />
-      <el-table-column label="备注" align="center" prop="remarks" />
-      <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:withdrawaltype:edit']"
-          ></el-button>
-          <el-button
-            circle
-            type="danger"
-            icon="Delete"
-            @click="handleDelete(scope.row)"
-            v-hasPermi="['member:withdrawaltype:remove']"
-          ></el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-
-    <!-- 添加或修改出金类型对话框 -->
-    <el-dialog :title="title" v-model="open" width="800px" append-to-body>
-      <el-form
-        ref="withdrawaltypeRef"
-        :model="form"
-        :rules="rules"
-        label-position="top"
-        label-width="80px"
-      >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="类型" prop="type">
-              <el-radio-group v-model="form.type">
-                <el-radio
-                  v-for="dict in order_zhlx"
-                  :key="dict.value"
-                  :label="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="名称" prop="name">
-              <el-input v-model="form.name" placeholder="请输入名称" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="汇率" prop="exchangeRate">
-              <el-input v-model="form.exchangeRate" placeholder="请输入汇率" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="序号" prop="sortOrder">
-              <el-input v-model="form.sortOrder" placeholder="请输入序号" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="图标" prop="icon">
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table title="列表" :columns="withdrawaltypeColumns" :data-source="withdrawaltypeList" :loading="loading" row-key="id" :row-selection="rowSelection" :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }" @page-change="handleAntPageChange" @refresh="getList">
+      <template #search><a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form"><a-row :gutter="[24, 16]" align="middle"><a-col :xs="24" :sm="12" :md="8" :lg="7"><a-form-item label="类型"><a-select v-model:value="queryParams.type" allow-clear placeholder="请选择类型"><a-select-option v-for="dict in order_zhlx" :key="dict.value" :value="dict.value">{{ dict.label }}</a-select-option></a-select></a-form-item></a-col><a-col :xs="24" :sm="12" :md="8" :lg="7"><a-form-item label="名称"><a-input v-model:value="queryParams.name" allow-clear placeholder="请输入名称" @pressEnter="handleQuery" /></a-form-item></a-col><a-col flex="auto" class="ant-pro-query-actions"><a-space><a-button @click="resetQuery">重置</a-button><a-button type="primary" @click="handleQuery">查询</a-button></a-space></a-col></a-row></a-form></template>
+      <template #toolbar><a-button type="primary" @click="handleAdd" v-hasPermi="['member:withdrawaltype:add']">创建</a-button><a-button :disabled="single" @click="handleUpdate" v-hasPermi="['member:withdrawaltype:edit']">修改</a-button><a-button :disabled="single" @click="handleCopy" v-hasPermi="['member:withdrawaltype:add']">复制</a-button><a-button danger :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:withdrawaltype:remove']">删除</a-button></template>
+      <template #bodyCell="{ column, record }"><template v-if="column.key === 'type'">{{ dictText(order_zhlx, record.type) }}</template><template v-else-if="column.key === 'icon'"><image-preview :src="record.icon" :width="50" :height="50" /></template><template v-else-if="column.key === 'operation'"><a-space><a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:withdrawaltype:edit']">修改</a-button><a-button type="link" @click="handleCopy(record)" v-hasPermi="['member:withdrawaltype:add']">复制</a-button><a-button type="link" danger @click="handleDelete(record)" v-hasPermi="['member:withdrawaltype:remove']">删除</a-button></a-space></template></template>
+    </ant-pro-table>
+    <a-modal v-model:open="open" :title="title" width="800px" destroy-on-close @ok="submitForm" @cancel="cancel">
+      <a-form ref="withdrawaltypeRef" :model="form" :rules="rules" layout="vertical">
+        <a-row :gutter="[20, 0]">
+          <a-col :span="12">
+            <a-form-item label="类型" name="type">
+              <a-radio-group v-model:value="form.type">
+                <a-radio v-for="dict in order_zhlx" :key="dict.value" :value="dict.value">
+                  {{ dict.label }}
+                </a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="名称" name="name">
+              <a-input v-model:value="form.name" placeholder="请输入名称" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="汇率" name="exchangeRate">
+              <a-input v-model:value="form.exchangeRate" placeholder="请输入汇率" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="序号" name="sortOrder">
+              <a-input v-model:value="form.sortOrder" placeholder="请输入序号" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item label="图标" name="icon">
               <image-upload v-model="form.icon" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <!-- 银行卡字段 (type === '0') -->
-        <el-row v-if="form.type === '0'" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="银行名称" prop="bankName">
-              <el-input v-model="form.bankName" placeholder="请输入银行名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="存款种类" prop="depositType">
-              <el-input
-                v-model="form.depositType"
-                placeholder="请输入存款种类"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row v-if="form.type === '0'" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="支行代码" prop="branchCode">
-              <el-input
-                v-model="form.branchCode"
-                placeholder="请输入支行代码"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="支行名称" prop="branchName">
-              <el-input
-                v-model="form.branchName"
-                placeholder="请输入支行名称"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row v-if="form.type === '0'" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="银行账号" prop="bankAccount">
-              <el-input
-                v-model="form.bankAccount"
-                placeholder="请输入银行账号"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="账户持有人" prop="accountHolder">
-              <el-input
-                v-model="form.accountHolder"
-                placeholder="请输入账户持有人"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <a-row v-if="form.type === '0'" :gutter="[20, 0]">
+          <a-col :span="12">
+            <a-form-item label="银行名称" name="bankName">
+              <a-input v-model:value="form.bankName" placeholder="请输入银行名称" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="存款种类" name="depositType">
+              <a-input v-model:value="form.depositType" placeholder="请输入存款种类" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="支行代码" name="branchCode">
+              <a-input v-model:value="form.branchCode" placeholder="请输入支行代码" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="支行名称" name="branchName">
+              <a-input v-model:value="form.branchName" placeholder="请输入支行名称" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="银行账号" name="bankAccount">
+              <a-input v-model:value="form.bankAccount" placeholder="请输入银行账号" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="账户持有人" name="accountHolder">
+              <a-input v-model:value="form.accountHolder" placeholder="请输入账户持有人" allow-clear />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <!-- 钱包字段 (type === '1') -->
-        <el-row v-if="form.type === '1'" :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="账户名称" prop="accountName">
-              <el-input
-                v-model="form.accountName"
-                placeholder="请输入账户名称"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="钱包名称" prop="walletName">
-              <el-input
-                v-model="form.walletName"
-                placeholder="请输入钱包名称"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row v-if="form.type === '1'" :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="钱包地址" prop="walletAddress">
-              <el-input
-                v-model="form.walletAddress"
-                placeholder="请输入钱包地址"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="备注" prop="remarks">
-              <el-input
-                type="textarea"
-                v-model="form.remarks"
-                placeholder="请输入备注"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
+        <a-row v-if="form.type === '1'" :gutter="[20, 0]">
+          <a-col :span="12">
+            <a-form-item label="账户名称" name="accountName">
+              <a-input v-model:value="form.accountName" placeholder="请输入账户名称" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="钱包名称" name="walletName">
+              <a-input v-model:value="form.walletName" placeholder="请输入钱包名称" allow-clear />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item label="钱包地址" name="walletAddress">
+              <a-input v-model:value="form.walletAddress" placeholder="请输入钱包地址" allow-clear />
+            </a-form-item>
+          </a-col>
+        </a-row>
+
+        <a-form-item label="备注" name="remarks">
+          <a-textarea v-model:value="form.remarks" placeholder="请输入备注" :rows="3" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
+
+
 
 <script setup name="Withdrawaltype">
 import {
@@ -345,6 +157,21 @@ const data = reactive({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const withdrawaltypeColumns = [
+  { title: "ID", dataIndex: "id", width: 90 },
+  { title: "类型", key: "type", dataIndex: "type", width: 120 },
+  { title: "名称", dataIndex: "name", width: 160 },
+  { title: "汇率", dataIndex: "exchangeRate", width: 120 },
+  { title: "序号", dataIndex: "sortOrder", width: 100 },
+  { title: "图标", key: "icon", dataIndex: "icon", width: 120 },
+  { title: "创建时间", dataIndex: "createTime", width: 180 },
+  { title: "备注", dataIndex: "remarks", width: 180 },
+  { title: "操作", key: "operation", width: 130, fixed: "right" },
+];
+const rowSelection = computed(() => ({ selectedRowKeys: ids.value, onChange: (_keys, rows) => handleSelectionChange(rows) }));
+function dictText(options, value) { return options.value?.find((item) => String(item.value) === String(value))?.label ?? value ?? "-"; }
+function handleAntPageChange({ page, pageSize }) { queryParams.value.pageNum = page; queryParams.value.pageSize = pageSize; getList(); }
 
 /** 查询出金类型列表 */
 function getList() {
@@ -423,10 +250,23 @@ function handleUpdate(row) {
   });
 }
 
+function handleCopy(row) {
+  const _id = row?.id || ids.value[0];
+  getWithdrawaltype(_id).then((response) => {
+    const copied = { ...response.data };
+    delete copied.id;
+    delete copied.createTime;
+    delete copied.updateTime;
+    addWithdrawaltype(copied).then(() => {
+      proxy.$modal.msgSuccess("复制成功");
+      getList();
+    });
+  });
+}
+
 /** 提交按钮 */
 function submitForm() {
-  proxy.$refs["withdrawaltypeRef"].validate((valid) => {
-    if (valid) {
+  proxy.$refs["withdrawaltypeRef"]?.validate?.().then(() => {
       if (form.value.id != null) {
         updateWithdrawaltype(form.value).then((response) => {
           proxy.$modal.msgSuccess("修改成功");
@@ -440,12 +280,11 @@ function submitForm() {
           getList();
         });
       }
-    }
-  });
+  }).catch(() => {});
 }
 
 /** 删除按钮操作 */
-function handleDelete(row) {
+function handleDelete(row = {}) {
   const _ids = row.id || ids.value;
   proxy.$modal
     .confirm('是否确认删除出金类型编号为"' + _ids + '"的数据项？')

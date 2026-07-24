@@ -1,325 +1,192 @@
 <template>
-  <el-drawer
+  <a-drawer
+    v-model:open="visible"
     title="修改提现账户"
-    v-model="visible"
-    size="90%"
-    with-header
+    width="90%"
     :destroy-on-close="false"
-    :append-to-body="true"
     @close="handleClose"
   >
-    <div class="app-container pa12">
-      <el-form
-        :model="queryParams"
-        ref="queryRef"
-        :inline="true"
-        v-show="showSearch"
-        label-width="68px"
+    <div class="drawer-table-wrap ant-pro-member-page">
+      <ant-pro-table
+        title="提现账户列表"
+        :columns="withdrawalColumns"
+        :data-source="withdrawalAccList"
+        :loading="loading"
+        row-key="id"
+        :row-selection="rowSelection"
+        :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+        :scroll="{ x: 1300 }"
+        @page-change="handleAntPageChange"
+        @refresh="getList"
       >
-        <el-form-item label="类型" prop="type">
-          <el-select
-            v-model="queryParams.type"
-            placeholder="请选择类型"
-            clearable
-            style="width: 220px"
-          >
-            <el-option
-              v-for="dict in order_zhlx"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="是否默认" prop="isDefault">
-          <el-select
-            v-model="queryParams.isDefault"
-            placeholder="请选择是否默认"
-            style="width: 220px"
-            clearable
-          >
-            <el-option
-              v-for="dict in user_yes_no"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            />
-          </el-select>
-        </el-form-item>
+        <template #search>
+          <a-form layout="horizontal" :model="queryParams">
+            <a-row :gutter="24" align="middle">
+              <a-col :span="7">
+                <a-form-item label="类型">
+                  <a-select v-model:value="queryParams.type" placeholder="请选择类型" allow-clear>
+                    <a-select-option v-for="dict in order_zhlx" :key="dict.value" :value="dict.value">
+                      {{ dict.label }}
+                    </a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="7">
+                <a-form-item label="是否默认">
+                  <a-select v-model:value="queryParams.isDefault" placeholder="请选择是否默认" allow-clear>
+                    <a-select-option v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">
+                      {{ dict.label }}
+                    </a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="10" class="ant-pro-query-actions">
+                <a-space>
+                  <a-button @click="resetQuery">重 置</a-button>
+                  <a-button type="primary" @click="handleQuery">查 询</a-button>
+                </a-space>
+              </a-col>
+            </a-row>
+          </a-form>
+        </template>
 
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery"
-            >搜索</el-button
-          >
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
+        <template #toolbar>
+          <a-space>
+            <a-button type="primary" @click="handleAdd" v-hasPermi="['member:withdrawalAcc:add']">新 增</a-button>
+            <a-button :disabled="single" @click="handleUpdate" v-hasPermi="['member:withdrawalAcc:edit']">修 改</a-button>
+            <a-button danger :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:withdrawalAcc:remove']">删 除</a-button>
+          </a-space>
+        </template>
 
-      <el-row :gutter="10" class="mb8">
-        <el-col :span="1.5">
-          <el-button
-            type="primary"
-            plain
-            icon="Plus"
-            @click="handleAdd"
-            v-hasPermi="['member:withdrawalAcc:add']"
-            >新增</el-button
-          >
-        </el-col>
-        <el-col :span="1.5">
-          <el-button
-            type="success"
-            plain
-            icon="Edit"
-            :disabled="single"
-            @click="handleUpdate"
-            v-hasPermi="['member:withdrawalAcc:edit']"
-            >修改</el-button
-          >
-        </el-col>
-        <el-col :span="1.5">
-          <el-button
-            type="danger"
-            plain
-            icon="Delete"
-            :disabled="multiple"
-            @click="handleDelete"
-            v-hasPermi="['member:withdrawalAcc:remove']"
-            >删除</el-button
-          >
-        </el-col>
-        <right-toolbar
-          v-model:showSearch="showSearch"
-          @queryTable="getList"
-        ></right-toolbar>
-      </el-row>
-
-      <el-table
-        v-loading="loading"
-        :data="withdrawalAccList"
-        @selection-change="handleSelectionChange"
-        :border="true"
-      >
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="ID" align="center" prop="id" />
-        <el-table-column label="类型" align="center" prop="type">
-          <template #default="scope">
-            <dict-tag :options="order_zhlx" :value="scope.row.type" />
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'type'">
+            <dict-tag :options="order_zhlx" :value="record.type" />
           </template>
-        </el-table-column>
-        <el-table-column
-          label="出金类型"
-          align="center"
-          prop="withdrawalType"
-        />
-        <el-table-column label="参数" align="center" width="300">
-          <template #default="scope">
-            <div v-if="scope.row.type === '0'">
-              <div>银行名称: {{ scope.row.bankName }}</div>
-              <div>存款种类: {{ scope.row.depositType }}</div>
-              <div>支行代码: {{ scope.row.branchCode }}</div>
-              <div>支行名称: {{ scope.row.branchName }}</div>
-              <div>银行账号: {{ scope.row.bankAccount }}</div>
-              <div>账户持有人: {{ scope.row.accountHolder }}</div>
+          <template v-else-if="column.dataIndex === 'params'">
+            <div v-if="record.type === '0'" class="table-detail-cell">
+              <div>银行名称: {{ record.bankName }}</div>
+              <div>存款种类: {{ record.depositType }}</div>
+              <div>支行代码: {{ record.branchCode }}</div>
+              <div>支行名称: {{ record.branchName }}</div>
+              <div>银行账号: {{ record.bankAccount }}</div>
+              <div>账户持有人: {{ record.accountHolder }}</div>
             </div>
-            <div v-else-if="scope.row.type === '1'">
-              <div>账户名称: {{ scope.row.accountName }}</div>
-              <div>钱包名称: {{ scope.row.walletName }}</div>
-              <div>钱包地址: {{ scope.row.walletAddress }}</div>
+            <div v-else-if="record.type === '1'" class="table-detail-cell">
+              <div>账户名称: {{ record.accountName }}</div>
+              <div>钱包名称: {{ record.walletName }}</div>
+              <div>钱包地址: {{ record.walletAddress }}</div>
             </div>
           </template>
-        </el-table-column>
-        <el-table-column label="是否默认" align="center" prop="isDefault">
-          <template #default="scope">
-            <dict-tag :options="user_yes_no" :value="scope.row.isDefault" />
+          <template v-else-if="column.dataIndex === 'isDefault'">
+            <dict-tag :options="user_yes_no" :value="record.isDefault" />
           </template>
-        </el-table-column>
-        <el-table-column
-          label="创建时间"
-          align="center"
-          prop="createTime"
-          width="180"
-        />
-        <el-table-column
-          label="操作"
-          align="center"
-          class-name="small-padding fixed-width"
-        >
-          <template #default="scope">
-            <el-button
-              circle
-              type="primary"
-              icon="Edit"
-              @click="handleUpdate(scope.row)"
-              v-hasPermi="['member:withdrawalAcc:edit']"
-            ></el-button>
-            <el-button
-              circle
-              type="danger"
-              icon="Delete"
-              @click="handleDelete(scope.row)"
-              v-hasPermi="['member:withdrawalAcc:remove']"
-            ></el-button>
+          <template v-else-if="column.dataIndex === 'action'">
+            <a-space>
+              <a-button type="link" size="small" @click="handleUpdate(record)" v-hasPermi="['member:withdrawalAcc:edit']">修改</a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)" v-hasPermi="['member:withdrawalAcc:remove']">删除</a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
+        </template>
+      </ant-pro-table>
 
-      <pagination
-        v-show="total > 0"
-        :total="total"
-        v-model:page="queryParams.pageNum"
-        v-model:limit="queryParams.pageSize"
-        @pagination="getList"
-      />
+      <a-drawer v-model:open="open" :title="title" width="80%" :destroy-on-close="false">
+        <a-form ref="withdrawalAccRef" :model="form" :rules="rules" layout="vertical">
+          <a-row :gutter="[20, 0]">
+            <a-col :span="8">
+              <a-form-item label="类型" name="type">
+                <a-radio-group v-model:value="form.type" @change="handleTypeChange">
+                  <a-radio v-for="dict in order_zhlx" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-radio>
+                </a-radio-group>
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="出金类型" name="withdrawalTypeId">
+                <a-radio-group v-model:value="form.withdrawalTypeId">
+                  <a-radio v-for="dict in formWithdrawalTypes" :key="dict.id" :value="dict.id">
+                    {{ dict.name }}
+                  </a-radio>
+                </a-radio-group>
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item label="是否默认" name="isDefault">
+                <a-radio-group v-model:value="form.isDefault">
+                  <a-radio v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-radio>
+                </a-radio-group>
+              </a-form-item>
+            </a-col>
 
-      <!-- 添加或修改提现账户对话框 -->
-      <el-drawer :title="title" v-model="open" size="80%" append-to-body>
-        <el-form
-          ref="withdrawalAccRef"
-          :model="form"
-          :rules="rules"
-          label-position="top"
-          label-width="80px"
-        >
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="类型" prop="type">
-                <el-radio-group v-model="form.type" @change="handleTypeChange">
-                  <el-radio
-                    v-for="dict in order_zhlx"
-                    :key="dict.value"
-                    :label="dict.value"
-                    >{{ dict.label }}</el-radio
-                  >
-                </el-radio-group>
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="出金类型" prop="withdrawalTypeId">
-                <el-radio-group v-model="form.withdrawalTypeId">
-                  <el-radio
-                    v-for="dict in formWithdrawalTypes"
-                    :key="dict.id"
-                    :label="dict.id"
-                    >{{ dict.name }}</el-radio
-                  >
-                </el-radio-group>
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="是否默认" prop="isDefault">
-                <el-radio-group v-model="form.isDefault">
-                  <el-radio
-                    v-for="dict in user_yes_no"
-                    :key="dict.value"
-                    :label="dict.value"
-                    >{{ dict.label }}</el-radio
-                  >
-                </el-radio-group>
-              </el-form-item>
-            </el-col>
-          </el-row>
+            <template v-if="form.type === '0'">
+              <a-col :span="8">
+                <a-form-item label="银行名称" name="bankName">
+                  <a-input v-model:value="form.bankName" placeholder="请输入银行名称" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="存款种类" name="depositType">
+                  <a-input v-model:value="form.depositType" placeholder="请输入存款种类" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="支行代码" name="branchCode">
+                  <a-input v-model:value="form.branchCode" placeholder="请输入支行代码" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="支行名称" name="branchName">
+                  <a-input v-model:value="form.branchName" placeholder="请输入支行名称" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="银行账号" name="bankAccount">
+                  <a-input v-model:value="form.bankAccount" placeholder="请输入银行账号" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item label="账户持有人" name="accountHolder">
+                  <a-input v-model:value="form.accountHolder" placeholder="请输入账户持有人" allow-clear />
+                </a-form-item>
+              </a-col>
+            </template>
 
-          <el-row :gutter="20" v-if="form.type === '0'">
-            <el-col :span="8">
-              <el-form-item label="银行名称" prop="bankName">
-                <el-input
-                  v-model="form.bankName"
-                  placeholder="请输入银行名称"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="存款种类" prop="depositType">
-                <el-input
-                  v-model="form.depositType"
-                  placeholder="请输入存款种类"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="支行代码" prop="branchCode">
-                <el-input
-                  v-model="form.branchCode"
-                  placeholder="请输入支行代码"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20" v-if="form.type === '0'">
-            <el-col :span="8">
-              <el-form-item label="支行名称" prop="branchName">
-                <el-input
-                  v-model="form.branchName"
-                  placeholder="请输入支行名称"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="银行账号" prop="bankAccount">
-                <el-input
-                  v-model="form.bankAccount"
-                  placeholder="请输入银行账号"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="账户持有人" prop="accountHolder">
-                <el-input
-                  v-model="form.accountHolder"
-                  placeholder="请输入账户持有人"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20" v-if="form.type === '1'">
-            <el-col :span="24">
-              <el-form-item label="账户名称" prop="accountName">
-                <el-input
-                  v-model="form.accountName"
-                  placeholder="请输入账户名称"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20" v-if="form.type === '1'">
-            <el-col :span="24">
-              <el-form-item label="钱包名称" prop="walletName">
-                <el-input
-                  v-model="form.walletName"
-                  placeholder="请输入钱包名称"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20" v-if="form.type === '1'">
-            <el-col :span="24">
-              <el-form-item label="钱包地址" prop="walletAddress">
-                <el-input
-                  v-model="form.walletAddress"
-                  placeholder="请输入钱包地址"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
+            <template v-if="form.type === '1'">
+              <a-col :span="24">
+                <a-form-item label="账户名称" name="accountName">
+                  <a-input v-model:value="form.accountName" placeholder="请输入账户名称" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="24">
+                <a-form-item label="钱包名称" name="walletName">
+                  <a-input v-model:value="form.walletName" placeholder="请输入钱包名称" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col :span="24">
+                <a-form-item label="钱包地址" name="walletAddress">
+                  <a-input v-model:value="form.walletAddress" placeholder="请输入钱包地址" allow-clear />
+                </a-form-item>
+              </a-col>
+            </template>
+          </a-row>
+        </a-form>
         <template #footer>
-          <div class="dialog-footer">
-            <el-button type="primary" @click="submitForm">确 定</el-button>
-            <el-button @click="cancel">取 消</el-button>
+          <div class="drawer-footer">
+            <a-space>
+              <a-button @click="cancel">取 消</a-button>
+              <a-button type="primary" @click="submitForm">确 定</a-button>
+            </a-space>
           </div>
         </template>
-      </el-drawer>
+      </a-drawer>
     </div>
-  </el-drawer>
+  </a-drawer>
 </template>
 
 <script setup>
-import { ref, reactive, toRefs, watch, getCurrentInstance } from "vue";
+import { computed, getCurrentInstance, reactive, ref, toRefs, watch } from "vue";
 import {
   listWithdrawalAcc,
   getWithdrawalAcc,
@@ -328,6 +195,7 @@ import {
   updateWithdrawalAcc,
   getType,
 } from "@/api/member/withdrawalAcc";
+import { resolveDeleteIds } from "@/utils/management-rules";
 
 const props = defineProps({
   modelValue: {
@@ -359,7 +227,17 @@ watch(visible, (v) => {
 const loading = ref(false);
 const withdrawalAccList = ref([]);
 const total = ref(0);
+const withdrawalAccRef = ref(null);
 
+const withdrawalColumns = [
+  { title: "ID", dataIndex: "id", align: "center", width: 90 },
+  { title: "类型", dataIndex: "type", align: "center", width: 120 },
+  { title: "出金类型", dataIndex: "withdrawalType", align: "center", width: 140 },
+  { title: "参数", dataIndex: "params", align: "left", width: 320 },
+  { title: "是否默认", dataIndex: "isDefault", align: "center", width: 120 },
+  { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
+  { title: "操作", dataIndex: "action", align: "center", width: 140, fixed: "right" },
+];
 const queryWithdrawalTypes = ref([]);
 const formWithdrawalTypes = ref([]);
 
@@ -382,15 +260,7 @@ const data = reactive({
     walletName: null,
     walletAddress: null,
   },
-  rules: {
-    type: [{ required: true, message: "类型不能为空", trigger: "change" }],
-    isDefault: [
-      { required: true, message: "是否默认不能为空", trigger: "change" },
-    ],
-    withdrawalTypeId: [
-      { required: true, message: "出金类型不能为空", trigger: "change" },
-    ],
-  },
+  rules: {},
 });
 
 const { queryParams, form, rules } = toRefs(data);
@@ -412,9 +282,23 @@ function getList() {
     });
 }
 
-// 类型变化处理
-const handleTypeChange = async (value) => {
-  // 清空相关字段
+async function loadWithdrawalTypes(value, targetRef = formWithdrawalTypes) {
+  if (value === null || value === undefined) {
+    targetRef.value = [];
+    return;
+  }
+  try {
+    const response = await getType(value);
+    const allTypes = (response.data ?? response.rows ?? response) || [];
+    targetRef.value = allTypes.filter((item) => item.type === value);
+  } catch (error) {
+    console.error("Failed to fetch withdrawal types:", error);
+    targetRef.value = [];
+  }
+}
+
+async function handleTypeChange(eventOrValue) {
+  const value = eventOrValue?.target?.value ?? eventOrValue;
   if (value === "0") {
     form.value.withdrawalType = null;
     form.value.accountName = null;
@@ -428,90 +312,55 @@ const handleTypeChange = async (value) => {
     form.value.bankAccount = null;
     form.value.accountHolder = null;
   }
-  // 加载出金类型
-  if (value !== null && value !== undefined) {
-    try {
-      const response = await getType(value);
-      const allTypes = (response.data ?? response.rows ?? response) || [];
-      const filteredTypes = allTypes.filter((item) => item.type === value);
-      formWithdrawalTypes.value = filteredTypes;
-    } catch (error) {
-      console.error("Failed to fetch withdrawal types:", error);
-      formWithdrawalTypes.value = [];
-    }
-  } else {
-    formWithdrawalTypes.value = [];
-  }
-  // 更新规则
+  await loadWithdrawalTypes(value, formWithdrawalTypes);
   updateRules();
-};
+}
 
-// 更新验证规则
 function updateRules() {
   const newRules = {
     type: [{ required: true, message: "类型不能为空", trigger: "change" }],
-    isDefault: [
-      { required: true, message: "是否默认不能为空", trigger: "change" },
-    ],
+    isDefault: [{ required: true, message: "是否默认不能为空", trigger: "change" }],
+    withdrawalTypeId: [{ required: true, message: "出金类型不能为空", trigger: "change" }],
   };
 
   if (form.value.type === "0") {
-    // 银行卡必填
-    newRules.bankName = [
-      { required: true, message: "银行名称不能为空", trigger: "blur" },
-    ];
-    newRules.depositType = [
-      { required: true, message: "存款种类不能为空", trigger: "blur" },
-    ];
-    newRules.branchCode = [
-      { required: true, message: "支行代码不能为空", trigger: "blur" },
-    ];
-    newRules.branchName = [
-      { required: true, message: "支行名称不能为空", trigger: "blur" },
-    ];
-    newRules.bankAccount = [
-      { required: true, message: "银行账号不能为空", trigger: "blur" },
-    ];
-    newRules.accountHolder = [
-      { required: true, message: "账户持有人不能为空", trigger: "blur" },
-    ];
+    Object.assign(newRules, {
+      bankName: [{ required: true, message: "银行名称不能为空", trigger: "blur" }],
+      depositType: [{ required: true, message: "存款种类不能为空", trigger: "blur" }],
+      branchCode: [{ required: true, message: "支行代码不能为空", trigger: "blur" }],
+      branchName: [{ required: true, message: "支行名称不能为空", trigger: "blur" }],
+      bankAccount: [{ required: true, message: "银行账号不能为空", trigger: "blur" }],
+      accountHolder: [{ required: true, message: "账户持有人不能为空", trigger: "blur" }],
+    });
   } else if (form.value.type === "1") {
-    // 网络必填
-    newRules.accountName = [
-      { required: true, message: "账户名称不能为空", trigger: "blur" },
-    ];
-
-    newRules.walletName = [
-      { required: true, message: "钱包名称不能为空", trigger: "blur" },
-    ];
-    newRules.walletAddress = [
-      { required: true, message: "钱包地址不能为空", trigger: "blur" },
-    ];
+    Object.assign(newRules, {
+      accountName: [{ required: true, message: "账户名称不能为空", trigger: "blur" }],
+      walletName: [{ required: true, message: "钱包名称不能为空", trigger: "blur" }],
+      walletAddress: [{ required: true, message: "钱包地址不能为空", trigger: "blur" }],
+    });
   }
 
-  Object.assign(rules.value, newRules);
+  rules.value = newRules;
 }
 
-// 取消按钮
 function cancel() {
   open.value = false;
   reset();
 }
 
-// 抽屉关闭
 function handleClose() {
   open.value = false;
   reset();
 }
 
-// 表单重置
 function reset() {
   form.value = {
     id: null,
     userId: null,
-    type: "0", // 默认选中银行类型
+    type: "0",
     withdrawalType: null,
-    isDefault: "1", // 默认值"1"
+    withdrawalTypeId: null,
+    isDefault: "1",
     bankName: null,
     depositType: null,
     branchCode: null,
@@ -524,84 +373,106 @@ function reset() {
     createTime: null,
   };
   updateRules();
-  proxy.resetForm && proxy.resetForm("withdrawalAccRef");
+  withdrawalAccRef.value?.clearValidate?.();
 }
 
-/** 搜索按钮操作 */
 function handleQuery() {
   queryParams.value.pageNum = 1;
   getList();
 }
 
-/** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm && proxy.resetForm("queryRef");
+  Object.assign(queryParams.value, {
+    pageNum: 1,
+    type: null,
+    withdrawalType: null,
+    isDefault: null,
+    bankName: null,
+    depositType: null,
+    branchCode: null,
+    branchName: null,
+    bankAccount: null,
+    accountHolder: null,
+    accountName: null,
+    walletName: null,
+    walletAddress: null,
+  });
   handleQuery();
 }
 
-// 多选框选中数据
 const ids = ref([]);
 const single = ref(true);
 const multiple = ref(true);
-const showSearch = ref(true);
+const rowSelection = computed(() => ({
+  selectedRowKeys: ids.value,
+  onChange: (_, selectedRows) => handleSelectionChange(selectedRows),
+}));
+
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
+}
+
 function handleSelectionChange(selection) {
   ids.value = selection.map((item) => item.id);
   single.value = selection.length != 1;
   multiple.value = !selection.length;
 }
 
-/** 新增按钮操作 */
 const open = ref(false);
 const title = ref("");
-function handleAdd() {
+
+async function handleAdd() {
   reset();
   form.value.userId = props.userId;
+  await loadWithdrawalTypes(form.value.type, formWithdrawalTypes);
   open.value = true;
   title.value = "添加提现账户";
 }
 
-/** 修改按钮操作 */
 function handleUpdate(row) {
   reset();
   const _id = row.id || ids.value;
-  getWithdrawalAcc(_id).then((response) => {
+  getWithdrawalAcc(_id).then(async (response) => {
     form.value = response.data ?? response;
+    await loadWithdrawalTypes(form.value.type, formWithdrawalTypes);
     updateRules();
     open.value = true;
     title.value = "修改提现账户";
   });
 }
 
-/** 提交按钮 */
 function submitForm() {
-  proxy.$refs["withdrawalAccRef"].validate((valid) => {
-    if (valid) {
-      // 确保userId被添加到form中
-      form.value.userId = form.value.userId || props.userId;
-      if (form.value.id != null) {
-        updateWithdrawalAcc(form.value).then(() => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addWithdrawalAcc(form.value).then(() => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
+  withdrawalAccRef.value?.validate?.().then(() => {
+    form.value.userId = form.value.userId || props.userId;
+    if (form.value.id != null) {
+      updateWithdrawalAcc(form.value).then(() => {
+        proxy.$modal.msgSuccess("修改成功");
+        open.value = false;
+        getList();
+      });
+    } else {
+      addWithdrawalAcc(form.value).then(() => {
+        proxy.$modal.msgSuccess("新增成功");
+        open.value = false;
+        getList();
+      });
     }
-  });
+  }).catch(() => {});
 }
 
-/** 删除按钮操作 */
 function handleDelete(row) {
-  const _ids = row ? [row.id] : ids.value;
+  const _ids = resolveDeleteIds(row, ids.value);
+  if (!_ids.length) {
+    proxy.$modal.msgWarning("请选择要删除的数据");
+    return;
+  }
   proxy.$modal
-    .confirm('是否确认删除提现账户编号为"' + _ids + '"的数据项？')
+    .confirm(`是否确认删除提现账户编号为"${_ids}"的数据项？`)
     .then(() => delWithdrawalAcc(Array.isArray(_ids) ? _ids.join(",") : _ids))
     .then(() => {
+      handleSelectionChange([]);
       getList();
       proxy.$modal.msgSuccess("删除成功");
       emit("success");
@@ -609,7 +480,6 @@ function handleDelete(row) {
     .catch(() => {});
 }
 
-/** 导出按钮操作 */
 function handleExport() {
   proxy.download(
     "member/withdrawalAcc/export",
@@ -643,44 +513,20 @@ watch(
   }
 );
 
-// 监听查询类型的变化，加载对应的出金类型
 watch(
   () => queryParams.value.type,
   async (newVal) => {
-    if (newVal !== null && newVal !== undefined) {
-      try {
-        const response = await getType(newVal);
-        const allTypes = (response.data ?? response.rows ?? response) || [];
-        const filteredTypes = allTypes.filter((item) => item.type === newVal);
-        queryWithdrawalTypes.value = filteredTypes;
-        queryParams.value.withdrawalType = null;
-      } catch (error) {
-        console.error("Failed to fetch query withdrawal types:", error);
-        queryWithdrawalTypes.value = [];
-      }
-    } else {
-      queryWithdrawalTypes.value = [];
-      queryParams.value.withdrawalType = null;
-    }
+    await loadWithdrawalTypes(newVal, queryWithdrawalTypes);
+    queryParams.value.withdrawalType = null;
   }
 );
 
-// 监听表单类型的变化，加载对应的出金类型
-watch(
-  () => form.value.type,
-  (newVal) => {
-    handleTypeChange(newVal);
-  }
-);
-
+reset();
 getList();
 </script>
 
 <style scoped>
-.pa12 {
-  padding: 12px;
-}
-.mb8 {
-  margin-bottom: 8px;
+.drawer-footer {
+  text-align: right;
 }
 </style>

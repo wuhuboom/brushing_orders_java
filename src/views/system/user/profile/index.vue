@@ -1,66 +1,53 @@
 <template>
-  <div class="app-container">
-    <el-row :gutter="20">
-      <el-col :span="6" :xs="24">
-        <el-card class="box-card">
-          <template v-slot:header>
-            <div class="clearfix">
-              <span>个人信息</span>
-            </div>
-          </template>
-          <div>
-            <div class="text-center">
-              <userAvatar />
-            </div>
-            <ul class="list-group list-group-striped">
-              <li class="list-group-item">
-                <svg-icon icon-class="user" />用户名称
-                <div class="pull-right">{{ state.user.userName }}</div>
-              </li>
-              <li class="list-group-item">
-                <svg-icon icon-class="phone" />手机号码
-                <div class="pull-right">{{ state.user.phonenumber }}</div>
-              </li>
-              <li class="list-group-item">
-                <svg-icon icon-class="email" />用户邮箱
-                <div class="pull-right">{{ state.user.email }}</div>
-              </li>
-              <li class="list-group-item">
-                <svg-icon icon-class="tree" />所属组织
-                <div class="pull-right" v-if="state.user.dept">
-                  {{ state.user.dept.deptName }} / {{ state.postGroup }}
-                </div>
-              </li>
-              <li class="list-group-item">
-                <svg-icon icon-class="peoples" />所属角色
-                <div class="pull-right">{{ state.roleGroup }}</div>
-              </li>
-              <li class="list-group-item">
-                <svg-icon icon-class="date" />创建日期
-                <div class="pull-right">{{ state.user.createTime }}</div>
-              </li>
-            </ul>
+  <div class="app-container profile-page">
+    <a-row :gutter="20">
+      <a-col :xs="24" :lg="6">
+        <a-card title="个人信息" class="profile-card">
+          <div class="avatar-wrap">
+            <userAvatar />
           </div>
-        </el-card>
-      </el-col>
-      <el-col :span="18" :xs="24">
-        <el-card>
-          <template v-slot:header>
-            <div class="clearfix">
-              <span>基本资料</span>
-            </div>
-          </template>
-          <el-tabs v-model="selectedTab">
-            <el-tab-pane label="基本资料" name="userinfo">
+          <ul class="profile-list">
+            <li>
+              <span><svg-icon icon-class="user" /> 用户名称</span>
+              <strong>{{ state.user.userName || "-" }}</strong>
+            </li>
+            <li>
+              <span><svg-icon icon-class="phone" /> 手机号码</span>
+              <strong>{{ state.user.phonenumber || "-" }}</strong>
+            </li>
+            <li>
+              <span><svg-icon icon-class="email" /> 用户邮箱</span>
+              <strong>{{ state.user.email || "-" }}</strong>
+            </li>
+            <li>
+              <span><svg-icon icon-class="tree" /> 所属组织</span>
+              <strong v-if="state.user.dept">{{ state.user.dept.deptName }} / {{ state.postGroup }}</strong>
+              <strong v-else>-</strong>
+            </li>
+            <li>
+              <span><svg-icon icon-class="peoples" /> 所属角色</span>
+              <strong>{{ state.roleGroup || "-" }}</strong>
+            </li>
+            <li>
+              <span><svg-icon icon-class="date" /> 创建日期</span>
+              <strong>{{ state.user.createTime || "-" }}</strong>
+            </li>
+          </ul>
+        </a-card>
+      </a-col>
+      <a-col :xs="24" :lg="18">
+        <a-card title="基本资料" class="profile-card">
+          <a-tabs v-model:activeKey="selectedTab">
+            <a-tab-pane key="userinfo" tab="基本资料">
               <userInfo :user="state.user" />
-            </el-tab-pane>
-            <el-tab-pane label="修改密码" name="resetPwd">
+            </a-tab-pane>
+            <a-tab-pane key="resetPwd" tab="修改密码">
               <resetPwd />
-            </el-tab-pane>
-          </el-tabs>
-        </el-card>
-      </el-col>
-    </el-row>
+            </a-tab-pane>
+          </a-tabs>
+        </a-card>
+      </a-col>
+    </a-row>
   </div>
 </template>
 
@@ -74,8 +61,8 @@ const route = useRoute();
 const selectedTab = ref("userinfo");
 const state = reactive({
   user: {},
-  roleGroup: {},
-  postGroup: {},
+  roleGroup: "",
+  postGroup: "",
 });
 
 function getUser() {
@@ -87,10 +74,62 @@ function getUser() {
 }
 
 onMounted(() => {
-  const activeTab = route.params && route.params.activeTab;
-  if (activeTab) {
-    selectedTab.value = activeTab;
-  }
   getUser();
 });
+
+watch(
+  () => route.params?.activeTab,
+  (activeTab) => {
+    selectedTab.value = activeTab === "resetPwd" ? "resetPwd" : "userinfo";
+  },
+  { immediate: true }
+);
 </script>
+
+<style scoped lang="scss">
+.profile-page {
+  .profile-card {
+    height: 100%;
+  }
+
+  :deep(.ant-card-head-title) {
+    font-weight: 600;
+  }
+}
+
+.avatar-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.profile-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    border-bottom: 1px solid #f0f0f0;
+    color: rgba(0, 0, 0, 0.65);
+    gap: 12px;
+  }
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  strong {
+    color: rgba(0, 0, 0, 0.85);
+    font-weight: 500;
+    text-align: right;
+    word-break: break-all;
+  }
+}
+</style>

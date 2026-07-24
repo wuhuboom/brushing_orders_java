@@ -1,128 +1,116 @@
 import axios from "axios";
-import {
-  ElNotification,
-  ElMessageBox,
-  ElMessage,
-  ElLoading,
-} from "element-plus";
+import { message, Modal, notification } from "ant-design-vue";
 import { getToken } from "@/utils/auth";
 import errorCode from "@/utils/errorCode";
 import { tansParams, blobValidate } from "@/utils/ruoyi";
 import cache from "@/plugins/cache";
 import { saveAs } from "file-saver";
 import useUserStore from "@/store/modules/user";
+import { encodeApiPath } from "@/utils/apiPath";
 
 let downloadLoadingInstance;
-// 是否显示重新登录
 export let isRelogin = { show: false };
 const config = window.APP_CONFIG;
 
 axios.defaults.headers["Content-Type"] = "application/json;charset=utf-8";
-// 创建axios实例
+
 const service = axios.create({
-  // axios中请求配置有baseURL选项，表示请求URL公共部分
   baseURL: config.baseApiUrl,
-  // 超时
   timeout: 10000,
 });
 
-// request拦截器
+function createLoading(content) {
+  const key = `request-loading-${Date.now()}`;
+  message.loading({ content, key, duration: 0 });
+  return {
+    close() {
+      message.destroy(key);
+    },
+  };
+}
+
+function confirmRelogin() {
+  return new Promise((resolve, reject) => {
+    Modal.confirm({
+      title: "系统提示",
+      content: "登录状态已过期，您可以继续留在该页面，或者重新登录",
+      okText: "重新登录",
+      cancelText: "取消",
+      onOk: () => resolve(),
+      onCancel: () => reject(new Error("cancel")),
+    });
+  });
+}
+
 service.interceptors.request.use(
   (config) => {
-    // 是否需要设置 token
     const isToken = (config.headers || {}).isToken === false;
-    // 是否需要防止数据重复提交
     const isRepeatSubmit = (config.headers || {}).repeatSubmit === false;
+    config.url = encodeApiPath(config.url);
+
     if (getToken() && !isToken) {
-      config.headers["Authorization"] = "Bearer " + getToken(); // 让每个请求携带自定义token 请根据实际情况自行修改
+      config.headers.Authorization = `Bearer ${getToken()}`;
     }
-    // get请求映射params参数
+
     if (config.method === "get" && config.params) {
-      let url = config.url + "?" + tansParams(config.params);
+      let url = `${config.url}?${tansParams(config.params)}`;
       url = url.slice(0, -1);
       config.params = {};
       config.url = url;
     }
-    if (
-      !isRepeatSubmit &&
-      (config.method === "post" || config.method === "put")
-    ) {
+
+    if (!isRepeatSubmit && (config.method === "post" || config.method === "put")) {
       const requestObj = {
         url: config.url,
-        data:
-          typeof config.data === "object"
-            ? JSON.stringify(config.data)
-            : config.data,
+        data: typeof config.data === "object" ? JSON.stringify(config.data) : config.data,
         time: new Date().getTime(),
       };
-      const requestSize = Object.keys(JSON.stringify(requestObj)).length; // 请求数据大小
-      const limitSize = 5 * 1024 * 1024; // 限制存放数据5M
+      const requestSize = JSON.stringify(requestObj).length;
+      const limitSize = 5 * 1024 * 1024;
+
       if (requestSize >= limitSize) {
-        console.warn(
-          `[${config.url}]: ` +
-            "请求数据大小超出允许的5M限制，无法进行防重复提交验证。"
-        );
+        console.warn(`[${config.url}]: 请求数据大小超出允许的 5M 限制，无法进行防重复提交校验。`);
         return config;
       }
+
       const sessionObj = cache.session.getJSON("sessionObj");
-      if (
-        sessionObj === undefined ||
-        sessionObj === null ||
-        sessionObj === ""
-      ) {
+      if (sessionObj === undefined || sessionObj === null || sessionObj === "") {
         cache.session.setJSON("sessionObj", requestObj);
       } else {
-        const s_url = sessionObj.url; // 请求地址
-        const s_data = sessionObj.data; // 请求数据
-        const s_time = sessionObj.time; // 请求时间
-        const interval = 1000; // 间隔时间(ms)，小于此时间视为重复提交
-        if (
-          s_data === requestObj.data &&
-          requestObj.time - s_time < interval &&
-          s_url === requestObj.url
-        ) {
-          const message = "数据正在处理，请勿重复提交";
-          console.warn(`[${s_url}]: ` + message);
-          return Promise.reject(new Error(message));
-        } else {
-          cache.session.setJSON("sessionObj", requestObj);
+        const sUrl = sessionObj.url;
+        const sData = sessionObj.data;
+        const sTime = sessionObj.time;
+        const interval = 1000;
+        if (sData === requestObj.data && requestObj.time - sTime < interval && sUrl === requestObj.url) {
+          const repeatMessage = "数据正在处理，请勿重复提交";
+          console.warn(`[${sUrl}]: ${repeatMessage}`);
+          return Promise.reject(new Error(repeatMessage));
         }
+        cache.session.setJSON("sessionObj", requestObj);
       }
     }
+
     return config;
   },
   (error) => {
     console.log(error);
-    Promise.reject(error);
+    return Promise.reject(error);
   }
 );
 
-// 响应拦截器
 service.interceptors.response.use(
   (res) => {
-    // 未设置状态码则默认成功状态
     const code = res.data.code || 200;
-    // 获取错误信息
-    const msg = errorCode[code] || res.data.msg || errorCode["default"];
-    // 二进制数据则直接返回
-    if (
-      res.request.responseType === "blob" ||
-      res.request.responseType === "arraybuffer"
-    ) {
+    const msg = errorCode[code] || res.data.msg || errorCode.default;
+
+    if (res.request.responseType === "blob" || res.request.responseType === "arraybuffer") {
       return res.data;
     }
+
     if (code === 401) {
       if (!isRelogin.show) {
         isRelogin.show = true;
-        ElMessageBox.confirm(
-          "登录状态已过期，您可以继续留在该页面，或者重新登录",
-          "系统提示",
-          {
-            confirmButtonText: "重新登录",
-            cancelButtonText: "取消",
-            type: "warning",
-          }
-        )
+        confirmRelogin()
           .then(() => {
             isRelogin.show = false;
             useUserStore()
@@ -136,40 +124,42 @@ service.interceptors.response.use(
           });
       }
       return Promise.reject("无效的会话，或者会话已过期，请重新登录。");
-    } else if (code === 500) {
-      ElMessage({ message: msg, type: "error" });
-      return Promise.reject(new Error(msg));
-    } else if (code === 601) {
-      ElMessage({ message: msg, type: "warning" });
-      return Promise.reject(new Error(msg));
-    } else if (code !== 200) {
-      ElNotification.error({ title: msg });
-      return Promise.reject("error");
-    } else {
-      return Promise.resolve(res.data);
     }
+
+    if (code === 500) {
+      message.error(msg);
+      return Promise.reject(new Error(msg));
+    }
+
+    if (code === 601) {
+      message.warning(msg);
+      return Promise.reject(new Error(msg));
+    }
+
+    if (code !== 200) {
+      notification.error({ message: "系统提示", description: msg });
+      return Promise.reject("error");
+    }
+
+    return Promise.resolve(res.data);
   },
   (error) => {
-    console.log("err" + error);
-    let { message } = error;
-    if (message == "Network Error") {
-      message = "后端接口连接异常";
-    } else if (message.includes("timeout")) {
-      message = "系统接口请求超时";
-    } else if (message.includes("Request failed with status code")) {
-      message = "系统接口" + message.substr(message.length - 3) + "异常";
+    console.log(`err${error}`);
+    let { message: errorMessage } = error;
+    if (errorMessage === "Network Error") {
+      errorMessage = "后端接口连接异常";
+    } else if (errorMessage.includes("timeout")) {
+      errorMessage = "系统接口请求超时";
+    } else if (errorMessage.includes("Request failed with status code")) {
+      errorMessage = `系统接口${errorMessage.substr(errorMessage.length - 3)}异常`;
     }
-    ElMessage({ message: message, type: "error", duration: 5 * 1000 });
+    message.error({ content: errorMessage, duration: 5 });
     return Promise.reject(error);
   }
 );
 
-// 通用下载方法
 export function download(url, params, filename, config) {
-  downloadLoadingInstance = ElLoading.service({
-    text: "正在下载数据，请稍候",
-    background: "rgba(0, 0, 0, 0.7)",
-  });
+  downloadLoadingInstance = createLoading("正在下载数据，请稍候");
   return service
     .post(url, params, {
       transformRequest: [
@@ -189,16 +179,15 @@ export function download(url, params, filename, config) {
       } else {
         const resText = await data.text();
         const rspObj = JSON.parse(resText);
-        const errMsg =
-          errorCode[rspObj.code] || rspObj.msg || errorCode["default"];
-        ElMessage.error(errMsg);
+        const errMsg = errorCode[rspObj.code] || rspObj.msg || errorCode.default;
+        message.error(errMsg);
       }
-      downloadLoadingInstance.close();
+      downloadLoadingInstance?.close();
     })
-    .catch((r) => {
-      console.error(r);
-      ElMessage.error("下载文件出现错误，请联系管理员！");
-      downloadLoadingInstance.close();
+    .catch((error) => {
+      console.error(error);
+      message.error("下载文件出现错误，请联系管理员！");
+      downloadLoadingInstance?.close();
     });
 }
 

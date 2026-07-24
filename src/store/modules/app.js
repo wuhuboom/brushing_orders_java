@@ -5,7 +5,7 @@ const useAppStore = defineStore(
   {
     state: () => ({
       sidebar: {
-        opened: Cookies.get('sidebarStatus') ? !!+Cookies.get('sidebarStatus') : true,
+        opened: true,
         withoutAnimation: false,
         hide: false
       },
@@ -28,6 +28,11 @@ const useAppStore = defineStore(
       closeSideBar({ withoutAnimation }) {
         Cookies.set('sidebarStatus', 0)
         this.sidebar.opened = false
+        this.sidebar.withoutAnimation = withoutAnimation
+      },
+      openSideBar(withoutAnimation) {
+        Cookies.set('sidebarStatus', 1)
+        this.sidebar.opened = true
         this.sidebar.withoutAnimation = withoutAnimation
       },
       toggleDevice(device) {

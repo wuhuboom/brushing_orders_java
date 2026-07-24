@@ -1,174 +1,120 @@
 <template>
-  <el-drawer title="额外佣金设置" v-model="visible" size="90%" append-to-body>
-    <div>
-      <div v-if="loadingUser" class="pa20" style="text-align: center">
-        <el-spin />
+  <a-drawer
+    title="额外佣金设置"
+    v-model:open="visible"
+    width="90%"
+    :destroy-on-close="false"
+  >
+    <div class="drawer-table-wrap ant-pro-member-page">
+      <div v-if="loadingUser" class="drawer-user-loading">加载中...</div>
+      <div v-else class="drawer-user-summary">
+        <span><strong>用户名：</strong>{{ user.username || "-" }}</span>
+        <span><strong>手机号：</strong>{{ user.phoneNumber || "-" }}</span>
+        <span><strong>余额：</strong>{{ user.balance ?? 0 }}</span>
+        <span><strong>任务进度：</strong>{{ taskProgressDisplay }}</span>
       </div>
-      <template v-else>
-        <el-row :gutter="10" class="mb8" justify="space-between" align="middle">
-          <!-- 左侧：用户基本信息 -->
-          <el-col :span="12">
-            <el-row :gutter="10">
-              <el-col :span="4">
-                <div><strong>用户名：</strong> {{ user.username || "-" }}</div>
-              </el-col>
-              <el-col :span="3">
-                <div>
-                  <strong>手机号：</strong> {{ user.phoneNumber || "-" }}
-                </div>
-              </el-col>
-              <el-col :span="3">
-                <div><strong>余额：</strong> {{ user.balance ?? 0 }}</div>
-              </el-col>
-              <el-col :span="4">
-                <div>
-                  <strong>任务进度：</strong>
-                  {{ user.taskProgress ?? 0 }} /
-                  {{ user.memberOrderCountPerDay ?? "-" }}
-                </div>
-              </el-col>
-              <el-col :span="8">
-                <div><strong>最后登录时间：</strong> -</div>
-              </el-col>
-            </el-row>
-          </el-col>
 
-          <!-- 右侧：操作栏 -->
-          <el-col :span="12" class="text-right">
-            <el-row :gutter="10" justify="end">
-              <el-col :span="5">
-                <el-button type="primary" plain icon="Plus" @click="handleAdd"
-                  >新增</el-button
-                >
-              </el-col>
-              <el-col :span="3">
-                <right-toolbar
-                  v-model:showSearch="showSearch"
-                  @queryTable="fetchList"
-                />
-              </el-col>
-            </el-row>
-          </el-col>
-        </el-row>
-      </template>
-
-      <el-table
-        v-loading="loading"
-        :data="list"
-        @selection-change="handleSelectionChange"
-        :border="true"
+      <ant-pro-table
+        title="额外佣金列表"
+        :columns="extraColumns"
+        :data-source="list"
+        :loading="loading"
+        row-key="id"
+        :row-selection="rowSelection"
+        :pagination="false"
+        :scroll="{ x: 1100 }"
+        @refresh="fetchList"
       >
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="ID" align="center" prop="id" />
-        <el-table-column label="单数" align="center" prop="orderCount" />
-        <el-table-column label="价格" align="center" prop="productPrice" />
-        <el-table-column label="金额" align="center" prop="amount" />
-        <el-table-column label="是否锁定" align="center" prop="isLocked">
-          <template #default="scope">
-            <dict-tag :options="user_yes_no" :value="scope.row.isLocked" />
+        <template #toolbar>
+          <a-button type="primary" @click="handleAdd">新 增</a-button>
+        </template>
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'isLocked'">
+            <dict-tag :options="user_yes_no" :value="record.isLocked" />
           </template>
-        </el-table-column>
-        <el-table-column label="状态" align="center" prop="status">
-          <template #default="scope">
-            <dict-tag :options="goods_status" :value="scope.row.status" />
+          <template v-else-if="column.dataIndex === 'status'">
+            <dict-tag :options="goods_status" :value="record.status" />
           </template>
-        </el-table-column>
-        <el-table-column label="创建时间" align="center" prop="createTime" />
-        <el-table-column
-          label="操作"
-          align="center"
-          class-name="small-padding fixed-width"
-        >
-          <template #default="scope">
-            <el-button
-              circle
-              type="primary"
-              icon="Edit"
-              @click="handleEdit(scope.row)"
-            ></el-button>
-            <el-button
-              circle
-              type="danger"
-              icon="Delete"
-              @click="handleDelete(scope.row)"
-            ></el-button>
+          <template v-else-if="column.dataIndex === 'action'">
+            <a-space>
+              <a-button type="link" size="small" @click="handleEdit(record)">修改</a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)">删除</a-button>
+            </a-space>
           </template>
-        </el-table-column>
-      </el-table>
+        </template>
+      </ant-pro-table>
 
-      <el-dialog
+      <a-modal
         :title="formTitle"
-        v-model="formVisible"
+        v-model:open="formVisible"
         width="800px"
-        append-to-body
+        ok-text="确 定"
+        cancel-text="取 消"
+        :confirm-loading="submitting"
+        @ok="submitForm"
+        @cancel="formVisible = false"
       >
-        <el-form
+        <a-form
           ref="formRef"
           :model="form"
           :rules="rules"
-          label-position="top"
+          layout="vertical"
         >
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="余额" prop="balance">
-                <el-input v-model="user.balance" :disabled="true" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="冻结余额" prop="frozenBalance">
-                <el-input v-model="user.frozenBalance" :disabled="true" />
-              </el-form-item>
-            </el-col>
-          </el-row>
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <a-form-item label="余额">
+                <a-input v-model:value="user.balance" disabled />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="冻结余额">
+                <a-input v-model:value="user.frozenBalance" disabled />
+              </a-form-item>
+            </a-col>
+          </a-row>
 
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="总余额" prop="totalBalance">
-                <el-input v-model="user.totalBalance" :disabled="true" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="任务进度" prop="taskProgress">
-                <el-input v-model="taskProgressDisplay" :disabled="true" />
-              </el-form-item>
-            </el-col>
-          </el-row>
+          <a-row :gutter="20">
+            <a-col :span="12">
+              <a-form-item label="总余额">
+                <a-input v-model:value="user.totalBalance" disabled />
+              </a-form-item>
+            </a-col>
+            <a-col :span="12">
+              <a-form-item label="任务进度">
+                <a-input :value="taskProgressDisplay" disabled />
+              </a-form-item>
+            </a-col>
+          </a-row>
 
-          <el-form-item label="用户id" prop="userId">
-            <el-input v-model="form.userId" disabled />
-          </el-form-item>
-          <el-form-item label="订单数" prop="orderCount">
-            <el-input v-model="form.orderCount" placeholder="请输入订单数" />
-          </el-form-item>
-          <el-form-item label="商品价格" prop="productPrice">
-            <el-input
-              v-model="form.productPrice"
+          <a-form-item label="用户ID" name="userId">
+            <a-input v-model:value="form.userId" disabled />
+          </a-form-item>
+          <a-form-item label="订单数" name="orderCount">
+            <a-input v-model:value="form.orderCount" placeholder="请输入订单数" />
+          </a-form-item>
+          <a-form-item label="商品价格" name="productPrice">
+            <a-input
+              v-model:value="form.productPrice"
               placeholder="请输入商品价格"
             />
-          </el-form-item>
-          <el-form-item label="金额" prop="amount">
-            <el-input v-model="form.amount" placeholder="请输入金额" />
-          </el-form-item>
-          <el-form-item label="是否锁定" prop="isLocked">
-            <el-radio-group v-model="form.isLocked">
-              <el-radio
+          </a-form-item>
+          <a-form-item label="金额" name="amount">
+            <a-input v-model:value="form.amount" placeholder="请输入金额" />
+          </a-form-item>
+          <a-form-item label="是否锁定" name="isLocked">
+            <a-radio-group v-model:value="form.isLocked">
+              <a-radio
                 v-for="dict in user_yes_no"
                 :key="dict.value"
-                :label="dict.value"
-                >{{ dict.label }}</el-radio
+                :value="dict.value"
+                >{{ dict.label }}</a-radio
               >
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button type="primary" @click="submitForm">确 定</el-button>
-            <el-button @click="formVisible = false">取 消</el-button>
-          </div>
-        </template>
-      </el-dialog>
+            </a-radio-group>
+          </a-form-item>
+        </a-form>
+      </a-modal>
     </div>
-  </el-drawer>
+  </a-drawer>
 </template>
 
 <script setup>
@@ -200,14 +146,14 @@ const visible = computed({
 });
 watch(visible, (val) => {
   if (val) {
-    // 当抽屉打开时初始化列表（只获取对应用户的数据）
+    // 褰撴娊灞夋墦寮€鏃跺垵濮嬪寲鍒楄〃锛堝彧鑾峰彇瀵瑰簲鐢ㄦ埛鐨勬暟鎹級
     fetchList();
-    // 同步获取用户信息用于展示
+    // 鍚屾鑾峰彇鐢ㄦ埛淇℃伅鐢ㄤ簬灞曠ず
     fetchUser(props.userId);
   }
 });
 
-// 当 userId 变化且抽屉已打开时刷新
+// 褰?userId 鍙樺寲涓旀娊灞夊凡鎵撳紑鏃跺埛鏂?
 watch(
   () => props.userId,
   (id) => {
@@ -222,6 +168,21 @@ const list = ref([]);
 const loading = ref(false);
 const selectedIds = ref([]);
 
+const extraColumns = [
+  { title: "ID", dataIndex: "id", align: "center", width: 90 },
+  { title: "单数", dataIndex: "orderCount", align: "center", width: 120 },
+  { title: "价格", dataIndex: "productPrice", align: "center", width: 120 },
+  { title: "金额", dataIndex: "amount", align: "center", width: 120 },
+  { title: "是否锁定", dataIndex: "isLocked", align: "center", width: 120 },
+  { title: "状态", dataIndex: "status", align: "center", width: 120 },
+  { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
+  { title: "操作", dataIndex: "action", align: "center", width: 140, fixed: "right" },
+];
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: selectedIds.value,
+  onChange: (_, selectedRows) => handleSelectionChange(selectedRows),
+}));
 const loadingUser = ref(false);
 const user = reactive({
   id: null,
@@ -264,7 +225,7 @@ async function fetchUser(id) {
     user.totalBalance = u.totalBalance ?? user.balance + user.frozenBalance;
     user.taskProgress = u.taskProgress ?? 0;
     user.memberOrderCountPerDay = u.memberLevel?.orderCountPerDay ?? null;
-    // 将用户 id 填到表单
+    // 灏嗙敤鎴?id 濉埌琛ㄥ崟
     form.userId = u.id;
   } catch (err) {
     console.error(err);
@@ -275,6 +236,7 @@ async function fetchUser(id) {
 
 const formVisible = ref(false);
 const formTitle = ref("");
+const submitting = ref(false);
 
 const formRef = ref(null);
 const form = reactive({
@@ -288,7 +250,7 @@ const form = reactive({
 });
 
 const rules = {
-  userId: [{ required: true, message: "用户id不能为空", trigger: "blur" }],
+  userId: [{ required: true, message: "用户ID不能为空", trigger: "blur" }],
   orderCount: [{ required: true, message: "订单数不能为空", trigger: "blur" }],
   productPrice: [
     { required: true, message: "商品价格不能为空", trigger: "blur" },
@@ -306,7 +268,7 @@ function fetchList() {
     return;
   }
   loading.value = true;
-  // 请求只带 userId，按需返回该用户的额外佣金记录
+  // 璇锋眰鍙甫 userId锛屾寜闇€杩斿洖璇ョ敤鎴风殑棰濆浣ｉ噾璁板綍
   listExtracommission({ userId: props.userId })
     .then((res) => {
       list.value = res.rows || res.data || [];
@@ -349,31 +311,34 @@ function handleEdit(row) {
   });
 }
 
-function submitForm() {
-  formRef.value.validate((valid) => {
-    if (!valid) return;
+async function submitForm() {
+  try {
+    await formRef.value?.validate();
+  } catch {
+    return;
+  }
+
+  submitting.value = true;
+  try {
     if (form.id != null) {
-      updateExtracommission(form).then(() => {
-        proxy.$modal.msgSuccess("修改成功");
-        formVisible.value = false;
-        fetchList();
-        emits("success");
-      });
+      await updateExtracommission(form);
+      proxy.$modal.msgSuccess("修改成功");
     } else {
-      addExtracommission(form).then(() => {
-        proxy.$modal.msgSuccess("新增成功");
-        formVisible.value = false;
-        fetchList();
-        emits("success");
-      });
+      await addExtracommission(form);
+      proxy.$modal.msgSuccess("新增成功");
     }
-  });
+    formVisible.value = false;
+    fetchList();
+    emits("success");
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function handleDelete(row) {
   const _id = row.id;
   proxy.$modal
-    .confirm('是否确认删除额外佣金设置编号为"' + _id + '"的数据项？')
+    .confirm(`是否确认删除额外佣金设置编号为"${_id}"的数据项？`)
     .then(() => {
       return delExtracommission(_id);
     })
@@ -385,10 +350,10 @@ function handleDelete(row) {
     .catch(() => {});
 }
 
-// 当抽屉关闭时清理
+// 褰撴娊灞夊叧闂椂娓呯悊
 watch(visible, (val) => {
   if (!val) {
-    // 清理表单及列表缓存
+    // 娓呯悊琛ㄥ崟鍙婂垪琛ㄧ紦瀛?
     list.value = [];
     resetFormData();
   }
@@ -406,3 +371,7 @@ watch(visible, (val) => {
   width: 140px;
 }
 </style>
+
+
+
+

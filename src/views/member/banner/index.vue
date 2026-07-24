@@ -1,207 +1,85 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
-    >
-      <el-form-item label="名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          placeholder="请输入名称"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="类型" prop="type">
-        <el-select
-          v-model="queryParams.type"
-          placeholder="请选择类型"
-          style="width: 220px"
-          clearable
-        >
-          <el-option
-            v-for="dict in banner_type"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="是否启用" prop="isEnabled">
-        <el-select
-          v-model="queryParams.isEnabled"
-          placeholder="请选择是否启用"
-          style="width: 220px"
-          clearable
-        >
-          <el-option
-            v-for="dict in user_yes_no"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['member:banner:add']"
-          >新增</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['member:banner:edit']"
-          >修改</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['member:banner:remove']"
-          >删除</el-button
-        >
-      </el-col>
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
-
-    <el-table
-      v-loading="loading"
-      :data="bannerList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="ID" align="center" prop="id" />
-      <el-table-column label="名称" align="center" prop="name" />
-      <el-table-column label="类型" align="center" prop="type">
-        <template #default="scope">
-          <dict-tag :options="banner_type" :value="scope.row.type" />
-        </template>
-      </el-table-column>
-      <el-table-column label="是否启用" align="center" prop="isEnabled">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isEnabled" />
-        </template>
-      </el-table-column>
-      <el-table-column label="序号" align="center" prop="sortOrder" />
-      <el-table-column label="链接" align="center" prop="link" />
-      <el-table-column label="媒体" align="center" prop="media" width="100">
-        <template #default="scope">
-          <media-preview :src="scope.row.media" :width="50" :height="50" />
-        </template>
-      </el-table-column>
-      <el-table-column label="备注" align="center" prop="remarks" />
-      <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:banner:edit']"
-          ></el-button>
-          <el-button
-            circle
-            type="danger"
-            icon="Delete"
-            @click="handleDelete(scope.row)"
-            v-hasPermi="['member:banner:remove']"
-          ></el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table title="横幅列表" :columns="bannerColumns" :data-source="bannerList" :loading="loading"
+      row-key="id" :row-selection="rowSelection"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      @page-change="handleAntPageChange" @refresh="getList">
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6"><a-form-item label="名称"><a-input v-model:value="queryParams.name" allow-clear placeholder="请输入名称" @pressEnter="handleQuery" /></a-form-item></a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6"><a-form-item label="类型"><a-select v-model:value="queryParams.type" allow-clear placeholder="请选择类型"><a-select-option v-for="dict in banner_type" :key="dict.value" :value="dict.value">{{ dict.label }}</a-select-option></a-select></a-form-item></a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6"><a-form-item label="是否启用"><a-select v-model:value="queryParams.isEnabled" allow-clear placeholder="请选择是否启用"><a-select-option v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">{{ dict.label }}</a-select-option></a-select></a-form-item></a-col>
+            <a-col flex="auto" class="ant-pro-query-actions"><a-space><a-button @click="resetQuery">重 置</a-button><a-button type="primary" @click="handleQuery">查 询</a-button></a-space></a-col>
+          </a-row>
+        </a-form>
+      </template>
+      <template #toolbar>
+        <a-button type="primary" @click="handleAdd" v-hasPermi="['member:banner:add']">新增</a-button>
+        <a-button :disabled="single" @click="handleUpdate" v-hasPermi="['member:banner:edit']">修改</a-button>
+        <a-button danger :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:banner:remove']">删除</a-button>
+      </template>
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'type'">{{ dictText(banner_type, record.type) }}</template>
+        <template v-else-if="column.key === 'enabled'">{{ dictText(user_yes_no, record.isEnabled) }}</template>
+        <template v-else-if="column.key === 'media'"><media-preview :src="record.media" :width="50" :height="50" /></template>
+        <template v-else-if="column.key === 'operation'"><a-space><a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:banner:edit']">修改</a-button><a-button type="link" danger @click="handleDelete(record)" v-hasPermi="['member:banner:remove']">删除</a-button></a-space></template>
+      </template>
+    </ant-pro-table>
 
     <!-- 添加或修改横幅：用于存储横幅广告相关信息对话框 -->
-    <el-dialog :title="title" v-model="open" width="800px" append-to-body>
-      <el-form
+    <a-modal
+      :title="title"
+      v-model:open="open"
+      width="800px"
+      ok-text="确 定"
+      cancel-text="取 消"
+      :confirm-loading="submitting"
+      @ok="submitForm"
+      @cancel="cancel"
+    >
+      <a-form
         ref="bannerRef"
         :model="form"
         :rules="rules"
-        label-position="top"
+        layout="vertical"
       >
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入名称" />
-        </el-form-item>
-        <el-form-item label="类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择类型">
-            <el-option
+        <a-form-item label="名称" name="name">
+          <a-input v-model:value="form.name" placeholder="请输入名称" />
+        </a-form-item>
+        <a-form-item label="类型" name="type">
+          <a-select v-model:value="form.type" placeholder="请选择类型">
+            <a-select-option
               v-for="dict in banner_type"
               :key="dict.value"
-              :label="dict.label"
               :value="dict.value"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="是否启用" prop="isEnabled">
-          <el-radio-group v-model="form.isEnabled">
-            <el-radio
+            >{{ dict.label }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="是否启用" name="isEnabled">
+          <a-radio-group v-model:value="form.isEnabled">
+            <a-radio
               v-for="dict in user_yes_no"
               :key="dict.value"
-              :label="dict.value"
-              >{{ dict.label }}</el-radio
+              :value="dict.value"
+              >{{ dict.label }}</a-radio
             >
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="序号" prop="sortOrder">
-          <el-input v-model="form.sortOrder" placeholder="请输入序号" />
-        </el-form-item>
-        <el-form-item label="链接" prop="link">
-          <el-input v-model="form.link" placeholder="请输入链接" />
-        </el-form-item>
-        <el-form-item label="媒体" prop="media">
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="序号" name="sortOrder">
+          <a-input v-model:value="form.sortOrder" placeholder="请输入序号" />
+        </a-form-item>
+        <a-form-item label="链接" name="link">
+          <a-input v-model:value="form.link" placeholder="请输入链接" />
+        </a-form-item>
+        <a-form-item label="媒体" name="media">
           <media-upload v-model="form.media" :limit="1" />
-        </el-form-item>
-        <el-form-item label="备注" prop="remarks">
-          <el-input v-model="form.remarks" placeholder="请输入备注" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
+        </a-form-item>
+        <a-form-item label="备注" name="remarks">
+          <a-input v-model:value="form.remarks" placeholder="请输入备注" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -232,6 +110,8 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const submitting = ref(false);
+const bannerRef = ref();
 
 const data = reactive({
   form: {},
@@ -257,6 +137,21 @@ const data = reactive({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const bannerColumns = [
+  { title: "ID", dataIndex: "id", key: "id", width: 80 },
+  { title: "名称", dataIndex: "name", key: "name", width: 180 },
+  { title: "类型", dataIndex: "type", key: "type", width: 130 },
+  { title: "是否启用", dataIndex: "isEnabled", key: "enabled", width: 120 },
+  { title: "序号", dataIndex: "sortOrder", key: "sortOrder", width: 100 },
+  { title: "链接", dataIndex: "link", key: "link", width: 220 },
+  { title: "媒体", dataIndex: "media", key: "media", width: 100 },
+  { title: "备注", dataIndex: "remarks", key: "remarks" },
+  { title: "操作", key: "operation", width: 150 },
+];
+const rowSelection = computed(() => ({ selectedRowKeys: ids.value, onChange: (_keys, rows) => handleSelectionChange(rows) }));
+function dictText(options, value) { return proxy.selectDictLabel(options, value) || value || "-"; }
+function handleAntPageChange({ page, pageSize }) { queryParams.value.pageNum = page; queryParams.value.pageSize = pageSize; getList(); }
 
 /** 查询横幅：用于存储横幅广告相关信息列表 */
 function getList() {
@@ -286,7 +181,7 @@ function reset() {
     media: null,
     remarks: null,
   };
-  proxy.resetForm("bannerRef");
+  nextTick(() => bannerRef.value?.clearValidate?.());
 }
 
 /** 搜索按钮操作 */
@@ -297,7 +192,9 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.name = null;
+  queryParams.value.type = null;
+  queryParams.value.isEnabled = null;
   handleQuery();
 }
 
@@ -327,28 +224,31 @@ function handleUpdate(row) {
 }
 
 /** 提交按钮 */
-function submitForm() {
-  proxy.$refs["bannerRef"].validate((valid) => {
-    if (valid) {
-      if (form.value.id != null) {
-        updateBanner(form.value).then((response) => {
-          proxy.$modal.msgSuccess("修改成功");
-          open.value = false;
-          getList();
-        });
-      } else {
-        addBanner(form.value).then((response) => {
-          proxy.$modal.msgSuccess("新增成功");
-          open.value = false;
-          getList();
-        });
-      }
+async function submitForm() {
+  try {
+    await bannerRef.value?.validate();
+  } catch {
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    if (form.value.id != null) {
+      await updateBanner(form.value);
+      proxy.$modal.msgSuccess("修改成功");
+    } else {
+      await addBanner(form.value);
+      proxy.$modal.msgSuccess("新增成功");
     }
-  });
+    open.value = false;
+    getList();
+  } finally {
+    submitting.value = false;
+  }
 }
 
 /** 删除按钮操作 */
-function handleDelete(row) {
+function handleDelete(row = {}) {
   const _ids = row.id || ids.value;
   proxy.$modal
     .confirm(

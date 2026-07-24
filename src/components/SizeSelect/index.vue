@@ -1,17 +1,17 @@
 <template>
   <div>
-    <el-dropdown trigger="click" @command="handleSetSize">
-      <div class="size-icon--style">
+    <a-dropdown :trigger="['click']">
+      <button class="size-icon--style" type="button">
         <svg-icon class-name="size-icon" icon-class="size" />
-      </div>
-      <template #dropdown>
-        <el-dropdown-menu>
-          <el-dropdown-item v-for="item of sizeOptions" :key="item.value" :disabled="size === item.value" :command="item.value">
+      </button>
+      <template #overlay>
+        <a-menu @click="({ key }) => handleSetSize(key)">
+          <a-menu-item v-for="item of sizeOptions" :key="item.value" :disabled="size === item.value">
             {{ item.label }}
-          </el-dropdown-item>
-        </el-dropdown-menu>
+          </a-menu-item>
+        </a-menu>
       </template>
-    </el-dropdown>
+    </a-dropdown>
   </div>
 </template>
 
@@ -20,8 +20,6 @@ import useAppStore from "@/store/modules/app"
 
 const appStore = useAppStore()
 const size = computed(() => appStore.size)
-const route = useRoute()
-const router = useRouter()
 const { proxy } = getCurrentInstance()
 const sizeOptions = ref([
   { label: "较大", value: "large" },
@@ -36,10 +34,18 @@ function handleSetSize(size) {
 }
 </script>
 
-<style lang='scss' scoped>
+<style lang="scss" scoped>
 .size-icon--style {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 50px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
   font-size: 18px;
-  line-height: 50px;
-  padding-right: 7px;
 }
 </style>

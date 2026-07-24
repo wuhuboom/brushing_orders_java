@@ -88,6 +88,14 @@ export function editPassword(data) {
   });
 }
 
+export function unlockOrderusers(ids) {
+  return request({
+    url: "/member/orderuser/unlock",
+    method: "put",
+    data: ids,
+  });
+}
+
 export function editParentId(data) {
   return request({
     url: "/member/orderuser/editParentId",

@@ -1,27 +1,26 @@
 <template>
   <div>
-    <el-upload
-      :action="uploadUrl"
-      :before-upload="handleBeforeUpload"
-      :on-success="handleUploadSuccess"
-      :on-error="handleUploadError"
-      name="file"
-      :show-file-list="false"
-      :headers="headers"
-      class="editor-img-uploader"
+    <input
       v-if="type == 'url'"
-    >
-      <i ref="uploadRef" class="editor-img-uploader"></i>
-    </el-upload>
+      ref="uploadRef"
+      type="file"
+      accept="image/jpeg,image/jpg,image/png,image/svg+xml"
+      class="editor-img-uploader"
+      hidden
+      @change="handleImageSelected"
+    />
   </div>
-  <div class="editor">
+  <div
+    class="editor"
+    :class="{ 'editor-readonly': readOnly }"
+    :style="editorStyles"
+  >
     <quill-editor
       ref="quillEditorRef"
       v-model:content="content"
       contentType="html"
-      @textChange="(e) => $emit('update:modelValue', content)"
+      @textChange="emitContent"
       :options="options"
-      :style="styles"
     />
   </div>
 </template>
@@ -33,9 +32,11 @@ import "@vueup/vue-quill/dist/vue-quill.snow.css";
 import { getToken } from "@/utils/auth";
 
 const { proxy } = getCurrentInstance();
+const emit = defineEmits(["update:modelValue"]);
 
 const config = window.APP_CONFIG;
 const quillEditorRef = ref();
+const uploadRef = ref();
 const uploadUrl = ref(config.baseApiUrl + "/common/upload"); // 上传的图片服务器地址
 const headers = ref({
   Authorization: "Bearer " + getToken(),
@@ -80,14 +81,16 @@ const options = ref({
   modules: {
     // 工具栏配置
     toolbar: [
+      [{ font: [] }],
       ["bold", "italic", "underline", "strike"], // 加粗 斜体 下划线 删除线
       ["blockquote", "code-block"], // 引用  代码块
       [{ list: "ordered" }, { list: "bullet" }], // 有序、无序列表
       [{ indent: "-1" }, { indent: "+1" }], // 缩进
+      [{ script: "sub" }, { script: "super" }],
       [{ size: ["small", false, "large", "huge"] }], // 字体大小
       [{ header: [1, 2, 3, 4, 5, 6, false] }], // 标题
       [{ color: [] }, { background: [] }], // 字体颜色、字体背景颜色
-      [{ align: [] }], // 对齐方式
+      [{ align: [] }, { direction: "rtl" }], // 对齐方式与书写方向
       ["clean"], // 清除文本格式
       ["link", "image", "video"], // 链接、图片、视频
     ],
@@ -96,13 +99,13 @@ const options = ref({
   readOnly: props.readOnly,
 });
 
-const styles = computed(() => {
-  let style = {};
+const editorStyles = computed(() => {
+  const style = {};
   if (props.minHeight) {
-    style.minHeight = `${props.minHeight}px`;
+    style["--editor-min-height"] = `${props.minHeight}px`;
   }
   if (props.height) {
-    style.height = `${props.height}px`;
+    style["--editor-height"] = `${props.height}px`;
   }
   return style;
 });
@@ -112,11 +115,18 @@ watch(
   () => props.modelValue,
   (v) => {
     if (v !== content.value) {
-      content.value = v == undefined ? "<p></p>" : v;
+      content.value = v == undefined ? "" : v;
     }
   },
   { immediate: true }
 );
+
+function emitContent() {
+  const value = /^(<p><br><\/p>|<p><\/p>)$/.test(content.value || "")
+    ? ""
+    : content.value;
+  emit("update:modelValue", value);
+}
 
 // 如果设置了上传地址则自定义图片上传事件
 onMounted(() => {
@@ -125,7 +135,7 @@ onMounted(() => {
     let toolbar = quill.getModule("toolbar");
     toolbar.addHandler("image", (value) => {
       if (value) {
-        proxy.$refs.uploadRef.click();
+        uploadRef.value?.click();
       } else {
         quill.format("image", false);
       }
@@ -176,6 +186,15 @@ function handleUploadError() {
   proxy.$modal.msgError("图片插入失败");
 }
 
+function handleImageSelected(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file || handleBeforeUpload(file) === false) {
+    return;
+  }
+  insertImage(file);
+}
+
 // 复制粘贴图片处理
 function handlePasteCapture(e) {
   const clipboard = e.clipboardData || window.clipboardData;
@@ -203,6 +222,9 @@ function insertImage(file) {
     })
     .then((res) => {
       handleUploadSuccess(res.data);
+    })
+    .catch(() => {
+      handleUploadError();
     });
 }
 </script>
@@ -213,6 +235,18 @@ function insertImage(file) {
 
 .editor {
   width: 100%;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.editor:focus-within {
+  border-color: #4096ff;
+}
+
+.editor-readonly {
+  background: #f5f5f5;
 }
 
 .editor-img-uploader {
@@ -229,10 +263,22 @@ function insertImage(file) {
 
 :deep(.ql-container) {
   width: 100%;
+  min-height: var(--editor-min-height, 240px);
+  height: var(--editor-height, auto);
+  border: 0 !important;
+  font-family: inherit;
 }
 
 :deep(.ql-editor) {
   width: 100%;
+  min-height: var(--editor-min-height, 240px);
+  padding: 16px;
+}
+
+:deep(.ql-toolbar.ql-snow) {
+  border: 0;
+  border-bottom: 1px solid #e8e8e8;
+  background: #fff;
 }
 
 /* 其他原有样式保持不变 */

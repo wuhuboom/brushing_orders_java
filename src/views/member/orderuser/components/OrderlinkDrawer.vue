@@ -1,462 +1,127 @@
 <template>
-  <el-drawer
+  <a-drawer
     :title="title"
-    v-model="visible"
-    size="92%"
-    with-header
+    v-model:open="visible"
+    width="92%"
     :destroy-on-close="false"
   >
-    <div class="app-container">
-      <!-- 搜索表单 -->
-      <el-form
-        :model="queryParams"
-        ref="queryRef"
-        :inline="true"
-        v-show="showSearch"
-        label-width="68px"
+    <div class="app-container ant-pro-member-page">
+      <ant-pro-table
+        title="列表"
+        :columns="orderlinkColumns"
+        :data-source="orderlinkList"
+        :loading="loading"
+        row-key="id"
+        :row-selection="rowSelection"
+        :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+        :scroll="{ x: 1500 }"
+        @page-change="handleAntPageChange"
+        @refresh="getList"
       >
-        <el-form-item label="连单ID" prop="linkOrderId">
-          <el-input
-            v-model="queryParams.linkOrderId"
-            placeholder="请输入连单ID"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery"
-            >搜索</el-button
-          >
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-
-      <div v-if="loadingUser" class="pa20" style="text-align: center">
-        <el-spin />
-      </div>
-      <template v-else>
-        <el-row :gutter="10" class="mb8" justify="space-between" align="middle">
-          <!-- 左侧：用户基本信息 -->
-          <el-col :span="12">
-            <el-row :gutter="10">
-              <el-col :span="4">
-                <div><strong>用户名：</strong> {{ user.username || "-" }}</div>
-              </el-col>
-              <el-col :span="3">
-                <div>
-                  <strong>手机号：</strong> {{ user.phoneNumber || "-" }}
-                </div>
-              </el-col>
-              <el-col :span="3">
-                <div><strong>余额：</strong> {{ user.balance ?? 0 }}</div>
-              </el-col>
-              <el-col :span="4">
-                <div>
-                  <strong>任务进度：</strong>
-                  {{ user.taskProgress ?? 0 }} /
-                  {{ user.memberOrderCountPerDay ?? "-" }}
-                </div>
-              </el-col>
-              <el-col :span="8">
-                <div><strong>最后登录时间：</strong> 2025-10-28 11:28:14</div>
-              </el-col>
-            </el-row>
-          </el-col>
-
-          <!-- 右侧：操作栏 -->
-          <el-col :span="12" class="text-right">
-            <el-row :gutter="10" justify="end">
-              <el-col :span="2.5">
-                <el-button type="primary" plain icon="Plus" @click="handleAdd"
-                  >新增</el-button
-                >
-              </el-col>
-              <el-col :span="2.5">
-                <el-button
-                  type="danger"
-                  plain
-                  icon="Delete"
-                  :disabled="multiple"
-                  @click="handleDelete"
-                  >删除</el-button
-                >
-              </el-col>
-              <el-col :span="3">
-                <right-toolbar
-                  v-model:showSearch="showSearch"
-                  @queryTable="getList"
-                />
-              </el-col>
-            </el-row>
-          </el-col>
-        </el-row>
-      </template>
-      <el-table
-        v-loading="loading"
-        :data="orderlinkList"
-        @selection-change="handleSelectionChange"
-        :border="true"
-      >
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="自增ID" align="center" prop="id" />
-        <el-table-column label="连单ID" align="center" prop="linkOrderId" />
-        <el-table-column label="单数" align="center" prop="orderCount" />
-        <el-table-column
-          label="返佣倍数"
-          align="center"
-          prop="commissionMultiple"
-        />
-        <el-table-column label="商品图片" align="center" prop="productImage">
-          <template #default="scope">
-            <image-preview
-              :src="scope.row.productImage"
-              :width="50"
-              :height="50"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="商品标题" align="center" prop="productTitle" />
-
-        <el-table-column label="价格类型" align="center" prop="priceType">
-          <template #default="scope">
-            <dict-tag :options="price_type" :value="scope.row.priceType" />
-          </template>
-        </el-table-column>
-        <el-table-column label="价格" align="center" prop="price" />
-        <el-table-column label="状态" align="center" prop="status">
-          <template #default="scope">
-            <el-tag v-if="scope.row.status == '1'" type="danger" effect="dark"
-              >未完成</el-tag
-            >
-            <el-tag v-else type="success" effect="dark">已完成</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="创建时间"
-          align="center"
-          prop="createdTime"
-          width="180"
-        >
-          <template #default="scope">
-            <span>{{ parseTime(scope.row.createdTime) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="操作"
-          align="center"
-          class-name="small-padding fixed-width"
-        >
-          <template #default="scope">
-            <el-button
-              circle
-              type="primary"
-              icon="Edit"
-              @click="handleUpdate(scope.row)"
-              v-hasPermi="['member:orderlink:edit']"
-            ></el-button>
-            <el-button
-              circle
-              type="danger"
-              icon="Delete"
-              @click="handleDelete(scope.row)"
-              v-hasPermi="['member:orderlink:remove']"
-            ></el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <pagination
-        v-show="total > 0"
-        :total="total"
-        v-model:page="queryParams.pageNum"
-        v-model:limit="queryParams.pageSize"
-        @pagination="getList"
-      />
+        <template #search>
+          <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form" v-show="showSearch">
+            <a-row :gutter="[24, 16]" align="middle">
+              <a-col :xs="24" :sm="12" :md="8" :lg="7">
+                <a-form-item label="连单ID">
+                  <a-input v-model:value="queryParams.linkOrderId" allow-clear placeholder="请输入连单ID" @pressEnter="handleQuery" />
+                </a-form-item>
+              </a-col>
+              <a-col flex="auto" class="ant-pro-query-actions">
+                <a-space><a-button @click="resetQuery">重置</a-button><a-button type="primary" @click="handleQuery">查询</a-button></a-space>
+              </a-col>
+            </a-row>
+          </a-form>
+        </template>
+        <template #toolbar>
+          <a-space>
+            <a-button type="primary" @click="handleAdd">新增</a-button>
+            <a-button danger :disabled="multiple" @click="handleDelete()">删除</a-button>
+          </a-space>
+        </template>
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'productImage'"><image-preview :src="record.productImage" :width="50" :height="50" /></template>
+          <template v-else-if="column.key === 'priceType'">{{ dictText(price_type, record.priceType) }}</template>
+          <template v-else-if="column.key === 'status'"><a-tag v-if="record.status == '1'" color="red">未完成</a-tag><a-tag v-else color="green">已完成</a-tag></template>
+          <template v-else-if="column.key === 'createdTime'">{{ parseTime(record.createdTime) }}</template>
+          <template v-else-if="column.key === 'operation'"><a-space><a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:orderlink:edit']">修改</a-button><a-button type="link" danger @click="handleDelete(record)" v-hasPermi="['member:orderlink:remove']">删除</a-button></a-space></template>
+        </template>
+      </ant-pro-table>
     </div>
 
     <!-- 修改连单对话框 -->
-    <el-dialog :title="dialogTitle" v-model="open" width="500px" append-to-body>
-      <el-form
-        ref="orderlinkRef"
-        :model="editForm"
-        label-position="top"
-        :rules="rules"
-        label-width="80px"
-      >
-        <el-form-item label="价格类型" prop="priceType">
-          <el-radio-group v-model="editForm.priceType">
-            <el-radio
-              v-for="dict in price_type"
-              :key="dict.value"
-              :label="dict.value"
-              >{{ dict.label }}</el-radio
-            >
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="价格" prop="price">
-          <el-input-number
-            v-model="editForm.price"
-            placeholder="请输入价格"
-            :min="0"
-            style="width: 100%"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <a-modal
+      :title="dialogTitle"
+      v-model:open="open"
+      width="500px"
+      ok-text="确 定"
+      cancel-text="取 消"
+      :confirm-loading="dialogSaving"
+      @ok="submitForm"
+      @cancel="cancel"
+    >
+      <a-form ref="orderlinkRef" :model="editForm" layout="vertical" :rules="rules">
+        <a-form-item label="价格类型" name="priceType">
+          <a-radio-group v-model:value="editForm.priceType">
+            <a-radio v-for="dict in price_type" :key="dict.value" :value="dict.value">{{ dict.label }}</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="价格" name="price">
+          <a-input-number v-model:value="editForm.price" placeholder="请输入价格" :min="0" class="full-width" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- 新增/修改连单抽屉 -->
-    <el-drawer
+    <a-drawer
       :title="addTitle"
-      v-model="addDrawerVisible"
-      size="85%"
-      with-header
+      v-model:open="addDrawerVisible"
+      width="85%"
       :destroy-on-close="false"
     >
-      <div class="app-container">
-        <!-- 顶部：用户信息 + 调整表单 -->
-        <div v-if="loadingUser" class="pa20" style="text-align: center">
-          <el-spin />
-        </div>
+      <div class="app-container ant-pro-member-page">
+        <div v-if="loadingUser" class="pa20" style="text-align: center"><a-spin /></div>
 
-        <el-form
-          v-else
-          ref="addFormRef"
-          :model="form"
-          label-position="top"
-          class="mb16"
-          label-width="100px"
+        <a-form v-else ref="addFormRef" :model="form" layout="vertical" class="mb16">
+          <a-row :gutter="20">
+            <a-col :span="8"><a-form-item label="任务进度"><a-input :value="taskProgressDisplay" disabled /></a-form-item></a-col>
+            <a-col :span="8"><a-form-item label="单数" name="orderCount"><a-input-number v-model:value="form.orderCount" :min="1" class="full-width" /></a-form-item></a-col>
+            <a-col :span="8"><a-form-item label="返佣倍数" name="commissionMultiple"><a-input-number v-model:value="form.commissionMultiple" :min="1" class="full-width" /></a-form-item></a-col>
+          </a-row>
+          <a-row :gutter="20">
+            <a-col :span="8"><a-form-item label="余额"><a-input v-model:value="user.balance" disabled /></a-form-item></a-col>
+            <a-col :span="8"><a-form-item label="冻结余额"><a-input v-model:value="user.frozenBalance" disabled /></a-form-item></a-col>
+            <a-col :span="8"><a-form-item label="总余额"><a-input v-model:value="user.totalBalance" disabled /></a-form-item></a-col>
+          </a-row>
+        </a-form>
+
+        <ant-pro-table title="明细" :columns="detailColumns" :data-source="details" row-key="id" :pagination="false" :scroll="{ x: 900 }" :tool-options="{ refresh: false }">
+          <template #toolbar><a-space><a-button type="primary" :loading="saving" @click="onSaveAll">提交保存</a-button><a-button @click="onCancelEdit">取消</a-button></a-space></template>
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'detailPriceType'"><a-select v-model:value="record.priceType" placeholder="请选择" size="small" :disabled="!record.isEditing" class="full-width"><a-select-option v-for="opt in price_type" :key="opt.value" :value="opt.value">{{ opt.label }}</a-select-option></a-select></template>
+            <template v-else-if="column.key === 'detailPrice'"><a-input-number v-model:value="record.price" :min="0" size="small" :controls="false" :disabled="!record.isEditing" class="full-width" /></template>
+            <template v-else-if="column.key === 'detailStatus'"><a-tag color="red">未完成</a-tag></template>
+            <template v-else-if="column.key === 'detailAction'"><a-space><a-button v-if="!record.isEditing" type="link" @click="editDetail(record)">编辑</a-button><a-button v-if="record.isEditing" type="link" @click="saveDetail(record)">保存</a-button><a-button type="link" danger @click="removeDetail(record)">删除</a-button></a-space></template>
+          </template>
+        </ant-pro-table>
+
+        <ant-pro-table
+          title="商品列表"
+          :columns="goodsColumns"
+          :data-source="goodsList"
+          :loading="goodsLoading"
+          row-key="id"
+          :pagination="{ current: goodsQuery.pageNum, pageSize: goodsQuery.pageSize, total: goodsTotal }"
+          :custom-row="goodsCustomRow"
+          :scroll="{ x: 900 }"
+          @page-change="handleGoodsPageChange"
+          @refresh="fetchGoods"
         >
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="任务进度" prop="taskProgress">
-                <el-input v-model="taskProgressDisplay" :disabled="true" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="单数" prop="orderCount">
-                <el-input-number
-                  v-model="form.orderCount"
-                  :min="1"
-                  style="width: 100%"
-                />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="返佣倍数" prop="commissionMultiple">
-                <el-input-number
-                  v-model="form.commissionMultiple"
-                  :min="1"
-                  style="width: 100%"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="余额" prop="balance">
-                <el-input v-model="user.balance" :disabled="true" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="冻结余额" prop="frozenBalance">
-                <el-input v-model="user.frozenBalance" :disabled="true" />
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
-              <el-form-item label="总余额" prop="totalBalance">
-                <el-input v-model="user.totalBalance" :disabled="true" />
-              </el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-
-        <!-- 明细：已选商品，可编辑价格类型与价格 -->
-        <div class="mb12">
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 8px;
-            "
-          >
-            <div><strong>明细</strong></div>
-            <div style="display: flex; gap: 8px">
-              <el-button
-                size="small"
-                type="primary"
-                @click="onSaveAll"
-                :loading="saving"
-                >提交保存</el-button
-              >
-              <el-button size="small" @click="onCancelEdit">取消</el-button>
-            </div>
-          </div>
-
-          <el-table :data="details" border style="width: 100%">
-            <el-table-column
-              prop="id"
-              label="商品ID"
-              width="120"
-              align="center"
-            />
-            <el-table-column prop="title" label="商品标题" align="center" />
-            <el-table-column label="价格类型" width="180" align="center">
-              <template #default="scope">
-                <el-select
-                  v-model="scope.row.priceType"
-                  placeholder="请选择"
-                  size="small"
-                  :disabled="!scope.row.isEditing"
-                >
-                  <el-option
-                    v-for="opt in price_type"
-                    :key="opt.value"
-                    :label="opt.label"
-                    :value="opt.value"
-                  />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column label="价格" width="180" align="center">
-              <template #default="scope">
-                <el-input-number
-                  v-model="scope.row.price"
-                  :min="0"
-                  size="small"
-                  :controls="false"
-                  :disabled="!scope.row.isEditing"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="状态" width="120" align="center">
-              <template #default="scope">
-                <el-tag type="danger" effect="dark">未完成</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="180" align="center">
-              <template #default="scope">
-                <el-button
-                  v-if="!scope.row.isEditing"
-                  size="small"
-                  type="primary"
-                  @click="editDetail(scope.row)"
-                  >编辑</el-button
-                >
-                <el-button
-                  v-if="scope.row.isEditing"
-                  size="small"
-                  type="success"
-                  @click="saveDetail(scope.row)"
-                  >保存</el-button
-                >
-                <el-button
-                  size="small"
-                  type="danger"
-                  @click="removeDetail(scope.row)"
-                  >删除</el-button
-                >
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-
-        <!-- 商品列表：用于从商品管理选择商品放入明细 -->
-        <div>
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin: 20px 0 10px 0;
-            "
-          >
-            <div><strong>商品列表</strong></div>
-            <div style="display: flex; gap: 8px; align-items: center">
-              <el-input
-                v-model="goodsQuery.title"
-                placeholder="搜索标题"
-                size="small"
-                clearable
-                @keyup.enter="fetchGoods"
-              />
-              <el-button size="small" icon="Search" @click="fetchGoods"
-                >搜索</el-button
-              >
-              <el-button size="small" icon="Refresh" @click="resetGoodsQuery"
-                >重置</el-button
-              >
-            </div>
-          </div>
-
-          <el-table
-            :data="goodsList"
-            border
-            @row-dblclick="addProductToDetails"
-          >
-            <el-table-column
-              prop="id"
-              label="商品ID"
-              width="100"
-              align="center"
-            />
-            <el-table-column prop="title" label="标题" align="center" />
-            <el-table-column
-              prop="typeTitle"
-              label="类目"
-              width="160"
-              align="center"
-            />
-            <el-table-column
-              prop="price"
-              label="价格"
-              width="160"
-              align="center"
-            />
-            <el-table-column
-              prop="image"
-              label="图片"
-              width="160"
-              align="center"
-            >
-              <template #default="scope">
-                <image-preview
-                  :src="scope.row.image"
-                  :width="50"
-                  :height="50"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column
-              prop="createTime"
-              label="创建时间"
-              width="180"
-              align="center"
-            >
-              <template #default="scope">
-                <span>{{ parseTime(scope.row.createTime) }}</span>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <pagination
-            v-show="goodsTotal > 0"
-            :total="goodsTotal"
-            v-model:page="goodsQuery.pageNum"
-            v-model:limit="goodsQuery.pageSize"
-            @pagination="fetchGoods"
-          />
-        </div>
+          <template #search><a-form layout="horizontal" :model="goodsQuery" class="ant-pro-query-form"><a-row :gutter="[24, 16]" align="middle"><a-col :xs="24" :sm="12" :md="8" :lg="7"><a-form-item label="标题"><a-input v-model:value="goodsQuery.title" allow-clear placeholder="搜索标题" @pressEnter="fetchGoods" /></a-form-item></a-col><a-col flex="auto" class="ant-pro-query-actions"><a-space><a-button @click="resetGoodsQuery">重置</a-button><a-button type="primary" @click="fetchGoods">查询</a-button></a-space></a-col></a-row></a-form></template>
+          <template #bodyCell="{ column, record }"><template v-if="column.key === 'goodsImage'"><image-preview :src="record.image" :width="50" :height="50" /></template><template v-else-if="column.key === 'goodsCreateTime'">{{ parseTime(record.createTime) }}</template></template>
+        </ant-pro-table>
       </div>
-    </el-drawer>
-  </el-drawer>
+    </a-drawer>
+  </a-drawer>
 </template>
 
 <script setup>
@@ -477,6 +142,7 @@ import {
 } from "@/api/member/orderlink";
 import { getOrderuser } from "@/api/member/orderuser";
 import { listGoods } from "@/api/member/goods";
+import { resolveDeleteIds } from "@/utils/management-rules";
 import { parseTime } from "@/utils/ruoyi";
 
 const props = defineProps({
@@ -501,10 +167,7 @@ const visible = computed({
 });
 
 const { proxy } = getCurrentInstance();
-const { sys_common_status, price_type } = proxy.useDict(
-  "sys_common_status",
-  "price_type"
-);
+const { price_type } = proxy.useDict("price_type");
 
 const orderlinkList = ref([]);
 const loading = ref(true);
@@ -525,25 +188,58 @@ const data = reactive({
 
 const { queryParams } = toRefs(data);
 
+const orderlinkColumns = [
+  { title: "自增ID", dataIndex: "id", width: 90 },
+  { title: "连单ID", dataIndex: "linkOrderId", width: 120 },
+  { title: "单数", dataIndex: "orderCount", width: 90 },
+  { title: "返佣倍数", dataIndex: "commissionMultiple", width: 120 },
+  { title: "商品图片", key: "productImage", dataIndex: "productImage", width: 120 },
+  { title: "商品标题", dataIndex: "productTitle", width: 220 },
+  { title: "价格类型", key: "priceType", dataIndex: "priceType", width: 120 },
+  { title: "价格", dataIndex: "price", width: 100 },
+  { title: "状态", key: "status", dataIndex: "status", width: 100 },
+  { title: "创建时间", key: "createdTime", dataIndex: "createdTime", width: 180 },
+  { title: "操作", key: "operation", width: 130, fixed: "right" },
+];
+const detailColumns = [
+  { title: "商品ID", dataIndex: "id", width: 120 },
+  { title: "商品标题", dataIndex: "title", width: 240 },
+  { title: "价格类型", key: "detailPriceType", width: 180 },
+  { title: "价格", key: "detailPrice", width: 180 },
+  { title: "状态", key: "detailStatus", width: 120 },
+  { title: "操作", key: "detailAction", width: 180, fixed: "right" },
+];
+const goodsColumns = [
+  { title: "商品ID", dataIndex: "id", width: 100 },
+  { title: "标题", dataIndex: "title", width: 260 },
+  { title: "类目", dataIndex: "typeTitle", width: 160 },
+  { title: "价格", dataIndex: "price", width: 120 },
+  { title: "图片", key: "goodsImage", dataIndex: "image", width: 120 },
+  { title: "创建时间", key: "goodsCreateTime", dataIndex: "createTime", width: 180 },
+];
+const rowSelection = computed(() => ({ selectedRowKeys: ids.value, onChange: (_keys, rows) => handleSelectionChange(rows) }));
+function dictText(options, value) { return options.value?.find((item) => String(item.value) === String(value))?.label ?? value ?? "-"; }
+function handleAntPageChange({ page, pageSize }) { queryParams.value.pageNum = page; queryParams.value.pageSize = pageSize; getList(); }
+function handleGoodsPageChange({ page, pageSize }) { goodsQuery.pageNum = page; goodsQuery.pageSize = pageSize; fetchGoods(); }
+function goodsCustomRow(record) { return { onDblclick: () => addProductToDetails(record) }; }
 // 新增/修改连单抽屉相关
 const addDrawerVisible = ref(false);
 const addTitle = ref("新增连单");
 const saving = ref(false);
 const addFormRef = ref(null);
 
-const formData = reactive({
-  form: {
-    id: null,
-    userId: props.userId ?? null,
-    orderCount: 1,
-    commissionMultiple: 1,
-    username: null,
-    phoneNumber: null,
-    taskProgress: null,
-    balance: 0,
-    frozenBalance: 0,
-    totalBalance: 0,
-  },
+const form = reactive({
+  id: null,
+  userId: props.userId ?? null,
+  orderCount: 1,
+  commissionMultiple: 1,
+  username: null,
+  phoneNumber: null,
+  taskProgress: null,
+  memberOrderCountPerDay: null,
+  balance: 0,
+  frozenBalance: 0,
+  totalBalance: 0,
 });
 
 const details = ref([]); // { id, title, priceType, price, status, isEditing }
@@ -556,8 +252,6 @@ const goodsQuery = reactive({
 });
 const goodsTotal = ref(0);
 const goodsLoading = ref(false);
-
-const { form } = toRefs(formData);
 
 // 计算属性：任务进度显示
 const taskProgressDisplay = computed(() => {
@@ -671,7 +365,6 @@ function addProductToDetails(row) {
   } else if (price_type.value.length > 0) {
     defaultPriceType = price_type.value[0].value;
   }
-  console.log(defaultPriceType);
   details.value.push({
     id: row.id,
     title: row.title,
@@ -713,7 +406,7 @@ async function onSaveAll() {
     proxy.$modal.msgError("缺少用户ID");
     return;
   }
-  if (!form.value.orderCount || form.value.orderCount < 1) {
+  if (!form.orderCount || form.orderCount < 1) {
     proxy.$modal.msgError("请填写有效的单数");
     return;
   }
@@ -730,8 +423,8 @@ async function onSaveAll() {
 
   const payload = {
     userId: props.userId,
-    orderCount: form.value.orderCount,
-    commissionMultiple: form.value.commissionMultiple,
+    orderCount: form.orderCount,
+    commissionMultiple: form.commissionMultiple,
     details: details.value.map((d) => ({
       goodsId: d.id,
       priceType: d.priceType,
@@ -741,8 +434,8 @@ async function onSaveAll() {
 
   saving.value = true;
   try {
-    if (form.value.id) {
-      await updateOrderlink({ ...payload, id: form.value.id });
+    if (form.id) {
+      await updateOrderlink({ ...payload, id: form.id });
       proxy.$modal.msgSuccess("修改成功");
     } else {
       await addOrderlink(payload);
@@ -801,7 +494,7 @@ function handleQuery() {
 }
 
 function resetQuery() {
-  proxy.resetForm && proxy.$refs.queryRef.resetFields();
+  queryParams.value.linkOrderId = null;
   handleQuery();
 }
 
@@ -838,6 +531,7 @@ const open = ref(false);
 const dialogTitle = ref("修改");
 const currentRowId = ref(null);
 const orderlinkRef = ref(null);
+const dialogSaving = ref(false);
 const editForm = reactive({
   priceType: "",
   price: 0,
@@ -848,40 +542,47 @@ const rules = reactive({
 });
 
 // submit form
-function submitForm() {
-  orderlinkRef.value.validate((valid) => {
-    if (valid) {
-      const payload = {
-        ...editForm,
-        id: currentRowId.value,
-      };
-      updateOrderlink(payload)
-        .then(() => {
-          open.value = false;
-          proxy.$modal.msgSuccess("修改成功");
-          getList();
-        })
-        .catch(() => {
-          proxy.$modal.msgError("修改失败");
-        });
-    } else {
-      console.log("error submit!");
-    }
-  });
+async function submitForm() {
+  try {
+    await orderlinkRef.value?.validate();
+  } catch {
+    return;
+  }
+
+  const payload = {
+    ...editForm,
+    id: currentRowId.value,
+  };
+  dialogSaving.value = true;
+  try {
+    await updateOrderlink(payload);
+    open.value = false;
+    proxy.$modal.msgSuccess("修改成功");
+    getList();
+  } catch {
+    proxy.$modal.msgError("修改失败");
+  } finally {
+    dialogSaving.value = false;
+  }
 }
 
 // cancel
 function cancel() {
   open.value = false;
-  orderlinkRef.value.resetFields();
+  orderlinkRef.value?.resetFields();
 }
 
 function handleDelete(row) {
-  const _ids = row ? [row.id] : ids.value;
+  const _ids = resolveDeleteIds(row, ids.value);
+  if (!_ids.length) {
+    proxy.$modal.msgWarning("请选择要删除的数据");
+    return;
+  }
   proxy.$modal
     .confirm('是否确认删除连单编号为"' + _ids + '"的数据项？')
     .then(() => delOrderlink(_ids.join(",")))
     .then(() => {
+      handleSelectionChange([]);
       getList();
       proxy.$modal.msgSuccess("删除成功");
       emit("success");

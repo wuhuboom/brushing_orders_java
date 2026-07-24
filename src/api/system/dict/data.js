@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { apiPathParam } from '@/utils/apiPath'
 
 // 查询字典数据列表
 export function listData(query) {
@@ -12,7 +13,7 @@ export function listData(query) {
 // 查询字典数据详细
 export function getData(dictCode) {
   return request({
-    url: '/system/dict/data/' + dictCode,
+    url: '/system/dict/data/' + apiPathParam(dictCode),
     method: 'get'
   })
 }
@@ -20,7 +21,7 @@ export function getData(dictCode) {
 // 根据字典类型查询字典数据信息
 export function getDicts(dictType) {
   return request({
-    url: '/system/dict/data/type/' + dictType,
+    url: '/system/dict/data/type/' + apiPathParam(dictType),
     method: 'get'
   })
 }
@@ -46,7 +47,7 @@ export function updateData(data) {
 // 删除字典数据
 export function delData(dictCode) {
   return request({
-    url: '/system/dict/data/' + dictCode,
+    url: '/system/dict/data/' + apiPathParam(dictCode),
     method: 'delete'
   })
 }

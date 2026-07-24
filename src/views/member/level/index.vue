@@ -1,489 +1,145 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table
+      title="等级列表"
+      :columns="levelColumns"
+      :data-source="levelList"
+      :loading="loading"
+      row-key="id"
+      :row-selection="rowSelection"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      @page-change="handleAntPageChange"
+      @refresh="getList"
     >
-      <el-form-item label="名称" prop="name">
-        <el-input
-          v-model="queryParams.name"
-          placeholder="请输入名称"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="级别" prop="level">
-        <el-input
-          v-model="queryParams.level"
-          placeholder="请输入级别"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-
-    <el-row :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['member:level:add']"
-          >新增</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['member:level:edit']"
-          >修改</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="Delete"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['member:level:remove']"
-          >删除</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="warning"
-          plain
-          icon="Download"
-          @click="handleExport"
-          v-hasPermi="['member:level:export']"
-          >导出</el-button
-        >
-      </el-col>
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
-
-    <el-table
-      v-loading="loading"
-      :data="levelList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="ID" align="center" prop="id" />
-      <el-table-column label="名称" align="center" prop="name" />
-      <el-table-column label="级别" align="center" prop="level" />
-      <el-table-column label="图标" align="center" prop="icon" width="100">
-        <template #default="scope">
-          <image-preview :src="scope.row.icon" :width="50" :height="50" />
-        </template>
-      </el-table-column>
-      <el-table-column label="价格" align="center" prop="price" />
-      <el-table-column label="产品匹配" align="center">
-        <template #default="scope">
-          <div v-if="scope.row.productMatchEnabled == '1'">
-            <el-button
-              type="danger"
-              link
-              @click="openProductMatchDialog(scope.row)"
-              >禁用</el-button
-            >
-          </div>
-          <div v-else>
-            <el-button
-              type="success"
-              link
-              @click="openProductMatchDialog(scope.row)"
-            >
-              启用 : {{ scope.row.productMatchMin }}% -
-              {{ scope.row.productMatchMax }}%
-            </el-button>
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column label="最低余额" align="center" prop="minBalance" />
-      <el-table-column
-        label="自动升级所需邀请人数"
-        align="center"
-        prop="inviteCount"
-      />
-      <el-table-column
-        label="操作"
-        align="center"
-        class-name="small-padding fixed-width"
-      >
-        <template #default="scope">
-          <el-button
-            circle
-            type="primary"
-            icon="Edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['member:level:edit']"
-          ></el-button>
-          <el-button
-            circle
-            type="danger"
-            icon="Delete"
-            @click="handleDelete(scope.row)"
-            v-hasPermi="['member:level:remove']"
-          ></el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-
-    <!-- 添加或修改等级对话框 -->
-    <el-dialog :title="title" v-model="open" width="40%" append-to-body>
-      <el-form
-        ref="levelRef"
-        :model="form"
-        :rules="rules"
-        label-position="top"
-        label-width="80px"
-      >
-        <!-- 第一行 -->
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="名称" prop="name">
-              <el-input v-model="form.name" placeholder="请输入名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="级别" prop="level">
-              <el-input-number
-                controls-position="right"
-                v-model="form.level"
-                :min="1"
-                placeholder="请输入级别"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="图标" prop="icon">
-              <image-upload v-model="form.icon" :limit="1" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第二行 -->
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="会员等级价格" prop="price">
-              <el-input-number
-                v-model="form.price"
-                controls-position="right"
-                style="width: 100%"
-                :min="0"
-                placeholder="请输入会员等级价格"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="最低余额" prop="minBalance">
-              <el-input-number
-                v-model="form.minBalance"
-                controls-position="right"
-                style="width: 100%"
-                :min="0"
-                placeholder="请输入最低余额"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="自动升级所需邀请人数" prop="inviteCount">
-              <el-input-number
-                v-model="form.inviteCount"
-                style="width: 100%"
-                controls-position="right"
-                :min="0"
-                placeholder="请输入自动升级所需邀请人数"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第三行 -->
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="接单次数/天" prop="orderCountPerDay">
-              <el-input-number
-                v-model="form.orderCountPerDay"
-                style="width: 100%"
-                controls-position="right"
-                :min="0"
-                placeholder="请输入接单次数/天"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="最低返佣百分比" prop="minCommissionRate">
-              <el-input-number
-                v-model="form.minCommissionRate"
-                style="width: 100%"
-                controls-position="right"
-                :min="0"
-                :max="100"
-                placeholder="请输入最低返佣百分比"
-              >
-                <template #suffix>
-                  <span>%</span>
-                </template>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="最高返佣百分比" prop="maxCommissionRate">
-              <el-input-number
-                v-model="form.maxCommissionRate"
-                controls-position="right"
-                style="width: 100%"
-                :min="0"
-                :max="100"
-                placeholder="请输入最高返佣百分比"
-              >
-                <template #suffix>
-                  <span>%</span>
-                </template>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第四行 -->
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item
-              label="最低连单返佣百分比"
-              prop="minContinuousCommissionRate"
-            >
-              <el-input-number
-                v-model="form.minContinuousCommissionRate"
-                controls-position="right"
-                style="width: 100%"
-                :min="0"
-                :max="100"
-                placeholder="请输入最低连单返佣百分比"
-              >
-                <template #suffix>
-                  <span>%</span>
-                </template>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item
-              label="最高连单返佣百分比"
-              prop="maxContinuousCommissionRate"
-            >
-              <el-input-number
-                v-model="form.maxContinuousCommissionRate"
-                style="width: 100%"
-                controls-position="right"
-                :min="0"
-                :max="100"
-                placeholder="请输入最高连单返佣百分比"
-              >
-                <template #suffix>
-                  <span>%</span>
-                </template>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="任务完成组数/天" prop="taskCountPerDay">
-              <el-input-number
-                v-model="form.taskCountPerDay"
-                style="width: 100%"
-                controls-position="right"
-                :min="0"
-                placeholder="请输入任务完成组数/天"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第五行 -->
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="提现次数/天" prop="withdrawCountPerDay">
-              <el-input-number
-                v-model="form.withdrawCountPerDay"
-                controls-position="right"
-                style="width: 100%"
-                :min="0"
-                placeholder="请输入提现次数/天"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="提现手续费率" prop="withdrawFeeRate">
-              <el-input-number
-                v-model="form.withdrawFeeRate"
-                controls-position="right"
-                style="width: 100%"
-                :min="0"
-                :max="100"
-                placeholder="请输入提现手续费率"
-              >
-                <template #suffix>
-                  <span>%</span>
-                </template>
-              </el-input-number>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="提现最低单数" prop="minWithdrawAmount">
-              <el-input-number
-                v-model="form.minWithdrawAmount"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-                placeholder="请输入提现最低单数"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 第六行 -->
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="提现限额/天" prop="withdrawLimitPerDay">
-              <el-input-number
-                v-model="form.withdrawLimitPerDay"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-                placeholder="请输入提现限额/天"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="最低提现金额" prop="minWithdraw">
-              <el-input-number
-                v-model="form.minWithdraw"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-                placeholder="请输入最低提现金额"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="最高提现金额" prop="maxWithdraw">
-              <el-input-number
-                v-model="form.maxWithdraw"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-                placeholder="请输入最高提现金额"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <!-- 描述 -->
-        <el-form-item label="描述">
-          <editor v-model="form.description" :min-height="192" />
-        </el-form-item>
-      </el-form>
-
-      <!-- 底部按钮 -->
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">确 定</el-button>
-          <el-button @click="cancel">取 消</el-button>
-        </div>
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="名称">
+                <a-input v-model:value="queryParams.name" allow-clear placeholder="请输入名称" @pressEnter="handleQuery" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+              <a-form-item label="级别">
+                <a-input v-model:value="queryParams.level" allow-clear placeholder="请输入级别" @pressEnter="handleQuery" />
+              </a-form-item>
+            </a-col>
+            <a-col flex="auto" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+              </a-space>
+            </a-col>
+          </a-row>
+        </a-form>
       </template>
-    </el-dialog>
 
-    <el-dialog
+      <template #toolbar>
+        <a-button type="primary" :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:level:remove']">
+          <DeleteOutlined />
+          删除
+        </a-button>
+        <a-button type="primary" @click="handleAdd" v-hasPermi="['member:level:add']">
+          <PlusOutlined />
+          创建
+        </a-button>
+      </template>
+
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'icon'">
+          <image-preview :src="record.icon" :width="50" :height="50" />
+        </template>
+        <template v-else-if="column.key === 'productMatch'">
+          <a
+            v-if="record.productMatchEnabled == '0'"
+            class="level-match-link level-match-link-danger"
+            role="button"
+            @click="openProductMatchDialog(record)"
+          >禁用</a>
+          <a v-else class="level-match-link" role="button" @click="openProductMatchDialog(record)">
+            启用 : {{ record.productMatchMin }}% - {{ record.productMatchMax }}%
+          </a>
+        </template>
+        <template v-else-if="column.key === 'operation'">
+          <a-space :size="8">
+            <a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:level:edit']">修改</a-button>
+            <a-button type="link" @click="openTranslationDialog(record)" v-hasPermi="['member:level:edit']">国际化</a-button>
+            <a-button type="link" @click="handleCopy(record)" v-hasPermi="['member:level:add']">复制</a-button>
+          </a-space>
+        </template>
+      </template>
+    </ant-pro-table>
+
+    <a-modal v-model:open="open" :title="title" width="860px" destroy-on-close @ok="submitForm" @cancel="cancel">
+      <a-form ref="levelRef" :model="form" :rules="rules" layout="vertical">
+        <a-row :gutter="[20, 0]">
+          <a-col v-for="item in levelFormItems" :key="item.prop" :span="item.span || 8">
+            <a-form-item :label="item.label" :name="item.prop">
+              <a-input
+                v-if="item.type === 'input'"
+                v-model:value="form[item.prop]"
+                :placeholder="item.placeholder"
+                allow-clear
+              />
+              <a-input-number
+                v-else-if="item.type === 'number'"
+                v-model:value="form[item.prop]"
+                :min="item.min ?? 0"
+                :max="item.max"
+                :placeholder="item.placeholder"
+                class="full-width"
+              />
+              <image-upload v-else-if="item.type === 'image'" v-model="form[item.prop]" :limit="1" />
+              <editor v-else-if="item.type === 'editor'" v-model="form[item.prop]" :min-height="192" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+      </a-form>
+    </a-modal>
+
+    <a-modal
+      v-model:open="productMatchDialogVisible"
       :title="productMatchTitle"
-      v-model="productMatchDialogVisible"
-      width="500"
-      append-to-body
+      width="500px"
+      destroy-on-close
+      @ok="updateProductMatch"
+      @cancel="closeProductMatchDialog"
     >
-      <el-form
-        :model="productMatchForm"
-        ref="productMatchForRef"
-        label-position="top"
-        label-width="80px"
-      >
-        <!-- 单选框：启用/禁用 -->
-        <el-form-item label="产品匹配" prop="productMatchEnabled">
-          <el-radio-group v-model="productMatchForm.productMatchEnabled">
-            <el-radio value="0">启用</el-radio>
-            <el-radio value="1">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-
-        <!-- 最小匹配值 -->
-        <el-form-item label="最小匹配值" prop="productMatchMin">
-          <el-input-number
-            v-model="productMatchForm.productMatchMin"
+      <a-form ref="productMatchForRef" :model="productMatchForm" layout="vertical">
+        <a-form-item label="产品匹配" name="productMatchEnabled">
+          <a-radio-group v-model:value="productMatchForm.productMatchEnabled">
+            <a-radio value="1">启用</a-radio>
+            <a-radio value="0">禁用</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        <a-form-item label="最小匹配值" name="productMatchMin">
+          <a-input-number
+            v-model:value="productMatchForm.productMatchMin"
             :min="0"
             :max="100"
-            controls-position="right"
             placeholder="请输入最小匹配值"
-            style="width: 100%"
-          >
-            <template #suffix>
-              <span>%</span>
-            </template>
-          </el-input-number>
-        </el-form-item>
-
-        <!-- 最大匹配值 -->
-        <el-form-item label="最大匹配值" prop="productMatchMax">
-          <el-input-number
-            v-model="productMatchForm.productMatchMax"
+            class="full-width"
+          />
+        </a-form-item>
+        <a-form-item label="最大匹配值" name="productMatchMax">
+          <a-input-number
+            v-model:value="productMatchForm.productMatchMax"
             :min="0"
             :max="100"
-            controls-position="right"
             placeholder="请输入最大匹配值"
-            style="width: 100%"
-          >
-            <template #suffix>
-              <span>%</span>
-            </template>
-          </el-input-number>
-        </el-form-item>
-      </el-form>
+            class="full-width"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
-      <!-- 底部按钮 -->
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="updateProductMatch"
-            >确 定</el-button
-          >
-          <el-button @click="closeProductMatchDialog">取 消</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <translation-dialog
+      v-model="translationOpen"
+      :title="translationTitle"
+      :translations="translationForm"
+      type="level"
+      @submit="submitTranslations"
+    />
   </div>
 </template>
 
@@ -495,6 +151,9 @@ import {
   addLevel,
   updateLevel,
 } from "@/api/member/level";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons-vue";
+import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
+import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
 
@@ -510,6 +169,10 @@ const title = ref("");
 
 const productMatchDialogVisible = ref(false);
 const productMatchTitle = ref("");
+const translationOpen = ref(false);
+const translationTitle = ref("");
+const translationForm = ref(createEmptyTranslations());
+const currentTranslationRow = ref(null);
 
 const data = reactive({
   form: {},
@@ -590,12 +253,56 @@ const data = reactive({
 
 const { queryParams, form, rules, productMatchForm } = toRefs(data);
 
+const levelColumns = [
+  { title: "ID", dataIndex: "id", key: "id", width: 80 },
+  { title: "名称", dataIndex: "name", key: "name" },
+  { title: "级别", dataIndex: "level", key: "level", width: 120 },
+  { title: "图标", dataIndex: "icon", key: "icon", width: 100 },
+  { title: "价格", dataIndex: "price", key: "price", width: 120 },
+  { title: "产品匹配", key: "productMatch", width: 220 },
+  { title: "最低余额", dataIndex: "minBalance", key: "minBalance", width: 140 },
+  { title: "自动升级所需邀请人数", dataIndex: "inviteCount", key: "inviteCount", width: 210 },
+  { title: "操作", key: "operation", width: 220 },
+];
+
+const rowSelection = computed(() => ({
+  selectedRowKeys: ids.value,
+  onChange: (_selectedRowKeys, selectedRows) => handleSelectionChange(selectedRows),
+}));
+
+const levelFormItems = [
+  { prop: "name", label: "名称", type: "input", placeholder: "请输入名称" },
+  { prop: "level", label: "级别", type: "number", min: 1, placeholder: "请输入级别" },
+  { prop: "icon", label: "图标", type: "image" },
+  { prop: "price", label: "会员等级价格", type: "number", placeholder: "请输入会员等级价格" },
+  { prop: "minBalance", label: "最低余额", type: "number", placeholder: "请输入最低余额" },
+  { prop: "inviteCount", label: "自动升级所需邀请人数", type: "number", placeholder: "请输入自动升级所需邀请人数" },
+  { prop: "orderCountPerDay", label: "接单次数/天", type: "number", placeholder: "请输入接单次数/天" },
+  { prop: "minCommissionRate", label: "最低返佣百分比", type: "number", max: 100, placeholder: "请输入最低返佣百分比" },
+  { prop: "maxCommissionRate", label: "最高返佣百分比", type: "number", max: 100, placeholder: "请输入最高返佣百分比" },
+  { prop: "minContinuousCommissionRate", label: "最低连单返佣百分比", type: "number", max: 100, placeholder: "请输入最低连单返佣百分比" },
+  { prop: "maxContinuousCommissionRate", label: "最高连单返佣百分比", type: "number", max: 100, placeholder: "请输入最高连单返佣百分比" },
+  { prop: "taskCountPerDay", label: "任务完成组数/天", type: "number", placeholder: "请输入任务完成组数/天" },
+  { prop: "withdrawCountPerDay", label: "提现次数/天", type: "number", placeholder: "请输入提现次数/天" },
+  { prop: "withdrawFeeRate", label: "提现手续费率", type: "number", max: 100, placeholder: "请输入提现手续费率" },
+  { prop: "minWithdrawAmount", label: "提现所需完成单数", type: "number", placeholder: "请输入提现所需完成单数" },
+  { prop: "withdrawLimitPerDay", label: "提现限额/天", type: "number", placeholder: "请输入提现限额/天" },
+  { prop: "minWithdraw", label: "最低提现金额", type: "number", placeholder: "请输入最低提现金额" },
+  { prop: "maxWithdraw", label: "最高提现金额", type: "number", placeholder: "请输入最高提现金额" },
+  { prop: "description", label: "描述", type: "editor", span: 24 }
+];
+
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
+}
+
 function openProductMatchDialog(row) {
   resetMatch();
   const _id = row.id || ids.value;
   getLevel(_id).then((response) => {
     productMatchForm.value = response.data;
-    console.log(productMatchForm.value);
     productMatchTitle.value = "产品匹配";
     productMatchDialogVisible.value = true;
   });
@@ -606,10 +313,9 @@ function closeProductMatchDialog() {
 }
 
 function updateProductMatch() {
-  // 校验表单
   if (
-    productMatchForm.productMatchMin === null ||
-    productMatchForm.productMatchMax === null
+    productMatchForm.value.productMatchMin === null ||
+    productMatchForm.value.productMatchMax === null
   ) {
     return;
   }
@@ -626,6 +332,37 @@ function updateProductMatch() {
     getList(); // 更新列表
     proxy.$modal.msgSuccess("修改成功");
   });
+}
+
+async function openTranslationDialog(row) {
+  const response = await getLevel(row.id);
+  currentTranslationRow.value = response.data;
+  translationForm.value = {
+    ...createEmptyTranslations(),
+    ...(response.data.translations || {}),
+  };
+  translationTitle.value = `${response.data.name || "等级"} - 国际化`;
+  translationOpen.value = true;
+}
+
+async function submitTranslations(translations) {
+  const row = currentTranslationRow.value;
+  if (!row) {
+    return;
+  }
+  const translationsId = translations.id || row.translationsId;
+  await updateLevel({
+    id: row.id,
+    translationsId,
+    translations: {
+      ...translations,
+      id: translationsId,
+    },
+  });
+  proxy.$modal.msgSuccess("修改成功");
+  translationOpen.value = false;
+  currentTranslationRow.value = null;
+  getList();
 }
 
 /** 查询等级列表 */
@@ -673,7 +410,7 @@ function reset() {
 }
 
 function resetMatch() {
-  form.value = {
+  productMatchForm.value = {
     id: null,
     productMatchMin: null,
     productMatchMax: null,
@@ -690,8 +427,16 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.name = null;
+  queryParams.value.level = null;
   handleQuery();
+}
+
+function handleToolbarTranslation() {
+  const row = levelList.value.find((item) => item.id === ids.value[0]);
+  if (row) {
+    openTranslationDialog(row);
+  }
 }
 
 // 多选框选中数据
@@ -719,10 +464,23 @@ function handleUpdate(row) {
   });
 }
 
+function handleCopy(row) {
+  const _id = row?.id || ids.value[0];
+  getLevel(_id).then((response) => {
+    const copied = { ...response.data };
+    delete copied.id;
+    delete copied.createTime;
+    delete copied.updateTime;
+    addLevel(copied).then(() => {
+      proxy.$modal.msgSuccess("复制成功");
+      getList();
+    });
+  });
+}
+
 /** 提交按钮 */
 function submitForm() {
-  proxy.$refs["levelRef"].validate((valid) => {
-    if (valid) {
+  proxy.$refs["levelRef"]?.validate?.().then(() => {
       if (form.value.id != null) {
         updateLevel(form.value).then((response) => {
           proxy.$modal.msgSuccess("修改成功");
@@ -736,12 +494,11 @@ function submitForm() {
           getList();
         });
       }
-    }
-  });
+  }).catch(() => {});
 }
 
 /** 删除按钮操作 */
-function handleDelete(row) {
+function handleDelete(row = {}) {
   const _ids = row.id || ids.value;
   proxy.$modal
     .confirm('是否确认删除等级编号为"' + _ids + '"的数据项？')
@@ -762,9 +519,25 @@ function handleExport() {
     {
       ...queryParams.value,
     },
-    `level_${new Date().getTime()}.xlsx`
+    `level_${new Date().getTime()}.xlsx`,
   );
 }
 
 getList();
 </script>
+
+<style scoped>
+.full-width {
+  width: 100%;
+}
+
+.level-match-link {
+  color: #1677ff;
+  font-size: 15px;
+  line-height: 24px;
+}
+
+.level-match-link-danger {
+  color: #ff4d4f;
+}
+</style>

@@ -1,20 +1,43 @@
 <template>
   <div :class="classObj" class="app-wrapper" :style="{ '--current-color': theme }">
     <div v-if="device === 'mobile' && sidebar.opened" class="drawer-bg" @click="handleClickOutside"/>
-    <sidebar v-if="!sidebar.hide" class="sidebar-container" />
-    <div :class="{ hasTagsView: needTagsView, sidebarHide: sidebar.hide }" class="main-container">
-      <div :class="{ 'fixed-header': fixedHeader }">
+    <sidebar v-show="settingsStore.menuVisible && !sidebar.hide" class="sidebar-container" />
+    <button
+      v-if="settingsStore.topNav && settingsStore.menuVisible && !sidebar.hide"
+      class="sider-trigger"
+      type="button"
+      @click="toggleSideBar"
+    >
+      {{ sidebar.opened ? '<' : '>' }}
+    </button>
+    <div
+      :class="{
+        hasTagsView: needTagsView,
+        sidebarHide: sidebar.hide || !settingsStore.menuVisible,
+        noHeader: !settingsStore.headerVisible
+      }"
+      class="main-container"
+    >
+      <div v-show="settingsStore.headerVisible" class="layout-header" :class="{ 'fixed-header': fixedHeader }">
         <navbar @setLayout="setLayout" />
         <tags-view v-if="needTagsView" />
       </div>
       <app-main />
       <settings ref="settingRef" />
+      <button
+        v-if="settingsStore.showSettings"
+        class="layout-setting-trigger"
+        type="button"
+        title="整体风格设置"
+        @click="setLayout"
+      >
+        <svg-icon icon-class="system" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { useWindowSize } from '@vueuse/core'
 import Sidebar from './components/Sidebar/index.vue'
 import { AppMain, Navbar, Settings, TagsView } from './components'
 import useAppStore from '@/store/modules/app'
@@ -25,18 +48,27 @@ const theme = computed(() => settingsStore.theme)
 const sideTheme = computed(() => settingsStore.sideTheme)
 const sidebar = computed(() => useAppStore().sidebar)
 const device = computed(() => useAppStore().device)
-const needTagsView = computed(() => settingsStore.tagsView)
+const needTagsView = computed(() => settingsStore.headerVisible && settingsStore.tagsView)
 const fixedHeader = computed(() => settingsStore.fixedHeader)
 
 const classObj = computed(() => ({
   hideSidebar: !sidebar.value.opened,
   openSidebar: sidebar.value.opened,
+  sidebarHide: sidebar.value.hide,
+  menuHidden: !settingsStore.menuVisible,
+  fixedSidebar: settingsStore.fixedSidebar,
+  contentFixed: settingsStore.contentWidth === 'Fixed',
+  topNavMode: settingsStore.topNav,
   withoutAnimation: sidebar.value.withoutAnimation,
   mobile: device.value === 'mobile'
 }))
 
-const { width, height } = useWindowSize()
+const width = ref(window.innerWidth)
 const WIDTH = 992 // refer to Bootstrap's responsive design
+
+function updateViewportWidth() {
+  width.value = window.innerWidth
+}
 
 watch(() => device.value, () => {
   if (device.value === 'mobile' && sidebar.value.opened) {
@@ -44,17 +76,24 @@ watch(() => device.value, () => {
   }
 })
 
-watchEffect(() => {
+watch(width, () => {
   if (width.value - 1 < WIDTH) {
     useAppStore().toggleDevice('mobile')
     useAppStore().closeSideBar({ withoutAnimation: true })
   } else {
     useAppStore().toggleDevice('desktop')
   }
-})
+}, { immediate: true })
+
+onMounted(() => window.addEventListener('resize', updateViewportWidth))
+onBeforeUnmount(() => window.removeEventListener('resize', updateViewportWidth))
 
 function handleClickOutside() {
   useAppStore().closeSideBar({ withoutAnimation: false })
+}
+
+function toggleSideBar() {
+  useAppStore().toggleSideBar(false)
 }
 
 const settingRef = ref(null)
@@ -98,6 +137,53 @@ function setLayout() {
   transition: width 0.28s;
 }
 
+.sider-trigger {
+  position: fixed;
+  top: 76px;
+  left: #{vars.$base-sidebar-width - 12px};
+  z-index: 830;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #f0f0f0;
+  border-radius: 50%;
+  background: #fff;
+  color: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  line-height: 20px;
+  font-size: 18px;
+}
+
+.layout-setting-trigger {
+  position: fixed;
+  top: 246px;
+  right: 0;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px 0 0 6px;
+  background: #1890ff;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.35);
+
+  .svg-icon {
+    margin-right: 0;
+    color: #ffffff;
+    font-size: 20px;
+  }
+}
+
+.hideSidebar .sider-trigger {
+  left: 42px;
+}
+
 .hideSidebar .fixed-header {
   width: calc(100% - 54px);
 }
@@ -108,5 +194,25 @@ function setLayout() {
 
 .mobile .fixed-header {
   width: 100%;
+}
+
+.noHeader {
+  :deep(.app-main) {
+    min-height: 100vh;
+  }
+}
+
+.contentFixed {
+  :deep(.app-main) {
+    max-width: 1200px;
+    margin-right: auto;
+    margin-left: auto;
+  }
+}
+
+.app-wrapper:not(.fixedSidebar) {
+  .sidebar-container {
+    position: absolute;
+  }
 }
 </style>

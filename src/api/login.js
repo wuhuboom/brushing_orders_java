@@ -1,12 +1,13 @@
 import request from '@/utils/request'
 
 // 登录方法
-export function login(username, password, code, uuid) {
+export function login(username, password, code, uuid, googleCode) {
   const data = {
     username,
     password,
     code,
-    uuid
+    uuid,
+    googleCode
   }
   return request({
     url: '/login',
@@ -16,6 +17,19 @@ export function login(username, password, code, uuid) {
     },
     method: 'post',
     data: data
+  })
+}
+
+// 谷歌验证确认（首次绑定）
+export function googleConfirm(username, googleCode) {
+  return request({
+    url: '/google/confirm',
+    headers: {
+      isToken: false,
+      repeatSubmit: false
+    },
+    method: 'post',
+    data: { username, googleCode }
   })
 }
 

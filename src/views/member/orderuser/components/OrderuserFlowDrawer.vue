@@ -1,115 +1,75 @@
 <template>
-  <el-drawer
+  <a-drawer
     title="查看交易流水"
-    v-model="visible"
-    size="90%"
-    with-header
+    v-model:open="visible"
+    width="90%"
     :destroy-on-close="false"
-    :append-to-body="true"
     @close="handleClose"
   >
-    <div class="pa12">
-      <el-form
-        :model="queryParams"
-        ref="queryRef"
-        :inline="true"
-        label-width="80px"
+    <div class="drawer-table-wrap ant-pro-member-page">
+      <ant-pro-table
+        title="交易流水"
+        :columns="flowColumns"
+        :data-source="flowList"
+        :loading="loading"
+        row-key="id"
+        :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+        :scroll="{ x: 1100 }"
+        @page-change="handleAntPageChange"
+        @refresh="getList"
       >
-        <el-form-item label="流水编号">
-          <el-input
-            v-model="queryParams.serialCode"
-            placeholder="流水编号"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item label="交易类型">
-          <el-select
-            v-model="queryParams.transactionType"
-            placeholder="交易类型"
-            clearable
-            style="width: 220px"
-          >
-            <el-option
-              v-for="dict in transaction_type"
-              :key="dict.value"
-              :label="dict.label"
-              :value="dict.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery"
-            >搜索</el-button
-          >
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
+        <template #search>
+          <a-form layout="horizontal" :model="queryParams">
+            <a-row :gutter="24" align="middle">
+              <a-col :span="7">
+                <a-form-item label="流水编号">
+                  <a-input
+                    v-model:value="queryParams.serialCode"
+                    placeholder="请输入流水编号"
+                    allow-clear
+                    @pressEnter="handleQuery"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :span="7">
+                <a-form-item label="交易类型">
+                  <a-select
+                    v-model:value="queryParams.transactionType"
+                    placeholder="请选择交易类型"
+                    allow-clear
+                  >
+                    <a-select-option
+                      v-for="dict in transaction_type"
+                      :key="dict.value"
+                      :value="dict.value"
+                    >{{ dict.label }}</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="10" class="ant-pro-query-actions">
+                <a-space>
+                  <a-button @click="resetQuery">重 置</a-button>
+                  <a-button type="primary" @click="handleQuery">查 询</a-button>
+                </a-space>
+              </a-col>
+            </a-row>
+          </a-form>
+        </template>
 
-      <el-table
-        v-loading="loading"
-        :data="flowList"
-        @selection-change="handleSelectionChange"
-        :border="true"
-        class="mt12"
-      >
-        <el-table-column label="ID" align="center" prop="id" width="80" />
-        <el-table-column label="流水编号" align="center" prop="serialCode" />
-        <el-table-column label="交易类型" align="center" prop="transactionType">
-          <template #default="scope">
-            <dict-tag
-              :options="transaction_type"
-              :value="scope.row.transactionType"
-            />
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'transactionType'">
+            <dict-tag :options="transaction_type" :value="record.transactionType" />
           </template>
-        </el-table-column>
-        <el-table-column
-          label="交易前余额"
-          align="center"
-          prop="balanceBefore"
-          width="120"
-        />
-        <el-table-column
-          label="交易金额"
-          align="center"
-          prop="transactionAmount"
-          width="120"
-        />
-        <el-table-column
-          label="交易后余额"
-          align="center"
-          prop="balanceAfter"
-          width="120"
-        />
-        <el-table-column
-          label="创建时间"
-          align="center"
-          prop="createdTime"
-          width="160"
-        >
-          <template #default="scope">
-            <span>{{
-              parseTime(scope.row.createdTime, "{y}-{m}-{d} {h}:{i}:{s}")
-            }}</span>
+          <template v-else-if="column.dataIndex === 'createdTime'">
+            {{ parseTime(record.createdTime, "{y}-{m}-{d} {h}:{i}:{s}") }}
           </template>
-        </el-table-column>
-        <el-table-column label="备注" align="center" prop="remark" />
-      </el-table>
-
-      <div class="mt12" v-if="total > 0">
-        <pagination
-          :total="total"
-          v-model:page="queryParams.pageNum"
-          v-model:limit="queryParams.pageSize"
-          @pagination="getList"
-        />
-      </div>
+        </template>
+      </ant-pro-table>
     </div>
-  </el-drawer>
+  </a-drawer>
 </template>
-
 <script setup>
-import { ref, reactive, watch, getCurrentInstance } from "vue";
+import { ref, reactive, toRefs, watch, getCurrentInstance } from "vue";
 import { listFlow } from "@/api/member/flow";
 
 const props = defineProps({
@@ -126,10 +86,7 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "success"]);
 
 const { proxy } = getCurrentInstance();
-const { transaction_type, user_yes_no } = proxy.useDict(
-  "transaction_type",
-  "user_yes_no"
-);
+const { transaction_type } = proxy.useDict("transaction_type");
 
 const visible = ref(props.modelValue);
 watch(
@@ -147,6 +104,17 @@ const loading = ref(false);
 const flowList = ref([]);
 const total = ref(0);
 
+const flowColumns = [
+  { title: "ID", dataIndex: "id", align: "center", width: 80 },
+  { title: "流水编号", dataIndex: "serialCode", align: "center", width: 180 },
+  { title: "交易类型", dataIndex: "transactionType", align: "center", width: 140 },
+  { title: "交易前余额", dataIndex: "balanceBefore", align: "center", width: 130 },
+  { title: "交易金额", dataIndex: "transactionAmount", align: "center", width: 130 },
+  { title: "交易后余额", dataIndex: "balanceAfter", align: "center", width: 130 },
+  { title: "创建时间", dataIndex: "createdTime", align: "center", width: 180 },
+  { title: "备注", dataIndex: "remark", align: "center", width: 180 },
+];
+
 const data = reactive({
   queryParams: {
     pageNum: 1,
@@ -161,12 +129,6 @@ const { queryParams } = toRefs(data);
 watch(
   () => props.userId,
   (id) => {
-    console.log(
-      "OrderuserFlowDrawer: props.userId changed ->",
-      id,
-      "visible:",
-      visible.value
-    );
     if (id != null && visible.value) {
       queryParams.value.pageNum = 1;
       getList();
@@ -177,14 +139,8 @@ watch(
 watch(
   () => props.modelValue,
   (val) => {
-    console.log(
-      "OrderuserFlowDrawer: props.modelValue changed ->",
-      val,
-      "props.userId:",
-      props.userId
-    );
     if (val && props.userId != null) {
-      queryParams.pageNum = 1;
+      queryParams.value.pageNum = 1;
       getList();
     } else if (!val) {
       // reset when closed
@@ -197,9 +153,7 @@ function handleClose() {
   visible.value = false;
 }
 
-function handleSelectionChange() {
-  // no-op for now; kept for parity
-}
+function handleSelectionChange() {}
 
 function handleQuery() {
   queryParams.value.pageNum = 1;
@@ -207,10 +161,15 @@ function handleQuery() {
 }
 
 function resetQuery() {
-  proxy.resetForm && proxy.resetForm("queryRef");
   queryParams.value.serialCode = null;
   queryParams.value.transactionType = null;
   handleQuery();
+}
+
+function handleAntPageChange({ page, pageSize }) {
+  queryParams.value.pageNum = page;
+  queryParams.value.pageSize = pageSize;
+  getList();
 }
 
 function reset() {
@@ -248,10 +207,7 @@ function getList() {
 </script>
 
 <style scoped>
-.pa12 {
-  padding: 12px;
-}
-.mt12 {
-  margin-top: 12px;
-}
+.drawer-table-wrap { padding: 12px; }
 </style>
+
+

@@ -1,3 +1,3 @@
 window.APP_CONFIG = {
-  baseApiUrl: "http://localhost:8080",
+  baseApiUrl: "/dev-api",
 };

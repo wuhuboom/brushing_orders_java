@@ -1,324 +1,71 @@
 <template>
-  <el-drawer
+  <a-drawer
     title="下级会员"
-    v-model="visible"
-    size="90%"
-    with-header
+    v-model:open="visible"
+    width="90%"
     :destroy-on-close="false"
-    :append-to-body="true"
     @close="handleClose"
   >
-    <div class="pa12">
-      <el-form
-        :model="queryParams"
-        ref="queryRef"
-        :inline="true"
-        label-width="100px"
+    <div class="drawer-table-wrap ant-pro-member-page">
+      <ant-pro-table
+        title="下级会员列表"
+        :columns="subColumns"
+        :data-source="subList"
+        :loading="loading"
+        row-key="id"
+        :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+        :scroll="{ x: 2600 }"
+        @page-change="handleAntPageChange"
+        @refresh="getList"
       >
-        <el-form-item label="用户名">
-          <el-input
-            v-model="queryParams.username"
-            placeholder="请输入用户名"
-            clearable
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item label="范围">
-          <el-switch
-            v-model="showAll"
-            active-text="查询所有下级"
-            inactive-text="查询直属下级"
-            @change="onScopeChange"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="Search" @click="handleQuery"
-            >搜索</el-button
-          >
-          <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-
-      <el-table
-        v-loading="loading"
-        :data="subList"
-        @selection-change="handleSelectionChange"
-        :border="true"
-        class="mt12"
-      >
-        <el-table-column label="ID" align="center" prop="id" width="80" />
-        <el-table-column
-          label="用户名"
-          align="center"
-          prop="username"
-          width="160"
-        />
-        <el-table-column
-          label="手机号"
-          align="center"
-          prop="phoneNumber"
-          width="140"
-        />
-        <el-table-column
-          label="VIP 等级"
-          align="center"
-          prop="memberLevel.name"
-          width="120"
-        />
-        <el-table-column label="任务进度" align="center" width="120">
-          <template #default="scope">
-            <div>
-              {{ scope.row.taskProgress }} /
-              {{ scope.row.memberLevel?.orderCountPerDay ?? 0 }}
-            </div>
+        <template #search>
+          <a-form layout="horizontal" :model="queryParams">
+            <a-row :gutter="24" align="middle">
+              <a-col :span="7">
+                <a-form-item label="用户名">
+                  <a-input v-model:value="queryParams.username" placeholder="请输入用户名" allow-clear @pressEnter="handleQuery" />
+                </a-form-item>
+              </a-col>
+              <a-col :span="7">
+                <a-form-item label="范围">
+                  <a-switch v-model:checked="showAll" checked-children="所有下级" un-checked-children="直属下级" @change="onScopeChange" />
+                </a-form-item>
+              </a-col>
+              <a-col :span="10" class="ant-pro-query-actions">
+                <a-space>
+                  <a-button @click="resetQuery">重 置</a-button>
+                  <a-button type="primary" @click="handleQuery">查 询</a-button>
+                </a-space>
+              </a-col>
+            </a-row>
+          </a-form>
+        </template>
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.dataIndex === 'memberLevelName'">
+            {{ record.memberLevel?.name || '-' }}
           </template>
-        </el-table-column>
-        <el-table-column
-          label="签到天数"
-          align="center"
-          prop="signDays"
-          width="120"
-        />
-
-        <el-table-column
-          label="今日提现次数"
-          align="center"
-          prop="todayWithdrawalCount"
-          width="140"
-        />
-
-        <el-table-column
-          label="最后登录地址"
-          align="center"
-          prop="lastLoginAddress"
-          width="220"
-        />
-        <el-table-column
-          label="直属下级数量"
-          align="center"
-          prop="directChildrenCount"
-          width="140"
-        />
-        <el-table-column
-          label="信誉分"
-          align="center"
-          prop="reputationScore"
-          width="100"
-        />
-        <el-table-column
-          label="累计签到次数"
-          align="center"
-          prop="totalSignDays"
-          width="140"
-        />
-        <el-table-column
-          label="余额"
-          align="center"
-          prop="balance"
-          width="120"
-        />
-        <el-table-column
-          label="冻结余额"
-          align="center"
-          prop="frozenBalance"
-          width="120"
-        />
-        <el-table-column
-          label="提现金额"
-          align="center"
-          prop="withdrawalAmount"
-          width="140"
-        />
-        <el-table-column
-          label="充值金额"
-          align="center"
-          prop="rechargeAmount"
-          width="140"
-        />
-        <el-table-column
-          label="今日重置次数"
-          align="center"
-          prop="todayResetCount"
-          width="140"
-        />
-        <el-table-column
-          label="累计重置次数"
-          align="center"
-          prop="totalResetCount"
-          width="140"
-        />
-        <el-table-column
-          label="今日佣金"
-          align="center"
-          prop="todayCommission"
-          width="140"
-        />
-
-        <el-table-column
-          label="是否启用"
-          align="center"
-          prop="isEnabled"
-          width="100"
-        >
-          <template #default="scope">
-            <dict-tag :options="user_yes_no" :value="scope.row.isEnabled" />
+          <template v-else-if="column.dataIndex === 'taskProgressText'">
+            {{ record.taskProgress }} / {{ record.memberLevel?.orderCountPerDay ?? 0 }}
           </template>
-        </el-table-column>
-        <el-table-column
-          label="是否冻结"
-          align="center"
-          prop="isFrozen"
-          width="100"
-        >
-          <template #default="scope">
-            <dict-tag :options="user_yes_no" :value="scope.row.isFrozen" />
+          <template v-else-if="['isEnabled','isFrozen','isFake','depositBlockWithdrawal'].includes(column.dataIndex)">
+            <dict-tag :options="user_yes_no" :value="record[column.dataIndex]" />
           </template>
-        </el-table-column>
-        <el-table-column
-          label="是否假人"
-          align="center"
-          prop="isFake"
-          width="100"
-        >
-          <template #default="scope">
-            <dict-tag :options="user_yes_no" :value="scope.row.isFake" />
+          <template v-else-if="['accountStatus','transactionStatus','withdrawalStatus','assistWithdrawalStatus'].includes(column.dataIndex)">
+            <dict-tag :options="sys_enabled" :value="record[column.dataIndex]" />
           </template>
-        </el-table-column>
-
-        <el-table-column
-          label="账户状态"
-          align="center"
-          prop="accountStatus"
-          width="120"
-        >
-          <template #default="scope">
-            <dict-tag :options="sys_enabled" :value="scope.row.accountStatus" />
+          <template v-else-if="column.dataIndex === 'lastLoginTime'">
+            {{ parseTime(record.lastLoginTime, "{y}-{m}-{d} {h}:{i}:{s}") }}
           </template>
-        </el-table-column>
-        <el-table-column
-          label="交易状态"
-          align="center"
-          prop="transactionStatus"
-          width="120"
-        >
-          <template #default="scope">
-            <dict-tag
-              :options="sys_enabled"
-              :value="scope.row.transactionStatus"
-            />
+          <template v-else-if="column.dataIndex === 'action'">
+            <a-button type="link" size="small" @click="openFlow(record)">流水</a-button>
           </template>
-        </el-table-column>
-        <el-table-column
-          label="提现状态"
-          align="center"
-          prop="withdrawalStatus"
-          width="120"
-        >
-          <template #default="scope">
-            <dict-tag
-              :options="sys_enabled"
-              :value="scope.row.withdrawalStatus"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="协助金提现状态"
-          align="center"
-          prop="assistWithdrawalStatus"
-          width="160"
-        >
-          <template #default="scope">
-            <dict-tag
-              :options="sys_enabled"
-              :value="scope.row.assistWithdrawalStatus"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="充值后禁止提现"
-          align="center"
-          prop="depositBlockWithdrawal"
-          width="160"
-        >
-          <template #default="scope">
-            <dict-tag
-              :options="user_yes_no"
-              :value="scope.row.depositBlockWithdrawal"
-            />
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          label="上级邀请码"
-          align="center"
-          prop="parentInviteCode"
-          width="140"
-        />
-        <el-table-column
-          label="邀请码"
-          align="center"
-          prop="inviteCode"
-          width="140"
-        />
-        <el-table-column label="性别" align="center" prop="gender" width="100">
-          <template #default="scope">
-            <dict-tag :options="sys_user_sex" :value="scope.row.gender" />
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="最后登录时间"
-          align="center"
-          prop="lastLoginTime"
-          width="180"
-        >
-          <template #default="scope">
-            <span>{{
-              parseTime(scope.row.lastLoginTime, "{y}-{m}-{d} {h}:{i}:{s}")
-            }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="创建时间"
-          align="center"
-          prop="createTime"
-          width="180"
-        >
-          <template #default="scope">
-            <span>{{
-              parseTime(scope.row.createTime, "{y}-{m}-{d} {h}:{i}:{s}")
-            }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="备注"
-          align="center"
-          prop="remarks"
-          width="200"
-        />
-
-        <el-table-column label="操作" align="center" fixed="right" width="140">
-          <template #default="scope">
-            <el-button type="primary" @click="openFlow(scope.row)"
-              >查看交易流水</el-button
-            >
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="mt12" v-if="total > 0">
-        <pagination
-          :total="total"
-          v-model:page="queryParams.pageNum"
-          v-model:limit="queryParams.pageSize"
-          @pagination="getList"
-        />
-      </div>
+        </template>
+      </ant-pro-table>
     </div>
-  </el-drawer>
+  </a-drawer>
 </template>
-
 <script setup>
-import { ref, reactive, watch, getCurrentInstance } from "vue";
+import { ref, reactive, toRefs, watch, getCurrentInstance } from "vue";
 import { selectChildrenById } from "@/api/member/orderuser";
 
 const props = defineProps({
@@ -356,7 +103,40 @@ const loading = ref(false);
 const subList = ref([]);
 const total = ref(0);
 
-const showAll = ref(false); // 开关：true -> all, false -> direct
+const subColumns = [
+  { title: "ID", dataIndex: "id", align: "center", width: 80 },
+  { title: "用户名", dataIndex: "username", align: "center", width: 140 },
+  { title: "手机号", dataIndex: "phoneNumber", align: "center", width: 140 },
+  { title: "VIP等级", dataIndex: "memberLevelName", align: "center", width: 120 },
+  { title: "任务进度", dataIndex: "taskProgressText", align: "center", width: 120 },
+  { title: "签到天数", dataIndex: "signDays", align: "center", width: 120 },
+  { title: "今日提现次数", dataIndex: "todayWithdrawalCount", align: "center", width: 140 },
+  { title: "最后登录地址", dataIndex: "lastLoginAddress", align: "center", width: 220 },
+  { title: "直属下级数量", dataIndex: "directChildrenCount", align: "center", width: 140 },
+  { title: "信誉分", dataIndex: "reputationScore", align: "center", width: 100 },
+  { title: "累计签到次数", dataIndex: "totalSignDays", align: "center", width: 140 },
+  { title: "余额", dataIndex: "balance", align: "center", width: 120 },
+  { title: "冻结余额", dataIndex: "frozenBalance", align: "center", width: 120 },
+  { title: "提现金额", dataIndex: "withdrawalAmount", align: "center", width: 140 },
+  { title: "充值金额", dataIndex: "rechargeAmount", align: "center", width: 140 },
+  { title: "今日重置次数", dataIndex: "todayResetCount", align: "center", width: 140 },
+  { title: "累计重置次数", dataIndex: "totalResetCount", align: "center", width: 140 },
+  { title: "今日佣金", dataIndex: "todayCommission", align: "center", width: 140 },
+  { title: "是否启用", dataIndex: "isEnabled", align: "center", width: 110 },
+  { title: "是否冻结", dataIndex: "isFrozen", align: "center", width: 110 },
+  { title: "是否假人", dataIndex: "isFake", align: "center", width: 110 },
+  { title: "账户状态", dataIndex: "accountStatus", align: "center", width: 120 },
+  { title: "交易状态", dataIndex: "transactionStatus", align: "center", width: 120 },
+  { title: "提现状态", dataIndex: "withdrawalStatus", align: "center", width: 120 },
+  { title: "协助金提现状态", dataIndex: "assistWithdrawalStatus", align: "center", width: 160 },
+  { title: "充值后禁止提现", dataIndex: "depositBlockWithdrawal", align: "center", width: 160 },
+  { title: "上级邀请码", dataIndex: "parentInviteCode", align: "center", width: 140 },
+  { title: "邀请码", dataIndex: "inviteCode", align: "center", width: 140 },
+  { title: "最后登录时间", dataIndex: "lastLoginTime", align: "center", width: 180 },
+  { title: "操作", dataIndex: "action", align: "center", width: 100, fixed: "right" },
+];
+
+const showAll = ref(false); // 寮€鍏筹細true -> all, false -> direct
 
 const data = reactive({
   queryParams: {
@@ -384,8 +164,8 @@ watch(
   () => props.modelValue,
   (val) => {
     if (val && props.userId != null) {
-      queryParams.pageNum = 1;
-      queryParams.scope = showAll.value ? "all" : "direct";
+      queryParams.value.pageNum = 1;
+      queryParams.value.scope = showAll.value ? "all" : "direct";
       getList();
     } else if (!val) {
       reset();
@@ -466,3 +246,5 @@ function getList() {
   margin-top: 12px;
 }
 </style>
+
+

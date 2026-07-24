@@ -1,108 +1,28 @@
 <template>
-  <div class="app-container">
-    <el-form
-      :model="queryParams"
-      ref="queryRef"
-      :inline="true"
-      v-show="showSearch"
-      label-width="68px"
-    >
-      <el-form-item label="流水编号" prop="serialCode">
-        <el-input
-          v-model="queryParams.serialCode"
-          placeholder="请输入流水编号"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="用户名" prop="username">
-        <el-input
-          v-model="queryParams.username"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="交易类型" prop="transactionType">
-        <el-select
-          v-model="queryParams.transactionType"
-          placeholder="请选择交易类型"
-          style="width: 240px"
-          clearable
-        >
-          <el-option
-            v-for="dict in transaction_type"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="Search" @click="handleQuery"
-          >搜索</el-button
-        >
-        <el-button icon="Refresh" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-
-    <el-row :gutter="10" class="mb8">
-      <right-toolbar
-        v-model:showSearch="showSearch"
-        @queryTable="getList"
-      ></right-toolbar>
-    </el-row>
-
-    <el-table
-      v-loading="loading"
-      :data="flowList"
-      @selection-change="handleSelectionChange"
-      :border="true"
-    >
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="ID" align="center" prop="id" />
-      <el-table-column label="流水编号" align="center" prop="serialCode" />
-      <el-table-column label="用户名" align="center" prop="username" />
-      <el-table-column label="交易类型" align="center" prop="transactionType">
-        <template #default="scope">
-          <dict-tag
-            :options="transaction_type"
-            :value="scope.row.transactionType"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="交易前余额" align="center" prop="balanceBefore" />
-      <el-table-column
-        label="交易金额"
-        align="center"
-        prop="transactionAmount"
-      />
-      <el-table-column label="交易后余额" align="center" prop="balanceAfter" />
-      <el-table-column label="是否隐藏" align="center" prop="isHidden">
-        <template #default="scope">
-          <dict-tag :options="user_yes_no" :value="scope.row.isHidden" />
-        </template>
-      </el-table-column>
-      <el-table-column label="交易编号" align="center" prop="transactionCode" />
-      <el-table-column
-        label="创建时间"
-        align="center"
-        prop="createdTime"
-        width="180"
-      >
-        <template #default="scope">
-          <span>{{ parseTime(scope.row.createdTime, "{y}-{m}-{d}") }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="备注" align="center" prop="remark" />
-    </el-table>
-
-    <pagination
-      v-show="total > 0"
-      :total="total"
-      v-model:page="queryParams.pageNum"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
+  <div class="app-container ant-pro-member-page">
+    <ant-pro-table title="交易流水列表" :columns="flowColumns" :data-source="flowList" :loading="loading"
+      row-key="id" :row-selection="rowSelection"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      @page-change="handleAntPageChange" @refresh="getList">
+      <template #search>
+        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
+          <a-row :gutter="[24, 16]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6"><a-form-item label="流水编号"><a-input v-model:value="queryParams.serialCode" allow-clear placeholder="请输入流水编号" @pressEnter="handleQuery" /></a-form-item></a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6"><a-form-item label="用户名"><a-input v-model:value="queryParams.username" allow-clear placeholder="请输入用户名" @pressEnter="handleQuery" /></a-form-item></a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6"><a-form-item label="交易类型"><a-select v-model:value="queryParams.transactionType" allow-clear placeholder="请选择交易类型"><a-select-option v-for="dict in transaction_type" :key="dict.value" :value="dict.value">{{ dict.label }}</a-select-option></a-select></a-form-item></a-col>
+            <a-col flex="auto" class="ant-pro-query-actions"><a-space><a-button @click="resetQuery">重 置</a-button><a-button type="primary" @click="handleQuery">查 询</a-button></a-space></a-col>
+          </a-row>
+        </a-form>
+      </template>
+      <template #toolbar>
+        <a-button :disabled="multiple" @click="handleHidden('0')" v-hasPermi="['member:flow:edit']">显示</a-button>
+        <a-button :disabled="multiple" @click="handleHidden('1')" v-hasPermi="['member:flow:edit']">隐藏</a-button>
+      </template>
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.dict">{{ dictText(column.dict === 'transaction' ? transaction_type : user_yes_no, record[column.dataIndex]) }}</template>
+        <template v-else-if="column.key === 'createdTime'">{{ parseTime(record.createdTime) }}</template>
+      </template>
+    </ant-pro-table>
   </div>
 </template>
 
@@ -138,11 +58,29 @@ const data = reactive({
     pageSize: 10,
     serialCode: null,
     username: null,
+    transactionType: null,
   },
   rules: {},
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+const flowColumns = [
+  { title: "ID", dataIndex: "id", key: "id", width: 80 },
+  { title: "流水编号", dataIndex: "serialCode", key: "serialCode", width: 180 },
+  { title: "用户名", dataIndex: "username", key: "username", width: 140 },
+  { title: "交易类型", dataIndex: "transactionType", key: "transactionType", dict: "transaction", width: 140 },
+  { title: "交易前余额", dataIndex: "balanceBefore", key: "balanceBefore", width: 140 },
+  { title: "交易金额", dataIndex: "transactionAmount", key: "transactionAmount", width: 140 },
+  { title: "交易后余额", dataIndex: "balanceAfter", key: "balanceAfter", width: 140 },
+  { title: "是否隐藏", dataIndex: "isHidden", key: "isHidden", dict: "yesNo", width: 120 },
+  { title: "交易编号", dataIndex: "transactionCode", key: "transactionCode", width: 180 },
+  { title: "创建时间", dataIndex: "createdTime", key: "createdTime", width: 180 },
+  { title: "备注", dataIndex: "remark", key: "remark" },
+];
+const rowSelection = computed(() => ({ selectedRowKeys: ids.value, onChange: (_keys, rows) => handleSelectionChange(rows) }));
+function dictText(options, value) { return proxy.selectDictLabel(options, value) || value || "-"; }
+function handleAntPageChange({ page, pageSize }) { queryParams.value.pageNum = page; queryParams.value.pageSize = pageSize; getList(); }
 
 /** 查询交易流水列表 */
 function getList() {
@@ -186,7 +124,9 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  proxy.resetForm("queryRef");
+  queryParams.value.serialCode = null;
+  queryParams.value.username = null;
+  queryParams.value.transactionType = null;
   handleQuery();
 }
 
@@ -249,6 +189,13 @@ function handleDelete(row) {
       proxy.$modal.msgSuccess("删除成功");
     })
     .catch(() => {});
+}
+
+function handleHidden(isHidden) {
+  Promise.all(ids.value.map((id) => updateFlow({ id, isHidden }))).then(() => {
+    proxy.$modal.msgSuccess("操作成功");
+    getList();
+  });
 }
 
 /** 导出按钮操作 */

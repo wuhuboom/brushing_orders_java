@@ -1,5 +1,5 @@
-﻿import axios from "axios";
-import { ElLoading, ElMessage } from "element-plus";
+import axios from "axios";
+import { message } from "ant-design-vue";
 import { saveAs } from "file-saver";
 import { getToken } from "@/utils/auth";
 import errorCode from "@/utils/errorCode";
@@ -9,19 +9,24 @@ const config = window.APP_CONFIG;
 const baseURL = config.baseApiUrl;
 let downloadLoadingInstance;
 
+function createLoading(content) {
+  const key = `download-loading-${Date.now()}`;
+  message.loading({ content, key, duration: 0 });
+  return {
+    close() {
+      message.destroy(key);
+    },
+  };
+}
+
 export default {
   name(name, isDelete = true) {
-    var url =
-      baseURL +
-      "/common/download?fileName=" +
-      encodeURIComponent(name) +
-      "&delete=" +
-      isDelete;
+    const url = `${baseURL}/common/download?fileName=${encodeURIComponent(name)}&delete=${isDelete}`;
     axios({
       method: "get",
-      url: url,
+      url,
       responseType: "blob",
-      headers: { Authorization: "Bearer " + getToken() },
+      headers: { Authorization: `Bearer ${getToken()}` },
     }).then((res) => {
       const isBlob = blobValidate(res.data);
       if (isBlob) {
@@ -33,15 +38,12 @@ export default {
     });
   },
   resource(resource) {
-    var url =
-      baseURL +
-      "/common/download/resource?resource=" +
-      encodeURIComponent(resource);
+    const url = `${baseURL}/common/download/resource?resource=${encodeURIComponent(resource)}`;
     axios({
       method: "get",
-      url: url,
+      url,
       responseType: "blob",
-      headers: { Authorization: "Bearer " + getToken() },
+      headers: { Authorization: `Bearer ${getToken()}` },
     }).then((res) => {
       const isBlob = blobValidate(res.data);
       if (isBlob) {
@@ -53,16 +55,13 @@ export default {
     });
   },
   zip(url, name) {
-    var url = baseURL + url;
-    downloadLoadingInstance = ElLoading.service({
-      text: "正在下载数据，请稍候",
-      background: "rgba(0, 0, 0, 0.7)",
-    });
+    const downloadUrl = baseURL + url;
+    downloadLoadingInstance = createLoading("正在下载数据，请稍候");
     axios({
       method: "get",
-      url: url,
+      url: downloadUrl,
       responseType: "blob",
-      headers: { Authorization: "Bearer " + getToken() },
+      headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then((res) => {
         const isBlob = blobValidate(res.data);
@@ -72,12 +71,12 @@ export default {
         } else {
           this.printErrMsg(res.data);
         }
-        downloadLoadingInstance.close();
+        downloadLoadingInstance?.close();
       })
-      .catch((r) => {
-        console.error(r);
-        ElMessage.error("下载文件出现错误，请联系管理员！");
-        downloadLoadingInstance.close();
+      .catch((error) => {
+        console.error(error);
+        message.error("下载文件出现错误，请联系管理员！");
+        downloadLoadingInstance?.close();
       });
   },
   saveAs(text, name, opts) {
@@ -86,7 +85,7 @@ export default {
   async printErrMsg(data) {
     const resText = await data.text();
     const rspObj = JSON.parse(resText);
-    const errMsg = errorCode[rspObj.code] || rspObj.msg || errorCode["default"];
-    ElMessage.error(errMsg);
+    const errMsg = errorCode[rspObj.code] || rspObj.msg || errorCode.default;
+    message.error(errMsg);
   },
 };
