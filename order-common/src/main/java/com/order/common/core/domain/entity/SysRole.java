@@ -1,5 +1,7 @@
 package com.order.common.core.domain.entity;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -49,6 +51,12 @@ public class SysRole extends BaseEntity
     @Excel(name = "角色状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
+    /** Whether this role requires phone numbers to be masked. */
+    private String hidePhone;
+
+    /** Built-in roles cannot be deleted. */
+    private String isBuiltin;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -57,6 +65,12 @@ public class SysRole extends BaseEntity
 
     /** 菜单组 */
     private Long[] menuIds;
+
+    /** 旧站策略列表。与角色和资源一并事务保存。 */
+    private List<Long> strategyIds;
+
+    /** 旧站逐资源数据行权限。 */
+    private List<Map<String, Object>> dataRules;
 
     /** 部门组（数据权限） */
     private Long[] deptIds;
@@ -169,6 +183,26 @@ public class SysRole extends BaseEntity
         this.status = status;
     }
 
+    public String getHidePhone()
+    {
+        return hidePhone;
+    }
+
+    public void setHidePhone(String hidePhone)
+    {
+        this.hidePhone = hidePhone;
+    }
+
+    public String getIsBuiltin()
+    {
+        return isBuiltin;
+    }
+
+    public void setIsBuiltin(String isBuiltin)
+    {
+        this.isBuiltin = isBuiltin;
+    }
+
     public String getDelFlag()
     {
         return delFlag;
@@ -197,6 +231,26 @@ public class SysRole extends BaseEntity
     public void setMenuIds(Long[] menuIds)
     {
         this.menuIds = menuIds;
+    }
+
+    public List<Long> getStrategyIds()
+    {
+        return strategyIds;
+    }
+
+    public void setStrategyIds(List<Long> strategyIds)
+    {
+        this.strategyIds = strategyIds;
+    }
+
+    public List<Map<String, Object>> getDataRules()
+    {
+        return dataRules;
+    }
+
+    public void setDataRules(List<Map<String, Object>> dataRules)
+    {
+        this.dataRules = dataRules;
     }
 
     public Long[] getDeptIds()
@@ -230,6 +284,10 @@ public class SysRole extends BaseEntity
             .append("menuCheckStrictly", isMenuCheckStrictly())
             .append("deptCheckStrictly", isDeptCheckStrictly())
             .append("status", getStatus())
+            .append("hidePhone", getHidePhone())
+            .append("isBuiltin", getIsBuiltin())
+            .append("strategyIds", getStrategyIds())
+            .append("dataRules", getDataRules())
             .append("delFlag", getDelFlag())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())

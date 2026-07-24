@@ -23,7 +23,10 @@
     </resultMap>
 
     <sql id="selectOrderBonusTableVo">
-        select id, order_num, user_id, amount, animation_duration, display_duration, distribution_type, expiry_time, push_type, create_time, is_distributed, is_received, received_time, distribution_time, to_users from order_bonus_table
+        select id, order_num, user_id, amount, animation_duration,
+               display_duration, distribution_type, expiry_time, push_type,
+               create_time, is_distributed, is_received, received_time,
+               distribution_time, to_users from order_bonus_table
     </sql>
 
     <select id="selectOrderBonusTableList" parameterType="OrderBonusTable" resultMap="OrderBonusTableResult">
@@ -45,7 +48,58 @@
         </where>
     </select>
 
-    <select id="selectOrderBonusTableById" parameterType="Long" resultMap="OrderBonusTableResult">
+    <select id="selectActiveDistributedReceivedByUserAndOrder"  resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        <where>
+            and is_received = '1'
+            and is_distributed = '1'
+            and distribution_type = '0'
+            and user_id = #{userId}
+            and order_num = #{orderNum}
+            and (expiry_time IS NULL OR expiry_time &gt; NOW())
+        </where>
+        order by expiry_time asc, create_time asc, id asc
+        limit 1
+    </select>
+
+    <select id="selectBonusByType" parameterType="Long" resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        <where>
+            and is_received = '1'
+            and is_distributed = '1'
+            and distribution_type = '1'
+            and user_id = #{userId}
+            and (expiry_time IS NULL OR expiry_time &gt; NOW())
+        </where>
+        order by expiry_time asc, create_time asc, id asc
+    </select>
+
+    <select id="selectNextCompletionBonus" parameterType="Long" resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        WHERE is_received = '1'
+          AND is_distributed = '1'
+          AND distribution_type = '1'
+          AND user_id = #{userId}
+          AND (expiry_time IS NULL OR expiry_time &gt; NOW())
+        ORDER BY expiry_time ASC, create_time ASC, id ASC
+        LIMIT 1
+    </select>
+
+    <select id="selectOwnedBonusForUpdate" resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        WHERE id = #{id} AND user_id = #{userId}
+        FOR UPDATE
+    </select>
+
+    <select id="userHaveBonus"  resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        <where>
+            and is_received = '1'
+            and user_id = #{userId}  and order_num = #{orderNum}
+        </where>
+    </select>
+
+    <select id="selectOrderBonusTableById" parameterType="map" resultMap="OrderBonusTableResult">
         <include refid="selectOrderBonusTableVo"/>
         where id = #{id}
     </select>
@@ -99,22 +153,36 @@
             <if test="pushType != null and pushType != ''">push_type = #{pushType},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="isDistributed != null">is_distributed = #{isDistributed},</if>
-            <if test="isReceived != null">is_received = #{isReceived},</if>
-            <if test="receivedTime != null">received_time = #{receivedTime},</if>
             <if test="distributionTime != null">distribution_time = #{distributionTime},</if>
             <if test="toUsers != null">to_users = #{toUsers},</if>
         </trim>
         where id = #{id}
+          and is_received = '1'
+    </update>
+
+    <update id="claimBonus">
+        UPDATE order_bonus_table
+        SET is_received = '0',
+            received_time = NOW(3)
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND is_received = '1'
+          AND is_distributed = '1'
+          AND (expiry_time IS NULL OR expiry_time &gt; NOW())
     </update>
 
     <delete id="deleteOrderBonusTableById" parameterType="Long">
-        delete from order_bonus_table where id = #{id}
+        delete from order_bonus_table
+        where id = #{id}
+          and is_received = '1'
     </delete>
 
     <delete id="deleteOrderBonusTableByIds" parameterType="String">
-        delete from order_bonus_table where id in
+        delete from order_bonus_table
+        where id in
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
+          and is_received = '1'
     </delete>
 </mapper>

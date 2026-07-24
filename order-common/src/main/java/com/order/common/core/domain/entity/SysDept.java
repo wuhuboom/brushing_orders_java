@@ -50,6 +50,9 @@ public class SysDept extends BaseEntity
 
     /** 父部门名称 */
     private String parentName;
+
+    /** Organization note. */
+    private String remark;
     
     /** 子部门 */
     private List<SysDept> children = new ArrayList<SysDept>();
@@ -169,6 +172,16 @@ public class SysDept extends BaseEntity
         this.parentName = parentName;
     }
 
+    public String getRemark()
+    {
+        return remark;
+    }
+
+    public void setRemark(String remark)
+    {
+        this.remark = remark;
+    }
+
     public List<SysDept> getChildren()
     {
         return children;
@@ -196,6 +209,7 @@ public class SysDept extends BaseEntity
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())
             .append("updateTime", getUpdateTime())
+            .append("remark", getRemark())
             .toString();
     }
 }

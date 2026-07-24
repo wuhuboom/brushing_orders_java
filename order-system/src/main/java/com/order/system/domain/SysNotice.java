@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.core.domain.BaseEntity;
+import com.order.common.i18n.Translations;
 import com.order.common.xss.Xss;
 
 /**
@@ -30,6 +31,10 @@ public class SysNotice extends BaseEntity
 
     /** 公告状态（0正常 1关闭） */
     private String status;
+
+    private Long translationsId;
+
+    private Translations translations;
 
     public Long getNoticeId()
     {
@@ -84,6 +89,22 @@ public class SysNotice extends BaseEntity
         return status;
     }
 
+    public Long getTranslationsId() {
+        return translationsId;
+    }
+
+    public void setTranslationsId(Long translationsId) {
+        this.translationsId = translationsId;
+    }
+
+    public Translations getTranslations() {
+        return translations;
+    }
+
+    public void setTranslations(Translations translations) {
+        this.translations = translations;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -92,6 +113,7 @@ public class SysNotice extends BaseEntity
             .append("noticeType", getNoticeType())
             .append("noticeContent", getNoticeContent())
             .append("status", getStatus())
+            .append("translationsId", getTranslationsId())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

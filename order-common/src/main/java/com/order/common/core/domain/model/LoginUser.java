@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Set;
+import java.util.HashSet;
 
 /**
  * 登录用户身份权限
@@ -64,7 +65,7 @@ public class LoginUser implements UserDetails
     /**
      * 权限列表
      */
-    private Set<String> permissions;
+    private Set<String> permissions = new HashSet<>();
 
     /**
      * 用户信息
@@ -240,6 +241,10 @@ public class LoginUser implements UserDetails
 
     public Set<String> getPermissions()
     {
+        if (this.permissions == null)
+        {
+            this.permissions = new HashSet<>();
+        }
         return permissions;
     }
 

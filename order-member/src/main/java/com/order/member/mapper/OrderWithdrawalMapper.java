@@ -2,6 +2,11 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.OrderWithdrawal;
+import com.order.member.domain.WithdrawalDailyUsage;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Date;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 提现Mapper接口
@@ -59,4 +64,36 @@ public interface OrderWithdrawalMapper
      * @return 结果
      */
     public int deleteOrderWithdrawalByIds(Long[] ids);
+
+    OrderWithdrawal selectByUserAndRequestId(@Param("userId") Long userId,
+                                             @Param("requestId") String requestId);
+
+    OrderWithdrawal selectForUpdate(Long id);
+
+    int existsPendingByUserId(Long userId);
+
+    int existsPendingByAccountId(Long accountId);
+
+    WithdrawalDailyUsage selectDailyUsage(@Param("userId") Long userId,
+                                          @Param("start") Date start,
+                                          @Param("end") Date end);
+
+    int transitionStatus(@Param("id") Long id,
+                         @Param("fromStatus") String fromStatus,
+                         @Param("toStatus") String toStatus,
+                         @Param("remarks") String remarks);
+
+    int ensureDailyQuota(@Param("businessDate") LocalDate businessDate,
+                         @Param("legacyStart") Date legacyStart,
+                         @Param("legacyEnd") Date legacyEnd);
+
+    int reserveDailyQuota(@Param("businessDate") LocalDate businessDate,
+                          @Param("amount") BigDecimal amount,
+                          @Param("limit") BigDecimal limit);
+
+    int releaseDailyQuota(@Param("businessDate") LocalDate businessDate,
+                          @Param("amount") BigDecimal amount);
+
+    List<OrderWithdrawal> selectPublicByUser(@Param("userId") Long userId,
+                                             @Param("status") String status);
 }

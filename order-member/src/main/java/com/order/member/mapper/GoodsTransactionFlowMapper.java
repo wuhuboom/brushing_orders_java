@@ -2,6 +2,7 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.GoodsTransactionFlow;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 交易流水Mapper接口
@@ -58,4 +59,6 @@ public interface GoodsTransactionFlowMapper
      * @return 结果
      */
     public int deleteGoodsTransactionFlowByIds(Long[] ids);
+
+    List<GoodsTransactionFlow> selectPublicByUserId(@Param("userId") Long userId);
 }

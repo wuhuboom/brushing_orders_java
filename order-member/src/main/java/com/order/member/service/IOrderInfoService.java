@@ -59,5 +59,5 @@ public interface IOrderInfoService
      */
     public int deleteOrderInfoById(Long id);
 
-    public int hasOpenOrders(Long userId);
+    public OrderInfo hasOpenOrders(Long userId);
 }

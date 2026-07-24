@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -24,6 +26,7 @@ import com.order.system.mapper.SysMenuMapper;
 import com.order.system.mapper.SysRoleMapper;
 import com.order.system.mapper.SysRoleMenuMapper;
 import com.order.system.service.ISysMenuService;
+import com.order.system.service.ISystemAlignmentService;
 
 /**
  * 菜单 业务层处理
@@ -43,6 +46,9 @@ public class SysMenuServiceImpl implements ISysMenuService
 
     @Autowired
     private SysRoleMenuMapper roleMenuMapper;
+
+    @Autowired
+    private ISystemAlignmentService alignmentService;
 
     /**
      * 根据用户查询系统菜单列表
@@ -137,7 +143,20 @@ public class SysMenuServiceImpl implements ISysMenuService
         }
         else
         {
-            menus = menuMapper.selectMenuTreeByUserId(userId);
+            List<SysMenu> allMenus = menuMapper.selectMenuTreeAll();
+            Set<Long> visibleIds = new HashSet<>(alignmentService.selectEffectiveMenuIds(userId));
+            Map<Long, SysMenu> byId = new HashMap<>();
+            for (SysMenu menu : allMenus) byId.put(menu.getMenuId(), menu);
+            for (Long id : new ArrayList<>(visibleIds))
+            {
+                SysMenu current = byId.get(id);
+                while (current != null && current.getParentId() != null && current.getParentId() != 0)
+                {
+                    visibleIds.add(current.getParentId());
+                    current = byId.get(current.getParentId());
+                }
+            }
+            menus = allMenus.stream().filter(menu -> visibleIds.contains(menu.getMenuId())).collect(Collectors.toList());
         }
         return getChildPerms(menus, 0);
     }

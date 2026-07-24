@@ -3,6 +3,7 @@ package com.order.member.domain;
 import java.math.BigDecimal;
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.annotation.Excel;
@@ -139,15 +140,47 @@ public class OrderUser extends BaseEntity
 
     /** 登录密码 */
     @Excel(name = "登录密码")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     /** 交易密码 */
     @Excel(name = "交易密码")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String tradePassword;
 
     /** 协助金提现状态 */
     @Excel(name = "协助金提现状态")
     private String assistWithdrawalStatus;
+
+    /** 启用 Web3 授权 */
+    private String web3AuthEnabled;
+
+    /** 是否无效 */
+    private String isInvalid;
+
+    /** 是否活动 */
+    private String isActivity;
+
+    /** 禁止提现所需交易密码失败次数，0 表示不限制 */
+    private Integer withdrawalPasswordFailLimit;
+
+    /** 提现交易密码连续失败次数 */
+    private Integer withdrawalPasswordFailCount;
+
+    /** 单次最大提现金额，0 表示不限制 */
+    private BigDecimal maxSingleWithdrawal;
+
+    /** 任务开始前是否验证身份信息 */
+    private String verifyIdentityBeforeTask;
+
+    private String userContractEnabled;
+    private String userContractSigned;
+    private String formalContractEnabled;
+    private String formalContractSigned;
+    private String withdrawalBlockRemark;
+    private Integer signDays;
+    private Integer todaySignCount;
+    private Integer totalSignDays;
 
 
     private Integer todayRest;
@@ -159,6 +192,27 @@ public class OrderUser extends BaseEntity
     private String parentUsername;
     private String parentInviteCode;
     private String scope;
+    private String keyword;
+    private String isOnline;
+    private String usernameList;
+    private BigDecimal balanceMin;
+    private BigDecimal balanceMax;
+    private Long reputationMin;
+    private Long reputationMax;
+
+    /** 会员身份信息 */
+    private String identityType;
+    private String identityName;
+    private String identityNumber;
+    private String identityFrontImage;
+    private String identityBackImage;
+    private String identityHandheldImage;
+    private String identityStatus;
+    private String identityRemarks;
+
+    /** 会员专属合同内容 */
+    private String userContractContent;
+    private String formalContractContent;
 
     // 额外查询字段
     private java.math.BigDecimal todayCommission;
@@ -194,6 +248,42 @@ public class OrderUser extends BaseEntity
     public void setScope(String scope) {
         this.scope = scope;
     }
+
+    public String getKeyword() { return keyword; }
+    public void setKeyword(String keyword) { this.keyword = keyword; }
+    public String getIsOnline() { return isOnline; }
+    public void setIsOnline(String isOnline) { this.isOnline = isOnline; }
+    public String getUsernameList() { return usernameList; }
+    public void setUsernameList(String usernameList) { this.usernameList = usernameList; }
+    public BigDecimal getBalanceMin() { return balanceMin; }
+    public void setBalanceMin(BigDecimal balanceMin) { this.balanceMin = balanceMin; }
+    public BigDecimal getBalanceMax() { return balanceMax; }
+    public void setBalanceMax(BigDecimal balanceMax) { this.balanceMax = balanceMax; }
+    public Long getReputationMin() { return reputationMin; }
+    public void setReputationMin(Long reputationMin) { this.reputationMin = reputationMin; }
+    public Long getReputationMax() { return reputationMax; }
+    public void setReputationMax(Long reputationMax) { this.reputationMax = reputationMax; }
+
+    public String getIdentityType() { return identityType; }
+    public void setIdentityType(String identityType) { this.identityType = identityType; }
+    public String getIdentityName() { return identityName; }
+    public void setIdentityName(String identityName) { this.identityName = identityName; }
+    public String getIdentityNumber() { return identityNumber; }
+    public void setIdentityNumber(String identityNumber) { this.identityNumber = identityNumber; }
+    public String getIdentityFrontImage() { return identityFrontImage; }
+    public void setIdentityFrontImage(String identityFrontImage) { this.identityFrontImage = identityFrontImage; }
+    public String getIdentityBackImage() { return identityBackImage; }
+    public void setIdentityBackImage(String identityBackImage) { this.identityBackImage = identityBackImage; }
+    public String getIdentityHandheldImage() { return identityHandheldImage; }
+    public void setIdentityHandheldImage(String identityHandheldImage) { this.identityHandheldImage = identityHandheldImage; }
+    public String getIdentityStatus() { return identityStatus; }
+    public void setIdentityStatus(String identityStatus) { this.identityStatus = identityStatus; }
+    public String getIdentityRemarks() { return identityRemarks; }
+    public void setIdentityRemarks(String identityRemarks) { this.identityRemarks = identityRemarks; }
+    public String getUserContractContent() { return userContractContent; }
+    public void setUserContractContent(String userContractContent) { this.userContractContent = userContractContent; }
+    public String getFormalContractContent() { return formalContractContent; }
+    public void setFormalContractContent(String formalContractContent) { this.formalContractContent = formalContractContent; }
 
     public String getParentUsername() {
         return parentUsername;
@@ -620,6 +710,37 @@ public class OrderUser extends BaseEntity
         return assistWithdrawalStatus;
     }
 
+    public String getWeb3AuthEnabled() { return web3AuthEnabled; }
+    public void setWeb3AuthEnabled(String web3AuthEnabled) { this.web3AuthEnabled = web3AuthEnabled; }
+    public String getIsInvalid() { return isInvalid; }
+    public void setIsInvalid(String isInvalid) { this.isInvalid = isInvalid; }
+    public String getIsActivity() { return isActivity; }
+    public void setIsActivity(String isActivity) { this.isActivity = isActivity; }
+    public Integer getWithdrawalPasswordFailLimit() { return withdrawalPasswordFailLimit; }
+    public void setWithdrawalPasswordFailLimit(Integer withdrawalPasswordFailLimit) { this.withdrawalPasswordFailLimit = withdrawalPasswordFailLimit; }
+    public Integer getWithdrawalPasswordFailCount() { return withdrawalPasswordFailCount; }
+    public void setWithdrawalPasswordFailCount(Integer withdrawalPasswordFailCount) { this.withdrawalPasswordFailCount = withdrawalPasswordFailCount; }
+    public BigDecimal getMaxSingleWithdrawal() { return maxSingleWithdrawal; }
+    public void setMaxSingleWithdrawal(BigDecimal maxSingleWithdrawal) { this.maxSingleWithdrawal = maxSingleWithdrawal; }
+    public String getVerifyIdentityBeforeTask() { return verifyIdentityBeforeTask; }
+    public void setVerifyIdentityBeforeTask(String verifyIdentityBeforeTask) { this.verifyIdentityBeforeTask = verifyIdentityBeforeTask; }
+    public String getUserContractEnabled() { return userContractEnabled; }
+    public void setUserContractEnabled(String userContractEnabled) { this.userContractEnabled = userContractEnabled; }
+    public String getUserContractSigned() { return userContractSigned; }
+    public void setUserContractSigned(String userContractSigned) { this.userContractSigned = userContractSigned; }
+    public String getFormalContractEnabled() { return formalContractEnabled; }
+    public void setFormalContractEnabled(String formalContractEnabled) { this.formalContractEnabled = formalContractEnabled; }
+    public String getFormalContractSigned() { return formalContractSigned; }
+    public void setFormalContractSigned(String formalContractSigned) { this.formalContractSigned = formalContractSigned; }
+    public String getWithdrawalBlockRemark() { return withdrawalBlockRemark; }
+    public void setWithdrawalBlockRemark(String withdrawalBlockRemark) { this.withdrawalBlockRemark = withdrawalBlockRemark; }
+    public Integer getSignDays() { return signDays; }
+    public void setSignDays(Integer signDays) { this.signDays = signDays; }
+    public Integer getTodaySignCount() { return todaySignCount; }
+    public void setTodaySignCount(Integer todaySignCount) { this.todaySignCount = todaySignCount; }
+    public Integer getTotalSignDays() { return totalSignDays; }
+    public void setTotalSignDays(Integer totalSignDays) { this.totalSignDays = totalSignDays; }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -657,6 +778,21 @@ public class OrderUser extends BaseEntity
                 .append("password", getPassword())
                 .append("tradePassword", getTradePassword())
                 .append("assistWithdrawalStatus", getAssistWithdrawalStatus())
+                .append("web3AuthEnabled", getWeb3AuthEnabled())
+                .append("isInvalid", getIsInvalid())
+                .append("isActivity", getIsActivity())
+                .append("withdrawalPasswordFailLimit", getWithdrawalPasswordFailLimit())
+                .append("withdrawalPasswordFailCount", getWithdrawalPasswordFailCount())
+                .append("maxSingleWithdrawal", getMaxSingleWithdrawal())
+                .append("verifyIdentityBeforeTask", getVerifyIdentityBeforeTask())
+                .append("userContractEnabled", getUserContractEnabled())
+                .append("userContractSigned", getUserContractSigned())
+                .append("formalContractEnabled", getFormalContractEnabled())
+                .append("formalContractSigned", getFormalContractSigned())
+                .append("withdrawalBlockRemark", getWithdrawalBlockRemark())
+                .append("signDays", getSignDays())
+                .append("todaySignCount", getTodaySignCount())
+                .append("totalSignDays", getTotalSignDays())
                 .append("todayCommission", getTodayCommission())
                 .append("todayParentCommission", getTodayParentCommission())
                 .append("lastLoginIp", getLastLoginIp())

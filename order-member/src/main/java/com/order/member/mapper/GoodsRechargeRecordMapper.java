@@ -2,6 +2,7 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.GoodsRechargeRecord;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 充值记录Mapper接口
@@ -58,4 +59,6 @@ public interface GoodsRechargeRecordMapper
      * @return 结果
      */
     public int deleteGoodsRechargeRecordByIds(Long[] ids);
+
+    List<GoodsRechargeRecord> selectPublicByUserId(@Param("userId") Long userId);
 }

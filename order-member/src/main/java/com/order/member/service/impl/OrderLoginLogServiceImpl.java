@@ -45,13 +45,18 @@ public class OrderLoginLogServiceImpl implements IOrderLoginLogService
     }
 
     @Override
-    public int insertOrderLoginLog(Long userId, String ip, String address, String loginParams) {
+    public int insertLoginAttempt(Long userId,
+                                  String ip,
+                                  String address,
+                                  String success,
+                                  String requestHeaders) {
         OrderLoginLog orderLoginLog =new OrderLoginLog();
         orderLoginLog.setCreateTime(DateUtils.getNowDate());
         orderLoginLog.setAddress(address);
         orderLoginLog.setIp(ip);
         orderLoginLog.setUserId(userId);
-        orderLoginLog.setLoginParams(loginParams);
+        orderLoginLog.setSuccess(success);
+        orderLoginLog.setRequestHeaders(requestHeaders);
 
         return  orderLoginLogMapper.insertOrderLoginLog(orderLoginLog);
     }

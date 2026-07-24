@@ -5,6 +5,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.annotation.Excel;
 import com.order.common.core.domain.BaseEntity;
+import com.order.common.i18n.Translations;
 
 /**
  * 等级对象 goods_member_level
@@ -106,6 +107,27 @@ public class GoodsMemberLevel extends BaseEntity
     /** 匹配最大比列 */
     @Excel(name = "匹配最大比列")
     private BigDecimal productMatchMax;
+
+
+    private Long translationsId;
+
+    private Translations translations;
+
+    public Long getTranslationsId() {
+        return translationsId;
+    }
+
+    public void setTranslationsId(Long translationsId) {
+        this.translationsId = translationsId;
+    }
+
+    public Translations getTranslations() {
+        return translations;
+    }
+
+    public void setTranslations(Translations translations) {
+        this.translations = translations;
+    }
 
     public void setId(Long id)
     {

@@ -63,4 +63,6 @@ public interface IGoodsService
     public Goods selectNearestPriceGoods(BigDecimal price);
 
     public List<Goods> selectRandomGoods();
+
+    public List<Goods> selectGoodsPage();
 }

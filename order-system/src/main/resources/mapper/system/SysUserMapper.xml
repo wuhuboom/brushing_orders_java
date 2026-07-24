@@ -29,6 +29,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="googleAuthEnabled"    column="google_auth_enabled"    />
 		<result property="googleAuthSecret"    column="google_auth_secret"    />
 		<result property="googleEnabled"    column="google_enabled"    />
+		<result property="loginLocation"    column="login_location"    />
         <association property="dept"     javaType="SysDept"         resultMap="deptResult" />
         <collection  property="roles"    javaType="java.util.List"  resultMap="RoleResult" />
     </resultMap>
@@ -67,7 +68,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectUserList" parameterType="SysUser" resultMap="SysUserResult">
 		select u.user_id, u.dept_id, u.nick_name, u.user_name, u.email, u.avatar, u.phonenumber, u.sex,
 		u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader,
-		u.is_locked, u.is_builtin, u.google_auth_enabled, u.google_auth_secret, u.google_enabled
+		u.is_locked, u.is_builtin, u.google_auth_enabled, u.google_auth_secret, u.google_enabled,
+		(select li.login_location from sys_logininfor li where li.user_name=u.user_name order by li.info_id desc limit 1) login_location
 		from sys_user u
 		left join sys_dept d on u.dept_id = d.dept_id
 		where u.del_flag = '0'
@@ -83,6 +85,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<if test="phonenumber != null and phonenumber != ''">
 			AND u.phonenumber like concat('%', #{phonenumber}, '%')
 		</if>
+		<if test="nickName != null and nickName != ''">AND u.nick_name like concat('%',#{nickName},'%')</if>
+		<if test="sex != null and sex != ''">AND u.sex=#{sex}</if>
+		<if test="loginIp != null and loginIp != ''">AND u.login_ip like concat('%',#{loginIp},'%')</if>
+		<if test="isLocked != null and isLocked != ''">AND u.is_locked=#{isLocked}</if>
+		<if test="email != null and email != ''">AND u.email like concat('%',#{email},'%')</if>
+		<if test="isBuiltin != null and isBuiltin != ''">AND u.is_builtin=#{isBuiltin}</if>
+		<if test="online == '1'">
+			<choose><when test="params.onlineUserNames != null and params.onlineUserNames.size() > 0">AND u.user_name IN <foreach collection="params.onlineUserNames" item="name" open="(" separator="," close=")">#{name}</foreach></when><otherwise>AND 1=0</otherwise></choose>
+		</if>
+		<if test="online == '0' and params.onlineUserNames != null and params.onlineUserNames.size() > 0">AND u.user_name NOT IN <foreach collection="params.onlineUserNames" item="name" open="(" separator="," close=")">#{name}</foreach></if>
 		<if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
 			AND date_format(u.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
 		</if>
@@ -234,6 +246,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  		update sys_user set pwd_update_date = sysdate(), password = #{password} where user_id = #{userId}
 	</update>
 	
+	<update id="resetUserGoogleAuth" parameterType="map">
+		update sys_user
+		set google_auth_secret = null,
+		    google_enabled = '1',
+		    google_auth_enabled = '1',
+		    update_by = #{updateBy},
+		    update_time = sysdate()
+		where user_id = #{userId}
+	</update>
+
+	<update id="configureUserGoogleAuth" parameterType="map">
+		update sys_user set google_auth_secret=null, google_enabled=#{enabled}, google_auth_enabled='1',
+		update_by=#{updateBy}, update_time=sysdate() where user_id=#{userId}
+	</update>
+
+	<update id="unlockUsers">
+		update sys_user set is_locked='1' where user_id in
+		<foreach collection="array" item="userId" open="(" separator="," close=")">#{userId}</foreach>
+	</update>
+
+	<!-- 专用：持久化加密后的 Google secret 并标记为启用/已绑定 -->
+	<update id="updateUserGoogleAuthSecret" parameterType="map">
+		update sys_user
+		set google_auth_secret = #{encryptedSecret},
+		    google_enabled = '0',
+		    google_auth_enabled = '0',
+		    update_by = #{updateBy},
+		    update_time = sysdate()
+		where user_id = #{userId}
+	</update>
+
 	<delete id="deleteUserById" parameterType="Long">
  		update sys_user set del_flag = '2' where user_id = #{userId}
  	</delete>
@@ -245,4 +288,4 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach> 
  	</delete>
 	
-</mapper> 
+</mapper>

@@ -53,6 +53,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="title != null  and title != ''"> and g.title = #{title}</if>
             <if test="isEnabled != null  and isEnabled != ''"> and g.is_enabled = #{isEnabled}</if>
         </where>
+        order by g.id asc
     </select>
     
     <select id="selectGoodsById" parameterType="Long" resultMap="GoodsResult">
@@ -61,30 +62,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="selectNearestPriceGoods" parameterType="java.math.BigDecimal" resultMap="GoodsResult">
-        select
-            g.id,
-            g.title,
-            g.type_id,
-            gt.title as typeTitle,
-            g.is_enabled,
-            g.price,
-            g.serial_number,
-            g.image,
-            g.sub_title,
-            g.unit_price,
-            g.quantity,
-            g.star_rating,
-            g.rating,
-            g.description,
-            g.create_by,
-            g.create_time
-        from goods  g
-        left join goods_type gt on g.type_id = gt.id
-        WHERE
-            g.price &lt;= #{price}
-        ORDER BY
-            g.price DESC
-            LIMIT 1
+        SELECT g.id, g.title, g.price, g.image
+        FROM goods g
+        WHERE g.is_enabled = '0'
+          AND g.price &lt;= #{price}
+        ORDER BY g.price DESC, g.id ASC
+        LIMIT 1
+    </select>
+
+    <select id="selectOrderGoodsById" parameterType="Long" resultMap="GoodsResult">
+        SELECT id, title, price, image
+        FROM goods
+        WHERE id = #{id}
+        LIMIT 1
     </select>
 
     <select id="selectRandomGoods" resultMap="GoodsResult">
@@ -109,6 +99,27 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             SELECT FLOOR(RAND() * (SELECT MAX(id) FROM goods))
         )
             LIMIT 8
+    </select>
+
+    <select id="selectGoodsPage" resultMap="GoodsResult">
+        select
+            g.id,
+            g.title,
+            g.type_id,
+            g.is_enabled,
+            g.price,
+            g.serial_number,
+            g.image,
+            g.sub_title,
+            g.unit_price,
+            g.quantity,
+            g.star_rating,
+            g.rating,
+            g.description,
+            g.create_by,
+            g.create_time
+        from goods g
+        order by g.id
     </select>
 
     <insert id="insertGoods" parameterType="Goods" useGeneratedKeys="true" keyProperty="id">

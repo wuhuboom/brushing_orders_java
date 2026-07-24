@@ -60,4 +60,6 @@ public interface OrderConfigMapper
     public int deleteOrderConfigByIds(Long[] ids);
 
     public OrderConfig selectOrderConfigByType(String type);
+
+    List<OrderConfig> selectOrderConfigByTypes(List<String> types);
 }

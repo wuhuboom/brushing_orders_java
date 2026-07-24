@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.TranslationsMapper">
+    
+    <resultMap type="com.order.common.i18n.Translations" id="TranslationsResult">
+        <result property="id"    column="id"    />
+        <result property="zhCn"    column="zh_CN"    />
+        <result property="zhTw"    column="zh_TW"    />
+        <result property="koKr"    column="ko_KR"    />
+        <result property="thTh"    column="th_TH"    />
+        <result property="jaJp"    column="ja_JP"    />
+        <result property="ptPt"    column="pt_PT"    />
+        <result property="enUs"    column="en_US"    />
+        <result property="arSa"    column="ar_SA"    />
+        <result property="esEs"    column="es_ES"    />
+        <result property="svSe"    column="sv_SE"    />
+        <result property="itIt"    column="it_IT"    />
+        <result property="deDe"    column="de_DE"    />
+        <result property="noNo"    column="no_NO"    />
+        <result property="ruRu"    column="ru_RU"    />
+        <result property="huHu"    column="hu_HU"    />
+        <result property="plPl"    column="pl_PL"    />
+        <result property="skSk"    column="sk_SK"    />
+        <result property="frFr"    column="fr_FR"    />
+        <result property="csCz"    column="cs_CZ"    />
+        <result property="ptBr"    column="pt_BR"    />
+        <result property="hiIn"    column="hi_IN"    />
+    </resultMap>
+
+    <sql id="selectTranslationsVo">
+        select id, zh_CN, zh_TW, ko_KR, th_TH, ja_JP, pt_PT, en_US, ar_SA, es_ES, sv_SE,
+        it_IT, de_DE, no_NO, ru_RU, hu_HU, pl_PL, sk_SK, fr_FR, cs_CZ, pt_BR, hi_IN from translations
+    </sql>
+
+    <select id="selectTranslationsList" parameterType="com.order.common.i18n.Translations" resultMap="TranslationsResult">
+        <include refid="selectTranslationsVo"/>
+        <where>  
+            <if test="zhCn != null  and zhCn != ''"> and zh_CN = #{zhCn}</if>
+            <if test="zhTw != null  and zhTw != ''"> and zh_TW = #{zhTw}</if>
+            <if test="koKr != null  and koKr != ''"> and ko_KR = #{koKr}</if>
+            <if test="thTh != null  and thTh != ''"> and th_TH = #{thTh}</if>
+            <if test="jaJp != null  and jaJp != ''"> and ja_JP = #{jaJp}</if>
+            <if test="ptPt != null  and ptPt != ''"> and pt_PT = #{ptPt}</if>
+            <if test="enUs != null  and enUs != ''"> and en_US = #{enUs}</if>
+            <if test="arSa != null  and arSa != ''"> and ar_SA = #{arSa}</if>
+            <if test="esEs != null  and esEs != ''"> and es_ES = #{esEs}</if>
+            <if test="svSe != null  and svSe != ''"> and sv_SE = #{svSe}</if>
+            <if test="itIt != null  and itIt != ''"> and it_IT = #{itIt}</if>
+            <if test="deDe != null  and deDe != ''"> and de_DE = #{deDe}</if>
+            <if test="noNo != null  and noNo != ''"> and no_NO = #{noNo}</if>
+            <if test="ruRu != null  and ruRu != ''"> and ru_RU = #{ruRu}</if>
+            <if test="huHu != null  and huHu != ''"> and hu_HU = #{huHu}</if>
+            <if test="plPl != null  and plPl != ''"> and pl_PL = #{plPl}</if>
+            <if test="skSk != null  and skSk != ''"> and sk_SK = #{skSk}</if>
+            <if test="frFr != null  and frFr != ''"> and fr_FR = #{frFr}</if>
+            <if test="csCz != null  and csCz != ''"> and cs_CZ = #{csCz}</if>
+            <if test="ptBr != null  and ptBr != ''"> and pt_BR = #{ptBr}</if>
+            <if test="hiIn != null  and hiIn != ''"> and hi_IN = #{hiIn}</if>
+        </where>
+    </select>
+    
+    <select id="selectTranslationsById" parameterType="Long" resultMap="TranslationsResult">
+        <include refid="selectTranslationsVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectTranslationsByIds" resultMap="TranslationsResult">
+        <include refid="selectTranslationsVo"/>
+        where id in
+        <foreach item="id" collection="list" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <insert id="insertTranslations" parameterType="com.order.common.i18n.Translations" useGeneratedKeys="true" keyProperty="id">
+        insert into translations
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="zhCn != null">zh_CN,</if>
+            <if test="zhTw != null">zh_TW,</if>
+            <if test="koKr != null">ko_KR,</if>
+            <if test="thTh != null">th_TH,</if>
+            <if test="jaJp != null">ja_JP,</if>
+            <if test="ptPt != null">pt_PT,</if>
+            <if test="enUs != null">en_US,</if>
+            <if test="arSa != null">ar_SA,</if>
+            <if test="esEs != null">es_ES,</if>
+            <if test="svSe != null">sv_SE,</if>
+            <if test="itIt != null">it_IT,</if>
+            <if test="deDe != null">de_DE,</if>
+            <if test="noNo != null">no_NO,</if>
+            <if test="ruRu != null">ru_RU,</if>
+            <if test="huHu != null">hu_HU,</if>
+            <if test="plPl != null">pl_PL,</if>
+            <if test="skSk != null">sk_SK,</if>
+            <if test="frFr != null">fr_FR,</if>
+            <if test="csCz != null">cs_CZ,</if>
+            <if test="ptBr != null">pt_BR,</if>
+            <if test="hiIn != null">hi_IN,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="zhCn != null">#{zhCn},</if>
+            <if test="zhTw != null">#{zhTw},</if>
+            <if test="koKr != null">#{koKr},</if>
+            <if test="thTh != null">#{thTh},</if>
+            <if test="jaJp != null">#{jaJp},</if>
+            <if test="ptPt != null">#{ptPt},</if>
+            <if test="enUs != null">#{enUs},</if>
+            <if test="arSa != null">#{arSa},</if>
+            <if test="esEs != null">#{esEs},</if>
+            <if test="svSe != null">#{svSe},</if>
+            <if test="itIt != null">#{itIt},</if>
+            <if test="deDe != null">#{deDe},</if>
+            <if test="noNo != null">#{noNo},</if>
+            <if test="ruRu != null">#{ruRu},</if>
+            <if test="huHu != null">#{huHu},</if>
+            <if test="plPl != null">#{plPl},</if>
+            <if test="skSk != null">#{skSk},</if>
+            <if test="frFr != null">#{frFr},</if>
+            <if test="csCz != null">#{csCz},</if>
+            <if test="ptBr != null">#{ptBr},</if>
+            <if test="hiIn != null">#{hiIn},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTranslations" parameterType="com.order.common.i18n.Translations">
+        update translations
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="zhCn != null">zh_CN = #{zhCn},</if>
+            <if test="zhTw != null">zh_TW = #{zhTw},</if>
+            <if test="koKr != null">ko_KR = #{koKr},</if>
+            <if test="thTh != null">th_TH = #{thTh},</if>
+            <if test="jaJp != null">ja_JP = #{jaJp},</if>
+            <if test="ptPt != null">pt_PT = #{ptPt},</if>
+            <if test="enUs != null">en_US = #{enUs},</if>
+            <if test="arSa != null">ar_SA = #{arSa},</if>
+            <if test="esEs != null">es_ES = #{esEs},</if>
+            <if test="svSe != null">sv_SE = #{svSe},</if>
+            <if test="itIt != null">it_IT = #{itIt},</if>
+            <if test="deDe != null">de_DE = #{deDe},</if>
+            <if test="noNo != null">no_NO = #{noNo},</if>
+            <if test="ruRu != null">ru_RU = #{ruRu},</if>
+            <if test="huHu != null">hu_HU = #{huHu},</if>
+            <if test="plPl != null">pl_PL = #{plPl},</if>
+            <if test="skSk != null">sk_SK = #{skSk},</if>
+            <if test="frFr != null">fr_FR = #{frFr},</if>
+            <if test="csCz != null">cs_CZ = #{csCz},</if>
+            <if test="ptBr != null">pt_BR = #{ptBr},</if>
+            <if test="hiIn != null">hi_IN = #{hiIn},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteTranslationsById" parameterType="Long">
+        delete from translations where id = #{id}
+    </delete>
+
+    <delete id="deleteTranslationsByIds" parameterType="String">
+        delete from translations where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

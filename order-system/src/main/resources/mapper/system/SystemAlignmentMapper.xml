@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.system.mapper.SystemAlignmentMapper">
+
+  <select id="selectStrategyList" resultType="java.util.Map">
+    SELECT strategy_id strategyId, strategy_code strategyCode, strategy_name strategyName,
+           create_by createBy, create_time createTime, update_by updateBy, update_time updateTime, remark
+    FROM sys_permission_strategy
+    <where>
+      <if test="strategyCode != null and strategyCode != ''">AND strategy_code LIKE CONCAT('%',#{strategyCode},'%')</if>
+      <if test="strategyName != null and strategyName != ''">AND strategy_name LIKE CONCAT('%',#{strategyName},'%')</if>
+      <if test="beginTime != null and beginTime != ''">AND create_time &gt;= #{beginTime}</if>
+      <if test="endTime != null and endTime != ''">AND create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)</if>
+    </where>
+    ORDER BY strategy_id DESC
+  </select>
+  <select id="selectStrategyById" resultType="java.util.Map">
+    SELECT strategy_id strategyId, strategy_code strategyCode, strategy_name strategyName,
+           create_by createBy, create_time createTime, update_by updateBy, update_time updateTime, remark
+    FROM sys_permission_strategy WHERE strategy_id=#{id}
+  </select>
+  <insert id="insertStrategy" parameterType="map" useGeneratedKeys="true" keyProperty="strategyId">
+    INSERT INTO sys_permission_strategy(strategy_code,strategy_name,create_by,create_time,remark)
+    VALUES(#{strategyCode},#{strategyName},#{createBy},NOW(),#{remark})
+  </insert>
+  <update id="updateStrategy" parameterType="map">
+    UPDATE sys_permission_strategy SET strategy_code=#{strategyCode},strategy_name=#{strategyName},
+      update_by=#{updateBy},update_time=NOW(),remark=#{remark} WHERE strategy_id=#{strategyId}
+  </update>
+  <delete id="deleteStrategies">
+    DELETE FROM sys_permission_strategy WHERE strategy_id IN
+    <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+  </delete>
+  <select id="countStrategyUsage" resultType="int">
+    SELECT (SELECT COUNT(*) FROM sys_role_strategy WHERE strategy_id IN
+      <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>)
+      + (SELECT COUNT(*) FROM sys_group_strategy WHERE strategy_id IN
+      <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>)
+  </select>
+  <delete id="deleteStrategyMenus">DELETE FROM sys_strategy_menu WHERE strategy_id=#{strategyId}</delete>
+  <insert id="insertStrategyMenus">
+    INSERT INTO sys_strategy_menu(strategy_id,menu_id) VALUES
+    <foreach collection="menuIds" item="menuId" separator=",">(#{strategyId},#{menuId})</foreach>
+  </insert>
+  <select id="selectStrategyMenuIds" resultType="long">SELECT menu_id FROM sys_strategy_menu WHERE strategy_id=#{strategyId} ORDER BY menu_id</select>
+
+  <select id="selectGroupList" resultType="java.util.Map">
+    SELECT group_id groupId,group_name groupName,create_by createBy,create_time createTime,
+           update_by updateBy,update_time updateTime,remark
+    FROM sys_permission_group
+    <where>
+      <if test="groupName != null and groupName != ''">AND group_name LIKE CONCAT('%',#{groupName},'%')</if>
+      <if test="beginTime != null and beginTime != ''">AND create_time &gt;= #{beginTime}</if>
+      <if test="endTime != null and endTime != ''">AND create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)</if>
+    </where>
+    ORDER BY group_id DESC
+  </select>
+  <select id="selectGroupById" resultType="java.util.Map">
+    SELECT group_id groupId,group_name groupName,create_by createBy,create_time createTime,
+           update_by updateBy,update_time updateTime,remark FROM sys_permission_group WHERE group_id=#{id}
+  </select>
+  <insert id="insertGroup" parameterType="map" useGeneratedKeys="true" keyProperty="groupId">
+    INSERT INTO sys_permission_group(group_name,create_by,create_time,remark) VALUES(#{groupName},#{createBy},NOW(),#{remark})
+  </insert>
+  <update id="updateGroup" parameterType="map">
+    UPDATE sys_permission_group SET group_name=#{groupName},update_by=#{updateBy},update_time=NOW(),remark=#{remark} WHERE group_id=#{groupId}
+  </update>
+  <delete id="deleteGroups">DELETE FROM sys_permission_group WHERE group_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></delete>
+  <select id="countGroupUsage" resultType="int">SELECT COUNT(*) FROM sys_user_group WHERE group_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></select>
+  <delete id="deleteGroupMenus">DELETE FROM sys_group_menu WHERE group_id=#{groupId}</delete>
+  <insert id="insertGroupMenus">INSERT INTO sys_group_menu(group_id,menu_id) VALUES <foreach collection="menuIds" item="menuId" separator=",">(#{groupId},#{menuId})</foreach></insert>
+  <delete id="deleteGroupStrategies">DELETE FROM sys_group_strategy WHERE group_id=#{groupId}</delete>
+  <insert id="insertGroupStrategies">INSERT INTO sys_group_strategy(group_id,strategy_id) VALUES <foreach collection="strategyIds" item="strategyId" separator=",">(#{groupId},#{strategyId})</foreach></insert>
+  <select id="selectGroupMenuIds" resultType="long">SELECT menu_id FROM sys_group_menu WHERE group_id=#{groupId} ORDER BY menu_id</select>
+  <select id="selectGroupStrategyIds" resultType="long">SELECT strategy_id FROM sys_group_strategy WHERE group_id=#{groupId} ORDER BY strategy_id</select>
+
+  <select id="selectUserGroupIds" resultType="long">SELECT group_id FROM sys_user_group WHERE user_id=#{userId} ORDER BY group_id</select>
+  <delete id="deleteUserGroups">DELETE FROM sys_user_group WHERE user_id=#{userId}</delete>
+  <insert id="insertUserGroups">INSERT INTO sys_user_group(user_id,group_id) VALUES <foreach collection="groupIds" item="groupId" separator=",">(#{userId},#{groupId})</foreach></insert>
+  <select id="selectPostRoleIds" resultType="long">SELECT role_id FROM sys_post_role WHERE post_id=#{postId} ORDER BY role_id</select>
+  <delete id="deletePostRoles">DELETE FROM sys_post_role WHERE post_id=#{postId}</delete>
+  <insert id="insertPostRoles">INSERT INTO sys_post_role(post_id,role_id) VALUES <foreach collection="roleIds" item="roleId" separator=",">(#{postId},#{roleId})</foreach></insert>
+  <select id="selectRoleStrategyIds" resultType="long">SELECT strategy_id FROM sys_role_strategy WHERE role_id=#{roleId} ORDER BY strategy_id</select>
+  <delete id="deleteRoleStrategies">DELETE FROM sys_role_strategy WHERE role_id=#{roleId}</delete>
+  <insert id="insertRoleStrategies">INSERT INTO sys_role_strategy(role_id,strategy_id) VALUES <foreach collection="strategyIds" item="strategyId" separator=",">(#{roleId},#{strategyId})</foreach></insert>
+  <select id="selectRoleDataRules" resultType="java.util.Map">SELECT menu_id menuId,scope_type scopeType FROM sys_role_data_rule WHERE role_id=#{roleId} ORDER BY menu_id</select>
+  <delete id="deleteRoleDataRules">DELETE FROM sys_role_data_rule WHERE role_id=#{roleId}</delete>
+  <insert id="insertRoleDataRules">INSERT INTO sys_role_data_rule(role_id,menu_id,scope_type) VALUES <foreach collection="rules" item="rule" separator=",">(#{roleId},#{rule.menuId},#{rule.scopeType})</foreach></insert>
+
+  <select id="selectEffectivePermissions" resultType="string">
+    SELECT DISTINCT m.perms FROM sys_menu m
+    JOIN (
+      SELECT rm.menu_id FROM sys_role_menu rm JOIN (
+        SELECT ur.role_id FROM sys_user_role ur JOIN sys_role r ON r.role_id=ur.role_id AND r.status='0' AND r.del_flag='0' WHERE ur.user_id=#{userId}
+        UNION SELECT pr.role_id FROM sys_user_post up JOIN sys_post_role pr ON pr.post_id=up.post_id JOIN sys_role r ON r.role_id=pr.role_id AND r.status='0' AND r.del_flag='0' WHERE up.user_id=#{userId}
+      ) er ON er.role_id=rm.role_id
+      UNION
+      SELECT sm.menu_id FROM sys_role_strategy rs JOIN sys_strategy_menu sm ON sm.strategy_id=rs.strategy_id JOIN (
+        SELECT ur.role_id FROM sys_user_role ur JOIN sys_role r ON r.role_id=ur.role_id AND r.status='0' AND r.del_flag='0' WHERE ur.user_id=#{userId}
+        UNION SELECT pr.role_id FROM sys_user_post up JOIN sys_post_role pr ON pr.post_id=up.post_id JOIN sys_role r ON r.role_id=pr.role_id AND r.status='0' AND r.del_flag='0' WHERE up.user_id=#{userId}
+      ) er ON er.role_id=rs.role_id
+      UNION SELECT gm.menu_id FROM sys_user_group ug JOIN sys_group_menu gm ON gm.group_id=ug.group_id WHERE ug.user_id=#{userId}
+      UNION SELECT sm.menu_id FROM sys_user_group ug JOIN sys_group_strategy gs ON gs.group_id=ug.group_id JOIN sys_strategy_menu sm ON sm.strategy_id=gs.strategy_id WHERE ug.user_id=#{userId}
+    ) effective ON effective.menu_id=m.menu_id
+    WHERE m.status='0' AND m.perms IS NOT NULL AND m.perms&lt;&gt;''
+  </select>
+  <select id="selectRoleEffectivePermissions" resultType="string">
+    SELECT DISTINCT m.perms FROM sys_menu m JOIN (
+      SELECT menu_id FROM sys_role_menu WHERE role_id=#{roleId}
+      UNION SELECT sm.menu_id FROM sys_role_strategy rs JOIN sys_strategy_menu sm ON sm.strategy_id=rs.strategy_id WHERE rs.role_id=#{roleId}
+    ) effective ON effective.menu_id=m.menu_id
+    WHERE m.status='0' AND m.perms IS NOT NULL AND m.perms&lt;&gt;''
+  </select>
+  <select id="selectEffectiveMenuIds" resultType="long">
+    SELECT DISTINCT menu_id FROM (
+      SELECT rm.menu_id FROM sys_role_menu rm JOIN (
+        SELECT ur.role_id FROM sys_user_role ur JOIN sys_role r ON r.role_id=ur.role_id AND r.status='0' AND r.del_flag='0' WHERE ur.user_id=#{userId}
+        UNION SELECT pr.role_id FROM sys_user_post up JOIN sys_post_role pr ON pr.post_id=up.post_id JOIN sys_role r ON r.role_id=pr.role_id AND r.status='0' AND r.del_flag='0' WHERE up.user_id=#{userId}
+      ) er ON er.role_id=rm.role_id
+      UNION SELECT sm.menu_id FROM sys_role_strategy rs JOIN sys_strategy_menu sm ON sm.strategy_id=rs.strategy_id JOIN (
+        SELECT ur.role_id FROM sys_user_role ur JOIN sys_role r ON r.role_id=ur.role_id AND r.status='0' AND r.del_flag='0' WHERE ur.user_id=#{userId}
+        UNION SELECT pr.role_id FROM sys_user_post up JOIN sys_post_role pr ON pr.post_id=up.post_id JOIN sys_role r ON r.role_id=pr.role_id AND r.status='0' AND r.del_flag='0' WHERE up.user_id=#{userId}
+      ) er ON er.role_id=rs.role_id
+      UNION SELECT gm.menu_id FROM sys_user_group ug JOIN sys_group_menu gm ON gm.group_id=ug.group_id WHERE ug.user_id=#{userId}
+      UNION SELECT sm.menu_id FROM sys_user_group ug JOIN sys_group_strategy gs ON gs.group_id=ug.group_id JOIN sys_strategy_menu sm ON sm.strategy_id=gs.strategy_id WHERE ug.user_id=#{userId}
+    ) x ORDER BY menu_id
+  </select>
+  <select id="selectEffectiveDataScopes" resultType="string">
+    SELECT DISTINCT dr.scope_type
+    FROM sys_role_data_rule dr
+    JOIN sys_menu m ON m.menu_id=dr.menu_id
+    JOIN (
+      SELECT ur.role_id FROM sys_user_role ur JOIN sys_role r ON r.role_id=ur.role_id AND r.status='0' AND r.del_flag='0' WHERE ur.user_id=#{userId}
+      UNION SELECT pr.role_id FROM sys_user_post up JOIN sys_post_role pr ON pr.post_id=up.post_id JOIN sys_role r ON r.role_id=pr.role_id AND r.status='0' AND r.del_flag='0' WHERE up.user_id=#{userId}
+    ) er ON er.role_id=dr.role_id
+    WHERE m.perms=#{permission}
+  </select>
+  <select id="selectUsersAffectedByStrategy" resultType="long">
+    SELECT DISTINCT user_id FROM (
+      SELECT ur.user_id FROM sys_role_strategy rs JOIN sys_user_role ur ON ur.role_id=rs.role_id WHERE rs.strategy_id=#{strategyId}
+      UNION SELECT up.user_id FROM sys_role_strategy rs JOIN sys_post_role pr ON pr.role_id=rs.role_id JOIN sys_user_post up ON up.post_id=pr.post_id WHERE rs.strategy_id=#{strategyId}
+      UNION SELECT ug.user_id FROM sys_group_strategy gs JOIN sys_user_group ug ON ug.group_id=gs.group_id WHERE gs.strategy_id=#{strategyId}
+    ) u
+  </select>
+  <select id="selectUsersAffectedByGroup" resultType="long">SELECT user_id FROM sys_user_group WHERE group_id=#{groupId}</select>
+  <select id="selectUsersAffectedByPost" resultType="long">SELECT user_id FROM sys_user_post WHERE post_id=#{postId}</select>
+  <select id="selectUsersAffectedByStrategyForRole" resultType="long">
+    SELECT DISTINCT user_id FROM (
+      SELECT user_id FROM sys_user_role WHERE role_id=#{roleId}
+      UNION SELECT up.user_id FROM sys_post_role pr JOIN sys_user_post up ON up.post_id=pr.post_id WHERE pr.role_id=#{roleId}
+    ) users
+  </select>
+  <select id="countPostRoleUsage" resultType="int">SELECT COUNT(*) FROM sys_post_role WHERE role_id=#{roleId}</select>
+  <select id="countPhoneMaskingRoles" resultType="int">
+    SELECT COUNT(*) FROM sys_role r JOIN (
+      SELECT role_id FROM sys_user_role WHERE user_id=#{userId}
+      UNION SELECT pr.role_id FROM sys_user_post up JOIN sys_post_role pr ON pr.post_id=up.post_id WHERE up.user_id=#{userId}
+    ) er ON er.role_id=r.role_id
+    WHERE r.status='0' AND r.del_flag='0' AND r.hide_phone='Y'
+  </select>
+
+  <select id="selectFileList" resultType="java.util.Map">
+    SELECT file_id fileId,bucket,file_type fileType,file_hash fileHash,content_type contentType,
+           storage_path storagePath,file_url fileUrl,file_size fileSize,create_by createBy,create_time createTime,remark
+    FROM sys_file
+    <where>
+      <if test="bucket != null and bucket != ''">AND bucket LIKE CONCAT('%',#{bucket},'%')</if>
+      <if test="fileType != null and fileType != ''">AND file_type LIKE CONCAT('%',#{fileType},'%')</if>
+      <if test="fileHash != null and fileHash != ''">AND file_hash LIKE CONCAT('%',#{fileHash},'%')</if>
+      <if test="contentType != null and contentType != ''">AND content_type LIKE CONCAT('%',#{contentType},'%')</if>
+      <if test="fileSize != null and fileSize != ''">AND file_size = #{fileSize}</if>
+      <if test="minSize != null and minSize != ''">AND file_size &gt;= #{minSize}</if>
+      <if test="maxSize != null and maxSize != ''">AND file_size &lt;= #{maxSize}</if>
+      <if test="beginTime != null and beginTime != ''">AND create_time &gt;= #{beginTime}</if>
+      <if test="endTime != null and endTime != ''">AND create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)</if>
+    </where> ORDER BY file_id DESC
+  </select>
+  <select id="selectFileById" resultType="java.util.Map">SELECT file_id fileId,bucket,file_type fileType,file_hash fileHash,content_type contentType,storage_path storagePath,file_url fileUrl,file_size fileSize,create_by createBy,create_time createTime,remark FROM sys_file WHERE file_id=#{id}</select>
+  <select id="selectFileByHash" resultType="java.util.Map">SELECT file_id fileId,bucket,file_type fileType,file_hash fileHash,content_type contentType,storage_path storagePath,file_url fileUrl,file_size fileSize,create_by createBy,create_time createTime,remark FROM sys_file WHERE bucket=#{bucket} AND file_hash=#{hash}</select>
+  <insert id="insertFile" parameterType="map" useGeneratedKeys="true" keyProperty="fileId">INSERT IGNORE INTO sys_file(bucket,file_type,file_hash,content_type,storage_path,file_url,file_size,create_by,create_time,remark) VALUES(#{bucket},#{fileType},#{fileHash},#{contentType},#{storagePath},#{fileUrl},#{fileSize},#{createBy},NOW(),#{remark})</insert>
+  <delete id="deleteFiles">DELETE FROM sys_file WHERE file_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></delete>
+  <select id="countFileReferences" resultType="int">SELECT COUNT(*) FROM sys_file_reference WHERE file_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></select>
+  <select id="selectFileReferenceList" resultType="java.util.Map">
+    SELECT r.reference_id referenceId,r.file_id fileId,r.reference_name referenceName,r.reference_type referenceType,
+           r.reference_target_id referenceTargetId,r.create_by createBy,r.create_time createTime,r.remark,
+           f.file_url fileUrl,f.content_type contentType,f.file_size fileSize
+    FROM sys_file_reference r JOIN sys_file f ON f.file_id=r.file_id
+    <where>
+      <if test="fileId != null and fileId != ''">AND r.file_id=#{fileId}</if>
+      <if test="referenceName != null and referenceName != ''">AND r.reference_name LIKE CONCAT('%',#{referenceName},'%')</if>
+      <if test="referenceType != null and referenceType != ''">AND r.reference_type=#{referenceType}</if>
+      <if test="referenceTargetId != null and referenceTargetId != ''">AND r.reference_target_id=#{referenceTargetId}</if>
+      <if test="beginTime != null and beginTime != ''">AND r.create_time &gt;= #{beginTime}</if>
+      <if test="endTime != null and endTime != ''">AND r.create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)</if>
+    </where> ORDER BY r.reference_id DESC
+  </select>
+  <select id="selectFileReferenceById" resultType="java.util.Map">SELECT r.reference_id referenceId,r.file_id fileId,r.reference_name referenceName,r.reference_type referenceType,r.reference_target_id referenceTargetId,r.create_by createBy,r.create_time createTime,r.remark,f.file_url fileUrl,f.content_type contentType,f.file_size fileSize FROM sys_file_reference r JOIN sys_file f ON f.file_id=r.file_id WHERE r.reference_id=#{id}</select>
+  <insert id="insertFileReference" parameterType="map" useGeneratedKeys="true" keyProperty="referenceId">INSERT INTO sys_file_reference(file_id,reference_name,reference_type,reference_target_id,create_by,create_time,remark) VALUES(#{fileId},#{referenceName},COALESCE(NULLIF(#{referenceType},''),'GENERAL'),#{referenceTargetId},#{createBy},NOW(),#{remark})</insert>
+  <delete id="deleteFileReferences">DELETE FROM sys_file_reference WHERE reference_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></delete>
+</mapper>

@@ -72,7 +72,7 @@ public class SysPostController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:post:add')")
     @Log(title = "岗位管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody SysPost post)
+    public AjaxResult add(@RequestBody SysPost post)
     {
         if (!postService.checkPostNameUnique(post))
         {
@@ -83,7 +83,9 @@ public class SysPostController extends BaseController
             return error("新增岗位'" + post.getPostName() + "'失败，岗位编码已存在");
         }
         post.setCreateBy(getUsername());
-        return toAjax(postService.insertPost(post));
+        AjaxResult result = toAjax(postService.insertPost(post));
+        result.put("postId", post.getPostId());
+        return result;
     }
 
     /**
@@ -92,7 +94,7 @@ public class SysPostController extends BaseController
     @PreAuthorize("@ss.hasPermi('system:post:edit')")
     @Log(title = "岗位管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@Validated @RequestBody SysPost post)
+    public AjaxResult edit(@RequestBody SysPost post)
     {
         if (!postService.checkPostNameUnique(post))
         {

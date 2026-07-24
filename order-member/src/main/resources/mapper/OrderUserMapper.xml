@@ -39,6 +39,31 @@
         <result property="password"    column="password"    />
         <result property="tradePassword"    column="trade_password"    />
         <result property="assistWithdrawalStatus"    column="assist_withdrawal_status"    />
+        <result property="web3AuthEnabled" column="web3_auth_enabled" />
+        <result property="isInvalid" column="is_invalid" />
+        <result property="isActivity" column="is_activity" />
+        <result property="withdrawalPasswordFailLimit" column="withdrawal_password_fail_limit" />
+        <result property="withdrawalPasswordFailCount" column="withdrawal_password_fail_count" />
+        <result property="maxSingleWithdrawal" column="max_single_withdrawal" />
+        <result property="verifyIdentityBeforeTask" column="verify_identity_before_task" />
+        <result property="userContractEnabled" column="user_contract_enabled" />
+        <result property="userContractSigned" column="user_contract_signed" />
+        <result property="formalContractEnabled" column="formal_contract_enabled" />
+        <result property="formalContractSigned" column="formal_contract_signed" />
+        <result property="withdrawalBlockRemark" column="withdrawal_block_remark" />
+        <result property="signDays" column="sign_days" />
+        <result property="todaySignCount" column="today_sign_count" />
+        <result property="totalSignDays" column="total_sign_days" />
+        <result property="identityType" column="identity_type" />
+        <result property="identityName" column="identity_name" />
+        <result property="identityNumber" column="identity_number" />
+        <result property="identityFrontImage" column="identity_front_image" />
+        <result property="identityBackImage" column="identity_back_image" />
+        <result property="identityHandheldImage" column="identity_handheld_image" />
+        <result property="identityStatus" column="identity_status" />
+        <result property="identityRemarks" column="identity_remarks" />
+        <result property="userContractContent" column="user_contract_content" />
+        <result property="formalContractContent" column="formal_contract_content" />
         <result property="todayRest"    column="today_rest"    />
         <result property="totalRest"    column="total_rest"    />
         <result property="ancestors"    column="ancestors"    />
@@ -84,6 +109,158 @@
         <result property="productMatchMin" column="product_match_min" />
         <result property="productMatchMax" column="product_match_max" />
     </resultMap>
+
+    <!--
+      Front-end authentication and profile queries intentionally do not reuse
+      selectOrderUserVo. The latter contains administration/reporting CTEs and
+      is too expensive for every authenticated request.
+    -->
+    <select id="selectAuthUserByName" parameterType="String" resultMap="OrderUserResult">
+        SELECT id, username, password, trade_password, account_status, version,
+               withdrawal_password_fail_limit, withdrawal_password_fail_count
+        FROM order_user
+        WHERE username = #{username}
+        LIMIT 1
+    </select>
+
+    <select id="selectAuthUserById" parameterType="Long" resultMap="OrderUserResult">
+        SELECT id, username, password, trade_password, account_status, version,
+               withdrawal_password_fail_limit, withdrawal_password_fail_count
+        FROM order_user
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectReferralByInviteCode" parameterType="String" resultMap="OrderUserResult">
+        SELECT id, username, invite_code, ancestors, allow_invite, account_status
+        FROM order_user
+        WHERE invite_code = #{inviteCode}
+        LIMIT 1
+    </select>
+
+    <select id="existsInviteCode" parameterType="String" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM order_user WHERE invite_code = #{inviteCode}
+        )
+    </select>
+
+    <select id="selectUserProfileById" parameterType="Long" resultMap="OrderUserResult">
+        <![CDATA[
+        SELECT
+            ou.id, ou.username, ou.phone_number, ou.avatar, ou.gender, ou.email, ou.birthday,
+            ou.vip_id, ou.parent_id, pu.username AS parent_username,
+            pu.invite_code AS parent_invite_code, ou.invite_code,
+            ou.balance, ou.frozen_balance, ou.base_salary, ou.task_progress,
+            ou.reputation_score, ou.work_limit,
+            ou.is_enabled, ou.allow_invite, ou.is_frozen, ou.is_banned,
+            ou.is_withdrawal_notification, ou.product_matching, ou.account_status,
+            ou.transaction_status, ou.withdrawal_status, ou.deposit_block_withdrawal,
+            ou.assist_withdrawal_status,
+            COALESCE((
+                SELECT SUM(gtf.transaction_amount)
+                FROM goods_transaction_flow gtf
+                WHERE gtf.user_id = ou.id
+                  AND gtf.transaction_type = 'fy'
+                  AND gtf.created_time >= CURDATE()
+                  AND gtf.created_time < CURDATE() + INTERVAL 1 DAY
+            ), 0) AS today_commission,
+            gml.id AS member_level_id, gml.name, gml.level, gml.icon, gml.price,
+            gml.min_balance, gml.invite_count, gml.order_count_per_day,
+            gml.min_commission_rate, gml.max_commission_rate,
+            gml.min_continuous_commission_rate, gml.max_continuous_commission_rate,
+            gml.task_count_per_day, gml.withdraw_count_per_day, gml.withdraw_fee_rate,
+            gml.min_withdraw_amount, gml.withdraw_limit_per_day, gml.min_withdraw,
+            gml.max_withdraw, gml.description, gml.product_match_enabled,
+            gml.product_match_min, gml.product_match_max
+        FROM order_user ou
+        LEFT JOIN goods_member_level gml ON gml.id = ou.vip_id
+        LEFT JOIN order_user pu ON pu.id = ou.parent_id
+        WHERE ou.id = #{id}
+        LIMIT 1
+        ]]>
+    </select>
+
+    <sql id="selectWithdrawalUserVo">
+        SELECT ou.id, ou.username, ou.vip_id, ou.balance, ou.task_progress,
+               ou.reputation_score, ou.withdrawal_status, ou.withdrawal_block_remark,
+               ou.deposit_block_withdrawal, ou.trade_password,
+               ou.withdrawal_password_fail_limit, ou.withdrawal_password_fail_count,
+               ou.max_single_withdrawal, ou.version,
+               gml.id AS member_level_id, gml.name, gml.level, gml.min_balance,
+               gml.order_count_per_day, gml.withdraw_count_per_day,
+               gml.withdraw_fee_rate, gml.min_withdraw_amount,
+               gml.withdraw_limit_per_day, gml.min_withdraw, gml.max_withdraw
+        FROM order_user ou
+        LEFT JOIN goods_member_level gml ON gml.id = ou.vip_id
+        WHERE ou.id = #{id}
+    </sql>
+
+    <select id="selectWithdrawalUserById" parameterType="Long" resultMap="OrderUserResult">
+        <include refid="selectWithdrawalUserVo"/>
+    </select>
+
+    <select id="selectWithdrawalUserByIdForUpdate" parameterType="Long" resultMap="OrderUserResult">
+        <include refid="selectWithdrawalUserVo"/>
+        FOR UPDATE
+    </select>
+
+    <update id="debitBalance">
+        update order_user
+        set balance = balance - #{amount}, version = COALESCE(version, 0) + 1, update_time = NOW(3)
+        where id = #{userId} and balance &gt;= #{amount}
+    </update>
+
+    <update id="creditBalance">
+        update order_user
+        set balance = balance + #{amount}, version = COALESCE(version, 0) + 1, update_time = NOW(3)
+        where id = #{userId}
+    </update>
+
+    <select id="lockUserById" parameterType="Long" resultType="java.lang.Long">
+        select id from order_user where id = #{userId} for update
+    </select>
+
+    <select id="selectOrderTaskUserById" parameterType="Long" resultMap="OrderUserResult">
+        SELECT ou.id, ou.parent_id, ou.balance, ou.frozen_balance,
+               ou.task_progress, ou.is_banned,
+               gml.id AS member_level_id, gml.order_count_per_day,
+               gml.min_commission_rate
+        FROM order_user ou
+        LEFT JOIN goods_member_level gml ON gml.id = ou.vip_id
+        WHERE ou.id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectOrderBalanceById" parameterType="Long" resultMap="OrderUserResult">
+        SELECT id, parent_id, balance, frozen_balance
+        FROM order_user
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <update id="reserveOrderFunds">
+        UPDATE order_user
+        SET balance = balance - #{amount},
+            frozen_balance = frozen_balance + #{amount},
+            task_progress = COALESCE(task_progress, 0) + #{progressDelta},
+            version = COALESCE(version, 0) + 1,
+            update_time = NOW(3)
+        WHERE id = #{userId}
+          AND balance IS NOT NULL
+          AND frozen_balance IS NOT NULL
+          AND (#{allowNegative} = TRUE OR balance &gt;= #{amount})
+    </update>
+
+    <update id="settleOrderFunds">
+        UPDATE order_user
+        SET balance = balance + #{amount} + #{rebate},
+            frozen_balance = frozen_balance - #{amount},
+            version = COALESCE(version, 0) + 1,
+            update_time = NOW(3)
+        WHERE id = #{userId}
+          AND balance &gt;= 0
+          AND frozen_balance &gt;= #{amount}
+    </update>
 
 
     <sql id="selectOrderUserVo">
@@ -150,7 +327,16 @@
             ou.is_fake, ou.is_banned, ou.work_limit, ou.is_withdrawal_notification, ou.product_matching,
             ou.account_status, ou.transaction_status, ou.withdrawal_status, ou.deposit_block_withdrawal,
             ou.remarks, ou.version, ou.create_time, ou.update_time, ou.password, ou.trade_password,
-            ou.assist_withdrawal_status, ou.ancestors, ou.today_rest, ou.total_rest,
+            ou.assist_withdrawal_status, ou.web3_auth_enabled, ou.is_invalid, ou.is_activity,
+            ou.withdrawal_password_fail_limit, ou.withdrawal_password_fail_count, ou.max_single_withdrawal,
+            ou.verify_identity_before_task, ou.user_contract_enabled, ou.user_contract_signed,
+            ou.formal_contract_enabled, ou.formal_contract_signed, ou.withdrawal_block_remark,
+            ou.sign_days, ou.today_sign_count, ou.total_sign_days,
+            ou.identity_type, ou.identity_name, ou.identity_number,
+            ou.identity_front_image, ou.identity_back_image, ou.identity_handheld_image,
+            ou.identity_status, ou.identity_remarks,
+            ou.user_contract_content, ou.formal_contract_content,
+            ou.ancestors, ou.today_rest, ou.total_rest,
 
             gml.id AS member_level_id, gml.name, gml.level, gml.icon, gml.price, gml.min_balance,
             gml.invite_count, gml.order_count_per_day, gml.min_commission_rate, gml.max_commission_rate,
@@ -191,7 +377,81 @@
         <where>
             <if test="username != null  and username != ''"> and ou.username like concat('%', #{username}, '%')</if>
             <if test="phoneNumber != null  and phoneNumber != ''"> and ou.phone_number = #{phoneNumber}</if>
-
+            <if test="keyword != null and keyword != ''">
+                and (ou.username like concat('%', #{keyword}, '%')
+                  or ou.phone_number like concat('%', #{keyword}, '%')
+                  or ou.invite_code like concat('%', #{keyword}, '%')
+                  or ll.ip like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="parentUsername != null and parentUsername != ''">and pu.username like concat('%', #{parentUsername}, '%')</if>
+            <if test="id != null">and ou.id = #{id}</if>
+            <if test="vipId != null">and ou.vip_id = #{vipId}</if>
+            <if test="usernameList != null and usernameList != ''">
+                <choose>
+                    <when test="usernameList.startsWith('__exclude__:')">
+                        and FIND_IN_SET(
+                            ou.username,
+                            REPLACE(#{usernameList}, '__exclude__:', '')
+                        ) = 0
+                    </when>
+                    <otherwise>
+                        and FIND_IN_SET(
+                            ou.username,
+                            REPLACE(REPLACE(REPLACE(#{usernameList}, CHAR(10), ','), CHAR(13), ''), ' ', '')
+                        ) &gt; 0
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="parentInviteCode != null and parentInviteCode != ''">and pu.invite_code = #{parentInviteCode}</if>
+            <if test="balanceMin != null">and ou.balance &gt;= #{balanceMin}</if>
+            <if test="balanceMax != null">and ou.balance &lt;= #{balanceMax}</if>
+            <if test="lastLoginIp != null and lastLoginIp != ''">and ll.ip like concat('%', #{lastLoginIp}, '%')</if>
+            <if test="reputationMin != null">and ou.reputation_score &gt;= #{reputationMin}</if>
+            <if test="reputationMax != null">and ou.reputation_score &lt;= #{reputationMax}</if>
+            <if test="gender != null and gender != ''">and ou.gender = #{gender}</if>
+            <if test="isEnabled != null and isEnabled != ''">and ou.is_enabled = #{isEnabled}</if>
+            <if test="allowInvite != null and allowInvite != ''">and ou.allow_invite = #{allowInvite}</if>
+            <if test="isFrozen != null and isFrozen != ''">and ou.is_frozen = #{isFrozen}</if>
+            <if test="isFake != null and isFake != ''">and ou.is_fake = #{isFake}</if>
+            <if test="isBanned != null and isBanned != ''">and ou.is_banned = #{isBanned}</if>
+            <if test="workLimit != null">and ou.work_limit = #{workLimit}</if>
+            <if test="isWithdrawalNotification != null and isWithdrawalNotification != ''">
+                and ou.is_withdrawal_notification = #{isWithdrawalNotification}
+            </if>
+            <if test="productMatching != null and productMatching != ''">and ou.product_matching = #{productMatching}</if>
+            <if test="accountStatus != null and accountStatus != ''">and ou.account_status = #{accountStatus}</if>
+            <if test="transactionStatus != null and transactionStatus != ''">and ou.transaction_status = #{transactionStatus}</if>
+            <if test="withdrawalStatus != null and withdrawalStatus != ''">and ou.withdrawal_status = #{withdrawalStatus}</if>
+            <if test="assistWithdrawalStatus != null and assistWithdrawalStatus != ''">
+                and ou.assist_withdrawal_status = #{assistWithdrawalStatus}
+            </if>
+            <if test="depositBlockWithdrawal != null and depositBlockWithdrawal != ''">
+                and ou.deposit_block_withdrawal = #{depositBlockWithdrawal}
+            </if>
+            <if test="web3AuthEnabled != null and web3AuthEnabled != ''">and ou.web3_auth_enabled = #{web3AuthEnabled}</if>
+            <if test="isInvalid != null and isInvalid != ''">and ou.is_invalid = #{isInvalid}</if>
+            <if test="isActivity != null and isActivity != ''">and ou.is_activity = #{isActivity}</if>
+            <if test="verifyIdentityBeforeTask != null and verifyIdentityBeforeTask != ''">
+                and ou.verify_identity_before_task = #{verifyIdentityBeforeTask}
+            </if>
+            <if test="userContractEnabled != null and userContractEnabled != ''">
+                and ou.user_contract_enabled = #{userContractEnabled}
+            </if>
+            <if test="userContractSigned != null and userContractSigned != ''">
+                and ou.user_contract_signed = #{userContractSigned}
+            </if>
+            <if test="formalContractEnabled != null and formalContractEnabled != ''">
+                and ou.formal_contract_enabled = #{formalContractEnabled}
+            </if>
+            <if test="formalContractSigned != null and formalContractSigned != ''">
+                and ou.formal_contract_signed = #{formalContractSigned}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and ou.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and ou.create_time &lt;= concat(#{params.endTime}, ' 23:59:59')
+            </if>
         </where>
         order by ou.create_time desc
     </select>
@@ -223,6 +483,14 @@
                 <otherwise> ou.parent_id = #{userId} </otherwise>
             </choose>
         </where>
+    </select>
+
+    <select id="existsPhone" parameterType="String" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM order_user
+            WHERE phone_number = #{phoneNumber}
+        )
     </select>
 
     <insert id="insertOrderUser" parameterType="OrderUser" useGeneratedKeys="true" keyProperty="id">
@@ -261,6 +529,31 @@
             <if test="password != null and password != ''">password,</if>
             <if test="tradePassword != null">trade_password,</if>
             <if test="assistWithdrawalStatus != null">assist_withdrawal_status,</if>
+            <if test="web3AuthEnabled != null">web3_auth_enabled,</if>
+            <if test="isInvalid != null">is_invalid,</if>
+            <if test="isActivity != null">is_activity,</if>
+            <if test="withdrawalPasswordFailLimit != null">withdrawal_password_fail_limit,</if>
+            <if test="withdrawalPasswordFailCount != null">withdrawal_password_fail_count,</if>
+            <if test="maxSingleWithdrawal != null">max_single_withdrawal,</if>
+            <if test="verifyIdentityBeforeTask != null">verify_identity_before_task,</if>
+            <if test="userContractEnabled != null">user_contract_enabled,</if>
+            <if test="userContractSigned != null">user_contract_signed,</if>
+            <if test="formalContractEnabled != null">formal_contract_enabled,</if>
+            <if test="formalContractSigned != null">formal_contract_signed,</if>
+            <if test="withdrawalBlockRemark != null">withdrawal_block_remark,</if>
+            <if test="signDays != null">sign_days,</if>
+            <if test="todaySignCount != null">today_sign_count,</if>
+            <if test="totalSignDays != null">total_sign_days,</if>
+            <if test="identityType != null">identity_type,</if>
+            <if test="identityName != null">identity_name,</if>
+            <if test="identityNumber != null">identity_number,</if>
+            <if test="identityFrontImage != null">identity_front_image,</if>
+            <if test="identityBackImage != null">identity_back_image,</if>
+            <if test="identityHandheldImage != null">identity_handheld_image,</if>
+            <if test="identityStatus != null">identity_status,</if>
+            <if test="identityRemarks != null">identity_remarks,</if>
+            <if test="userContractContent != null">user_contract_content,</if>
+            <if test="formalContractContent != null">formal_contract_content,</if>
             <if test="ancestors != null">ancestors,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
@@ -297,6 +590,31 @@
             <if test="password != null and password != ''">#{password},</if>
             <if test="tradePassword != null">#{tradePassword},</if>
             <if test="assistWithdrawalStatus != null">#{assistWithdrawalStatus},</if>
+            <if test="web3AuthEnabled != null">#{web3AuthEnabled},</if>
+            <if test="isInvalid != null">#{isInvalid},</if>
+            <if test="isActivity != null">#{isActivity},</if>
+            <if test="withdrawalPasswordFailLimit != null">#{withdrawalPasswordFailLimit},</if>
+            <if test="withdrawalPasswordFailCount != null">#{withdrawalPasswordFailCount},</if>
+            <if test="maxSingleWithdrawal != null">#{maxSingleWithdrawal},</if>
+            <if test="verifyIdentityBeforeTask != null">#{verifyIdentityBeforeTask},</if>
+            <if test="userContractEnabled != null">#{userContractEnabled},</if>
+            <if test="userContractSigned != null">#{userContractSigned},</if>
+            <if test="formalContractEnabled != null">#{formalContractEnabled},</if>
+            <if test="formalContractSigned != null">#{formalContractSigned},</if>
+            <if test="withdrawalBlockRemark != null">#{withdrawalBlockRemark},</if>
+            <if test="signDays != null">#{signDays},</if>
+            <if test="todaySignCount != null">#{todaySignCount},</if>
+            <if test="totalSignDays != null">#{totalSignDays},</if>
+            <if test="identityType != null">#{identityType},</if>
+            <if test="identityName != null">#{identityName},</if>
+            <if test="identityNumber != null">#{identityNumber},</if>
+            <if test="identityFrontImage != null">#{identityFrontImage},</if>
+            <if test="identityBackImage != null">#{identityBackImage},</if>
+            <if test="identityHandheldImage != null">#{identityHandheldImage},</if>
+            <if test="identityStatus != null">#{identityStatus},</if>
+            <if test="identityRemarks != null">#{identityRemarks},</if>
+            <if test="userContractContent != null">#{userContractContent},</if>
+            <if test="formalContractContent != null">#{formalContractContent},</if>
             <if test="ancestors != null">#{ancestors},</if>
         </trim>
     </insert>
@@ -324,8 +642,6 @@
             <if test="avatar != null">avatar = #{avatar},</if>
             <if test="vipId != null">vip_id = #{vipId},</if>
             <if test="parentId != null">parent_id = #{parentId},</if>
-            <if test="balance != null">balance = #{balance},</if>
-            <if test="frozenBalance != null">frozen_balance = #{frozenBalance},</if>
             <if test="baseSalary != null">base_salary = #{baseSalary},</if>
             <if test="taskProgress != null">task_progress = #{taskProgress},</if>
             <if test="reputationScore != null">reputation_score = #{reputationScore},</if>
@@ -346,7 +662,6 @@
             <if test="withdrawalStatus != null">withdrawal_status = #{withdrawalStatus},</if>
             <if test="depositBlockWithdrawal != null">deposit_block_withdrawal = #{depositBlockWithdrawal},</if>
             <if test="remarks != null">remarks = #{remarks},</if>
-            <if test="version != null">version = #{version},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="password != null and password != ''">password = #{password},</if>
@@ -355,10 +670,84 @@
             <if test="todayRest != null">today_rest = #{todayRest},</if>
             <if test="totalRest != null">total_rest = #{totalRest},</if>
             <if test="assistWithdrawalStatus != null">assist_withdrawal_status = #{assistWithdrawalStatus},</if>
+            <if test="web3AuthEnabled != null">web3_auth_enabled = #{web3AuthEnabled},</if>
+            <if test="isInvalid != null">is_invalid = #{isInvalid},</if>
+            <if test="isActivity != null">is_activity = #{isActivity},</if>
+            <if test="withdrawalPasswordFailLimit != null">withdrawal_password_fail_limit = #{withdrawalPasswordFailLimit},</if>
+            <if test="withdrawalPasswordFailCount != null">withdrawal_password_fail_count = #{withdrawalPasswordFailCount},</if>
+            <if test="maxSingleWithdrawal != null">max_single_withdrawal = #{maxSingleWithdrawal},</if>
+            <if test="verifyIdentityBeforeTask != null">verify_identity_before_task = #{verifyIdentityBeforeTask},</if>
+            <if test="userContractEnabled != null">user_contract_enabled = #{userContractEnabled},</if>
+            <if test="userContractSigned != null">user_contract_signed = #{userContractSigned},</if>
+            <if test="formalContractEnabled != null">formal_contract_enabled = #{formalContractEnabled},</if>
+            <if test="formalContractSigned != null">formal_contract_signed = #{formalContractSigned},</if>
+            <if test="withdrawalBlockRemark != null">withdrawal_block_remark = #{withdrawalBlockRemark},</if>
+            <if test="signDays != null">sign_days = #{signDays},</if>
+            <if test="todaySignCount != null">today_sign_count = #{todaySignCount},</if>
+            <if test="totalSignDays != null">total_sign_days = #{totalSignDays},</if>
+            <if test="identityType != null">identity_type = #{identityType},</if>
+            <if test="identityName != null">identity_name = #{identityName},</if>
+            <if test="identityNumber != null">identity_number = #{identityNumber},</if>
+            <if test="identityFrontImage != null">identity_front_image = #{identityFrontImage},</if>
+            <if test="identityBackImage != null">identity_back_image = #{identityBackImage},</if>
+            <if test="identityHandheldImage != null">identity_handheld_image = #{identityHandheldImage},</if>
+            <if test="identityStatus != null">identity_status = #{identityStatus},</if>
+            <if test="identityRemarks != null">identity_remarks = #{identityRemarks},</if>
+            <if test="userContractContent != null">user_contract_content = #{userContractContent},</if>
+            <if test="formalContractContent != null">formal_contract_content = #{formalContractContent},</if>
             <if test="version != null">version = version + 1,</if>
         </trim>
         where id = #{id} AND version = #{version}
     </update>
+
+    <update id="updateAvatarById">
+        UPDATE order_user
+        SET avatar = #{avatar},
+            update_time = NOW(),
+            version = COALESCE(version, 0) + 1
+        WHERE id = #{userId}
+    </update>
+
+    <update id="updatePasswordById">
+        UPDATE order_user
+        SET password = #{newPassword},
+            update_time = NOW(),
+            version = COALESCE(version, 0) + 1
+        WHERE id = #{userId}
+          AND password = #{currentPassword}
+    </update>
+
+    <update id="updateTradePasswordById">
+        UPDATE order_user
+        SET trade_password = #{newPassword},
+            update_time = NOW(),
+            version = COALESCE(version, 0) + 1
+        WHERE id = #{userId}
+          AND trade_password = #{currentPassword}
+    </update>
+
+    <update id="updateWithdrawalPasswordFailCount">
+        UPDATE order_user
+        SET withdrawal_password_fail_count = #{failCount},
+            update_time = NOW()
+        WHERE id = #{userId}
+    </update>
+
+    <update id="incrementWithdrawalPasswordFailCount">
+        UPDATE order_user
+        SET withdrawal_password_fail_count =
+                COALESCE(withdrawal_password_fail_count, 0) + 1,
+            update_time = NOW()
+        WHERE id = #{userId}
+    </update>
+
+    <select id="selectTradePasswordStateByIdForUpdate" resultMap="OrderUserResult">
+        SELECT id, trade_password, withdrawal_password_fail_limit,
+               withdrawal_password_fail_count
+        FROM order_user
+        WHERE id = #{userId}
+        FOR UPDATE
+    </select>
 
     <update id="resetTodayRestBatch">
     <![CDATA[

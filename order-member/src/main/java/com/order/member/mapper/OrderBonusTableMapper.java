@@ -2,6 +2,7 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.OrderBonusTable;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 彩金Mapper接口
@@ -17,7 +18,7 @@ public interface OrderBonusTableMapper
      * @param id 彩金主键
      * @return 彩金
      */
-    public OrderBonusTable selectOrderBonusTableById(Long id);
+    OrderBonusTable selectOrderBonusTableById(Long id);
 
     /**
      * 查询彩金列表
@@ -25,7 +26,7 @@ public interface OrderBonusTableMapper
      * @param orderBonusTable 彩金
      * @return 彩金集合
      */
-    public List<OrderBonusTable> selectOrderBonusTableList(OrderBonusTable orderBonusTable);
+    List<OrderBonusTable> selectOrderBonusTableList(OrderBonusTable orderBonusTable);
 
     /**
      * 新增彩金
@@ -33,7 +34,7 @@ public interface OrderBonusTableMapper
      * @param orderBonusTable 彩金
      * @return 结果
      */
-    public int insertOrderBonusTable(OrderBonusTable orderBonusTable);
+    int insertOrderBonusTable(OrderBonusTable orderBonusTable);
 
     /**
      * 修改彩金
@@ -41,7 +42,7 @@ public interface OrderBonusTableMapper
      * @param orderBonusTable 彩金
      * @return 结果
      */
-    public int updateOrderBonusTable(OrderBonusTable orderBonusTable);
+    int updateOrderBonusTable(OrderBonusTable orderBonusTable);
 
     /**
      * 删除彩金
@@ -49,7 +50,7 @@ public interface OrderBonusTableMapper
      * @param id 彩金主键
      * @return 结果
      */
-    public int deleteOrderBonusTableById(Long id);
+    int deleteOrderBonusTableById(Long id);
 
     /**
      * 批量删除彩金
@@ -57,5 +58,26 @@ public interface OrderBonusTableMapper
      * @param ids 需要删除的数据主键集合
      * @return 结果
      */
-    public int deleteOrderBonusTableByIds(Long[] ids);
+    int deleteOrderBonusTableByIds(Long[] ids);
+
+    /**
+     * 查询符合已接收且已分发且未过期的彩金（按 userId 和 orderNum 匹配）
+     *
+     * 必填参数：userId（Long）、orderNum（Long）
+     *
+     * @param userId 用户ID（必填）
+     * @param orderNum 单数（必填）
+     * @return 彩金集合
+     */
+   public OrderBonusTable selectActiveDistributedReceivedByUserAndOrder(@Param("userId") Long userId,
+                                                                              @Param("orderNum") Long orderNum);
+    public List<OrderBonusTable> selectBonusByType(Long userId);
+
+    public OrderBonusTable userHaveBonus(@Param("userId") Long userId,@Param("orderNum") Integer orderNum);
+
+    OrderBonusTable selectNextCompletionBonus(Long userId);
+
+    OrderBonusTable selectOwnedBonusForUpdate(@Param("id") Long id, @Param("userId") Long userId);
+
+    int claimBonus(@Param("id") Long id, @Param("userId") Long userId);
 }

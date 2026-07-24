@@ -17,13 +17,16 @@ public class FrontWebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**") // 所有 /api/ 路径
                 .excludePathPatterns("/api/user/login",
                         "/api/user/register",
+                        "/api/user/logout",
+                        "/api/config/languages",
+                        "/api/config/error-messages",
+                        "/api/config/content",
+                        "/api/config/customer-services",
+                        "/api/config/time-zone",
                         "/api/config/getCustomerService",
                         "/api/config/getGlobalConfig",
-                        "/api/creategoodes/create",
                         "/api/config/getZoneActive",
-                        "/api/config/getEmailAddress",
                         "/api/config/getConfigByLang",
-                        "/api/config/getCustomerServiceByLang",
-                        "/api/config/getTradeConfig" );
+                        "/api/config/getCustomerServiceByLang" );
     }
 }

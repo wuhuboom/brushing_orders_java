@@ -27,6 +27,11 @@ public class LoginBody
      */
     private String uuid;
 
+    /**
+     * Google 验证码（TOTP），由前端在需要时提交
+     */
+    private String googleCode;
+
     public String getUsername()
     {
         return username;
@@ -65,5 +70,13 @@ public class LoginBody
     public void setUuid(String uuid)
     {
         this.uuid = uuid;
+    }
+
+    public String getGoogleCode() {
+        return googleCode;
+    }
+
+    public void setGoogleCode(String googleCode) {
+        this.googleCode = googleCode;
     }
 }

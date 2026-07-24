@@ -1,7 +1,6 @@
 package com.order.member.service.impl;
 
 import java.util.List;
-import com.order.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.order.member.mapper.OrderInfoMapper;
@@ -53,8 +52,8 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     @Override
     public int insertOrderInfo(OrderInfo orderInfo)
     {
-        orderInfo.setCreateTime(DateUtils.getNowDate());
-        return orderInfoMapper.insertOrderInfo(orderInfo);
+        throw new UnsupportedOperationException(
+                "Financial orders must be created by OrderApplicationService");
     }
 
     /**
@@ -78,7 +77,8 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     @Override
     public int deleteOrderInfoByIds(Long[] ids)
     {
-        return orderInfoMapper.deleteOrderInfoByIds(ids);
+        throw new UnsupportedOperationException(
+                "Financial order history cannot be deleted");
     }
 
     /**
@@ -90,11 +90,12 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     @Override
     public int deleteOrderInfoById(Long id)
     {
-        return orderInfoMapper.deleteOrderInfoById(id);
+        throw new UnsupportedOperationException(
+                "Financial order history cannot be deleted");
     }
 
     @Override
-    public int hasOpenOrders(Long userId) {
+    public OrderInfo hasOpenOrders(Long userId) {
         return orderInfoMapper.hasOpenOrders(userId);
     }
 }

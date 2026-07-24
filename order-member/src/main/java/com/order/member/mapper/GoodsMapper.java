@@ -63,5 +63,9 @@ public interface GoodsMapper
 
     public Goods selectNearestPriceGoods(BigDecimal price);
 
+    Goods selectOrderGoodsById(Long id);
+
     public List<Goods> selectRandomGoods();
+
+    public List<Goods> selectGoodsPage();
 }

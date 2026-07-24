@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.DashboardMapper">
+
+    <!-- 今日充值金额 ，今日赠送金额 ，总赠送金额 ，总充值金额 -->
+    <select id="getTodayRechargeAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(amount), 0) FROM goods_recharge_record WHERE status = 1 AND TO_DAYS(create_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTodayGiftAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(transaction_amount), 0) FROM goods_transaction_flow WHERE transaction_type = 'zs' AND TO_DAYS(created_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTotalGiftAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(transaction_amount), 0) FROM goods_transaction_flow WHERE transaction_type = 'zs'
+    </select>
+    <select id="getTotalRechargeAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(amount), 0) FROM goods_recharge_record WHERE status = 1
+    </select>
+
+    <!-- 今日提现金额，今日返佣金额，总返佣金额，总提现金额 -->
+    <select id="getTodayWithdrawalAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(amount), 0) FROM order_withdrawal WHERE status = 1 AND TO_DAYS(create_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTodayCommissionAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(transaction_amount), 0) FROM goods_transaction_flow WHERE transaction_type IN ('fy', 'xjfy') AND TO_DAYS(created_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTotalCommissionAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(transaction_amount), 0) FROM goods_transaction_flow WHERE transaction_type IN ('fy', 'xjfy')
+    </select>
+    <select id="getTotalWithdrawalAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(amount), 0) FROM order_withdrawal WHERE status = 1
+    </select>
+    <select id="getTotalWithdrawals" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_withdrawal
+    </select>
+
+    <!--今日会员注册数量，今日任务完成次数，总任务完成次数，总会员注册数量 -->
+    <select id="getTodayRegisteredUsers" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_user WHERE TO_DAYS(create_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTodayTasksCompleted" resultType="java.lang.Long">
+        SELECT COUNT(id)
+        FROM order_info
+        WHERE status IN ('2', 'completed', 'complete', 'success')
+          AND create_time &gt;= CURDATE()
+          AND create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+    </select>
+    <select id="getTotalTasksCompleted" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_info WHERE status IN ('2', 'completed', 'complete', 'success')
+    </select>
+    <select id="getTotalRegisteredUsers" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_user
+    </select>
+
+    <!-- 今日投注人数，总订单数量，今日订单数量，总投注人数 -->
+    <select id="getTodayBettingUsers" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT user_id) FROM order_info WHERE TO_DAYS(create_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTotalOrders" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_info
+    </select>
+    <select id="getTodayOrders" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_info WHERE TO_DAYS(create_time) = TO_DAYS(NOW())
+    </select>
+    <select id="getTotalBettingUsers" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT user_id) FROM order_info
+    </select>
+
+    <!--  会员注册数量（需要最近一周的数据 ，每天有多少人注册） -->
+    <select id="getWeeklyRegisteredUsers" resultType="java.util.Map">
+        SELECT DATE_FORMAT(create_time, '%Y-%m-%d') AS date, COUNT(id) AS count
+        FROM order_user
+        WHERE create_time &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d')
+        ORDER BY date
+    </select>
+
+    <!-- 交易金额 （ 最近一周的数据 ）-->
+    <select id="getWeeklyTransactionAmounts" resultType="java.util.Map">
+        SELECT
+            DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS date,
+            SUM(CASE WHEN t.type = 'cz' THEN t.amount ELSE 0 END) AS recharge_amount,
+            SUM(CASE WHEN t.type = 'tx' THEN t.amount ELSE 0 END) AS withdrawal_amount,
+            SUM(CASE WHEN t.type = 'fy' THEN t.amount ELSE 0 END) AS commission_amount,
+            SUM(CASE WHEN t.type = 'xjfy' THEN t.amount ELSE 0 END) AS sub_commission_amount,
+            SUM(CASE WHEN t.type = 'zs' THEN t.amount ELSE 0 END) AS gift_amount,
+            SUM(CASE WHEN t.type = 'qd' THEN t.amount ELSE 0 END) AS signin_amount
+        FROM (
+            SELECT create_time AS transaction_date, amount AS amount, 'cz' AS type FROM goods_recharge_record WHERE status = 1
+            UNION ALL
+            SELECT create_time AS transaction_date, amount AS amount, 'tx' AS type FROM order_withdrawal WHERE status = 1
+            UNION ALL
+            SELECT created_time AS transaction_date, transaction_amount AS amount, transaction_type AS type FROM goods_transaction_flow
+        ) t
+        WHERE t.transaction_date &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND t.transaction_date &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        GROUP BY DATE_FORMAT(t.transaction_date, '%Y-%m-%d')
+        ORDER BY date
+    </select>
+
+    <!-- 交易数量 (最近一周的数据) -->
+    <select id="getWeeklyTransactionCounts" resultType="java.util.Map">
+        SELECT
+            DATE_FORMAT(t.activity_date, '%Y-%m-%d') AS date,
+            SUM(CASE WHEN t.type = 'recharge' THEN t.event_count ELSE 0 END) AS recharge_count,
+            SUM(CASE WHEN t.type = 'withdrawal' THEN t.event_count ELSE 0 END) AS withdrawal_count,
+            SUM(CASE WHEN t.type = 'commission' THEN t.event_count ELSE 0 END) AS commission_count,
+            SUM(CASE WHEN t.type = 'sub_commission' THEN t.event_count ELSE 0 END) AS sub_commission_count,
+            SUM(CASE WHEN t.type = 'gift' THEN t.event_count ELSE 0 END) AS gift_count,
+            SUM(CASE WHEN t.type = 'signin' THEN t.event_count ELSE 0 END) AS signin_count,
+            SUM(CASE WHEN t.type = 'order' THEN t.event_count ELSE 0 END) AS order_count,
+            COUNT(DISTINCT CASE WHEN t.type = 'order' THEN t.user_id END) AS betting_user_count,
+            SUM(CASE WHEN t.type = 'task' THEN t.event_count ELSE 0 END) AS task_completion_count,
+            SUM(CASE WHEN t.type = 'reset' THEN t.event_count ELSE 0 END) AS reset_count
+        FROM (
+            SELECT create_time AS activity_date, 'recharge' AS type, NULL AS user_id, 1 AS event_count
+            FROM goods_recharge_record WHERE status = 1
+            UNION ALL
+            SELECT create_time AS activity_date, 'withdrawal' AS type, NULL AS user_id, 1 AS event_count
+            FROM order_withdrawal WHERE status = 1
+            UNION ALL
+            SELECT created_time AS activity_date,
+                   CASE
+                       WHEN transaction_type = 'fy' THEN 'commission'
+                       WHEN transaction_type = 'xjfy' THEN 'sub_commission'
+                       WHEN transaction_type = 'zs' THEN 'gift'
+                       WHEN transaction_type = 'qd' THEN 'signin'
+                       WHEN transaction_type IN ('reset', 'rest') AND created_time &lt; CURDATE() THEN 'reset'
+                       ELSE NULL
+                   END AS type,
+                   NULL AS user_id,
+                   1 AS event_count
+            FROM goods_transaction_flow
+            UNION ALL
+            SELECT create_time AS activity_date, 'order' AS type, user_id, 1 AS event_count FROM order_info
+            UNION ALL
+            SELECT create_time AS activity_date, 'task' AS type, user_id, 1 AS event_count
+            FROM order_info WHERE status IN ('2', 'completed', 'complete', 'success')
+            UNION ALL
+            SELECT CURDATE() AS activity_date, 'reset' AS type, id AS user_id, IFNULL(today_rest, 0) AS event_count
+            FROM order_user WHERE IFNULL(today_rest, 0) &gt; 0
+        ) t
+        WHERE t.activity_date &gt;= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+          AND t.activity_date &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+          AND t.type IS NOT NULL
+        GROUP BY DATE_FORMAT(t.activity_date, '%Y-%m-%d')
+        ORDER BY date
+    </select>
+
+</mapper>

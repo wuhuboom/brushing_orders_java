@@ -1,8 +1,10 @@
 package com.order.system.service.impl;
 
 import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.order.common.constant.UserConstants;
 import com.order.common.exception.ServiceException;
 import com.order.common.utils.StringUtils;
@@ -10,6 +12,7 @@ import com.order.system.domain.SysPost;
 import com.order.system.mapper.SysPostMapper;
 import com.order.system.mapper.SysUserPostMapper;
 import com.order.system.service.ISysPostService;
+import com.order.system.service.ISystemAlignmentService;
 
 /**
  * 岗位信息 服务层处理
@@ -24,6 +27,9 @@ public class SysPostServiceImpl implements ISysPostService
 
     @Autowired
     private SysUserPostMapper userPostMapper;
+
+    @Autowired
+    private ISystemAlignmentService alignmentService;
 
     /**
      * 查询岗位信息集合
@@ -57,7 +63,9 @@ public class SysPostServiceImpl implements ISysPostService
     @Override
     public SysPost selectPostById(Long postId)
     {
-        return postMapper.selectPostById(postId);
+        SysPost post = postMapper.selectPostById(postId);
+        if (post != null) post.setRoleIds(alignmentService.selectPostRoleIds(postId));
+        return post;
     }
 
     /**
@@ -129,6 +137,7 @@ public class SysPostServiceImpl implements ISysPostService
     @Override
     public int deletePostById(Long postId)
     {
+        alignmentService.replacePostRoles(postId, java.util.Collections.emptyList());
         return postMapper.deletePostById(postId);
     }
 
@@ -149,6 +158,10 @@ public class SysPostServiceImpl implements ISysPostService
                 throw new ServiceException(String.format("%1$s已分配,不能删除", post.getPostName()));
             }
         }
+        for (Long postId : postIds)
+        {
+            alignmentService.replacePostRoles(postId, java.util.Collections.emptyList());
+        }
         return postMapper.deletePostByIds(postIds);
     }
 
@@ -159,9 +172,13 @@ public class SysPostServiceImpl implements ISysPostService
      * @return 结果
      */
     @Override
+    @Transactional
     public int insertPost(SysPost post)
     {
-        return postMapper.insertPost(post);
+        normalizePost(post, false);
+        int rows = postMapper.insertPost(post);
+        if (post.getRoleIds() != null) alignmentService.replacePostRoles(post.getPostId(), post.getRoleIds());
+        return rows;
     }
 
     /**
@@ -171,8 +188,36 @@ public class SysPostServiceImpl implements ISysPostService
      * @return 结果
      */
     @Override
+    @Transactional
     public int updatePost(SysPost post)
     {
-        return postMapper.updatePost(post);
+        normalizePost(post, true);
+        int rows = postMapper.updatePost(post);
+        if (post.getRoleIds() != null) alignmentService.replacePostRoles(post.getPostId(), post.getRoleIds());
+        return rows;
+    }
+
+    private void normalizePost(SysPost post, boolean update)
+    {
+        if (StringUtils.isEmpty(post.getPostName()))
+        {
+            throw new ServiceException("职位名称不能为空");
+        }
+        if (update && post.getPostId() != null)
+        {
+            SysPost existing = postMapper.selectPostById(post.getPostId());
+            if (existing != null)
+            {
+                if (StringUtils.isEmpty(post.getPostCode())) post.setPostCode(existing.getPostCode());
+                if (post.getPostSort() == null) post.setPostSort(existing.getPostSort());
+                if (StringUtils.isEmpty(post.getStatus())) post.setStatus(existing.getStatus());
+            }
+        }
+        if (StringUtils.isEmpty(post.getPostCode()))
+        {
+            post.setPostCode("position_" + UUID.randomUUID().toString().replace("-", ""));
+        }
+        if (post.getPostSort() == null) post.setPostSort(0);
+        if (StringUtils.isEmpty(post.getStatus())) post.setStatus("0");
     }
 }

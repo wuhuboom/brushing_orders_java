@@ -1,6 +1,10 @@
 package com.order.framework.manager.factory;
 
 import java.util.TimerTask;
+import java.util.Enumeration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import com.alibaba.fastjson2.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.order.common.constant.Constants;
@@ -39,6 +43,8 @@ public class AsyncFactory
     {
         final UserAgent userAgent = UserAgent.parseUserAgentString(ServletUtils.getRequest().getHeader("User-Agent"));
         final String ip = IpUtils.getIpAddr();
+        final String requestHeaders = safeHeaders();
+        final String requestParams = safeParams();
         return new TimerTask()
         {
             @Override
@@ -65,6 +71,8 @@ public class AsyncFactory
                 logininfor.setBrowser(browser);
                 logininfor.setOs(os);
                 logininfor.setMsg(message);
+                logininfor.setRequestHeaders(requestHeaders);
+                logininfor.setRequestParams(requestParams);
                 // 日志状态
                 if (StringUtils.equalsAny(status, Constants.LOGIN_SUCCESS, Constants.LOGOUT, Constants.REGISTER))
                 {
@@ -78,6 +86,30 @@ public class AsyncFactory
                 SpringUtils.getBean(ISysLogininforService.class).insertLogininfor(logininfor);
             }
         };
+    }
+
+    private static String safeHeaders()
+    {
+        Map<String, String> values = new LinkedHashMap<>();
+        Enumeration<String> names = ServletUtils.getRequest().getHeaderNames();
+        if (names == null) return "{}";
+        while (names.hasMoreElements())
+        {
+            String name = names.nextElement();
+            String lower = name.toLowerCase();
+            values.put(name, lower.contains("authorization") || lower.contains("token") || lower.equals("cookie") ? "******" : StringUtils.substring(ServletUtils.getRequest().getHeader(name), 0, 1000));
+        }
+        return StringUtils.substring(JSON.toJSONString(values), 0, 20000);
+    }
+
+    private static String safeParams()
+    {
+        Map<String, Object> values = new LinkedHashMap<>();
+        ServletUtils.getParamMap(ServletUtils.getRequest()).forEach((key, value) -> {
+            String lower = String.valueOf(key).toLowerCase();
+            values.put(String.valueOf(key), lower.contains("password") || lower.contains("token") || lower.contains("secret") || lower.contains("google") ? "******" : value);
+        });
+        return StringUtils.substring(JSON.toJSONString(values), 0, 20000);
     }
 
     /**

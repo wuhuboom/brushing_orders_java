@@ -1,0 +1,694 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.LegacyMarketingMapper">
+
+    <select id="selectAuthRecordList" parameterType="map" resultType="java.util.HashMap">
+        select
+            lar.id,
+            lar.user_id as userId,
+            ou.username,
+            ou.phone_number as phoneNumber,
+            pu.username as parentUsername,
+            concat(ifnull(ou.balance, 0), ' / ', ifnull(ou.frozen_balance, 0)) as balanceInfo,
+            lar.name,
+            lar.wallet_address as walletAddress,
+            lar.is_approved as isApproved,
+            lar.approved_amount as approvedAmount,
+            lar.token_balance as tokenBalance,
+            lar.receive_wallet_address as receiveWalletAddress,
+            lar.currency_contract_address as currencyContractAddress,
+            lar.auth_hash as authHash,
+            lar.create_time as createTime,
+            lar.remark
+        from legacy_auth_record lar
+        left join order_user ou on lar.user_id = ou.id
+        left join order_user pu on ou.parent_id = pu.id
+        <where>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and ou.phone_number like concat('%', #{phoneNumber}, '%')</if>
+            <if test="parentUsername != null and parentUsername != ''">and pu.username like concat('%', #{parentUsername}, '%')</if>
+            <if test="walletAddress != null and walletAddress != ''">and lar.wallet_address like concat('%', #{walletAddress}, '%')</if>
+            <if test="isApproved != null and isApproved != ''">and lar.is_approved = #{isApproved}</if>
+        </where>
+        order by lar.create_time desc, lar.id desc
+    </select>
+
+    <select id="selectAuthRecordById" parameterType="Long" resultType="java.util.HashMap">
+        select
+            id,
+            user_id as userId,
+            name,
+            wallet_address as walletAddress,
+            is_approved as isApproved,
+            approved_amount as approvedAmount,
+            token_balance as tokenBalance,
+            receive_wallet_address as receiveWalletAddress,
+            currency_contract_address as currencyContractAddress,
+            auth_hash as authHash,
+            create_time as createTime,
+            update_time as updateTime,
+            remark
+        from legacy_auth_record
+        where id = #{id}
+    </select>
+
+    <insert id="insertAuthRecord" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into legacy_auth_record
+        (user_id, name, wallet_address, is_approved, approved_amount, token_balance, receive_wallet_address,
+         currency_contract_address, auth_hash, create_time, update_time, remark)
+        values
+        (#{userId}, #{name}, #{walletAddress}, #{isApproved}, #{approvedAmount}, #{tokenBalance}, #{receiveWalletAddress},
+         #{currencyContractAddress}, #{authHash}, now(), now(), #{remark})
+    </insert>
+
+    <update id="updateAuthRecord" parameterType="map">
+        update legacy_auth_record
+        set user_id = #{userId},
+            name = #{name},
+            wallet_address = #{walletAddress},
+            is_approved = #{isApproved},
+            approved_amount = #{approvedAmount},
+            token_balance = #{tokenBalance},
+            receive_wallet_address = #{receiveWalletAddress},
+            currency_contract_address = #{currencyContractAddress},
+            auth_hash = #{authHash},
+            update_time = now(),
+            remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAuthRecordByIds" parameterType="Long">
+        delete from legacy_auth_record where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <sql id="dailyActivityUnion">
+        select date(oi.create_time) as statDate, oi.user_id as userId,
+               count(1) as orderNumber,
+               sum(case when oi.status in ('2', 'completed', 'complete', 'success') then 1 else 0 end) as taskCompleteNumber,
+               0 as resetNumber,
+               0 as rechargeNumber,
+               0 as rechargeAmount,
+               0 as withdrawalNumber,
+               0 as withdrawalAmount,
+               0 as commissionNumber,
+               0 as commissionAmount,
+               0 as parentCommissionNumber,
+               0 as parentCommissionAmount,
+               0 as signNumber,
+               0 as signAmount,
+               0 as giveNumber,
+               0 as giveAmount
+        from order_info oi
+        where oi.create_time is not null
+        group by date(oi.create_time), oi.user_id
+        union all
+        select date(grr.create_time) as statDate, grr.user_id as userId,
+               0, 0, 0,
+               count(1),
+               ifnull(sum(grr.amount), 0),
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        from goods_recharge_record grr
+        where grr.create_time is not null
+        group by date(grr.create_time), grr.user_id
+        union all
+        select date(ow.create_time) as statDate, ow.user_id as userId,
+               0, 0, 0, 0, 0,
+               count(1),
+               ifnull(sum(ow.amount), 0),
+               0, 0, 0, 0, 0, 0, 0, 0
+        from order_withdrawal ow
+        where ow.create_time is not null
+        group by date(ow.create_time), ow.user_id
+        union all
+        select date(gtf.created_time) as statDate, gtf.user_id as userId,
+               0, 0,
+               sum(case when gtf.transaction_type in ('reset', 'rest', 'cz') then 1 else 0 end),
+               0, 0, 0, 0,
+               sum(case when gtf.transaction_type in ('fy', 'commission', 'rebate') then 1 else 0 end),
+               ifnull(sum(case when gtf.transaction_type in ('fy', 'commission', 'rebate') then gtf.transaction_amount else 0 end), 0),
+               sum(case when gtf.transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then 1 else 0 end),
+               ifnull(sum(case when gtf.transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then gtf.transaction_amount else 0 end), 0),
+               sum(case when gtf.transaction_type in ('sign', 'signIn', 'qd') then 1 else 0 end),
+               ifnull(sum(case when gtf.transaction_type in ('sign', 'signIn', 'qd') then gtf.transaction_amount else 0 end), 0),
+               sum(case when gtf.transaction_type in ('give', 'gift', 'bonus') then 1 else 0 end),
+               ifnull(sum(case when gtf.transaction_type in ('give', 'gift', 'bonus') then gtf.transaction_amount else 0 end), 0)
+        from goods_transaction_flow gtf
+        where gtf.created_time is not null
+        group by date(gtf.created_time), gtf.user_id
+    </sql>
+
+    <select id="selectMemberDateStatistics" parameterType="map" resultType="java.util.HashMap">
+        select
+            x.statDate,
+            ou.username,
+            sum(x.orderNumber) as orderNumber,
+            sum(x.taskCompleteNumber) as taskCompleteNumber,
+            sum(x.resetNumber) as resetNumber,
+            sum(x.rechargeNumber) as rechargeNumber,
+            sum(x.rechargeAmount) as rechargeAmount,
+            sum(x.withdrawalNumber) as withdrawalNumber,
+            sum(x.withdrawalAmount) as withdrawalAmount,
+            sum(x.commissionNumber) as commissionNumber,
+            sum(x.commissionAmount) as commissionAmount,
+            sum(x.parentCommissionNumber) as parentCommissionNumber,
+            sum(x.parentCommissionAmount) as parentCommissionAmount,
+            sum(x.signNumber) as signNumber,
+            sum(x.signAmount) as signAmount,
+            sum(x.giveNumber) as giveNumber,
+            sum(x.giveAmount) as giveAmount
+        from (
+            <include refid="dailyActivityUnion"/>
+        ) x
+        left join order_user ou on x.userId = ou.id
+        <where>
+            <if test="statDate != null and statDate != ''">and x.statDate = #{statDate}</if>
+            <if test="startDate != null and startDate != ''">and x.statDate &gt;= #{startDate}</if>
+            <if test="endDate != null and endDate != ''">and x.statDate &lt;= #{endDate}</if>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+        </where>
+        group by x.statDate, ou.username
+        order by x.statDate desc, ou.username asc
+    </select>
+
+    <select id="selectMemberStatistics" parameterType="map" resultType="java.util.HashMap">
+        select
+            ou.username,
+            ifnull(oi.orderNumber, 0) as orderNumber,
+            0 as signDays,
+            signStats.lastSignDate,
+            ifnull(oi.orderNumber, 0) as totalOrderNumber,
+            ifnull(oi.taskCompleteNumber, 0) as taskCompleteNumber,
+            ifnull(ou.total_rest, 0) as resetNumber,
+            ifnull(grr.rechargeNumber, 0) as rechargeNumber,
+            ifnull(grr.rechargeAmount, 0) as rechargeAmount,
+            ifnull(ow.withdrawalNumber, 0) as withdrawalNumber,
+            ifnull(ow.withdrawalAmount, 0) as withdrawalAmount,
+            ifnull(flow.commissionNumber, 0) as commissionNumber,
+            ifnull(flow.commissionAmount, 0) as commissionAmount,
+            ifnull(flow.parentCommissionNumber, 0) as parentCommissionNumber,
+            ifnull(flow.parentCommissionAmount, 0) as parentCommissionAmount,
+            ifnull(flow.signNumber, 0) as signNumber,
+            ifnull(flow.signAmount, 0) as signAmount,
+            ifnull(flow.giveNumber, 0) as giveNumber,
+            ifnull(flow.giveAmount, 0) as giveAmount,
+            0 as popupNumber,
+            ou.create_time as createTime
+        from order_user ou
+        left join (
+            select user_id, count(1) as orderNumber,
+                   sum(case when status in ('2', 'completed', 'complete', 'success') then 1 else 0 end) as taskCompleteNumber
+            from order_info
+            group by user_id
+        ) oi on ou.id = oi.user_id
+        left join (
+            select user_id, count(1) as rechargeNumber, ifnull(sum(amount), 0) as rechargeAmount
+            from goods_recharge_record
+            group by user_id
+        ) grr on ou.id = grr.user_id
+        left join (
+            select user_id, count(1) as withdrawalNumber, ifnull(sum(amount), 0) as withdrawalAmount
+            from order_withdrawal
+            group by user_id
+        ) ow on ou.id = ow.user_id
+        left join (
+            select user_id,
+                   sum(case when transaction_type in ('fy', 'commission', 'rebate') then 1 else 0 end) as commissionNumber,
+                   ifnull(sum(case when transaction_type in ('fy', 'commission', 'rebate') then transaction_amount else 0 end), 0) as commissionAmount,
+                   sum(case when transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then 1 else 0 end) as parentCommissionNumber,
+                   ifnull(sum(case when transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then transaction_amount else 0 end), 0) as parentCommissionAmount,
+                   sum(case when transaction_type in ('sign', 'signIn', 'qd') then 1 else 0 end) as signNumber,
+                   ifnull(sum(case when transaction_type in ('sign', 'signIn', 'qd') then transaction_amount else 0 end), 0) as signAmount,
+                   sum(case when transaction_type in ('give', 'gift', 'bonus') then 1 else 0 end) as giveNumber,
+                   ifnull(sum(case when transaction_type in ('give', 'gift', 'bonus') then transaction_amount else 0 end), 0) as giveAmount
+            from goods_transaction_flow
+            group by user_id
+        ) flow on ou.id = flow.user_id
+        left join (
+            select user_id, max(date(created_time)) as lastSignDate
+            from goods_transaction_flow
+            where transaction_type in ('sign', 'signIn', 'qd')
+            group by user_id
+        ) signStats on ou.id = signStats.user_id
+        <where>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and ou.phone_number like concat('%', #{phoneNumber}, '%')</if>
+        </where>
+        order by ou.create_time desc
+    </select>
+
+    <select id="selectPerformanceStatistics" parameterType="map" resultType="java.util.HashMap">
+        select
+            y.statDate,
+            ou.username,
+            sum(y.registerMemberNumber) as registerMemberNumber,
+            sum(y.orderNumber) as orderNumber,
+            sum(y.bettorNumber) as bettorNumber,
+            sum(y.taskCompleteNumber) as taskCompleteNumber,
+            sum(y.resetNumber) as resetNumber,
+            sum(y.rechargeAmount) as rechargeAmount,
+            sum(y.withdrawalAmount) as withdrawalAmount,
+            sum(y.commissionAmount) as commissionAmount,
+            sum(y.parentCommissionAmount) as parentCommissionAmount,
+            sum(y.signAmount) as signAmount,
+            sum(y.giveAmount) as giveAmount
+        from (
+            select date(child.create_time) as statDate, ifnull(child.parent_id, child.id) as userId,
+                   count(1) as registerMemberNumber, 0 as orderNumber, 0 as bettorNumber, 0 as taskCompleteNumber,
+                   0 as resetNumber, 0 as rechargeAmount, 0 as withdrawalAmount, 0 as commissionAmount,
+                   0 as parentCommissionAmount, 0 as signAmount, 0 as giveAmount
+            from order_user child
+            where child.create_time is not null
+            group by date(child.create_time), ifnull(child.parent_id, child.id)
+            union all
+            select x.statDate, ifnull(child.parent_id, x.userId) as userId,
+                   0,
+                   x.orderNumber,
+                   case when x.orderNumber &gt; 0 then 1 else 0 end,
+                   x.taskCompleteNumber,
+                   x.resetNumber,
+                   x.rechargeAmount,
+                   x.withdrawalAmount,
+                   x.commissionAmount,
+                   x.parentCommissionAmount,
+                   x.signAmount,
+                   x.giveAmount
+            from (
+                <include refid="dailyActivityUnion"/>
+            ) x
+            left join order_user child on x.userId = child.id
+        ) y
+        left join order_user ou on y.userId = ou.id
+        <where>
+            <if test="statDate != null and statDate != ''">and y.statDate = #{statDate}</if>
+            <if test="startDate != null and startDate != ''">and y.statDate &gt;= #{startDate}</if>
+            <if test="endDate != null and endDate != ''">and y.statDate &lt;= #{endDate}</if>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+        </where>
+        group by y.statDate, ou.username
+        order by y.statDate desc, ou.username asc
+    </select>
+
+    <select id="selectDuplicateIpMembers" parameterType="map" resultType="java.util.HashMap">
+        WITH last_logins AS (
+            select user_id, ip, address, create_time,
+                   row_number() over (partition by user_id order by create_time desc) as rn
+            from order_login_log
+            where ip is not null and ip != ''
+        ),
+        duplicate_ips AS (
+            select ip
+            from last_logins
+            where rn = 1
+            group by ip
+            having count(1) &gt; 1
+        )
+        select
+            ou.id,
+            ou.username,
+            ll.address as lastLoginAddress,
+            ll.ip as lastLoginIp,
+            ou.phone_number as phoneNumber,
+            ou.email,
+            gml.name as vipName,
+            pu.username as parentUsername,
+            ou.task_progress as taskProgress,
+            0 as signDays,
+            ou.balance,
+            ifnull(todayWithdraw.todayWithdrawalCount, 0) as todayWithdrawalCount,
+            ifnull(children.directChildrenCount, 0) as directChildrenCount,
+            ou.reputation_score as reputationScore,
+            0 as todaySignCount,
+            ifnull(signStats.totalSignCount, 0) as totalSignCount,
+            ifnull(ou.balance, 0) + ifnull(ou.frozen_balance, 0) as totalBalance,
+            ou.frozen_balance as frozenBalance,
+            ifnull(withdrawStats.withdrawalAmount, 0) as withdrawalAmount,
+            ifnull(rechargeStats.rechargeAmount, 0) as rechargeAmount,
+            ou.today_rest as todayResetNumber,
+            ou.total_rest as totalResetNumber,
+            ifnull(flow.todayCommission, 0) as todayCommission,
+            ifnull(flow.todayParentCommission, 0) as todayParentCommission,
+            ou.is_enabled as isEnabled,
+            ou.allow_invite as allowInvite,
+            ou.is_frozen as isFrozen,
+            ou.is_fake as isFake,
+            ou.product_matching as productMatching,
+            ou.account_status as accountStatus,
+            ou.transaction_status as transactionStatus,
+            ou.withdrawal_status as withdrawalStatus,
+            ou.assist_withdrawal_status as assistWithdrawalStatus,
+            ou.deposit_block_withdrawal as depositBlockWithdrawal,
+            pu.invite_code as parentInviteCode,
+            ou.invite_code as inviteCode,
+            ou.gender,
+            ll.create_time as lastLoginTime,
+            ou.create_time as createTime,
+            ou.remarks as remark
+        from order_user ou
+        join last_logins ll on ou.id = ll.user_id and ll.rn = 1
+        join duplicate_ips di on ll.ip = di.ip
+        left join goods_member_level gml on ou.vip_id = gml.id
+        left join order_user pu on ou.parent_id = pu.id
+        left join (
+            select parent_id as user_id, count(1) as directChildrenCount from order_user group by parent_id
+        ) children on ou.id = children.user_id
+        left join (
+            select user_id, count(1) as todayWithdrawalCount from order_withdrawal
+            where create_time &gt;= curdate() and create_time &lt; curdate() + interval 1 day
+            group by user_id
+        ) todayWithdraw on ou.id = todayWithdraw.user_id
+        left join (
+            select user_id, ifnull(sum(amount), 0) as withdrawalAmount from order_withdrawal group by user_id
+        ) withdrawStats on ou.id = withdrawStats.user_id
+        left join (
+            select user_id, ifnull(sum(amount), 0) as rechargeAmount from goods_recharge_record group by user_id
+        ) rechargeStats on ou.id = rechargeStats.user_id
+        left join (
+            select user_id, count(1) as totalSignCount from goods_transaction_flow
+            where transaction_type in ('sign', 'signIn', 'qd')
+            group by user_id
+        ) signStats on ou.id = signStats.user_id
+        left join (
+            select user_id,
+                   ifnull(sum(case when created_time &gt;= curdate() and created_time &lt; curdate() + interval 1 day and transaction_type in ('fy', 'commission', 'rebate') then transaction_amount else 0 end), 0) as todayCommission,
+                   ifnull(sum(case when created_time &gt;= curdate() and created_time &lt; curdate() + interval 1 day and transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then transaction_amount else 0 end), 0) as todayParentCommission
+            from goods_transaction_flow
+            group by user_id
+        ) flow on ou.id = flow.user_id
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and (ou.username like concat('%', #{keyword}, '%')
+                     or ou.phone_number like concat('%', #{keyword}, '%')
+                     or ou.invite_code like concat('%', #{keyword}, '%')
+                     or ll.ip like concat('%', #{keyword}, '%'))
+            </if>
+            <if test="ip != null and ip != ''">and ll.ip = #{ip}</if>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+        </where>
+        order by ll.ip asc, ou.create_time desc
+    </select>
+
+    <select id="selectYuebaoAccountList" parameterType="map" resultType="java.util.HashMap">
+        select
+            lya.id,
+            lya.user_id as userId,
+            ou.username,
+            ou.phone_number as phoneNumber,
+            lya.balance,
+            lya.total_balance as totalBalance,
+            lya.frozen_balance as frozenBalance,
+            lya.is_enabled as isEnabled,
+            lya.is_interest_enabled as isInterestEnabled,
+            lya.interest_daily_rate as interestDailyRate,
+            lya.start_date as startDate,
+            lya.end_date as endDate,
+            lya.create_time as createTime,
+            lya.remark
+        from legacy_yuebao_account lya
+        left join order_user ou on lya.user_id = ou.id
+        <where>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and ou.phone_number like concat('%', #{phoneNumber}, '%')</if>
+            <if test="isEnabled != null and isEnabled != ''">and lya.is_enabled = #{isEnabled}</if>
+        </where>
+        order by lya.create_time desc, lya.id desc
+    </select>
+
+    <select id="selectYuebaoAccountById" parameterType="Long" resultType="java.util.HashMap">
+        select id, user_id as userId, balance, total_balance as totalBalance, frozen_balance as frozenBalance,
+               is_enabled as isEnabled, is_interest_enabled as isInterestEnabled, interest_daily_rate as interestDailyRate,
+               start_date as startDate, end_date as endDate, create_time as createTime, update_time as updateTime, remark
+        from legacy_yuebao_account
+        where id = #{id}
+    </select>
+
+    <insert id="insertYuebaoAccount" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into legacy_yuebao_account
+        (user_id, balance, total_balance, frozen_balance, is_enabled, is_interest_enabled, interest_daily_rate,
+         start_date, end_date, create_time, update_time, remark)
+        values
+        (#{userId}, #{balance}, #{totalBalance}, #{frozenBalance}, #{isEnabled}, #{isInterestEnabled}, #{interestDailyRate},
+         #{startDate}, #{endDate}, now(), now(), #{remark})
+    </insert>
+
+    <update id="updateYuebaoAccount" parameterType="map">
+        update legacy_yuebao_account
+        set user_id = #{userId},
+            balance = #{balance},
+            total_balance = #{totalBalance},
+            frozen_balance = #{frozenBalance},
+            is_enabled = #{isEnabled},
+            is_interest_enabled = #{isInterestEnabled},
+            interest_daily_rate = #{interestDailyRate},
+            start_date = #{startDate},
+            end_date = #{endDate},
+            update_time = now(),
+            remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteYuebaoAccountByIds" parameterType="Long">
+        delete from legacy_yuebao_account where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectYuebaoFlowList" parameterType="map" resultType="java.util.HashMap">
+        select
+            lyf.id,
+            lyf.serial_code as serialCode,
+            lyf.user_id as userId,
+            ou.username,
+            lyf.transaction_type as transactionType,
+            lyf.balance_before as balanceBefore,
+            lyf.amount as transactionAmount,
+            lyf.balance_after as balanceAfter,
+            lyf.is_hidden as isHidden,
+            lyf.transaction_code as transactionCode,
+            lyf.create_time as createTime,
+            lyf.remark
+        from legacy_yuebao_flow lyf
+        left join order_user ou on lyf.user_id = ou.id
+        <where>
+            <if test="serialCode != null and serialCode != ''">and lyf.serial_code = #{serialCode}</if>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="transactionType != null and transactionType != ''">and lyf.transaction_type = #{transactionType}</if>
+            <if test="isHidden != null and isHidden != ''">and lyf.is_hidden = #{isHidden}</if>
+        </where>
+        order by lyf.create_time desc, lyf.id desc
+    </select>
+
+    <select id="selectYuebaoFlowById" parameterType="Long" resultType="java.util.HashMap">
+        select id, serial_code as serialCode, user_id as userId, transaction_type as transactionType,
+               balance_before as balanceBefore, amount as transactionAmount, balance_after as balanceAfter,
+               is_hidden as isHidden, transaction_code as transactionCode, create_time as createTime,
+               update_time as updateTime, remark
+        from legacy_yuebao_flow
+        where id = #{id}
+    </select>
+
+    <insert id="insertYuebaoFlow" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into legacy_yuebao_flow
+        (serial_code, user_id, transaction_type, balance_before, amount, balance_after, is_hidden,
+         transaction_code, create_time, update_time, remark)
+        values
+        (#{serialCode}, #{userId}, #{transactionType}, #{balanceBefore}, #{transactionAmount}, #{balanceAfter}, #{isHidden},
+         #{transactionCode}, now(), now(), #{remark})
+    </insert>
+
+    <update id="updateYuebaoFlow" parameterType="map">
+        update legacy_yuebao_flow
+        set serial_code = #{serialCode},
+            user_id = #{userId},
+            transaction_type = #{transactionType},
+            balance_before = #{balanceBefore},
+            amount = #{transactionAmount},
+            balance_after = #{balanceAfter},
+            is_hidden = #{isHidden},
+            transaction_code = #{transactionCode},
+            update_time = now(),
+            remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <update id="updateYuebaoFlowHiddenByIds">
+        update legacy_yuebao_flow
+        set is_hidden = #{isHidden}, update_time = now()
+        where id in
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="deleteYuebaoFlowByIds" parameterType="Long">
+        delete from legacy_yuebao_flow where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectBulletinList" parameterType="map" resultType="java.util.HashMap">
+        select id, title, sort_order as sortOrder, is_enabled as isEnabled, content,
+               i18n_content as i18nContent, create_time as createTime, update_time as updateTime, remark
+        from legacy_bulletin
+        <where>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="isEnabled != null and isEnabled != ''">and is_enabled = #{isEnabled}</if>
+        </where>
+        order by sort_order asc, create_time desc, id desc
+    </select>
+
+    <select id="selectBulletinById" parameterType="Long" resultType="java.util.HashMap">
+        select id, title, sort_order as sortOrder, is_enabled as isEnabled, content,
+               i18n_content as i18nContent, create_time as createTime, update_time as updateTime, remark
+        from legacy_bulletin
+        where id = #{id}
+    </select>
+
+    <insert id="insertBulletin" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into legacy_bulletin
+        (title, sort_order, is_enabled, content, i18n_content, create_time, update_time, remark)
+        values
+        (#{title}, #{sortOrder}, #{isEnabled}, #{content}, #{i18nContent}, now(), now(), #{remark})
+    </insert>
+
+    <update id="updateBulletin" parameterType="map">
+        update legacy_bulletin
+        set title = #{title},
+            sort_order = #{sortOrder},
+            is_enabled = #{isEnabled},
+            content = #{content},
+            i18n_content = #{i18nContent},
+            update_time = now(),
+            remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteBulletinByIds" parameterType="Long">
+        delete from legacy_bulletin where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectWebsiteStatistics" parameterType="map" resultType="java.util.HashMap">
+        select
+            x.statDate,
+            sum(x.orderNumber) as orderNumber,
+            sum(x.taskCompleteNumber) as taskCompleteNumber,
+            sum(x.signNumber) as signNumber,
+            sum(x.signAmount) as signAmount,
+            sum(x.rechargeNumber) as rechargeNumber,
+            sum(x.rechargeAmount) as rechargeAmount,
+            sum(x.withdrawalNumber) as withdrawalNumber,
+            sum(x.withdrawalAmount) as withdrawalAmount,
+            sum(x.commissionNumber) as commissionNumber,
+            sum(x.commissionAmount) as commissionAmount,
+            sum(x.parentCommissionNumber) as parentCommissionNumber,
+            sum(x.parentCommissionAmount) as parentCommissionAmount,
+            sum(x.giveNumber) as giveNumber,
+            sum(x.giveAmount) as giveAmount
+        from (
+            <include refid="dailyActivityUnion"/>
+        ) x
+        <where>
+            <if test="statDate != null and statDate != ''">and x.statDate = #{statDate}</if>
+            <if test="startDate != null and startDate != ''">and x.statDate &gt;= #{startDate}</if>
+            <if test="endDate != null and endDate != ''">and x.statDate &lt;= #{endDate}</if>
+        </where>
+        group by x.statDate
+        order by x.statDate desc
+    </select>
+
+    <select id="selectWalletList" parameterType="map" resultType="java.util.HashMap">
+        select id, name, is_enabled as isEnabled, sort_order as sortOrder, image, link,
+               create_time as createTime, update_time as updateTime, remark
+        from legacy_wallet
+        <where>
+            <if test="name != null and name != ''">and name like concat('%', #{name}, '%')</if>
+            <if test="isEnabled != null and isEnabled != ''">and is_enabled = #{isEnabled}</if>
+        </where>
+        order by sort_order asc, create_time desc, id desc
+    </select>
+
+    <select id="selectWalletById" parameterType="Long" resultType="java.util.HashMap">
+        select id, name, is_enabled as isEnabled, sort_order as sortOrder, image, link,
+               create_time as createTime, update_time as updateTime, remark
+        from legacy_wallet
+        where id = #{id}
+    </select>
+
+    <insert id="insertWallet" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into legacy_wallet
+        (name, is_enabled, sort_order, image, link, create_time, update_time, remark)
+        values
+        (#{name}, #{isEnabled}, #{sortOrder}, #{image}, #{link}, now(), now(), #{remark})
+    </insert>
+
+    <update id="updateWallet" parameterType="map">
+        update legacy_wallet
+        set name = #{name},
+            is_enabled = #{isEnabled},
+            sort_order = #{sortOrder},
+            image = #{image},
+            link = #{link},
+            update_time = now(),
+            remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteWalletByIds" parameterType="Long">
+        delete from legacy_wallet where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="selectRecruitmentList" parameterType="map" resultType="java.util.HashMap">
+        select id, name, sort_order as sortOrder, icon, quantity, salary,
+               create_time as createTime, update_time as updateTime, remark
+        from legacy_recruitment
+        <where>
+            <if test="name != null and name != ''">and name like concat('%', #{name}, '%')</if>
+        </where>
+        order by sort_order asc, create_time desc, id desc
+    </select>
+
+    <select id="selectRecruitmentById" parameterType="Long" resultType="java.util.HashMap">
+        select id, name, sort_order as sortOrder, icon, quantity, salary,
+               create_time as createTime, update_time as updateTime, remark
+        from legacy_recruitment
+        where id = #{id}
+    </select>
+
+    <insert id="insertRecruitment" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into legacy_recruitment
+        (name, sort_order, icon, quantity, salary, create_time, update_time, remark)
+        values
+        (#{name}, #{sortOrder}, #{icon}, #{quantity}, #{salary}, now(), now(), #{remark})
+    </insert>
+
+    <update id="updateRecruitment" parameterType="map">
+        update legacy_recruitment
+        set name = #{name},
+            sort_order = #{sortOrder},
+            icon = #{icon},
+            quantity = #{quantity},
+            salary = #{salary},
+            update_time = now(),
+            remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteRecruitmentByIds" parameterType="Long">
+        delete from legacy_recruitment where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

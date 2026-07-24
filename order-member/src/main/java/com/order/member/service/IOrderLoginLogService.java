@@ -32,7 +32,11 @@ public interface IOrderLoginLogService
      * 
      * @return 结果
      */
-    public int insertOrderLoginLog(Long userId, String ip, String address, String loginParams);
+    int insertLoginAttempt(Long userId,
+                           String ip,
+                           String address,
+                           String success,
+                           String requestHeaders);
 
     /**
      * 修改登录日志

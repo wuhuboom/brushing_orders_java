@@ -26,13 +26,14 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
 
         String token = authHeader.substring(TOKEN_PREFIX.length());
 
-        if (!frontJwtUtil.validateToken(token)) {
+        FrontJwtUtil.FrontPrincipal principal = frontJwtUtil.authenticate(token);
+        if (principal == null) {
             return writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
                     "Invalid or expired token");
         }
 
-        String username = frontJwtUtil.getUsernameFromToken(token);
-        request.setAttribute("username", username);
+        request.setAttribute("userId", principal.userId());
+        request.setAttribute("username", principal.username());
 
         return true;
     }
@@ -41,7 +42,9 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
         response.setStatus(code);
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json;charset=UTF-8");
-        String body = String.format("{\"code\":%d,\"message\":\"%s\"}", code, message);
+        String body = String.format(
+                "{\"code\":%d,\"msg\":\"%s\",\"message\":\"%s\"}",
+                code, message, message);
         response.getWriter().write(body);
         return false;
     }

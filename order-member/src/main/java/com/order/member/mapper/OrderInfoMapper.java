@@ -2,6 +2,7 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.OrderInfo;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 订单Mapper接口
@@ -59,5 +60,19 @@ public interface OrderInfoMapper
      */
     public int deleteOrderInfoByIds(Long[] ids);
 
-    public int hasOpenOrders(Long userId);
+    public OrderInfo hasOpenOrders(Long userId);
+
+    OrderInfo selectOwnedOrderForUpdate(@Param("id") Long id, @Param("userId") Long userId);
+
+    OrderInfo selectPublicOrderById(@Param("id") Long id, @Param("userId") Long userId);
+
+    List<OrderInfo> selectPublicOrderInfoList(
+            @Param("userId") Long userId,
+            @Param("status") String status);
+
+    int transitionStatus(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("fromStatus") String fromStatus,
+            @Param("toStatus") String toStatus);
 }

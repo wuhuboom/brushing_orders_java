@@ -45,6 +45,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where ol.user_id = #{userId} and ol.order_count= #{orderCount} and status = '1' order by ol.create_time asc
     </select>
 
+    <select id="selectNextOrderLink" resultMap="OrderLinkResult">
+        <include refid="selectOrderLinkVo"/>
+        WHERE ol.user_id = #{userId}
+          AND ol.order_count = #{orderCount}
+          AND ol.status = '1'
+        ORDER BY ol.create_time ASC, ol.id ASC
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
     <!-- 新增：获取当前最大的 link_order_id -->
     <select id="selectMaxLinkOrderId" resultType="java.lang.Long">
         select max(link_order_id) from order_link
@@ -77,7 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </insert>
 
     <update id="updateOrderLink" parameterType="OrderLink">
-        update order_link
+        update order_link ol
         <trim prefix="SET" suffixOverrides=",">
             <if test="linkOrderId != null">link_order_id = #{linkOrderId},</if>
             <if test="userId != null">user_id = #{userId},</if>
@@ -89,17 +99,46 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null and status != ''">status = #{status},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
         </trim>
-        where id = #{id}
+        where ol.id = #{id}
+          and not exists (
+              select 1
+              from order_info oi
+              where oi.link_id = ol.id
+                and oi.status = '1'
+          )
+    </update>
+
+    <update id="completeOrderLink">
+        UPDATE order_link
+        SET status = '0'
+        WHERE id = #{id}
+          AND user_id = #{userId}
     </update>
 
     <delete id="deleteOrderLinkById" parameterType="Long">
-        delete from order_link where id = #{id}
+        delete ol
+        from order_link ol
+        where ol.id = #{id}
+          and not exists (
+              select 1
+              from order_info oi
+              where oi.link_id = ol.id
+                and oi.status = '1'
+          )
     </delete>
 
     <delete id="deleteOrderLinkByIds" parameterType="String">
-        delete from order_link where id in 
+        delete ol
+        from order_link ol
+        where ol.id in
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
+          and not exists (
+              select 1
+              from order_info oi
+              where oi.link_id = ol.id
+                and oi.status = '1'
+          )
     </delete>
 </mapper>

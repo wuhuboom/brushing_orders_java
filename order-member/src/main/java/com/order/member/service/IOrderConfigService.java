@@ -63,5 +63,7 @@ public interface IOrderConfigService
 
     public OrderConfig selectOrderConfigByType(String type);
 
+    List<OrderConfig> selectOrderConfigByTypes(List<String> types);
+
     public Optional<Object> getConfigValue(String type, String key);
 }

@@ -22,6 +22,7 @@ public class SysOperLog extends BaseEntity
     /** 操作模块 */
     @Excel(name = "操作模块")
     private String title;
+    private String resourceCode;
 
     /** 业务类型（0其它 1新增 2修改 3删除） */
     @Excel(name = "业务类型", readConverterExp = "0=其它,1=新增,2=修改,3=删除,4=授权,5=导出,6=导入,7=强退,8=生成代码,9=清空数据")
@@ -53,6 +54,10 @@ public class SysOperLog extends BaseEntity
     /** 请求url */
     @Excel(name = "请求地址")
     private String operUrl;
+    private String requestHeaders;
+    private String queryString;
+    private String requestParams;
+    private String requestBody;
 
     /** 操作地址 */
     @Excel(name = "操作地址")
@@ -77,6 +82,7 @@ public class SysOperLog extends BaseEntity
     /** 错误消息 */
     @Excel(name = "错误消息")
     private String errorMsg;
+    private String message;
 
     /** 操作时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -106,6 +112,8 @@ public class SysOperLog extends BaseEntity
     {
         this.title = title;
     }
+    public String getResourceCode(){ return resourceCode; }
+    public void setResourceCode(String resourceCode){ this.resourceCode = resourceCode; }
 
     public Integer getBusinessType()
     {
@@ -186,6 +194,14 @@ public class SysOperLog extends BaseEntity
     {
         this.operUrl = operUrl;
     }
+    public String getRequestHeaders(){ return requestHeaders; }
+    public void setRequestHeaders(String requestHeaders){ this.requestHeaders = requestHeaders; }
+    public String getQueryString(){ return queryString; }
+    public void setQueryString(String queryString){ this.queryString = queryString; }
+    public String getRequestParams(){ return requestParams; }
+    public void setRequestParams(String requestParams){ this.requestParams = requestParams; }
+    public String getRequestBody(){ return requestBody; }
+    public void setRequestBody(String requestBody){ this.requestBody = requestBody; }
 
     public String getOperIp()
     {
@@ -246,6 +262,8 @@ public class SysOperLog extends BaseEntity
     {
         this.errorMsg = errorMsg;
     }
+    public String getMessage(){ return message; }
+    public void setMessage(String message){ this.message = message; }
 
     public Date getOperTime()
     {

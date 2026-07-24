@@ -1,6 +1,8 @@
 package com.order.member.service.impl;
 
 import java.util.List;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import com.order.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -53,6 +55,11 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
     @Override
     public int insertOrderBonusTable(OrderBonusTable orderBonusTable)
     {
+        validateEditableBonus(orderBonusTable);
+        orderBonusTable.setAmount(
+                orderBonusTable.getAmount().setScale(2, RoundingMode.HALF_UP));
+        orderBonusTable.setIsReceived("1");
+        orderBonusTable.setReceivedTime(null);
         orderBonusTable.setCreateTime(DateUtils.getNowDate());
         return orderBonusTableMapper.insertOrderBonusTable(orderBonusTable);
     }
@@ -66,6 +73,18 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
     @Override
     public int updateOrderBonusTable(OrderBonusTable orderBonusTable)
     {
+        if (orderBonusTable == null || orderBonusTable.getId() == null) {
+            throw new IllegalArgumentException("Bonus id is required");
+        }
+        if (orderBonusTable.getAmount() != null) {
+            if (orderBonusTable.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Bonus amount must be positive");
+            }
+            orderBonusTable.setAmount(
+                    orderBonusTable.getAmount().setScale(2, RoundingMode.HALF_UP));
+        }
+        orderBonusTable.setIsReceived(null);
+        orderBonusTable.setReceivedTime(null);
         return orderBonusTableMapper.updateOrderBonusTable(orderBonusTable);
     }
 
@@ -91,5 +110,33 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
     public int deleteOrderBonusTableById(Long id)
     {
         return orderBonusTableMapper.deleteOrderBonusTableById(id);
+    }
+
+    @Override
+    public OrderBonusTable selectActiveDistributedReceivedByUserAndOrder(Long userId, Long orderNum) {
+        return orderBonusTableMapper.selectActiveDistributedReceivedByUserAndOrder(userId,orderNum);
+    }
+
+    @Override
+    public List<OrderBonusTable> selectBonusByType(Long userId) {
+        return orderBonusTableMapper.selectBonusByType(userId);
+    }
+
+    @Override
+    public OrderBonusTable userHaveBonus(Long userId, Integer orderNum) {
+        return orderBonusTableMapper.userHaveBonus(userId,orderNum);
+    }
+
+    private void validateEditableBonus(OrderBonusTable bonus) {
+        if (bonus == null || bonus.getUserId() == null || bonus.getUserId() <= 0) {
+            throw new IllegalArgumentException("Bonus user is required");
+        }
+        if (bonus.getAmount() == null
+                || bonus.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Bonus amount must be positive");
+        }
+        if ("0".equals(bonus.getDistributionType()) && bonus.getOrderNum() == null) {
+            throw new IllegalArgumentException("Order bonus requires an order number");
+        }
     }
 }

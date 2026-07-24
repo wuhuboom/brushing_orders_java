@@ -1,7 +1,9 @@
 package com.order.web.controller.common;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -19,6 +21,7 @@ import com.order.common.utils.StringUtils;
 import com.order.common.utils.file.FileUploadUtils;
 import com.order.common.utils.file.FileUtils;
 import com.order.framework.config.ServerConfig;
+import com.order.system.service.ISystemAlignmentService;
 
 /**
  * 通用请求处理
@@ -33,6 +36,9 @@ public class CommonController
 
     @Autowired
     private ServerConfig serverConfig;
+
+    @Autowired
+    private ISystemAlignmentService systemAlignmentService;
 
     private static final String FILE_DELIMETER = ",";
 
@@ -72,7 +78,8 @@ public class CommonController
      * 通用上传请求（单个）
      */
     @PostMapping("/upload")
-    public AjaxResult uploadFile(MultipartFile file) throws Exception
+    public AjaxResult uploadFile(MultipartFile file, String referenceType, String referenceTargetId,
+            Integer relatedKind, String relatedId) throws Exception
     {
         try
         {
@@ -81,11 +88,15 @@ public class CommonController
             // 上传并返回新文件名称
             String fileName = FileUploadUtils.upload(filePath, file);
             String url = serverConfig.getUrl() + fileName;
+            Map<String, Object> indexedFile = indexUpload(file, fileName, url,
+                    normalizeReferenceType(referenceType, relatedKind), firstText(referenceTargetId, relatedId));
             AjaxResult ajax = AjaxResult.success();
-            ajax.put("url", url);
-            ajax.put("fileName", fileName);
+            ajax.put("url", indexedFile.getOrDefault("fileUrl", url));
+            ajax.put("fileName", indexedFile.getOrDefault("publicPath", fileName));
             ajax.put("newFileName", FileUtils.getName(fileName));
             ajax.put("originalFilename", file.getOriginalFilename());
+            ajax.put("fileId", indexedFile.get("fileId"));
+            ajax.put("referenceId", indexedFile.get("referenceId"));
             return ajax;
         }
         catch (Exception e)
@@ -98,7 +109,8 @@ public class CommonController
      * 通用上传请求（多个）
      */
     @PostMapping("/uploads")
-    public AjaxResult uploadFiles(List<MultipartFile> files) throws Exception
+    public AjaxResult uploadFiles(List<MultipartFile> files, String referenceType, String referenceTargetId,
+            Integer relatedKind, String relatedId) throws Exception
     {
         try
         {
@@ -108,21 +120,29 @@ public class CommonController
             List<String> fileNames = new ArrayList<String>();
             List<String> newFileNames = new ArrayList<String>();
             List<String> originalFilenames = new ArrayList<String>();
+            List<Long> fileIds = new ArrayList<Long>();
+            List<Long> referenceIds = new ArrayList<Long>();
             for (MultipartFile file : files)
             {
                 // 上传并返回新文件名称
                 String fileName = FileUploadUtils.upload(filePath, file);
                 String url = serverConfig.getUrl() + fileName;
-                urls.add(url);
-                fileNames.add(fileName);
+                Map<String, Object> indexedFile = indexUpload(file, fileName, url,
+                        normalizeReferenceType(referenceType, relatedKind), firstText(referenceTargetId, relatedId));
+                urls.add(String.valueOf(indexedFile.getOrDefault("fileUrl", url)));
+                fileNames.add(String.valueOf(indexedFile.getOrDefault("publicPath", fileName)));
                 newFileNames.add(FileUtils.getName(fileName));
                 originalFilenames.add(file.getOriginalFilename());
+                fileIds.add(((Number) indexedFile.get("fileId")).longValue());
+                referenceIds.add(((Number) indexedFile.get("referenceId")).longValue());
             }
             AjaxResult ajax = AjaxResult.success();
             ajax.put("urls", StringUtils.join(urls, FILE_DELIMETER));
             ajax.put("fileNames", StringUtils.join(fileNames, FILE_DELIMETER));
             ajax.put("newFileNames", StringUtils.join(newFileNames, FILE_DELIMETER));
             ajax.put("originalFilenames", StringUtils.join(originalFilenames, FILE_DELIMETER));
+            ajax.put("fileIds", fileIds);
+            ajax.put("referenceIds", referenceIds);
             return ajax;
         }
         catch (Exception e)
@@ -158,5 +178,59 @@ public class CommonController
         {
             log.error("下载文件失败", e);
         }
+    }
+
+    private Map<String, Object> indexUpload(MultipartFile file, String publicPath, String url,
+            String referenceType, String referenceTargetId)
+    {
+        Map<String, Object> data = new HashMap<>();
+        data.put("bucket", "local");
+        data.put("fileType", StringUtils.substringAfterLast(file.getOriginalFilename(), "."));
+        data.put("contentType", file.getContentType());
+        data.put("storagePath", OrderConfig.getProfile() + FileUtils.stripPrefix(publicPath));
+        data.put("fileUrl", url);
+        data.put("referenceName", file.getOriginalFilename());
+        data.put("referenceType", referenceType);
+        data.put("referenceTargetId", referenceTargetId);
+        Map<String, Object> indexed = systemAlignmentService.registerFile(data);
+        Object indexedUrl = indexed.get("fileUrl");
+        if (indexedUrl != null)
+        {
+            String value = String.valueOf(indexedUrl);
+            indexed.put("publicPath", value.startsWith(serverConfig.getUrl())
+                    ? value.substring(serverConfig.getUrl().length()) : publicPath);
+        }
+        return indexed;
+    }
+
+    private String normalizeReferenceType(String referenceType, Integer relatedKind)
+    {
+        if (StringUtils.isNotEmpty(referenceType))
+        {
+            return referenceType;
+        }
+        if (relatedKind == null)
+        {
+            return "ADMIN_UPLOAD";
+        }
+        return switch (relatedKind)
+        {
+            case 1 -> "USER_AVATAR";
+            case 2 -> "MEMBER_AVATAR";
+            case 3 -> "ADMIN_UPLOAD";
+            case 4 -> "GOODS_CATEGORY";
+            case 5 -> "GOODS";
+            case 6 -> "BANNER";
+            case 7 -> "CUSTOMER_SERVICE";
+            case 8 -> "MEMBER_LEVEL";
+            case 9 -> "POINTS_GIFT";
+            case 10 -> "ACTIVITY";
+            default -> "ADMIN_UPLOAD";
+        };
+    }
+
+    private String firstText(String first, String second)
+    {
+        return StringUtils.isNotEmpty(first) ? first : second;
     }
 }

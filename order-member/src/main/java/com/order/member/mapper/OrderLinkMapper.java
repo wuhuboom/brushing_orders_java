@@ -75,4 +75,8 @@ public interface OrderLinkMapper
      * @return List<OrderLink> 订单链接结果列表
      */
     public List<OrderLink> selectOrderLinkByUserId(@Param("userId") Long userId, @Param("orderCount") Long orderCount);
+
+    OrderLink selectNextOrderLink(@Param("userId") Long userId, @Param("orderCount") Long orderCount);
+
+    int completeOrderLink(@Param("id") Long id, @Param("userId") Long userId);
 }

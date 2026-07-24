@@ -3,8 +3,8 @@ package com.order.member.service.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import com.order.common.utils.DateUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.order.member.mapper.GoodsMapper;
 import com.order.member.domain.Goods;
 import com.order.member.service.IGoodsService;
@@ -18,8 +18,11 @@ import com.order.member.service.IGoodsService;
 @Service
 public class GoodsServiceImpl implements IGoodsService 
 {
-    @Autowired
-    private GoodsMapper goodsMapper;
+    private final GoodsMapper goodsMapper;
+
+    public GoodsServiceImpl(GoodsMapper goodsMapper) {
+        this.goodsMapper = goodsMapper;
+    }
 
     /**
      * 查询商品
@@ -28,6 +31,7 @@ public class GoodsServiceImpl implements IGoodsService
      * @return 商品
      */
     @Override
+    @Transactional(readOnly = true)
     public Goods selectGoodsById(Long id)
     {
         return goodsMapper.selectGoodsById(id);
@@ -40,6 +44,7 @@ public class GoodsServiceImpl implements IGoodsService
      * @return 商品
      */
     @Override
+    @Transactional(readOnly = true)
     public List<Goods> selectGoodsList(Goods goods)
     {
         return goodsMapper.selectGoodsList(goods);
@@ -95,12 +100,20 @@ public class GoodsServiceImpl implements IGoodsService
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Goods selectNearestPriceGoods(BigDecimal price) {
         return goodsMapper.selectNearestPriceGoods(price);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Goods> selectRandomGoods() {
         return goodsMapper.selectRandomGoods();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Goods> selectGoodsPage() {
+        return goodsMapper.selectGoodsPage();
     }
 }

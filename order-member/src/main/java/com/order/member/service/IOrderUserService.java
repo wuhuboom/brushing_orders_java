@@ -2,6 +2,7 @@ package com.order.member.service;
 
 import java.util.List;
 import com.order.member.domain.OrderUser;
+import com.order.member.service.RegistrationResult;
 
 /**
  * 订单用户Service接口
@@ -81,6 +82,8 @@ public interface IOrderUserService
      */
     List<OrderUser> selectChildrenById(Long userId,String scope);
 
-    public String register(OrderUser user);
+    RegistrationResult register(OrderUser user);
+
+    public Boolean  existsPhone(String phone);
 
 }

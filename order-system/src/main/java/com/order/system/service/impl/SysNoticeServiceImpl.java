@@ -1,8 +1,11 @@
 package com.order.system.service.impl;
 
 import java.util.List;
+import com.order.common.i18n.ITranslationsService;
+import com.order.common.i18n.Translations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.order.system.domain.SysNotice;
 import com.order.system.mapper.SysNoticeMapper;
 import com.order.system.service.ISysNoticeService;
@@ -13,10 +16,14 @@ import com.order.system.service.ISysNoticeService;
  * @author order
  */
 @Service
+@Transactional
 public class SysNoticeServiceImpl implements ISysNoticeService
 {
     @Autowired
     private SysNoticeMapper noticeMapper;
+
+    @Autowired
+    private ITranslationsService translationsService;
 
     /**
      * 查询公告信息
@@ -27,7 +34,11 @@ public class SysNoticeServiceImpl implements ISysNoticeService
     @Override
     public SysNotice selectNoticeById(Long noticeId)
     {
-        return noticeMapper.selectNoticeById(noticeId);
+        SysNotice notice = noticeMapper.selectNoticeById(noticeId);
+        if (notice != null && notice.getTranslationsId() != null) {
+            notice.setTranslations(translationsService.selectTranslationsById(notice.getTranslationsId()));
+        }
+        return notice;
     }
 
     /**
@@ -51,6 +62,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService
     @Override
     public int insertNotice(SysNotice notice)
     {
+        saveTranslations(notice);
         return noticeMapper.insertNotice(notice);
     }
 
@@ -63,6 +75,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService
     @Override
     public int updateNotice(SysNotice notice)
     {
+        saveTranslations(notice);
         return noticeMapper.updateNotice(notice);
     }
 
@@ -88,5 +101,18 @@ public class SysNoticeServiceImpl implements ISysNoticeService
     public int deleteNoticeByIds(Long[] noticeIds)
     {
         return noticeMapper.deleteNoticeByIds(noticeIds);
+    }
+
+    private void saveTranslations(SysNotice notice) {
+        Translations translations = notice.getTranslations();
+        if (translations == null || (translations.getId() == null && !translations.hasAnyValue())) {
+            return;
+        }
+        if (translations.getId() == null) {
+            translationsService.insertTranslations(translations);
+        } else {
+            translationsService.updateTranslations(translations);
+        }
+        notice.setTranslationsId(translations.getId());
     }
 }

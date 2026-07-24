@@ -98,6 +98,20 @@ token:
   # 令牌有效期（默认30分钟）
   expireTime: 3000
 
+# Public member token lifetime in seconds.
+front-token:
+  expire-seconds: 259200
+
+# 提现账户敏感信息两阶段加密。生产切换到 DUAL_WRITE 前必须配置密钥：
+# ACCOUNT_DATA_ENCRYPTION_KEYS="v1:<base64-32-byte-key>"
+account-security:
+  mode: ${ACCOUNT_SECURITY_MODE:LEGACY_READ}
+  active-key-id: ${ACCOUNT_DATA_ACTIVE_KEY_ID:v1}
+  keys: ${ACCOUNT_DATA_ENCRYPTION_KEYS:}
+  backfill-enabled: ${ACCOUNT_DATA_BACKFILL_ENABLED:false}
+  backfill-batch-size: ${ACCOUNT_DATA_BACKFILL_BATCH_SIZE:200}
+  backfill-direction: ${ACCOUNT_DATA_BACKFILL_DIRECTION:ENCRYPT}
+
 # MyBatis配置
 mybatis:
   # 搜索指定包别名

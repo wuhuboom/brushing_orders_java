@@ -6,7 +6,7 @@ import com.order.common.utils.MessageUtils;
 import com.order.system.domain.SysTimeZone;
 import com.order.system.mapper.SysTimeZoneMapper;
 import com.order.system.service.ISysTimeZoneService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +22,11 @@ import java.util.List;
 @Service
 public class SysTimeZoneServiceImpl implements ISysTimeZoneService
 {
-    @Autowired
-    private SysTimeZoneMapper sysTimeZoneMapper;
+    private final SysTimeZoneMapper sysTimeZoneMapper;
+
+    public SysTimeZoneServiceImpl(SysTimeZoneMapper sysTimeZoneMapper) {
+        this.sysTimeZoneMapper = sysTimeZoneMapper;
+    }
 
     /**
      * 查询时区管理
@@ -32,12 +35,14 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
      * @return 时区管理
      */
     @Override
+    @Transactional(readOnly = true)
     public SysTimeZone selectSysTimeZoneById(Long id)
     {
         return sysTimeZoneMapper.selectSysTimeZoneById(id);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public SysTimeZone selectByTzName(String tzName) {
         return sysTimeZoneMapper.selectByTzName(tzName);
     }
@@ -49,12 +54,14 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
      * @return 时区管理
      */
     @Override
+    @Transactional(readOnly = true)
     public List<SysTimeZone> selectSysTimeZoneList(SysTimeZone sysTimeZone)
     {
         return sysTimeZoneMapper.selectSysTimeZoneList(sysTimeZone);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public SysTimeZone getActive() {
         return sysTimeZoneMapper.getActive();
     }
@@ -67,6 +74,7 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
      */
     @Override
     @Transactional
+    @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
     public int insertSysTimeZone(SysTimeZone sysTimeZone)
     {
         try {
@@ -95,6 +103,7 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
      * @return 结果
      */
     @Override
+    @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
     public int updateSysTimeZone(SysTimeZone sysTimeZone)
     {
         try {
@@ -112,6 +121,7 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
     }
 
     @Override
+    @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
     public int setActiveById(Long id) {
         return sysTimeZoneMapper.setActiveById(id);
     }
@@ -123,6 +133,7 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
      * @return 结果
      */
     @Override
+    @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
     public int deleteSysTimeZoneByIds(String[] ids)
     {
         return sysTimeZoneMapper.deleteSysTimeZoneByIds(ids);
@@ -135,6 +146,7 @@ public class SysTimeZoneServiceImpl implements ISysTimeZoneService
      * @return 结果
      */
     @Override
+    @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
     public int deleteSysTimeZoneById(String id)
     {
         return sysTimeZoneMapper.deleteSysTimeZoneById(id);

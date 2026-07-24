@@ -1,5 +1,6 @@
 package com.order.system.domain;
 
+import java.util.List;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
@@ -38,6 +39,9 @@ public class SysPost extends BaseEntity
 
     /** 用户是否存在此岗位标识 默认不存在 */
     private boolean flag = false;
+
+    /** Roles inherited by users holding this position. */
+    private List<Long> roleIds;
 
     public Long getPostId()
     {
@@ -100,6 +104,16 @@ public class SysPost extends BaseEntity
     {
         this.flag = flag;
     }
+
+    public List<Long> getRoleIds()
+    {
+        return roleIds;
+    }
+
+    public void setRoleIds(List<Long> roleIds)
+    {
+        this.roleIds = roleIds;
+    }
     
     @Override
     public String toString() {
@@ -109,6 +123,7 @@ public class SysPost extends BaseEntity
             .append("postName", getPostName())
             .append("postSort", getPostSort())
             .append("status", getStatus())
+            .append("roleIds", getRoleIds())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

@@ -14,10 +14,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remarks"    column="remarks"    />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
+        <result property="translationsId" column="translations_id" />
     </resultMap>
 
     <sql id="selectGoodsCustomerServiceVo">
-        select id, name, sort_order, image, is_enabled, link, remarks, create_by, create_time from goods_customer_service
+        select id, name, sort_order, image, is_enabled, link, remarks, create_by, create_time, translations_id from goods_customer_service
     </sql>
 
     <select id="selectGoodsCustomerServiceList" parameterType="GoodsCustomerService" resultMap="GoodsCustomerServiceResult">
@@ -30,6 +31,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="link != null  and link != ''"> and link = #{link}</if>
             <if test="remarks != null  and remarks != ''"> and remarks = #{remarks}</if>
         </where>
+        order by sort_order asc, id asc
     </select>
     
     <select id="selectGoodsCustomerServiceById" parameterType="String" resultMap="GoodsCustomerServiceResult">
@@ -48,6 +50,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remarks != null">remarks,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
+            <if test="translationsId != null">translations_id,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -58,6 +61,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remarks != null">#{remarks},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
+            <if test="translationsId != null">#{translationsId},</if>
          </trim>
     </insert>
 
@@ -72,6 +76,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remarks != null">remarks = #{remarks},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="translationsId != null">translations_id = #{translationsId},</if>
         </trim>
         where id = #{id}
     </update>

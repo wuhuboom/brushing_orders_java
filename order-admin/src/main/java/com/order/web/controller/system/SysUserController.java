@@ -1,6 +1,9 @@
 package com.order.web.controller.system;
 
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collection;
 import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
@@ -31,6 +34,11 @@ import com.order.system.service.ISysDeptService;
 import com.order.system.service.ISysPostService;
 import com.order.system.service.ISysRoleService;
 import com.order.system.service.ISysUserService;
+import com.order.system.service.ISystemAlignmentService;
+import com.order.framework.web.service.SysPasswordService;
+import com.order.common.constant.CacheConstants;
+import com.order.common.core.domain.model.LoginUser;
+import com.order.common.core.redis.RedisCache;
 
 /**
  * 用户信息
@@ -53,6 +61,15 @@ public class SysUserController extends BaseController
     @Autowired
     private ISysPostService postService;
 
+    @Autowired
+    private ISystemAlignmentService alignmentService;
+
+    @Autowired
+    private SysPasswordService passwordService;
+
+    @Autowired
+    private RedisCache redisCache;
+
     /**
      * 获取用户列表
      */
@@ -60,9 +77,25 @@ public class SysUserController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(SysUser user)
     {
+        Set<String> onlineUsers = onlineUsers();
+        user.getParams().put("onlineUserNames", onlineUsers);
         startPage();
         List<SysUser> list = userService.selectUserList(user);
+        list.forEach(item -> item.setOnline(onlineUsers.contains(item.getUserName()) ? "1" : "0"));
         return getDataTable(list);
+    }
+
+    private Set<String> onlineUsers()
+    {
+        Set<String> users = new HashSet<>();
+        Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
+        if (keys == null) return users;
+        for (String key : keys)
+        {
+            LoginUser loginUser = redisCache.getCacheObject(key);
+            if (loginUser != null && loginUser.getUsername() != null) users.add(loginUser.getUsername());
+        }
+        return users;
     }
 
     @Log(title = "用户管理", businessType = BusinessType.EXPORT)
@@ -109,9 +142,11 @@ public class SysUserController extends BaseController
             ajax.put(AjaxResult.DATA_TAG, sysUser);
             ajax.put("postIds", postService.selectPostListByUserId(userId));
             ajax.put("roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
+            ajax.put("groupIds", alignmentService.selectUserGroupIds(userId));
         }
         List<SysRole> roles = roleService.selectRoleAll();
-        ajax.put("roles", SysUser.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
+        // 旧后台在创建、修改和复制用户时始终展示完整角色列表。
+        ajax.put("roles", roles);
         ajax.put("posts", postService.selectPostAll());
         return ajax;
     }
@@ -140,7 +175,9 @@ public class SysUserController extends BaseController
         }
         user.setCreateBy(getUsername());
         user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
-        return toAjax(userService.insertUser(user));
+        AjaxResult result = toAjax(userService.insertUser(user));
+        result.put("userId", user.getUserId());
+        return result;
     }
 
     /**
@@ -215,6 +252,20 @@ public class SysUserController extends BaseController
         return toAjax(userService.updateUserStatus(user));
     }
 
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @Log(title = "用户登录解冻", businessType = BusinessType.UPDATE)
+    @PutMapping("/unlock/{userIds}")
+    public AjaxResult unlock(@PathVariable Long[] userIds)
+    {
+        for (Long userId : userIds)
+        {
+            userService.checkUserDataScope(userId);
+            SysUser user = userService.selectUserById(userId);
+            if (user != null) passwordService.clearLoginRecordCache(user.getUserName());
+        }
+        return toAjax(userService.unlockUsers(userIds));
+    }
+
     /**
      * 根据用户编号获取授权角色
      */
@@ -252,5 +303,32 @@ public class SysUserController extends BaseController
     public AjaxResult deptTree(SysDept dept)
     {
         return success(deptService.selectDeptTreeList(dept));
+    }
+
+    /**
+     * 启用/停用用户的谷歌验证
+     */
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/googleAuth/toggle")
+    public AjaxResult toggleGoogleAuth(@RequestBody SysUser user)
+    {
+        userService.checkUserDataScope(user.getUserId());
+        boolean enabled = "0".equals(user.getGoogleEnabled());
+        int rows = userService.updateGoogleAuthStatus(user.getUserId(), enabled);
+        return toAjax(rows);
+    }
+
+    /**
+     * 重置用户的谷歌验证
+     */
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/googleAuth/reset")
+    public AjaxResult resetGoogleAuth(@RequestBody SysUser user)
+    {
+        userService.checkUserDataScope(user.getUserId());
+        int rows = userService.resetGoogleAuth(user.getUserId());
+        return toAjax(rows);
     }
 }

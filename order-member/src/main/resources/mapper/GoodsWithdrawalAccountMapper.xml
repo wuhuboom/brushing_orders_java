@@ -21,12 +21,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="walletName"    column="wallet_name"    />
         <result property="walletAddress"    column="wallet_address"    />
         <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="deleted"    column="deleted"    />
+        <result property="deletedTime"    column="deleted_time"    />
+        <result property="bankAccountEncrypted" column="bank_account_enc" />
+        <result property="accountHolderEncrypted" column="account_holder_enc" />
+        <result property="accountNameEncrypted" column="account_name_enc" />
+        <result property="walletAddressEncrypted" column="wallet_address_enc" />
+        <result property="bankAccountMask" column="bank_account_mask" />
+        <result property="accountHolderMask" column="account_holder_mask" />
+        <result property="accountNameMask" column="account_name_mask" />
+        <result property="walletAddressMask" column="wallet_address_mask" />
     </resultMap>
 
     <sql id="selectGoodsWithdrawalAccountVo">
         select gwa.id, gwa.user_id, gwa.type, gwa.withdrawal_type_id,
                gwa.is_default, gwa.bank_name, gwa.deposit_type, gwa.branch_code, gwa.branch_name,
-               gwa.bank_account, gwa.account_holder, gwa.account_name, gwa.wallet_name, gwa.wallet_address, gwa.create_time ,
+               gwa.bank_account, gwa.account_holder, gwa.account_name, gwa.wallet_name, gwa.wallet_address,
+               gwa.create_time, gwa.update_time, gwa.deleted, gwa.deleted_time,
+               gwa.bank_account_enc, gwa.account_holder_enc, gwa.account_name_enc, gwa.wallet_address_enc,
+               gwa.bank_account_mask, gwa.account_holder_mask, gwa.account_name_mask, gwa.wallet_address_mask,
                owt.name as withdrawal_type
                from goods_withdrawal_account  gwa
                left join order_withdrawal_type owt on gwa.withdrawal_type_id = owt.id
@@ -62,6 +76,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="walletName != null">wallet_name,</if>
             <if test="walletAddress != null">wallet_address,</if>
             <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="deleted != null">deleted,</if>
+            <if test="bankAccountEncrypted != null">bank_account_enc,</if>
+            <if test="accountHolderEncrypted != null">account_holder_enc,</if>
+            <if test="accountNameEncrypted != null">account_name_enc,</if>
+            <if test="walletAddressEncrypted != null">wallet_address_enc,</if>
+            <if test="bankAccountMask != null">bank_account_mask,</if>
+            <if test="accountHolderMask != null">account_holder_mask,</if>
+            <if test="accountNameMask != null">account_name_mask,</if>
+            <if test="walletAddressMask != null">wallet_address_mask,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
@@ -78,6 +102,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="walletName != null">#{walletName},</if>
             <if test="walletAddress != null">#{walletAddress},</if>
             <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="deleted != null">#{deleted},</if>
+            <if test="bankAccountEncrypted != null">#{bankAccountEncrypted},</if>
+            <if test="accountHolderEncrypted != null">#{accountHolderEncrypted},</if>
+            <if test="accountNameEncrypted != null">#{accountNameEncrypted},</if>
+            <if test="walletAddressEncrypted != null">#{walletAddressEncrypted},</if>
+            <if test="bankAccountMask != null">#{bankAccountMask},</if>
+            <if test="accountHolderMask != null">#{accountHolderMask},</if>
+            <if test="accountNameMask != null">#{accountNameMask},</if>
+            <if test="walletAddressMask != null">#{walletAddressMask},</if>
          </trim>
     </insert>
 
@@ -112,4 +146,133 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{id}
         </foreach>
     </delete>
+
+    <select id="selectActiveByUserId" parameterType="Long" resultMap="GoodsWithdrawalAccountResult">
+        <include refid="selectGoodsWithdrawalAccountVo"/>
+        where gwa.user_id = #{userId} and COALESCE(gwa.deleted, '0') = '0'
+        order by gwa.is_default asc, gwa.create_time desc, gwa.id desc
+    </select>
+
+    <select id="selectActiveByIdAndUserId" resultMap="GoodsWithdrawalAccountResult">
+        <include refid="selectGoodsWithdrawalAccountVo"/>
+        where gwa.id = #{id} and gwa.user_id = #{userId}
+          and COALESCE(gwa.deleted, '0') = '0'
+    </select>
+
+    <select id="countActiveByUserId" parameterType="Long" resultType="int">
+        select count(1) from goods_withdrawal_account
+        where user_id = #{userId} and COALESCE(deleted, '0') = '0'
+    </select>
+
+    <select id="existsDefaultByUserId" parameterType="Long" resultType="int">
+        select exists(
+            select 1
+            from goods_withdrawal_account
+            where user_id = #{userId}
+              and COALESCE(deleted, '0') = '0'
+              and is_default = '0'
+        )
+    </select>
+
+    <update id="clearDefaultByUserId" parameterType="Long">
+        update goods_withdrawal_account
+        set is_default = '1', update_time = NOW(3)
+        where user_id = #{userId} and COALESCE(deleted, '0') = '0'
+    </update>
+
+    <update id="setDefaultByIdAndUserId">
+        update goods_withdrawal_account
+        set is_default = '0', update_time = NOW(3)
+        where id = #{id} and user_id = #{userId} and COALESCE(deleted, '0') = '0'
+    </update>
+
+    <update id="setNewestActiveAsDefault" parameterType="Long">
+        update goods_withdrawal_account
+        set is_default = '0', update_time = NOW(3)
+        where id = (
+            select id from (
+                select id from goods_withdrawal_account
+                where user_id = #{userId} and COALESCE(deleted, '0') = '0'
+                order by create_time desc, id desc limit 1
+            ) newest
+        )
+    </update>
+
+    <update id="updateOwnedAccount" parameterType="GoodsWithdrawalAccount">
+        update goods_withdrawal_account
+        set type = #{type},
+            withdrawal_type_id = #{withdrawalTypeId},
+            is_default = #{isDefault},
+            bank_name = #{bankName},
+            deposit_type = #{depositType},
+            branch_code = #{branchCode},
+            branch_name = #{branchName},
+            bank_account = #{bankAccount},
+            account_holder = #{accountHolder},
+            account_name = #{accountName},
+            wallet_name = #{walletName},
+            wallet_address = #{walletAddress},
+            bank_account_enc = #{bankAccountEncrypted},
+            account_holder_enc = #{accountHolderEncrypted},
+            account_name_enc = #{accountNameEncrypted},
+            wallet_address_enc = #{walletAddressEncrypted},
+            bank_account_mask = #{bankAccountMask},
+            account_holder_mask = #{accountHolderMask},
+            account_name_mask = #{accountNameMask},
+            wallet_address_mask = #{walletAddressMask},
+            update_time = NOW(3)
+        where id = #{id} and user_id = #{userId} and COALESCE(deleted, '0') = '0'
+    </update>
+
+    <update id="softDeleteOwned">
+        update goods_withdrawal_account
+        set deleted = '1', deleted_time = NOW(3), is_default = '1', update_time = NOW(3)
+        where id = #{id} and user_id = #{userId} and COALESCE(deleted, '0') = '0'
+    </update>
+
+    <select id="selectPlaintextBackfillBatch" resultMap="GoodsWithdrawalAccountResult">
+        <include refid="selectGoodsWithdrawalAccountVo"/>
+        where gwa.id &gt; #{afterId}
+          and ((gwa.bank_account is not null and gwa.bank_account_enc is null)
+            or (gwa.account_holder is not null and gwa.account_holder_enc is null)
+            or (gwa.account_name is not null and gwa.account_name_enc is null)
+            or (gwa.wallet_address is not null and gwa.wallet_address_enc is null))
+        order by gwa.id
+        limit #{limit}
+    </select>
+
+    <update id="updateEncryptionColumns" parameterType="GoodsWithdrawalAccount">
+        update goods_withdrawal_account
+        set bank_account_enc = #{bankAccountEncrypted},
+            account_holder_enc = #{accountHolderEncrypted},
+            account_name_enc = #{accountNameEncrypted},
+            wallet_address_enc = #{walletAddressEncrypted},
+            bank_account_mask = #{bankAccountMask},
+            account_holder_mask = #{accountHolderMask},
+            account_name_mask = #{accountNameMask},
+            wallet_address_mask = #{walletAddressMask},
+            update_time = NOW(3)
+        where id = #{id}
+    </update>
+
+    <select id="selectCiphertextRollbackBatch" resultMap="GoodsWithdrawalAccountResult">
+        <include refid="selectGoodsWithdrawalAccountVo"/>
+        where gwa.id &gt; #{afterId}
+          and ((gwa.bank_account is null and gwa.bank_account_enc is not null)
+            or (gwa.account_holder is null and gwa.account_holder_enc is not null)
+            or (gwa.account_name is null and gwa.account_name_enc is not null)
+            or (gwa.wallet_address is null and gwa.wallet_address_enc is not null))
+        order by gwa.id
+        limit #{limit}
+    </select>
+
+    <update id="restorePlaintextColumns" parameterType="GoodsWithdrawalAccount">
+        update goods_withdrawal_account
+        set bank_account = #{bankAccount},
+            account_holder = #{accountHolder},
+            account_name = #{accountName},
+            wallet_address = #{walletAddress},
+            update_time = NOW(3)
+        where id = #{id}
+    </update>
 </mapper>

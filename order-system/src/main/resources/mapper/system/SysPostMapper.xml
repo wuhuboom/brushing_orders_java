@@ -34,6 +34,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 			<if test="postName != null and postName != ''">
 				AND post_name like concat('%', #{postName}, '%')
 			</if>
+			<if test="params.beginTime != null and params.beginTime != ''">AND create_time &gt;= #{params.beginTime}</if>
+			<if test="params.endTime != null and params.endTime != ''">AND create_time &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)</if>
 		</where>
 	</select>
 	

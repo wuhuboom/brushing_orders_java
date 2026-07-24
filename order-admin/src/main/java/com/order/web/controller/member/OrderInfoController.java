@@ -77,7 +77,9 @@ public class OrderInfoController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody OrderInfo orderInfo)
     {
-        return toAjax(orderInfoService.insertOrderInfo(orderInfo));
+        return AjaxResult.error(
+                405,
+                "Financial orders can only be created through the transactional order service");
     }
 
     /**
@@ -99,6 +101,6 @@ public class OrderInfoController extends BaseController
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {
-        return toAjax(orderInfoService.deleteOrderInfoByIds(ids));
+        return AjaxResult.error(405, "Financial order history cannot be deleted");
     }
 }

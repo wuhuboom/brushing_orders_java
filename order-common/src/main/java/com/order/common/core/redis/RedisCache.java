@@ -5,10 +5,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.ReturnType;
 import org.springframework.data.redis.core.BoundSetOperations;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Component;
@@ -22,6 +25,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class RedisCache
 {
+    private static final byte[] INCREMENT_WITH_EXPIRE_SCRIPT = (
+            "local current = redis.call('INCR', KEYS[1]); " +
+            "if current == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; " +
+            "return current;").getBytes(StandardCharsets.UTF_8);
+
     @Autowired
     public RedisTemplate redisTemplate;
 
@@ -106,6 +114,34 @@ public class RedisCache
     {
         ValueOperations<String, T> operation = redisTemplate.opsForValue();
         return operation.get(key);
+    }
+
+    /** 原子递增整数缓存。 */
+    public long increment(final String key)
+    {
+        Long value = redisTemplate.opsForValue().increment(key);
+        return value == null ? 0L : value;
+    }
+
+    /**
+     * Atomically increments a counter and assigns its expiry on first creation.
+     */
+    public long incrementWithExpire(
+            final String key,
+            final long timeout,
+            final TimeUnit unit)
+    {
+        long seconds = Math.max(1L, unit.toSeconds(timeout));
+        byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
+        byte[] timeoutBytes = String.valueOf(seconds).getBytes(StandardCharsets.UTF_8);
+        Long value = (Long) redisTemplate.execute((RedisCallback<Long>) connection ->
+                connection.eval(
+                        INCREMENT_WITH_EXPIRE_SCRIPT,
+                        ReturnType.INTEGER,
+                        1,
+                        keyBytes,
+                        timeoutBytes));
+        return value == null ? 0L : value;
     }
 
     /**

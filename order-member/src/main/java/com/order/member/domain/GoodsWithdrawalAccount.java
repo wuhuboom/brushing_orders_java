@@ -1,5 +1,7 @@
 package com.order.member.domain;
 
+import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.annotation.Excel;
@@ -71,6 +73,26 @@ public class GoodsWithdrawalAccount extends BaseEntity
     private String walletAddress;
 
     private String withdrawalType;
+
+    /** 软删除：0=有效，1=删除 */
+    private String deleted;
+    private Date deletedTime;
+
+    /** 第一阶段迁移使用的密文影子列 */
+    @JsonIgnore
+    private String bankAccountEncrypted;
+    @JsonIgnore
+    private String accountHolderEncrypted;
+    @JsonIgnore
+    private String accountNameEncrypted;
+    @JsonIgnore
+    private String walletAddressEncrypted;
+
+    /** 无需解密即可安全展示的掩码 */
+    private String bankAccountMask;
+    private String accountHolderMask;
+    private String accountNameMask;
+    private String walletAddressMask;
 
     public String getWithdrawalType() {
         return withdrawalType;
@@ -218,6 +240,86 @@ public class GoodsWithdrawalAccount extends BaseEntity
         return walletAddress;
     }
 
+    public String getDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(String deleted) {
+        this.deleted = deleted;
+    }
+
+    public Date getDeletedTime() {
+        return deletedTime;
+    }
+
+    public void setDeletedTime(Date deletedTime) {
+        this.deletedTime = deletedTime;
+    }
+
+    public String getBankAccountEncrypted() {
+        return bankAccountEncrypted;
+    }
+
+    public void setBankAccountEncrypted(String bankAccountEncrypted) {
+        this.bankAccountEncrypted = bankAccountEncrypted;
+    }
+
+    public String getAccountHolderEncrypted() {
+        return accountHolderEncrypted;
+    }
+
+    public void setAccountHolderEncrypted(String accountHolderEncrypted) {
+        this.accountHolderEncrypted = accountHolderEncrypted;
+    }
+
+    public String getAccountNameEncrypted() {
+        return accountNameEncrypted;
+    }
+
+    public void setAccountNameEncrypted(String accountNameEncrypted) {
+        this.accountNameEncrypted = accountNameEncrypted;
+    }
+
+    public String getWalletAddressEncrypted() {
+        return walletAddressEncrypted;
+    }
+
+    public void setWalletAddressEncrypted(String walletAddressEncrypted) {
+        this.walletAddressEncrypted = walletAddressEncrypted;
+    }
+
+    public String getBankAccountMask() {
+        return bankAccountMask;
+    }
+
+    public void setBankAccountMask(String bankAccountMask) {
+        this.bankAccountMask = bankAccountMask;
+    }
+
+    public String getAccountHolderMask() {
+        return accountHolderMask;
+    }
+
+    public void setAccountHolderMask(String accountHolderMask) {
+        this.accountHolderMask = accountHolderMask;
+    }
+
+    public String getAccountNameMask() {
+        return accountNameMask;
+    }
+
+    public void setAccountNameMask(String accountNameMask) {
+        this.accountNameMask = accountNameMask;
+    }
+
+    public String getWalletAddressMask() {
+        return walletAddressMask;
+    }
+
+    public void setWalletAddressMask(String walletAddressMask) {
+        this.walletAddressMask = walletAddressMask;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -229,12 +331,16 @@ public class GoodsWithdrawalAccount extends BaseEntity
             .append("depositType", getDepositType())
             .append("branchCode", getBranchCode())
             .append("branchName", getBranchName())
-            .append("bankAccount", getBankAccount())
-            .append("accountHolder", getAccountHolder())
-            .append("accountName", getAccountName())
+            .append("bankAccount", maskForLog(getBankAccount()))
+            .append("accountHolder", maskForLog(getAccountHolder()))
+            .append("accountName", maskForLog(getAccountName()))
             .append("walletName", getWalletName())
-            .append("walletAddress", getWalletAddress())
+            .append("walletAddress", maskForLog(getWalletAddress()))
             .append("createTime", getCreateTime())
             .toString();
+    }
+
+    private String maskForLog(String value) {
+        return value == null || value.isEmpty() ? value : "***";
     }
 }

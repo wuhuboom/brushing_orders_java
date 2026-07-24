@@ -1,6 +1,8 @@
 package com.order.member.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.annotation.Excel;
@@ -70,6 +72,15 @@ public class OrderWithdrawal extends BaseEntity
 
     /** 提现账户详情（来自 goods_withdrawal_account） */
     private GoodsWithdrawalAccount withdrawalAccountInfo;
+
+    /** 客户端幂等号、净额和提交时的账户快照 */
+    private String requestId;
+    private BigDecimal netAmount;
+    @JsonIgnore
+    private String accountSnapshotEncrypted;
+    @Excel(name = "提现账户（脱敏）")
+    private String accountMask;
+    private LocalDate businessDate;
 
     public void setId(Long id)
     {
@@ -221,6 +232,46 @@ public class OrderWithdrawal extends BaseEntity
         this.withdrawalAccountInfo = withdrawalAccountInfo;
     }
 
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
+    public BigDecimal getNetAmount() {
+        return netAmount;
+    }
+
+    public void setNetAmount(BigDecimal netAmount) {
+        this.netAmount = netAmount;
+    }
+
+    public String getAccountSnapshotEncrypted() {
+        return accountSnapshotEncrypted;
+    }
+
+    public void setAccountSnapshotEncrypted(String accountSnapshotEncrypted) {
+        this.accountSnapshotEncrypted = accountSnapshotEncrypted;
+    }
+
+    public String getAccountMask() {
+        return accountMask;
+    }
+
+    public void setAccountMask(String accountMask) {
+        this.accountMask = accountMask;
+    }
+
+    public LocalDate getBusinessDate() {
+        return businessDate;
+    }
+
+    public void setBusinessDate(LocalDate businessDate) {
+        this.businessDate = businessDate;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -236,6 +287,9 @@ public class OrderWithdrawal extends BaseEntity
             .append("isHidden", getIsHidden())
             .append("fee", getFee())
             .append("withdrawalAccountId", getWithdrawalAccountId())
+            .append("requestId", getRequestId())
+            .append("netAmount", getNetAmount())
+            .append("accountMask", getAccountMask())
             .append("username", getUsername())
             .append("phoneNumber", getPhoneNumber())
             .append("parentUsername", getParentUsername())

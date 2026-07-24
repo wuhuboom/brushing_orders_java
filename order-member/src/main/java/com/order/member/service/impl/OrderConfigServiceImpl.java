@@ -7,8 +7,12 @@ import java.util.Optional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.order.common.utils.DateUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.order.common.i18n.ITranslationsService;
+import com.order.common.i18n.Translations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import com.order.member.mapper.OrderConfigMapper;
 import com.order.member.domain.OrderConfig;
 import com.order.member.service.IOrderConfigService;
@@ -20,13 +24,21 @@ import com.order.member.service.IOrderConfigService;
  * @date 2025-11-16
  */
 @Service
+@Transactional
 public class OrderConfigServiceImpl implements IOrderConfigService
 {
-    @Autowired
-    private OrderConfigMapper orderConfigMapper;
+    private final OrderConfigMapper orderConfigMapper;
+    private final ObjectMapper objectMapper;
+    private final ITranslationsService translationsService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    public OrderConfigServiceImpl(
+            OrderConfigMapper orderConfigMapper,
+            ObjectMapper objectMapper,
+            ITranslationsService translationsService) {
+        this.orderConfigMapper = orderConfigMapper;
+        this.objectMapper = objectMapper;
+        this.translationsService = translationsService;
+    }
 
     /**
      * 查询网站设置
@@ -35,9 +47,10 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 网站设置
      */
     @Override
+    @Transactional(readOnly = true)
     public OrderConfig selectOrderConfigById(Long id)
     {
-        return orderConfigMapper.selectOrderConfigById(id);
+        return attachTranslations(orderConfigMapper.selectOrderConfigById(id));
     }
 
     /**
@@ -47,6 +60,7 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 网站设置
      */
     @Override
+    @Transactional(readOnly = true)
     public List<OrderConfig> selectOrderConfigList(OrderConfig orderConfig)
     {
         return orderConfigMapper.selectOrderConfigList(orderConfig);
@@ -59,8 +73,19 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 结果
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "apiMessageCatalog", allEntries = true),
+            @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
+    })
     public int insertOrderConfig(OrderConfig orderConfig)
     {
+        if (orderConfig.getCreateTime() == null) {
+            orderConfig.setCreateTime(DateUtils.getNowDate());
+        }
+        if (orderConfig.getUpdateTime() == null) {
+            orderConfig.setUpdateTime(DateUtils.getNowDate());
+        }
+        saveTranslations(orderConfig);
         return orderConfigMapper.insertOrderConfig(orderConfig);
     }
 
@@ -71,6 +96,10 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 结果
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "apiMessageCatalog", allEntries = true),
+            @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
+    })
     public int updateOrderConfig(OrderConfig orderConfig)
     {
         if (orderConfig.getId() == null) {
@@ -90,8 +119,23 @@ public class OrderConfigServiceImpl implements IOrderConfigService
                 throw new RuntimeException("JSON 格式错误: " + e.getMessage());
             }
         }
+        saveTranslations(orderConfig);
        return orderConfigMapper.updateOrderConfig(orderConfig);
 
+    }
+
+    private void saveTranslations(OrderConfig orderConfig) {
+        Translations translations = orderConfig.getTranslations();
+        if (translations == null || (translations.getId() == null && !translations.hasAnyValue())) {
+            return;
+        }
+        if (translations.getId() != null) {
+            translationsService.updateTranslations(translations);
+            orderConfig.setTranslationsId(translations.getId());
+        } else {
+            translationsService.insertTranslations(translations);
+            orderConfig.setTranslationsId(translations.getId());
+        }
     }
 
     /**
@@ -101,6 +145,10 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 结果
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "apiMessageCatalog", allEntries = true),
+            @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
+    })
     public int deleteOrderConfigByIds(Long[] ids)
     {
         return orderConfigMapper.deleteOrderConfigByIds(ids);
@@ -113,14 +161,28 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 结果
      */
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "apiMessageCatalog", allEntries = true),
+            @CacheEvict(value = "tradeConfigSnapshot", allEntries = true)
+    })
     public int deleteOrderConfigById(Long id)
     {
         return orderConfigMapper.deleteOrderConfigById(id);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public OrderConfig selectOrderConfigByType(String type) {
-        return orderConfigMapper.selectOrderConfigByType(type);
+        return attachTranslations(orderConfigMapper.selectOrderConfigByType(type));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderConfig> selectOrderConfigByTypes(List<String> types) {
+        if (types == null || types.isEmpty()) {
+            return List.of();
+        }
+        return orderConfigMapper.selectOrderConfigByTypes(types);
     }
 
     /**
@@ -132,6 +194,7 @@ public class OrderConfigServiceImpl implements IOrderConfigService
      * @return 值（Object 类型，根据 JSON 实际类型）
      */
     @Override
+    @Transactional(readOnly = true)
     public Optional<Object> getConfigValue(String type, String key) {  // 返回 Optional<Object>
         OrderConfig config = selectOrderConfigByType(type);
         if (config == null || config.getContent() == null || config.getContent().isEmpty()) {
@@ -145,6 +208,13 @@ public class OrderConfigServiceImpl implements IOrderConfigService
         } catch (JsonProcessingException e) {
             return Optional.empty();
         }
+    }
+
+    private OrderConfig attachTranslations(OrderConfig config) {
+        if (config != null && config.getTranslationsId() != null) {
+            config.setTranslations(translationsService.selectTranslationsById(config.getTranslationsId()));
+        }
+        return config;
     }
 
 

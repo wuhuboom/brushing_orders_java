@@ -2,6 +2,7 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.GoodsWithdrawalAccount;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 提现账户Mapper接口
@@ -58,4 +59,32 @@ public interface GoodsWithdrawalAccountMapper
      * @return 结果
      */
     public int deleteGoodsWithdrawalAccountByIds(Long[] ids);
+
+    List<GoodsWithdrawalAccount> selectActiveByUserId(Long userId);
+
+    GoodsWithdrawalAccount selectActiveByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    int countActiveByUserId(Long userId);
+
+    int existsDefaultByUserId(Long userId);
+
+    int clearDefaultByUserId(Long userId);
+
+    int setDefaultByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    int setNewestActiveAsDefault(Long userId);
+
+    int updateOwnedAccount(GoodsWithdrawalAccount account);
+
+    int softDeleteOwned(@Param("id") Long id, @Param("userId") Long userId);
+
+    List<GoodsWithdrawalAccount> selectPlaintextBackfillBatch(@Param("afterId") Long afterId,
+                                                              @Param("limit") int limit);
+
+    int updateEncryptionColumns(GoodsWithdrawalAccount account);
+
+    List<GoodsWithdrawalAccount> selectCiphertextRollbackBatch(@Param("afterId") Long afterId,
+                                                                @Param("limit") int limit);
+
+    int restorePlaintextColumns(GoodsWithdrawalAccount account);
 }

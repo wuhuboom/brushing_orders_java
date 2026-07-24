@@ -46,6 +46,8 @@ public class SysLogininfor extends BaseEntity
     /** 提示消息 */
     @Excel(name = "提示消息")
     private String msg;
+    private String requestHeaders;
+    private String requestParams;
 
     /** 访问时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -131,6 +133,10 @@ public class SysLogininfor extends BaseEntity
     {
         this.msg = msg;
     }
+    public String getRequestHeaders(){ return requestHeaders; }
+    public void setRequestHeaders(String requestHeaders){ this.requestHeaders = requestHeaders; }
+    public String getRequestParams(){ return requestParams; }
+    public void setRequestParams(String requestParams){ this.requestParams = requestParams; }
 
     public Date getLoginTime()
     {

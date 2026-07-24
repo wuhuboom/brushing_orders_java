@@ -4,156 +4,217 @@ import com.order.common.core.redis.RedisCache;
 import com.order.common.utils.DateUtils;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
-import com.order.member.service.IOrderUserService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * JWT and server-side session storage for the public member API.
+ *
+ * <p>New tokens are stored by JWT id (jti), never by their full bearer value.
+ * Legacy token keys remain readable for one token lifetime during rollout.</p>
+ */
 @Component
 public class FrontJwtUtil {
+    private static final Logger log = LoggerFactory.getLogger(FrontJwtUtil.class);
+    private static final String TOKEN_KEY_PREFIX = "front:token:";
+    private static final String USER_TOKEN_KEY_PREFIX = "front:user_tokens:";
+    private static final String LEGACY_TOKEN_KEY_PREFIX = "token:valid:";
+    private static final String LEGACY_USER_TOKEN_KEY_PREFIX = "user:tokens:";
+
     @Value("${token.secret}")
-    private String SECRET_KEY;
+    private String secretKey;
 
-    private static final long EXPIRATION_TIME = 24*3600*1000*3; // 3天
+    @Value("${front-token.expire-seconds:259200}")
+    private int expirationSeconds;
 
-    @Autowired
-    private RedisCache redisCache;
+    private final RedisCache redisCache;
+    private final OrderUserMapper userMapper;
 
-    @Autowired
-    private OrderUserMapper userMapper;
-
-    private static final Logger logger = LoggerFactory.getLogger(FrontJwtUtil.class);
-
-    public String generateToken(String username) {
-        try {
-            // 获取用户现有的所有 token
-            Set<String> existingTokens = redisCache.getCacheSet("user:tokens:" + username);
-            if (existingTokens != null && !existingTokens.isEmpty()) {
-                // 删除所有旧的 token:valid:<token> 记录
-                for (String oldToken : existingTokens) {
-                    redisCache.deleteObject("token:valid:" + oldToken);
-                    logger.info("Removed old token for user: {}, token: {}", username, oldToken);
-                }
-                // 清空 user:tokens:<username> 集合
-                redisCache.deleteObject("user:tokens:" + username);
-            }
-        } catch (Exception e) {
-            logger.error("Failed to clear old tokens for user: {}, error: {}", username, e.getMessage());
-        }
-
-        // 生成新 token
-        String token = Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(DateUtils.getNowDate())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
-                .compact();
-
-        // 将新 token 存入 Redis
-        try {
-            redisCache.setCacheObject("token:valid:" + token, username, (int) (EXPIRATION_TIME / 1000), TimeUnit.SECONDS);
-            redisCache.setCacheSet("user:tokens:" + username, Collections.singleton(token));
-            logger.info("Generated new token for user: {}", username);
-        } catch (Exception e) {
-            logger.error("Failed to store new token for user: {}, error: {}", username, e.getMessage());
-            throw new RuntimeException("Failed to store token in Redis", e);
-        }
-        return token;
+    public FrontJwtUtil(RedisCache redisCache, OrderUserMapper userMapper) {
+        this.redisCache = redisCache;
+        this.userMapper = userMapper;
     }
 
-    public String getUsernameFromToken(String token) {
+    public String generateToken(OrderUser user) {
+        if (user == null || user.getId() == null || user.getUsername() == null) {
+            throw new IllegalArgumentException("User identity is required");
+        }
+
+        invalidateAllTokens(user.getId(), user.getUsername());
+
+        String jti = UUID.randomUUID().toString();
+        Date issuedAt = DateUtils.getNowDate();
+        Date expiration = new Date(issuedAt.getTime() + expirationSeconds * 1000L);
+        String token = Jwts.builder()
+                .setId(jti)
+                .setSubject(user.getUsername())
+                .claim("uid", user.getId())
+                .setIssuedAt(issuedAt)
+                .setExpiration(expiration)
+                .signWith(SignatureAlgorithm.HS512, secretKey)
+                .compact();
+
+        String tokenKey = TOKEN_KEY_PREFIX + jti;
+        String userTokenKey = USER_TOKEN_KEY_PREFIX + user.getId();
         try {
-            return Jwts.parser()
-                    .setSigningKey(SECRET_KEY)
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject();
-        } catch (Exception e) {
-            logger.error("Failed to extract username from token: {}", e.getMessage());
-            throw e;
+            redisCache.setCacheObject(
+                    tokenKey,
+                    user.getId() + ":" + user.getUsername(),
+                    expirationSeconds,
+                    TimeUnit.SECONDS);
+            redisCache.setCacheSet(userTokenKey, Collections.singleton(jti));
+            redisCache.expire(userTokenKey, expirationSeconds, TimeUnit.SECONDS);
+            log.info("event=front_token_issued userId={}", user.getId());
+            return token;
+        } catch (RuntimeException ex) {
+            redisCache.deleteObject(tokenKey);
+            redisCache.deleteCacheSetValue(userTokenKey, jti);
+            log.error("event=front_token_store_failed userId={}", user.getId(), ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Parse, validate and resolve a token exactly once.
+     */
+    public FrontPrincipal authenticate(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            String username = claims.getSubject();
+            String jti = claims.getId();
+            Number uidClaim = claims.get("uid", Number.class);
+
+            if (jti != null && uidClaim != null) {
+                Long userId = uidClaim.longValue();
+                String storedIdentity = redisCache.getCacheObject(TOKEN_KEY_PREFIX + jti);
+                if (!identityMatches(storedIdentity, userId, username)) {
+                    log.warn("event=front_token_rejected reason=not_in_session_store");
+                    return null;
+                }
+
+                OrderUser user = userMapper.selectAuthUserById(userId);
+                if (!isActive(user) || !username.equals(user.getUsername())) {
+                    invalidateAllTokens(userId, username);
+                    log.warn("event=front_token_rejected reason=inactive_account userId={}", userId);
+                    return null;
+                }
+                return new FrontPrincipal(userId, username, jti, false);
+            }
+
+            // Legacy compatibility: old keys contain the complete token.
+            if (!Boolean.TRUE.equals(redisCache.hasKey(LEGACY_TOKEN_KEY_PREFIX + token))) {
+                log.warn("event=front_token_rejected reason=legacy_not_in_session_store");
+                return null;
+            }
+            OrderUser user = userMapper.selectAuthUserByName(username);
+            if (!isActive(user)) {
+                if (user != null) {
+                    invalidateAllTokens(user.getId(), username);
+                }
+                return null;
+            }
+            return new FrontPrincipal(user.getId(), username, null, true);
+        } catch (Exception ex) {
+            log.warn("event=front_token_rejected reason=invalid_or_expired");
+            return null;
         }
     }
 
     public boolean validateToken(String token) {
-        try {
-            // 检查 token 是否有效（存在于 Redis）
-            if (!redisCache.hasKey("token:valid:" + token)) {
-                logger.warn("Token not found in valid tokens: {}", token);
-                return false;
-            }
+        return authenticate(token) != null;
+    }
 
-            // 验证 token 签名和过期时间
-            Claims claims = Jwts.parser()
-                    .setSigningKey(SECRET_KEY)
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            // 检查用户是否有效
-            String username = claims.getSubject();
-             OrderUser user = userMapper.selectOrderUserByName(username);
-            if (user == null || user.getAccountStatus().equals("1")) {
-                logger.warn("Invalid user: {} for token: {}", username, token);
-                // 移除无效 token
-                try {
-                    redisCache.deleteObject("token:valid:" + token);
-                    redisCache.deleteObject("user:tokens:" + username); // 改为删除整个集合
-                } catch (Exception e) {
-                    logger.error("Failed to remove invalid token for user: {}, token: {}, error: {}", username, token, e.getMessage());
-                }
-                return false;
-            }
-
-            return true;
-        } catch (Exception e) {
-            logger.error("Token validation failed: {}", e.getMessage());
-            return false;
-        }
+    public String getUsernameFromToken(String token) {
+        return parseClaims(token).getSubject();
     }
 
     public long getExpirationTimeFromToken(String token) {
         try {
-            return Jwts.parser()
-                    .setSigningKey(SECRET_KEY)
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getExpiration()
-                    .getTime();
-        } catch (Exception e) {
-            logger.error("Failed to extract expiration time from token: {}", e.getMessage());
-            return 0;
+            return parseClaims(token).getExpiration().getTime();
+        } catch (Exception ex) {
+            return 0L;
+        }
+    }
+
+    public void invalidateTokenIfPresent(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        try {
+            Claims claims = parseClaims(token);
+            String jti = claims.getId();
+            Number uidClaim = claims.get("uid", Number.class);
+            if (jti != null && uidClaim != null) {
+                Long userId = uidClaim.longValue();
+                redisCache.deleteObject(TOKEN_KEY_PREFIX + jti);
+                redisCache.deleteCacheSetValue(USER_TOKEN_KEY_PREFIX + userId, jti);
+                return;
+            }
+
+            String username = claims.getSubject();
+            redisCache.deleteObject(LEGACY_TOKEN_KEY_PREFIX + token);
+            redisCache.deleteCacheSetValue(LEGACY_USER_TOKEN_KEY_PREFIX + username, token);
+        } catch (Exception ex) {
+            // Logout is intentionally idempotent for missing, malformed and expired tokens.
+            log.debug("event=front_logout_token_ignored reason=invalid_or_expired");
         }
     }
 
     public void invalidateToken(String token, String username) {
-        try {
-            // 移除 token:valid:<token>
-            if (redisCache.hasKey("token:valid:" + token)) {
-                redisCache.deleteObject("token:valid:" + token);
-                logger.info("Removed token:valid:{}", token);
-            } else {
-                logger.warn("Token not found in Redis: token:valid:{}", token);
-            }
+        invalidateTokenIfPresent(token);
+    }
 
-            // 从 user:tokens:<username> 中移除 token
-            if (redisCache.hasKey("user:tokens:" + username)) {
-                redisCache.deleteCacheSetValue("user:tokens:" + username, token);
-                logger.info("Removed token from user:tokens:{}", username);
-            } else {
-                logger.warn("Token set not found in Redis: user:tokens:{}", username);
+    public void invalidateAllTokens(Long userId, String username) {
+        if (userId != null) {
+            String userTokenKey = USER_TOKEN_KEY_PREFIX + userId;
+            Set<String> tokenIds = redisCache.getCacheSet(userTokenKey);
+            if (tokenIds != null) {
+                for (String tokenId : tokenIds) {
+                    redisCache.deleteObject(TOKEN_KEY_PREFIX + tokenId);
+                }
             }
-        } catch (Exception e) {
-            logger.error("Failed to invalidate token for user: {}, token: {}, error: {}", username, token, e.getMessage());
-            throw new RuntimeException("Failed to invalidate token in Redis: " + e.getMessage(), e);
+            redisCache.deleteObject(userTokenKey);
         }
+
+        if (username != null) {
+            String legacyUserKey = LEGACY_USER_TOKEN_KEY_PREFIX + username;
+            Set<String> legacyTokens = redisCache.getCacheSet(legacyUserKey);
+            if (legacyTokens != null) {
+                for (String legacyToken : legacyTokens) {
+                    redisCache.deleteObject(LEGACY_TOKEN_KEY_PREFIX + legacyToken);
+                }
+            }
+            redisCache.deleteObject(legacyUserKey);
+        }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .setSigningKey(secretKey)
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    private boolean identityMatches(String storedIdentity, Long userId, String username) {
+        return storedIdentity != null
+                && storedIdentity.equals(userId + ":" + username);
+    }
+
+    private boolean isActive(OrderUser user) {
+        return user != null && !"1".equals(user.getAccountStatus());
+    }
+
+    public record FrontPrincipal(Long userId, String username, String jti, boolean legacy) {
     }
 }

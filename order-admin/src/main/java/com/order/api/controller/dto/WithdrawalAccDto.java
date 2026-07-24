@@ -1,5 +1,8 @@
 package com.order.api.controller.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class WithdrawalAccDto {
 
     /** ID */
@@ -12,36 +15,47 @@ public class WithdrawalAccDto {
     private String type;
 
     /** 出金类型 */
+    @NotBlank(message = "Withdrawal type is required")
+    @Size(max = 20, message = "Withdrawal type is too long")
     private String withdrawalTypeId;
 
     /** 是否默认 */
     private String isDefault;
 
     /** 银行名称 */
+    @Size(max = 100)
     private String bankName;
 
     /** 存款种类 */
+    @Size(max = 50)
     private String depositType;
 
     /** 支行代码 */
+    @Size(max = 50)
     private String branchCode;
 
     /** 支行名称 */
+    @Size(max = 100)
     private String branchName;
 
     /** 银行账号 */
+    @Size(max = 100)
     private String bankAccount;
 
     /** 账户持有人 */
+    @Size(max = 100)
     private String accountHolder;
 
     /** 账户名称 */
+    @Size(max = 100)
     private String accountName;
 
     /** 钱包名称 */
+    @Size(max = 100)
     private String walletName;
 
     /** 钱包地址 */
+    @Size(max = 255)
     private String walletAddress;
 
     public Long getId() {

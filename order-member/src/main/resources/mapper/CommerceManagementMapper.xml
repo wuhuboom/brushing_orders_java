@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.CommerceManagementMapper">
+
+    <select id="selectGiftList" parameterType="map" resultType="java.util.HashMap">
+        select id, title, sub_title as subTitle, kind, is_enabled as isEnabled, points, price, image,
+               stock, available_stock as availableStock, frozen_stock as frozenStock,
+               sale_volume as saleVolume, version, create_time as createTime, update_time as updateTime, remark
+        from points_gift
+        <where>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="kind != null and kind != ''">and kind = #{kind}</if>
+            <if test="isEnabled != null and isEnabled != ''">and is_enabled = #{isEnabled}</if>
+        </where>
+        order by create_time desc, id desc
+    </select>
+
+    <select id="selectGiftById" parameterType="Long" resultType="java.util.HashMap">
+        select id, title, sub_title as subTitle, kind, is_enabled as isEnabled, points, price, image,
+               stock, available_stock as availableStock, frozen_stock as frozenStock,
+               sale_volume as saleVolume, version, create_time as createTime, update_time as updateTime, remark
+        from points_gift where id = #{id}
+    </select>
+
+    <insert id="insertGift" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into points_gift
+        (title, sub_title, kind, is_enabled, points, price, image, stock, available_stock,
+         frozen_stock, sale_volume, version, create_by, create_time, update_by, update_time, remark)
+        values
+        (#{title}, #{subTitle}, #{kind}, #{isEnabled}, ifnull(#{points}, 0), ifnull(#{price}, 0), #{image},
+         ifnull(#{stock}, 0), ifnull(#{stock}, 0), 0, ifnull(#{saleVolume}, 0), 0,
+         #{createBy}, now(), #{createBy}, now(), #{remark})
+    </insert>
+
+    <update id="updateGift" parameterType="map">
+        update points_gift
+        set title = #{title}, sub_title = #{subTitle}, kind = #{kind}, is_enabled = #{isEnabled},
+            points = #{points}, price = #{price}, image = #{image}, update_by = #{updateBy},
+            update_time = now(), remark = #{remark}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteGiftByIds" parameterType="Long">
+        delete from points_gift where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+    <update id="adjustGift">
+        update points_gift
+        set stock = stock + #{stockDelta}, available_stock = available_stock + #{stockDelta},
+            sale_volume = sale_volume + #{salesDelta}, version = version + 1, update_time = now()
+        where id = #{id} and version = #{version}
+          and stock + #{stockDelta} &gt;= 0
+          and available_stock + #{stockDelta} &gt;= 0
+          and sale_volume + #{salesDelta} &gt;= 0
+    </update>
+
+    <select id="selectPointsAccountList" parameterType="map" resultType="java.util.HashMap">
+        select ou.id as userId, ou.username, ou.phone_number as phoneNumber,
+               ifnull(pa.available_points, 0) as availablePoints,
+               ifnull(pa.points, 0) as points,
+               ifnull(pa.frozen_points, 0) as frozenPoints,
+               ifnull(pa.version, 0) as version,
+               coalesce(pa.create_time, ou.create_time) as createTime
+        from order_user ou
+        left join points_account pa on pa.user_id = ou.id
+        <where>
+            <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and ou.phone_number like concat('%', #{phoneNumber}, '%')</if>
+            <if test="minAvailablePoints != null and minAvailablePoints != ''">and ifnull(pa.available_points, 0) &gt;= #{minAvailablePoints}</if>
+            <if test="maxAvailablePoints != null and maxAvailablePoints != ''">and ifnull(pa.available_points, 0) &lt;= #{maxAvailablePoints}</if>
+        </where>
+        order by ou.create_time desc, ou.id desc
+    </select>
+
+    <insert id="ensurePointsAccount">
+        insert ignore into points_account (user_id, points, available_points, frozen_points, version, create_time, update_time)
+        values (#{userId}, 0, 0, 0, 0, now(), now())
+    </insert>
+
+    <select id="selectPointsAccountForUpdate" parameterType="Long" resultType="java.util.HashMap">
+        select id, user_id as userId, points, available_points as availablePoints,
+               frozen_points as frozenPoints, version
+        from points_account where user_id = #{userId} for update
+    </select>
+
+    <select id="selectUserSnapshot" parameterType="Long" resultType="java.util.HashMap">
+        select id, username, phone_number as phoneNumber from order_user where id = #{userId}
+    </select>
+
+    <update id="updatePointsAccount">
+        update points_account
+        set points = #{points}, available_points = #{availablePoints}, version = version + 1, update_time = now()
+        where user_id = #{userId}
+    </update>
+
+    <insert id="insertPointsFlow" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into points_flow
+        (flow_no, user_id, username_snapshot, phone_snapshot, before_points, change_points,
+         after_points, transaction_no, create_by, create_time, remark)
+        values
+        (#{flowNo}, #{userId}, #{username}, #{phoneNumber}, #{beforePoints}, #{changePoints},
+         #{afterPoints}, #{transactionNo}, #{createBy}, now(), #{remark})
+    </insert>
+
+    <select id="selectPointsFlowList" parameterType="map" resultType="java.util.HashMap">
+        select pf.id, pf.flow_no as flowNo, pf.user_id as userId,
+               pf.username_snapshot as username, pf.phone_snapshot as phoneNumber,
+               pf.before_points as beforePoints, pf.change_points as changePoints,
+               pf.after_points as afterPoints, pf.transaction_no as transactionNo,
+               pf.create_time as createTime, pf.remark
+        from points_flow pf
+        <where>
+            <if test="flowNo != null and flowNo != ''">and pf.flow_no = #{flowNo}</if>
+            <if test="username != null and username != ''">and pf.username_snapshot like concat('%', #{username}, '%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and pf.phone_snapshot like concat('%', #{phoneNumber}, '%')</if>
+            <if test="minPoints != null and minPoints != ''">and pf.change_points &gt;= #{minPoints}</if>
+            <if test="maxPoints != null and maxPoints != ''">and pf.change_points &lt;= #{maxPoints}</if>
+        </where>
+        order by pf.create_time desc, pf.id desc
+    </select>
+
+    <select id="selectGiftOrderList" parameterType="map" resultType="java.util.HashMap">
+        select pgo.id, pgo.order_no as orderNo, pgo.user_id as userId,
+               pgo.username_snapshot as username,
+               pgo.gift_id as giftId, pgo.gift_image as giftImage, pgo.gift_title as giftTitle,
+               pgo.points, pgo.status, pgo.consignee, pgo.telephone,
+               pgo.delivery_address as deliveryAddress, pgo.version,
+               pgo.create_time as createTime, pgo.update_time as updateTime, pgo.remark
+        from points_gift_order pgo
+        <where>
+            <if test="orderNo != null and orderNo != ''">and pgo.order_no = #{orderNo}</if>
+            <if test="username != null and username != ''">and pgo.username_snapshot like concat('%', #{username}, '%')</if>
+            <if test="giftTitle != null and giftTitle != ''">and pgo.gift_title like concat('%', #{giftTitle}, '%')</if>
+            <if test="status != null and status != ''">and pgo.status = #{status}</if>
+            <if test="minPoints != null and minPoints != ''">and pgo.points &gt;= #{minPoints}</if>
+            <if test="maxPoints != null and maxPoints != ''">and pgo.points &lt;= #{maxPoints}</if>
+            <if test="startTime != null and startTime != ''">and pgo.create_time &gt;= #{startTime}</if>
+            <if test="endTime != null and endTime != ''">and pgo.create_time &lt;= #{endTime}</if>
+        </where>
+        order by pgo.create_time desc, pgo.id desc
+    </select>
+
+    <select id="selectGiftOrderById" parameterType="Long" resultType="java.util.HashMap">
+        select id, order_no as orderNo, user_id as userId, username_snapshot as username,
+               gift_id as giftId, gift_image as giftImage, gift_title as giftTitle, points, status,
+               consignee, telephone, delivery_address as deliveryAddress, version,
+               create_time as createTime, update_time as updateTime, remark
+        from points_gift_order where id = #{id}
+    </select>
+
+    <update id="updateGiftOrderRemark" parameterType="map">
+        update points_gift_order set remark = #{remark}, version = version + 1, update_time = now()
+        where id = #{id} and (#{version} is null or version = #{version})
+    </update>
+    <update id="shipGiftOrder">update points_gift_order set status='2', version=version+1, update_time=now() where id=#{id} and status='1'</update>
+    <update id="receiveGiftOrder">update points_gift_order set status='3', version=version+1, update_time=now() where id=#{id} and status='2'</update>
+    <update id="cancelGiftOrder">update points_gift_order set status='4', version=version+1, update_time=now() where id=#{id} and status&lt;&gt;'4'</update>
+
+    <select id="selectActivityList" parameterType="map" resultType="java.util.HashMap">
+        select id, title, sub_title as subTitle, is_enabled as isEnabled, sort_order as sortOrder,
+               image, no_winning_tips as noWinningTips, rule_content as ruleContent, description,
+               create_time as createTime, update_time as updateTime, remark
+        from activity_info
+        <where>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+            <if test="isEnabled != null and isEnabled != ''">and is_enabled = #{isEnabled}</if>
+            <if test="startTime != null and startTime != ''">and create_time &gt;= #{startTime}</if>
+            <if test="endTime != null and endTime != ''">and create_time &lt;= #{endTime}</if>
+        </where>
+        order by sort_order asc, create_time desc, id desc
+    </select>
+
+    <select id="selectActivityById" parameterType="Long" resultType="java.util.HashMap">
+        select id, title, sub_title as subTitle, is_enabled as isEnabled, sort_order as sortOrder,
+               image, no_winning_tips as noWinningTips, rule_content as ruleContent, description,
+               create_time as createTime, update_time as updateTime, remark
+        from activity_info where id = #{id}
+    </select>
+
+    <insert id="insertActivity" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into activity_info
+        (title, sub_title, is_enabled, sort_order, image, no_winning_tips, rule_content, description,
+         create_by, create_time, update_by, update_time, remark)
+        values
+        (#{title}, #{subTitle}, #{isEnabled}, ifnull(#{sortOrder},0), #{image}, #{noWinningTips},
+         #{ruleContent}, #{description}, #{createBy}, now(), #{createBy}, now(), #{remark})
+    </insert>
+
+    <update id="updateActivity" parameterType="map">
+        update activity_info set title=#{title}, sub_title=#{subTitle}, is_enabled=#{isEnabled},
+            sort_order=#{sortOrder}, image=#{image}, no_winning_tips=#{noWinningTips},
+            rule_content=#{ruleContent}, description=#{description}, update_by=#{updateBy},
+            update_time=now(), remark=#{remark}
+        where id=#{id}
+    </update>
+
+    <delete id="deleteActivityByIds" parameterType="Long">
+        delete from activity_info where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+    <select id="selectEnabledPrizeProbability" parameterType="Long" resultType="java.math.BigDecimal">
+        select ifnull(sum(probability),0) from activity_prize where activity_id=#{activityId} and is_enabled='1'
+    </select>
+
+    <select id="selectActivityPrizeList" parameterType="map" resultType="java.util.HashMap">
+        select ap.id, ap.activity_id as activityId, ai.title as activityTitle, ap.probability,
+               ap.title, ap.sub_title as subTitle, ap.kind, ap.price, ap.is_enabled as isEnabled,
+               ap.sort_order as sortOrder, ap.image, ap.create_time as createTime,
+               ap.update_time as updateTime, ap.remark
+        from activity_prize ap join activity_info ai on ai.id=ap.activity_id
+        <where>
+            <if test="activityId != null and activityId != ''">and ap.activity_id=#{activityId}</if>
+            <if test="title != null and title != ''">and ap.title like concat('%',#{title},'%')</if>
+            <if test="kind != null and kind != ''">and ap.kind=#{kind}</if>
+            <if test="isEnabled != null and isEnabled != ''">and ap.is_enabled=#{isEnabled}</if>
+        </where>
+        order by ap.activity_id, ap.sort_order, ap.id
+    </select>
+
+    <select id="selectActivityPrizeById" parameterType="Long" resultType="java.util.HashMap">
+        select id, activity_id as activityId, probability, title, sub_title as subTitle, kind, price,
+               is_enabled as isEnabled, sort_order as sortOrder, image,
+               create_time as createTime, update_time as updateTime, remark
+        from activity_prize where id=#{id}
+    </select>
+
+    <insert id="insertActivityPrize" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into activity_prize
+        (activity_id, probability, title, sub_title, kind, price, is_enabled, sort_order, image,
+         create_by, create_time, update_by, update_time, remark)
+        values
+        (#{activityId}, #{probability}, #{title}, #{subTitle}, #{kind}, #{price}, #{isEnabled},
+         ifnull(#{sortOrder},0), #{image}, #{createBy}, now(), #{createBy}, now(), #{remark})
+    </insert>
+
+    <update id="updateActivityPrize" parameterType="map">
+        update activity_prize set activity_id=#{activityId}, probability=#{probability}, title=#{title},
+            sub_title=#{subTitle}, kind=#{kind}, price=#{price}, is_enabled=#{isEnabled},
+            sort_order=#{sortOrder}, image=#{image}, update_by=#{updateBy}, update_time=now(), remark=#{remark}
+        where id=#{id}
+    </update>
+
+    <delete id="deleteActivityPrizeByIds" parameterType="Long">
+        delete from activity_prize where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+    <select id="selectActivityAccountList" parameterType="map" resultType="java.util.HashMap">
+        select ou.id as userId, ou.username, ou.phone_number as phoneNumber,
+               ifnull(aa.available_times,0) as availableTimes, ifnull(aa.used_times,0) as usedTimes,
+               ifnull(aa.version,0) as version, coalesce(aa.create_time,ou.create_time) as createTime
+        from order_user ou left join activity_account aa on aa.user_id=ou.id
+        <where>
+            <if test="username != null and username != ''">and ou.username like concat('%',#{username},'%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and ou.phone_number like concat('%',#{phoneNumber},'%')</if>
+            <if test="minAvailableTimes != null and minAvailableTimes != ''">and ifnull(aa.available_times,0)&gt;=#{minAvailableTimes}</if>
+            <if test="maxAvailableTimes != null and maxAvailableTimes != ''">and ifnull(aa.available_times,0)&lt;=#{maxAvailableTimes}</if>
+        </where>
+        order by ou.create_time desc, ou.id desc
+    </select>
+
+    <insert id="ensureActivityAccount">
+        insert ignore into activity_account (user_id,available_times,used_times,version,create_time,update_time)
+        values (#{userId},0,0,0,now(),now())
+    </insert>
+
+    <select id="selectActivityAccountForUpdate" parameterType="Long" resultType="java.util.HashMap">
+        select id,user_id as userId,available_times as availableTimes,used_times as usedTimes,version
+        from activity_account where user_id=#{userId} for update
+    </select>
+
+    <update id="updateActivityAccount">
+        update activity_account set available_times=#{availableTimes},version=version+1,update_time=now()
+        where user_id=#{userId}
+    </update>
+
+    <select id="selectAccountPrizeList" resultType="java.util.HashMap">
+        select aap.id,aap.user_id as userId,aap.activity_id as activityId,ai.title as activityTitle,
+               aap.prize_id as prizeId,ap.title as prizeTitle,ap.image as prizeImage,ap.kind as prizeKind,
+               ap.price as prizePrice,aap.sort_order as sortOrder,aap.is_winning as isWinning,
+               aap.create_time as createTime,aap.remark
+        from activity_account_prize aap
+        join activity_info ai on ai.id=aap.activity_id
+        left join activity_prize ap on ap.id=aap.prize_id
+        where aap.user_id=#{userId}
+        <if test="params.activityId != null and params.activityId != ''">and aap.activity_id=#{params.activityId}</if>
+        <if test="params.sortOrder != null and params.sortOrder != ''">and aap.sort_order=#{params.sortOrder}</if>
+        <if test="params.isWinning != null and params.isWinning != ''">and aap.is_winning=#{params.isWinning}</if>
+        order by aap.sort_order,aap.id
+    </select>
+
+    <select id="selectAccountPrizeById" parameterType="Long" resultType="java.util.HashMap">
+        select id,user_id as userId,activity_id as activityId,prize_id as prizeId,
+               sort_order as sortOrder,is_winning as isWinning,create_time as createTime,remark
+        from activity_account_prize where id=#{id}
+    </select>
+
+    <insert id="insertAccountPrize" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into activity_account_prize
+        (user_id,activity_id,prize_id,sort_order,is_winning,create_time,update_time,remark)
+        values (#{userId},#{activityId},#{prizeId},ifnull(#{sortOrder},0),#{isWinning},now(),now(),#{remark})
+    </insert>
+
+    <update id="updateAccountPrize" parameterType="map">
+        update activity_account_prize set activity_id=#{activityId},prize_id=#{prizeId},
+            sort_order=#{sortOrder},is_winning=#{isWinning},update_time=now(),remark=#{remark}
+        where id=#{id} and user_id=#{userId}
+    </update>
+
+    <delete id="deleteAccountPrizeByIds" parameterType="Long">
+        delete from activity_account_prize where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+    <select id="selectActivityPartnerList" parameterType="map" resultType="java.util.HashMap">
+        select ap.id,ap.activity_id as activityId,ap.activity_title as activityTitle,
+               ap.user_id as userId,ap.username_snapshot as username,
+               ap.phone_snapshot as phoneNumber,ap.is_winning as isWinning,
+               ap.prize_id as prizeId,ap.prize_image as prizeImage,ap.prize_title as prizeTitle,
+               ap.prize_kind as prizeKind,ap.prize_price as prizePrice,ap.is_hidden as isHidden,
+               ap.is_verified as isVerified,ap.create_time as createTime,ap.remark
+        from activity_partner ap
+        <where>
+            <if test="activityId != null and activityId != ''">and ap.activity_id=#{activityId}</if>
+            <if test="username != null and username != ''">and ap.username_snapshot like concat('%',#{username},'%')</if>
+            <if test="phoneNumber != null and phoneNumber != ''">and ap.phone_snapshot like concat('%',#{phoneNumber},'%')</if>
+            <if test="isWinning != null and isWinning != ''">and ap.is_winning=#{isWinning}</if>
+            <if test="isHidden != null and isHidden != ''">and ap.is_hidden=#{isHidden}</if>
+            <if test="isVerified != null and isVerified != ''">and ap.is_verified=#{isVerified}</if>
+        </where>
+        order by ap.create_time desc,ap.id desc
+    </select>
+
+    <update id="updatePartnerHidden">
+        update activity_partner set is_hidden=#{isHidden},update_time=now() where id in
+        <foreach item="id" collection="ids" open="(" separator="," close=")">#{id}</foreach>
+    </update>
+
+    <select id="selectWebsiteCustomerList" parameterType="map" resultType="java.util.HashMap">
+        select id,first_name as firstName,last_name as lastName,company,email,country,content,create_time as createTime
+        from website_customer
+        <where>
+            <if test="firstName != null and firstName != ''">and first_name like concat('%',#{firstName},'%')</if>
+            <if test="lastName != null and lastName != ''">and last_name like concat('%',#{lastName},'%')</if>
+            <if test="company != null and company != ''">and company like concat('%',#{company},'%')</if>
+        </where>
+        order by create_time desc,id desc
+    </select>
+
+    <select id="selectWebsiteCustomerById" parameterType="Long" resultType="java.util.HashMap">
+        select id,first_name as firstName,last_name as lastName,company,email,country,content,create_time as createTime
+        from website_customer where id=#{id}
+    </select>
+
+    <insert id="insertWebsiteCustomer" parameterType="map" useGeneratedKeys="true" keyProperty="id">
+        insert into website_customer (first_name,last_name,company,email,country,content,create_time)
+        values (#{firstName},#{lastName},#{company},#{email},#{country},#{content},now())
+    </insert>
+
+    <delete id="deleteWebsiteCustomerByIds" parameterType="Long">
+        delete from website_customer where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+</mapper>

@@ -1,6 +1,7 @@
 package com.order.member.domain;
 
 import com.order.common.core.domain.BaseEntity;
+import com.order.common.i18n.Translations;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.annotation.Excel;
@@ -41,6 +42,10 @@ public class GoodsCustomerService extends BaseEntity
     /** 备注 */
     @Excel(name = "备注")
     private String remarks;
+
+    private Long translationsId;
+
+    private Translations translations;
 
     public void setId(String id) 
     {
@@ -112,6 +117,22 @@ public class GoodsCustomerService extends BaseEntity
         return remarks;
     }
 
+    public Long getTranslationsId() {
+        return translationsId;
+    }
+
+    public void setTranslationsId(Long translationsId) {
+        this.translationsId = translationsId;
+    }
+
+    public Translations getTranslations() {
+        return translations;
+    }
+
+    public void setTranslations(Translations translations) {
+        this.translations = translations;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -122,6 +143,7 @@ public class GoodsCustomerService extends BaseEntity
             .append("isEnabled", getIsEnabled())
             .append("link", getLink())
             .append("remarks", getRemarks())
+            .append("translationsId", getTranslationsId())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .toString();

@@ -34,6 +34,14 @@ public class OrderLoginLog extends BaseEntity
     @Excel(name = "参数")
     private String loginParams;
 
+    /** 是否成功 */
+    @Excel(name = "是否成功")
+    private String success;
+
+    /** 请求头 */
+    @Excel(name = "请求头")
+    private String requestHeaders;
+
     /** 用户名（来自 order_user） */
     private String username;
 
@@ -87,6 +95,26 @@ public class OrderLoginLog extends BaseEntity
         return loginParams;
     }
 
+    public void setSuccess(String success)
+    {
+        this.success = success;
+    }
+
+    public String getSuccess()
+    {
+        return success;
+    }
+
+    public void setRequestHeaders(String requestHeaders)
+    {
+        this.requestHeaders = requestHeaders;
+    }
+
+    public String getRequestHeaders()
+    {
+        return requestHeaders;
+    }
+
     public String getUsername()
     {
         return username;
@@ -107,6 +135,8 @@ public class OrderLoginLog extends BaseEntity
             .append("username", getUsername())
             .append("createTime", getCreateTime())
             .append("loginParams", getLoginParams())
+            .append("success", getSuccess())
+            .append("requestHeaders", getRequestHeaders())
             .toString();
     }
 }

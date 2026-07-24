@@ -86,6 +86,29 @@ public interface SysUserMapper
     public int resetUserPwd(@Param("userId") Long userId, @Param("password") String password);
 
     /**
+     * 专用：重置用户的 Google 验证字段（清空 secret 并将 google_enabled/google_auth_enabled 设为未启用）
+     *
+     * @param userId 用户ID
+     * @param updateBy 操作人
+     * @return 结果行数
+     */
+    public int resetUserGoogleAuth(@Param("userId") Long userId, @Param("updateBy") String updateBy);
+
+    int configureUserGoogleAuth(@Param("userId") Long userId, @Param("enabled") String enabled, @Param("updateBy") String updateBy);
+
+    int unlockUsers(Long[] userIds);
+
+    /**
+     * 专用：为用户持久化 Google 验证密钥（加密），并标记为已启用/已绑定
+     *
+     * @param userId 用户ID
+     * @param encryptedSecret 加密后的 secret
+     * @param updateBy 操作人
+     * @return 受影响行数
+     */
+    int updateUserGoogleAuthSecret(@Param("userId") Long userId, @Param("encryptedSecret") String encryptedSecret, @Param("updateBy") String updateBy);
+
+    /**
      * 通过用户ID删除用户
      * 
      * @param userId 用户ID

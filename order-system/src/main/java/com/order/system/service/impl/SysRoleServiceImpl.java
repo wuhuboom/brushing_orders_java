@@ -23,7 +23,9 @@ import com.order.system.mapper.SysRoleDeptMapper;
 import com.order.system.mapper.SysRoleMapper;
 import com.order.system.mapper.SysRoleMenuMapper;
 import com.order.system.mapper.SysUserRoleMapper;
+import com.order.system.mapper.SystemAlignmentMapper;
 import com.order.system.service.ISysRoleService;
+import com.order.system.service.ISystemAlignmentService;
 
 /**
  * 角色 业务层处理
@@ -44,6 +46,12 @@ public class SysRoleServiceImpl implements ISysRoleService
 
     @Autowired
     private SysRoleDeptMapper roleDeptMapper;
+
+    @Autowired
+    private SystemAlignmentMapper alignmentMapper;
+
+    @Autowired
+    private ISystemAlignmentService alignmentService;
 
     /**
      * 根据条件分页查询角色数据
@@ -136,7 +144,14 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public SysRole selectRoleById(Long roleId)
     {
-        return roleMapper.selectRoleById(roleId);
+        SysRole role = roleMapper.selectRoleById(roleId);
+        if (role != null)
+        {
+            java.util.Map<String, Object> alignment = alignmentService.selectRoleAlignment(roleId);
+            role.setStrategyIds((List<Long>) alignment.get("strategyIds"));
+            role.setDataRules((List<java.util.Map<String, Object>>) alignment.get("dataRules"));
+        }
+        return role;
     }
 
     /**
@@ -236,7 +251,9 @@ public class SysRoleServiceImpl implements ISysRoleService
     {
         // 新增角色信息
         roleMapper.insertRole(role);
-        return insertRoleMenu(role);
+        int rows = insertRoleMenu(role);
+        alignmentService.replaceRoleAlignment(role.getRoleId(), roleAlignment(role));
+        return rows;
     }
 
     /**
@@ -253,7 +270,9 @@ public class SysRoleServiceImpl implements ISysRoleService
         roleMapper.updateRole(role);
         // 删除角色与菜单关联
         roleMenuMapper.deleteRoleMenuByRoleId(role.getRoleId());
-        return insertRoleMenu(role);
+        int rows = insertRoleMenu(role);
+        alignmentService.replaceRoleAlignment(role.getRoleId(), roleAlignment(role));
+        return rows;
     }
 
     /**
@@ -296,7 +315,7 @@ public class SysRoleServiceImpl implements ISysRoleService
         int rows = 1;
         // 新增用户与角色管理
         List<SysRoleMenu> list = new ArrayList<SysRoleMenu>();
-        for (Long menuId : role.getMenuIds())
+        for (Long menuId : role.getMenuIds() == null ? new Long[0] : role.getMenuIds())
         {
             SysRoleMenu rm = new SysRoleMenu();
             rm.setRoleId(role.getRoleId());
@@ -348,6 +367,8 @@ public class SysRoleServiceImpl implements ISysRoleService
         roleMenuMapper.deleteRoleMenuByRoleId(roleId);
         // 删除角色与部门关联
         roleDeptMapper.deleteRoleDeptByRoleId(roleId);
+        alignmentMapper.deleteRoleStrategies(roleId);
+        alignmentMapper.deleteRoleDataRules(roleId);
         return roleMapper.deleteRoleById(roleId);
     }
 
@@ -366,16 +387,37 @@ public class SysRoleServiceImpl implements ISysRoleService
             checkRoleAllowed(new SysRole(roleId));
             checkRoleDataScope(roleId);
             SysRole role = selectRoleById(roleId);
+            if (role != null && "Y".equals(role.getIsBuiltin()))
+            {
+                throw new ServiceException(String.format("%1$s为系统内置角色,不能删除", role.getRoleName()));
+            }
             if (countUserRoleByRoleId(roleId) > 0)
             {
                 throw new ServiceException(String.format("%1$s已分配,不能删除", role.getRoleName()));
+            }
+            if (alignmentMapper.countPostRoleUsage(roleId) > 0)
+            {
+                throw new ServiceException(String.format("%1$s已关联职位,不能删除", role.getRoleName()));
             }
         }
         // 删除角色与菜单关联
         roleMenuMapper.deleteRoleMenu(roleIds);
         // 删除角色与部门关联
         roleDeptMapper.deleteRoleDept(roleIds);
+        for (Long roleId : roleIds)
+        {
+            alignmentMapper.deleteRoleStrategies(roleId);
+            alignmentMapper.deleteRoleDataRules(roleId);
+        }
         return roleMapper.deleteRoleByIds(roleIds);
+    }
+
+    private java.util.Map<String, Object> roleAlignment(SysRole role)
+    {
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("strategyIds", role.getStrategyIds());
+        result.put("dataRules", role.getDataRules());
+        return result;
     }
 
     /**

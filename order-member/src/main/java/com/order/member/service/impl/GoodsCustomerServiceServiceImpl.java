@@ -1,9 +1,12 @@
 package com.order.member.service.impl;
 
 import java.util.List;
+import com.order.common.i18n.ITranslationsService;
+import com.order.common.i18n.Translations;
 import com.order.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.order.member.mapper.GoodsCustomerServiceMapper;
 import com.order.member.domain.GoodsCustomerService;
 import com.order.member.service.IGoodsCustomerServiceService;
@@ -15,10 +18,14 @@ import com.order.member.service.IGoodsCustomerServiceService;
  * @date 2025-11-11
  */
 @Service
+@Transactional
 public class GoodsCustomerServiceServiceImpl implements IGoodsCustomerServiceService 
 {
     @Autowired
     private GoodsCustomerServiceMapper goodsCustomerServiceMapper;
+
+    @Autowired
+    private ITranslationsService translationsService;
 
     /**
      * 查询客服
@@ -29,7 +36,11 @@ public class GoodsCustomerServiceServiceImpl implements IGoodsCustomerServiceSer
     @Override
     public GoodsCustomerService selectGoodsCustomerServiceById(String id)
     {
-        return goodsCustomerServiceMapper.selectGoodsCustomerServiceById(id);
+        GoodsCustomerService service = goodsCustomerServiceMapper.selectGoodsCustomerServiceById(id);
+        if (service != null && service.getTranslationsId() != null) {
+            service.setTranslations(translationsService.selectTranslationsById(service.getTranslationsId()));
+        }
+        return service;
     }
 
     /**
@@ -53,6 +64,7 @@ public class GoodsCustomerServiceServiceImpl implements IGoodsCustomerServiceSer
     @Override
     public int insertGoodsCustomerService(GoodsCustomerService goodsCustomerService)
     {
+        saveTranslations(goodsCustomerService);
         goodsCustomerService.setCreateTime(DateUtils.getNowDate());
         return goodsCustomerServiceMapper.insertGoodsCustomerService(goodsCustomerService);
     }
@@ -66,6 +78,7 @@ public class GoodsCustomerServiceServiceImpl implements IGoodsCustomerServiceSer
     @Override
     public int updateGoodsCustomerService(GoodsCustomerService goodsCustomerService)
     {
+        saveTranslations(goodsCustomerService);
         return goodsCustomerServiceMapper.updateGoodsCustomerService(goodsCustomerService);
     }
 
@@ -91,5 +104,18 @@ public class GoodsCustomerServiceServiceImpl implements IGoodsCustomerServiceSer
     public int deleteGoodsCustomerServiceById(String id)
     {
         return goodsCustomerServiceMapper.deleteGoodsCustomerServiceById(id);
+    }
+
+    private void saveTranslations(GoodsCustomerService service) {
+        Translations translations = service.getTranslations();
+        if (translations == null || (translations.getId() == null && !translations.hasAnyValue())) {
+            return;
+        }
+        if (translations.getId() == null) {
+            translationsService.insertTranslations(translations);
+        } else {
+            translationsService.updateTranslations(translations);
+        }
+        service.setTranslationsId(translations.getId());
     }
 }

@@ -1,6 +1,7 @@
 package com.order.system.service.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import jakarta.validation.Validator;
@@ -30,6 +31,7 @@ import com.order.system.mapper.SysUserRoleMapper;
 import com.order.system.service.ISysConfigService;
 import com.order.system.service.ISysDeptService;
 import com.order.system.service.ISysUserService;
+import com.order.system.service.ISystemAlignmentService;
 
 /**
  * 用户 业务层处理
@@ -61,6 +63,9 @@ public class SysUserServiceImpl implements ISysUserService
 
     @Autowired
     private ISysDeptService deptService;
+
+    @Autowired
+    private ISystemAlignmentService alignmentService;
 
     @Autowired
     protected Validator validator;
@@ -113,7 +118,9 @@ public class SysUserServiceImpl implements ISysUserService
     @Override
     public SysUser selectUserByUserName(String userName)
     {
-        return userMapper.selectUserByUserName(userName);
+        SysUser user = userMapper.selectUserByUserName(userName);
+        if (user != null) user.setRoles(roleMapper.selectRolePermissionByUserId(user.getUserId()));
+        return user;
     }
 
     /**
@@ -266,6 +273,10 @@ public class SysUserServiceImpl implements ISysUserService
         insertUserPost(user);
         // 新增用户与角色管理
         insertUserRole(user);
+        if (user.getGroupIds() != null)
+        {
+            alignmentService.replaceUserGroups(user.getUserId(), Arrays.asList(user.getGroupIds()));
+        }
         return rows;
     }
 
@@ -300,6 +311,10 @@ public class SysUserServiceImpl implements ISysUserService
         userPostMapper.deleteUserPostByUserId(userId);
         // 新增用户与岗位管理
         insertUserPost(user);
+        if (user.getGroupIds() != null)
+        {
+            alignmentService.replaceUserGroups(userId, Arrays.asList(user.getGroupIds()));
+        }
         return userMapper.updateUser(user);
     }
 
@@ -449,6 +464,7 @@ public class SysUserServiceImpl implements ISysUserService
         userRoleMapper.deleteUserRoleByUserId(userId);
         // 删除用户与岗位表
         userPostMapper.deleteUserPostByUserId(userId);
+        alignmentService.replaceUserGroups(userId, null);
         return userMapper.deleteUserById(userId);
     }
 
@@ -471,6 +487,10 @@ public class SysUserServiceImpl implements ISysUserService
         userRoleMapper.deleteUserRole(userIds);
         // 删除用户与岗位关联
         userPostMapper.deleteUserPost(userIds);
+        for (Long userId : userIds)
+        {
+            alignmentService.replaceUserGroups(userId, null);
+        }
         return userMapper.deleteUserByIds(userIds);
     }
 
@@ -546,5 +566,56 @@ public class SysUserServiceImpl implements ISysUserService
             successMsg.insert(0, "恭喜您，数据已全部导入成功！共 " + successNum + " 条，数据如下：");
         }
         return successMsg.toString();
+    }
+
+    @Override
+    public int updateGoogleAuthStatus(Long userId, boolean enabled)
+    {
+        SysUser user = userMapper.selectUserById(userId);
+        if (user == null)
+        {
+            throw new ServiceException("用户不存在");
+        }
+        // Both switching off and re-enabling clear the previous key. Enabling requires a fresh bind.
+        return userMapper.configureUserGoogleAuth(userId, enabled ? "0" : "1", SecurityUtils.getUsername());
+    }
+
+    @Override
+    public int resetGoogleAuth(Long userId)
+    {
+        SysUser user = userMapper.selectUserById(userId);
+        if (user == null)
+        {
+            throw new ServiceException("用户不存在");
+        }
+        // 使用专用 Mapper 方法仅更新与 Google 验证相关的字段，避免影响其他字段
+        String updateBy = SecurityUtils.getUsername();
+        return userMapper.resetUserGoogleAuth(userId, updateBy);
+    }
+
+    @Override
+    public int updateUserGoogleAuthSecret(Long userId, String encryptedSecret)
+    {
+        SysUser user = userMapper.selectUserById(userId);
+        if (user == null)
+        {
+            throw new ServiceException("用户不存在");
+        }
+        String updateBy;
+        try {
+            updateBy = SecurityUtils.getUsername();
+        } catch (Exception e) {
+            // 在首次绑定/匿名场景下 SecurityUtils.getUsername() 可能抛出异常（未登录），
+            // 退而求其次使用被绑定用户的用户名作为 updateBy，或者使用系统账号标识
+            updateBy = (user.getUserName() != null && !user.getUserName().isEmpty()) ? user.getUserName() : "system";
+        }
+        return userMapper.updateUserGoogleAuthSecret(userId, encryptedSecret, updateBy);
+    }
+
+    @Override
+    public int unlockUsers(Long[] userIds)
+    {
+        if (userIds == null || userIds.length == 0) return 0;
+        return userMapper.unlockUsers(userIds);
     }
 }

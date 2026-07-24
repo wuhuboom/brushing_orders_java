@@ -1,6 +1,7 @@
 package com.order.member.service.impl;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
 
 import com.order.member.mapper.OrderUserMapper;
@@ -52,6 +53,18 @@ public class TransactionServiceImpl implements ITransactionService {
             throw new IllegalArgumentException("amount 不能为空");
         }
 
+        BigDecimal amount = money(dto.getAmount());
+        BigDecimal giftAmount = dto.getGiftAmount() == null
+                ? BigDecimal.ZERO.setScale(2)
+                : money(dto.getGiftAmount());
+        if (amount.compareTo(BigDecimal.ZERO) <= 0
+                || giftAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+
+        if (orderUserMapper.lockUserById(dto.getUserId()) == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
         OrderUser user = orderUserMapper.selectOrderUserById(dto.getUserId());
         if (user == null) {
             throw new IllegalArgumentException("用户不存在");
@@ -66,24 +79,36 @@ public class TransactionServiceImpl implements ITransactionService {
         Date now = DateUtils.getNowDate();
 
         // 获取当前余额
-        BigDecimal beforeBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        BigDecimal beforeBalance = money(
+                user.getBalance() == null ? BigDecimal.ZERO : user.getBalance());
         BigDecimal afterBalance = beforeBalance;
 
         if (opType == 0) { // 加：充值
             // 使用通用方法记录充值并写流水、更新余额
-            TransactionResult result = recordRecharge(dto.getUserId(), dto.getAmount(), dto.getGiftAmount(), dto.getTransactionType(), dto.getRemark());
+            TransactionResult result = recordRecharge(
+                    dto.getUserId(),
+                    amount,
+                    giftAmount,
+                    dto.getTransactionType(),
+                    dto.getRemark());
             return result != null;
         } else if (opType == 1) { // 减：扣款
-             if (beforeBalance.compareTo(dto.getAmount()) < 0) {
+             if (beforeBalance.compareTo(amount) < 0) {
                  throw new IllegalArgumentException("余额不足");
              }
              // 使用通用的写流水方法（传入负数表示扣款）
-             TransactionFlowResult flowRes = recordFlow(user.getId(), dto.getTransactionType(), dto.getAmount().negate(), beforeBalance, dto.getRemark());
+             TransactionFlowResult flowRes = recordFlow(
+                     user.getId(),
+                     dto.getTransactionType(),
+                     amount.negate(),
+                     beforeBalance,
+                     dto.getRemark());
              afterBalance = flowRes.getBalanceAfter();
 
              // 更新用户余额
-             user.setBalance(afterBalance);
-            orderUserMapper.updateOrderUser(user);
+            if (orderUserMapper.debitBalance(user.getId(), amount) != 1) {
+                throw new IllegalStateException("Unable to update user balance");
+            }
              return true;
          } else {
              throw new IllegalArgumentException("未知的 operationType: " + opType);
@@ -96,28 +121,41 @@ public class TransactionServiceImpl implements ITransactionService {
         if (userId == null) throw new IllegalArgumentException("userId 不能为空");
         if (amount == null) throw new IllegalArgumentException("amount 不能为空");
 
+        amount = money(amount);
+        giftAmount = giftAmount == null
+                ? BigDecimal.ZERO.setScale(2)
+                : money(giftAmount);
+        if (amount.compareTo(BigDecimal.ZERO) <= 0
+                || giftAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+
+        if (orderUserMapper.lockUserById(userId) == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
         OrderUser user = orderUserMapper.selectOrderUserById(userId);
         if (user == null) throw new IllegalArgumentException("用户不存在");
 
         Date now = DateUtils.getNowDate();
-        BigDecimal beforeBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        BigDecimal beforeBalance = money(
+                user.getBalance() == null ? BigDecimal.ZERO : user.getBalance());
         BigDecimal afterBalance = beforeBalance.add(amount);
-        if (giftAmount != null) {
-            afterBalance = afterBalance.add(giftAmount);
-        }
+        afterBalance = afterBalance.add(giftAmount);
 
         // 1) 插入充值记录
         GoodsRechargeRecord recharge = new GoodsRechargeRecord();
         recharge.setUserId(user.getId());
         recharge.setAmount(amount);
-        recharge.setGiftAmount(giftAmount == null ? BigDecimal.ZERO : giftAmount);
-        recharge.setReceivedAmount(amount.add(giftAmount == null ? BigDecimal.ZERO : giftAmount));
+        recharge.setGiftAmount(giftAmount);
+        recharge.setReceivedAmount(amount.add(giftAmount));
         recharge.setStatus("0");
         recharge.setCreateTime(now);
         recharge.setTransactionType(transactionType);
         String orderNo = orderSequenceManagerService.generateCode("TRADE_NO");
         recharge.setOrderNumber(orderNo);
-        goodsRechargeRecordService.insertGoodsRechargeRecord(recharge);
+        if (goodsRechargeRecordService.insertGoodsRechargeRecord(recharge) != 1) {
+            throw new IllegalStateException("Unable to persist recharge record");
+        }
 
         // 2) 插入交易流水：记录充值金额（使用通用方法）
         TransactionFlowResult flowRes = recordFlow(user.getId(), transactionType, amount, beforeBalance, remark);
@@ -128,7 +166,7 @@ public class TransactionServiceImpl implements ITransactionService {
         // 3) 如果有赠送金额 >0，则再保存一条交易流水
         String flowSerialGift = null;
         String tradeCodeGift = null;
-        if (giftAmount != null && giftAmount.compareTo(BigDecimal.ZERO) > 0) {
+        if (giftAmount.compareTo(BigDecimal.ZERO) > 0) {
             TransactionFlowResult giftRes = recordFlow(user.getId(), "zs", giftAmount, midBalance, remark);
             flowSerialGift = giftRes.getFlowSerial();
             tradeCodeGift = giftRes.getTradeCode();
@@ -138,8 +176,9 @@ public class TransactionServiceImpl implements ITransactionService {
         }
 
         // 4) 更新用户余额
-        user.setBalance(afterBalance);
-        orderUserMapper.updateOrderUser(user);
+        if (orderUserMapper.creditBalance(user.getId(), amount.add(giftAmount)) != 1) {
+            throw new IllegalStateException("Unable to update user balance");
+        }
 
         // 5) 返回结果
         TransactionResult result = new TransactionResult();
@@ -157,6 +196,9 @@ public class TransactionServiceImpl implements ITransactionService {
         if (balanceBefore == null) balanceBefore = BigDecimal.ZERO;
         if (amount == null) throw new IllegalArgumentException("amount 不能为空");
 
+        amount = money(amount);
+        balanceBefore = money(balanceBefore);
+
         GoodsTransactionFlow flow = new GoodsTransactionFlow();
         flow.setUserId(userId);
         flow.setTransactionType(transactionType);
@@ -171,12 +213,18 @@ public class TransactionServiceImpl implements ITransactionService {
         flow.setSerialCode(flowSerial);
         flow.setTransactionCode(tradeCode);
         flow.setRemark(remark);
-        goodsTransactionFlowService.insertGoodsTransactionFlow(flow);
+        if (goodsTransactionFlowService.insertGoodsTransactionFlow(flow) != 1) {
+            throw new IllegalStateException("Unable to persist transaction flow");
+        }
 
         TransactionFlowResult res = new TransactionFlowResult();
         res.setFlowSerial(flowSerial);
         res.setTradeCode(tradeCode);
         res.setBalanceAfter(balanceAfter);
         return res;
+    }
+
+    private BigDecimal money(BigDecimal value) {
+        return value.setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -6,6 +6,7 @@ import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import com.order.common.annotation.DataScope;
 import com.order.common.constant.UserConstants;
 import com.order.common.core.domain.BaseEntity;
@@ -16,6 +17,7 @@ import com.order.common.core.text.Convert;
 import com.order.common.utils.SecurityUtils;
 import com.order.common.utils.StringUtils;
 import com.order.framework.security.context.PermissionContextHolder;
+import com.order.system.mapper.SystemAlignmentMapper;
 
 /**
  * 数据过滤处理
@@ -26,6 +28,9 @@ import com.order.framework.security.context.PermissionContextHolder;
 @Component
 public class DataScopeAspect
 {
+    @Autowired
+    private SystemAlignmentMapper alignmentMapper;
+
     /**
      * 全部数据权限
      */
@@ -88,8 +93,17 @@ public class DataScopeAspect
      * @param userAlias 用户别名
      * @param permission 权限字符
      */
-    public static void dataScopeFilter(JoinPoint joinPoint, SysUser user, String deptAlias, String userAlias, String permission)
+    public void dataScopeFilter(JoinPoint joinPoint, SysUser user, String deptAlias, String userAlias, String permission)
     {
+        if (StringUtils.isNotEmpty(permission))
+        {
+            List<String> explicitScopes = alignmentMapper.selectEffectiveDataScopes(user.getUserId(), permission);
+            if (StringUtils.isNotEmpty(explicitScopes))
+            {
+                applyExplicitScopes(joinPoint, user, deptAlias, userAlias, explicitScopes);
+                return;
+            }
+        }
         StringBuilder sqlString = new StringBuilder();
         List<String> conditions = new ArrayList<String>();
         List<String> scopeCustomIds = new ArrayList<String>();
@@ -166,6 +180,35 @@ public class DataScopeAspect
                 BaseEntity baseEntity = (BaseEntity) params;
                 baseEntity.getParams().put(DATA_SCOPE, " AND (" + sqlString.substring(4) + ")");
             }
+        }
+    }
+
+    private void applyExplicitScopes(JoinPoint joinPoint, SysUser user, String deptAlias, String userAlias, List<String> scopes)
+    {
+        if (scopes.contains("ALL")) return;
+        StringBuilder sql = new StringBuilder();
+        if (scopes.contains("DEPT_AND_CHILD"))
+        {
+            sql.append(StringUtils.format(" OR {}.dept_id IN (SELECT dept_id FROM sys_dept WHERE dept_id={} OR find_in_set({}, ancestors))", deptAlias, user.getDeptId(), user.getDeptId()));
+        }
+        if (scopes.contains("DEPT"))
+        {
+            sql.append(StringUtils.format(" OR {}.dept_id = {}", deptAlias, user.getDeptId()));
+        }
+        if (scopes.contains("SELF"))
+        {
+            sql.append(StringUtils.isNotBlank(userAlias)
+                    ? StringUtils.format(" OR {}.user_id = {}", userAlias, user.getUserId())
+                    : StringUtils.format(" OR {}.dept_id = 0", deptAlias));
+        }
+        if (sql.length() == 0)
+        {
+            sql.append(StringUtils.format(" OR {}.dept_id = 0", deptAlias));
+        }
+        Object params = joinPoint.getArgs()[0];
+        if (params instanceof BaseEntity baseEntity)
+        {
+            baseEntity.getParams().put(DATA_SCOPE, " AND (" + sql.substring(4) + ")");
         }
     }
 

@@ -29,13 +29,14 @@
         <result property="productMatchEnabled"    column="product_match_enabled"    />
         <result property="productMatchMin"    column="product_match_min"    />
         <result property="productMatchMax"    column="product_match_max"    />
+        <result property="translationsId" column="translations_id" />
     </resultMap>
 
     <sql id="selectGoodsMemberLevelVo">
         select id, name, level, icon, price, min_balance, invite_count, order_count_per_day,
         min_commission_rate, max_commission_rate, min_continuous_commission_rate, max_continuous_commission_rate,
         task_count_per_day, withdraw_count_per_day, withdraw_fee_rate, min_withdraw_amount, withdraw_limit_per_day,
-        min_withdraw, max_withdraw, description, create_time, product_match_enabled, product_match_min, product_match_max from goods_member_level
+        min_withdraw, max_withdraw, description, create_time, product_match_enabled, product_match_min, product_match_max, translations_id from goods_member_level
     </sql>
 
     <select id="selectGoodsMemberLevelList" parameterType="GoodsMemberLevel" resultMap="GoodsMemberLevelResult">
@@ -63,7 +64,9 @@
             <if test="productMatchEnabled != null  and productMatchEnabled != ''"> and product_match_enabled = #{productMatchEnabled}</if>
             <if test="productMatchMin != null "> and product_match_min = #{productMatchMin}</if>
             <if test="productMatchMax != null "> and product_match_max = #{productMatchMax}</if>
+            <if test="translationsId != null"> and translations_id = #{translationsId}</if>
         </where>
+        order by level asc, id asc
     </select>
 
     <select id="selectGoodsMemberLevelById" parameterType="Long" resultMap="GoodsMemberLevelResult">
@@ -103,6 +106,7 @@
             <if test="productMatchEnabled != null">product_match_enabled,</if>
             <if test="productMatchMin != null">product_match_min,</if>
             <if test="productMatchMax != null">product_match_max,</if>
+            <if test="translationsId != null">translations_id,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -128,6 +132,7 @@
             <if test="productMatchEnabled != null">#{productMatchEnabled},</if>
             <if test="productMatchMin != null">#{productMatchMin},</if>
             <if test="productMatchMax != null">#{productMatchMax},</if>
+            <if test="translationsId != null">#{translationsId},</if>
         </trim>
     </insert>
 
@@ -157,6 +162,7 @@
             <if test="productMatchEnabled != null">product_match_enabled = #{productMatchEnabled},</if>
             <if test="productMatchMin != null">product_match_min = #{productMatchMin},</if>
             <if test="productMatchMax != null">product_match_max = #{productMatchMax},</if>
+            <if test="translationsId != null">translations_id = #{translationsId},</if>
         </trim>
         where id = #{id}
     </update>

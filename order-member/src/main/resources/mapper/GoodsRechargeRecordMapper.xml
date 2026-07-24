@@ -108,4 +108,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{id}
         </foreach>
     </delete>
+
+    <select id="selectPublicByUserId" parameterType="Long" resultMap="GoodsRechargeRecordResult">
+        select id, user_id, amount, withdrawal_type, gift_amount, received_amount,
+               status, create_time, remark, transaction_type, order_number, is_hidden
+        from goods_recharge_record
+        where user_id = #{userId} and COALESCE(is_hidden, '1') != '0'
+        order by create_time desc, id desc
+    </select>
 </mapper>

@@ -12,6 +12,7 @@ import com.order.common.core.domain.entity.SysUser;
 import com.order.common.utils.StringUtils;
 import com.order.system.service.ISysMenuService;
 import com.order.system.service.ISysRoleService;
+import com.order.system.service.ISystemAlignmentService;
 
 /**
  * 用户权限处理
@@ -26,6 +27,9 @@ public class SysPermissionService
 
     @Autowired
     private ISysMenuService menuService;
+
+    @Autowired
+    private ISystemAlignmentService alignmentService;
 
     /**
      * 获取角色数据权限
@@ -72,7 +76,7 @@ public class SysPermissionService
                 {
                     if (StringUtils.equals(role.getStatus(), UserConstants.ROLE_NORMAL) && !role.isAdmin())
                     {
-                        Set<String> rolePerms = menuService.selectMenuPermsByRoleId(role.getRoleId());
+                        Set<String> rolePerms = new HashSet<>(alignmentService.selectRoleEffectivePermissions(role.getRoleId()));
                         role.setPermissions(rolePerms);
                         perms.addAll(rolePerms);
                     }
@@ -82,6 +86,7 @@ public class SysPermissionService
             {
                 perms.addAll(menuService.selectMenuPermsByUserId(user.getUserId()));
             }
+            perms.addAll(alignmentService.selectEffectivePermissions(user.getUserId()));
         }
         return perms;
     }

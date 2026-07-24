@@ -60,7 +60,7 @@ public class Goods extends BaseEntity
 
     /** 星级 */
     @Excel(name = "星级")
-    private Integer starRating;
+    private BigDecimal starRating;
 
     /** 评分 */
     @Excel(name = "评分")
@@ -178,12 +178,12 @@ public class Goods extends BaseEntity
         return quantity;
     }
 
-    public void setStarRating(Integer starRating) 
+    public void setStarRating(BigDecimal starRating)
     {
         this.starRating = starRating;
     }
 
-    public Integer getStarRating() 
+    public BigDecimal getStarRating()
     {
         return starRating;
     }

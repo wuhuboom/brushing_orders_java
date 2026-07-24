@@ -13,10 +13,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="address"    column="address"    />
         <result property="createTime"    column="create_time"    />
         <result property="loginParams"    column="login_params"    />
+        <result property="success"    column="success"    />
+        <result property="requestHeaders"    column="request_headers"    />
     </resultMap>
 
     <sql id="selectOrderLoginLogVo">
-        select oll.id, oll.user_id, oll.ip, oll.address, oll.create_time, oll.login_params,
+        select oll.id, oll.user_id, oll.ip, oll.address, oll.create_time, oll.login_params, oll.success, oll.request_headers,
                ou.username as username
         from order_login_log oll
         left join order_user ou on oll.user_id = ou.id
@@ -45,6 +47,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="address != null and address != ''">address,</if>
             <if test="createTime != null">create_time,</if>
             <if test="loginParams != null">login_params,</if>
+            <if test="success != null">success,</if>
+            <if test="requestHeaders != null">request_headers,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
@@ -52,6 +56,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="address != null and address != ''">#{address},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="loginParams != null">#{loginParams},</if>
+            <if test="success != null">#{success},</if>
+            <if test="requestHeaders != null">#{requestHeaders},</if>
          </trim>
     </insert>
 
@@ -63,6 +69,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="address != null and address != ''">address = #{address},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="loginParams != null">login_params = #{loginParams},</if>
+            <if test="success != null">success = #{success},</if>
+            <if test="requestHeaders != null">request_headers = #{requestHeaders},</if>
         </trim>
         where id = #{id}
     </update>

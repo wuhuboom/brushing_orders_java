@@ -13,16 +13,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="browser"       column="browser"           />
 		<result property="os"            column="os"                />
 		<result property="msg"           column="msg"               />
+		<result property="requestHeaders" column="request_headers" />
+		<result property="requestParams" column="request_params" />
 		<result property="loginTime"     column="login_time"        />
 	</resultMap>
 
 	<insert id="insertLogininfor" parameterType="SysLogininfor">
-		insert into sys_logininfor (user_name, status, ipaddr, login_location, browser, os, msg, login_time)
-		values (#{userName}, #{status}, #{ipaddr}, #{loginLocation}, #{browser}, #{os}, #{msg}, sysdate())
+		insert into sys_logininfor (user_name, status, ipaddr, login_location, browser, os, msg, request_headers, request_params, login_time)
+		values (#{userName}, #{status}, #{ipaddr}, #{loginLocation}, #{browser}, #{os}, #{msg}, #{requestHeaders}, #{requestParams}, sysdate())
 	</insert>
 	
 	<select id="selectLogininforList" parameterType="SysLogininfor" resultMap="SysLogininforResult">
-		select info_id, user_name, ipaddr, login_location, browser, os, status, msg, login_time from sys_logininfor
+		select info_id, user_name, ipaddr, login_location, browser, os, status, msg, request_headers, request_params, login_time from sys_logininfor
 		<where>
 			<if test="ipaddr != null and ipaddr != ''">
 				AND ipaddr like concat('%', #{ipaddr}, '%')

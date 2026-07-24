@@ -89,6 +89,9 @@ public class SysUser extends BaseEntity
     /** 岗位组 */
     private Long[] postIds;
 
+    /** 权限分组 */
+    private Long[] groupIds;
+
     /** 角色ID */
     private Long roleId;
 
@@ -112,6 +115,12 @@ public class SysUser extends BaseEntity
     /** 是否启用谷歌验证0为启用，1为未启用 */
     @Excel(name = "是否启用谷歌验证0为启用，1为未启用")
     private String googleEnabled;
+
+    /** Runtime login state used by the management list. */
+    private String online;
+
+    /** Last resolved login location. */
+    private String loginLocation;
 
     public String getIsLocked() {
         return isLocked;
@@ -359,6 +368,21 @@ public class SysUser extends BaseEntity
     public void setPostIds(Long[] postIds)
     {
         this.postIds = postIds;
+    }
+
+    public String getOnline() { return online; }
+    public void setOnline(String online) { this.online = online; }
+    public String getLoginLocation() { return loginLocation; }
+    public void setLoginLocation(String loginLocation) { this.loginLocation = loginLocation; }
+
+    public Long[] getGroupIds()
+    {
+        return groupIds;
+    }
+
+    public void setGroupIds(Long[] groupIds)
+    {
+        this.groupIds = groupIds;
     }
 
     public Long getRoleId()

@@ -2,6 +2,7 @@ package com.order.member.service;
 
 import java.util.List;
 import com.order.member.domain.OrderBonusTable;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 彩金Service接口
@@ -58,4 +59,10 @@ public interface IOrderBonusTableService
      * @return 结果
      */
     public int deleteOrderBonusTableById(Long id);
+
+    public OrderBonusTable selectActiveDistributedReceivedByUserAndOrder(Long userId, Long orderNum);
+
+    public List<OrderBonusTable> selectBonusByType(Long userId);
+
+    public OrderBonusTable userHaveBonus( Long userId,Integer orderNum);
 }

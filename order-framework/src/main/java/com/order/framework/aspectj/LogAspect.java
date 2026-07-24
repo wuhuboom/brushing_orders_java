@@ -1,7 +1,11 @@
 package com.order.framework.aspectj;
 
 import java.util.Collection;
+import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
@@ -10,9 +14,11 @@ import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.NamedThreadLocal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,10 +51,12 @@ public class LogAspect
     private static final Logger log = LoggerFactory.getLogger(LogAspect.class);
 
     /** 排除敏感属性字段 */
-    public static final String[] EXCLUDE_PROPERTIES = { "password", "oldPassword", "newPassword", "confirmPassword" };
+    public static final String[] EXCLUDE_PROPERTIES = { "password", "oldPassword", "newPassword", "confirmPassword", "token", "authorization", "googleCode", "googleAuthSecret", "secret" };
 
     /** 计算操作消耗时间 */
     private static final ThreadLocal<Long> TIME_THREADLOCAL = new NamedThreadLocal<Long>("Cost Time");
+
+    private static final Pattern PERMISSION_PATTERN = Pattern.compile("'([^']+)'");
 
     /**
      * 处理请求前执行
@@ -96,6 +104,8 @@ public class LogAspect
             String ip = IpUtils.getIpAddr();
             operLog.setOperIp(ip);
             operLog.setOperUrl(StringUtils.substring(ServletUtils.getRequest().getRequestURI(), 0, 255));
+            operLog.setRequestHeaders(requestHeaders(ServletUtils.getRequest()));
+            operLog.setQueryString(StringUtils.substring(ServletUtils.getRequest().getQueryString(), 0, 20000));
             if (loginUser != null)
             {
                 operLog.setOperName(loginUser.getUsername());
@@ -110,6 +120,7 @@ public class LogAspect
             {
                 operLog.setStatus(BusinessStatus.FAIL.ordinal());
                 operLog.setErrorMsg(StringUtils.substring(Convert.toStr(e.getMessage(), ExceptionUtil.getExceptionMessage(e)), 0, 2000));
+                operLog.setMessage(operLog.getErrorMsg());
             }
             // 设置方法名称
             String className = joinPoint.getTarget().getClass().getName();
@@ -149,6 +160,8 @@ public class LogAspect
         operLog.setBusinessType(log.businessType().ordinal());
         // 设置标题
         operLog.setTitle(log.title());
+        // 旧站资源列展示权限资源代码；无法提取时才回退到接口路径。
+        operLog.setResourceCode(resolveResourceCode(joinPoint, operLog.getOperUrl()));
         // 设置操作人类别
         operLog.setOperatorType(log.operatorType().ordinal());
         // 是否需要保存request，参数和值
@@ -161,6 +174,10 @@ public class LogAspect
         if (log.isSaveResponseData() && StringUtils.isNotNull(jsonResult))
         {
             operLog.setJsonResult(StringUtils.substring(JSON.toJSONString(jsonResult), 0, 2000));
+            if (jsonResult instanceof Map<?, ?> resultMap && resultMap.get("msg") != null)
+            {
+                operLog.setMessage(StringUtils.substring(String.valueOf(resultMap.get("msg")), 0, 2000));
+            }
         }
     }
 
@@ -178,11 +195,50 @@ public class LogAspect
         {
             String params = argsArrayToString(joinPoint.getArgs(), excludeParamNames);
             operLog.setOperParam(StringUtils.substring(params, 0, 2000));
+            operLog.setRequestBody(StringUtils.substring(params, 0, 20000));
+            operLog.setRequestParams("{}");
         }
         else
         {
             operLog.setOperParam(StringUtils.substring(JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames)), 0, 2000));
+            operLog.setRequestParams(StringUtils.substring(JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames)), 0, 20000));
+            operLog.setRequestBody("{}");
         }
+    }
+
+    private String resolveResourceCode(JoinPoint joinPoint, String fallback)
+    {
+        if (joinPoint.getSignature() instanceof MethodSignature signature)
+        {
+            PreAuthorize authorize = signature.getMethod().getAnnotation(PreAuthorize.class);
+            if (authorize != null)
+            {
+                Matcher matcher = PERMISSION_PATTERN.matcher(authorize.value());
+                if (matcher.find())
+                {
+                    String[] values = matcher.group(1).split(",");
+                    if (values.length > 0 && StringUtils.isNotEmpty(values[0]))
+                    {
+                        return values[0].trim();
+                    }
+                }
+            }
+        }
+        return fallback;
+    }
+
+    private String requestHeaders(HttpServletRequest request)
+    {
+        Map<String, String> headers = new LinkedHashMap<>();
+        Enumeration<String> names = request.getHeaderNames();
+        if (names == null) return "{}";
+        while (names.hasMoreElements())
+        {
+            String name = names.nextElement();
+            String lower = name.toLowerCase();
+            headers.put(name, lower.contains("authorization") || lower.contains("token") || lower.equals("cookie") ? "******" : StringUtils.substring(request.getHeader(name), 0, 1000));
+        }
+        return StringUtils.substring(JSON.toJSONString(headers), 0, 20000);
     }
 
     /**

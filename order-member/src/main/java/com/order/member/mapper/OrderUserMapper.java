@@ -25,6 +25,51 @@ public interface OrderUserMapper
     public OrderUser selectOrderUserByInviteCode(String inviteCode);
 
     /**
+     * Front-end authentication lookup. This query must stay small and must not
+     * include the reporting CTEs used by the administration screens.
+     */
+    OrderUser selectAuthUserByName(String username);
+
+    OrderUser selectAuthUserById(Long id);
+
+    /**
+     * Public profile projection used by /api/user/login and /api/user/getInfo.
+     */
+    OrderUser selectUserProfileById(Long id);
+
+    OrderUser selectWithdrawalUserById(Long id);
+
+    OrderUser selectWithdrawalUserByIdForUpdate(Long id);
+
+    int debitBalance(@Param("userId") Long userId, @Param("amount") java.math.BigDecimal amount);
+
+    int creditBalance(@Param("userId") Long userId, @Param("amount") java.math.BigDecimal amount);
+
+    Long lockUserById(Long userId);
+
+    OrderUser selectOrderTaskUserById(Long id);
+
+    OrderUser selectOrderBalanceById(Long id);
+
+    int reserveOrderFunds(
+            @Param("userId") Long userId,
+            @Param("amount") java.math.BigDecimal amount,
+            @Param("progressDelta") long progressDelta,
+            @Param("allowNegative") boolean allowNegative);
+
+    int settleOrderFunds(
+            @Param("userId") Long userId,
+            @Param("amount") java.math.BigDecimal amount,
+            @Param("rebate") java.math.BigDecimal rebate);
+
+    /**
+     * Minimal referral lookup used during registration.
+     */
+    OrderUser selectReferralByInviteCode(String inviteCode);
+
+    Boolean existsInviteCode(String inviteCode);
+
+    /**
      * 查询订单用户列表
      * 
      * @param orderUser 订单用户
@@ -47,6 +92,24 @@ public interface OrderUserMapper
      * @return 结果
      */
     public int updateOrderUser(OrderUser orderUser);
+
+    int updateAvatarById(@Param("userId") Long userId,
+                         @Param("avatar") String avatar);
+
+    int updatePasswordById(@Param("userId") Long userId,
+                           @Param("currentPassword") String currentPassword,
+                           @Param("newPassword") String newPassword);
+
+    int updateTradePasswordById(@Param("userId") Long userId,
+                                @Param("currentPassword") String currentPassword,
+                                @Param("newPassword") String newPassword);
+
+    int updateWithdrawalPasswordFailCount(@Param("userId") Long userId,
+                                          @Param("failCount") Integer failCount);
+
+    int incrementWithdrawalPasswordFailCount(@Param("userId") Long userId);
+
+    OrderUser selectTradePasswordStateByIdForUpdate(@Param("userId") Long userId);
 
     public int resetTodayRestBatch();
 
@@ -83,4 +146,11 @@ public interface OrderUserMapper
      * @return 下级用户列表
      */
     List<OrderUser> selectChildrenById(@Param("userId") Long userId, @Param("scope") String scope);
+
+    /**
+     * 查询电话号码是否存在
+     * @param phoneNumber 电话号码
+     * @return
+     */
+    public Boolean  existsPhone(String phoneNumber);
 }

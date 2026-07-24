@@ -19,6 +19,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="isHidden"    column="is_hidden"    />
         <result property="fee"    column="fee"    />
         <result property="withdrawalAccountId"    column="withdrawal_account_id"    />
+        <result property="requestId" column="request_id" />
+        <result property="netAmount" column="net_amount" />
+        <result property="accountSnapshotEncrypted" column="account_snapshot_enc" />
+        <result property="accountMask" column="account_mask" />
+        <result property="businessDate" column="business_date" />
         <!-- 来自 order_user -->
         <result property="username" column="username" />
         <result property="phoneNumber" column="phone_number" />
@@ -31,15 +36,38 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="selectOrderWithdrawalVo">
          select ow.id, ow.user_id, ow.amount, ow.withdrawal_type, ow.status,
                 ow.create_time, ow.remarks, ow.transaction_type, ow.order_number, ow.is_hidden, ow.fee,
-                ow.withdrawal_account_id,
+                ow.withdrawal_account_id, ow.request_id, ow.net_amount,
+                ow.account_snapshot_enc, ow.account_mask, ow.business_date,
                 ou.username as username, ou.phone_number as phone_number,
                 pu.username as parent_username,
                -- withdrawal account fields with gwa_ prefix for nested mapping
                gwa.id as gwa_id, gwa.user_id as gwa_user_id, gwa.type as gwa_type, gwa.withdrawal_type_id as gwa_withdrawal_type_id,
                gwa.is_default as gwa_is_default, gwa.bank_name as gwa_bank_name, gwa.deposit_type as gwa_deposit_type,
-               gwa.branch_code as gwa_branch_code, gwa.branch_name as gwa_branch_name, gwa.bank_account as gwa_bank_account,
-               gwa.account_holder as gwa_account_holder, gwa.account_name as gwa_account_name, gwa.wallet_name as gwa_wallet_name,
-               gwa.wallet_address as gwa_wallet_address, owt.name as gwa_withdrawal_type, gwa.create_time as gwa_create_time
+               gwa.branch_code as gwa_branch_code, gwa.branch_name as gwa_branch_name,
+               COALESCE(gwa.bank_account_mask,
+                        CASE WHEN gwa.bank_account IS NULL THEN NULL
+                             ELSE CONCAT('****', RIGHT(REPLACE(gwa.bank_account, ' ', ''), 4)) END) as gwa_bank_account,
+               COALESCE(gwa.account_holder_mask,
+                        CASE WHEN gwa.account_holder IS NULL THEN NULL
+                             ELSE CONCAT(LEFT(gwa.account_holder, 1), '***') END) as gwa_account_holder,
+               COALESCE(gwa.account_name_mask,
+                        CASE WHEN gwa.account_name IS NULL THEN NULL
+                             ELSE CONCAT(LEFT(gwa.account_name, 1), '***') END) as gwa_account_name,
+               gwa.wallet_name as gwa_wallet_name,
+               COALESCE(gwa.wallet_address_mask,
+                        CASE WHEN gwa.wallet_address IS NULL THEN NULL
+                             WHEN CHAR_LENGTH(gwa.wallet_address) &lt;= 10
+                                  THEN CONCAT('****', RIGHT(gwa.wallet_address, 4))
+                             ELSE CONCAT(LEFT(gwa.wallet_address, 6), '****', RIGHT(gwa.wallet_address, 4)) END) as gwa_wallet_address,
+               gwa.bank_account_enc as gwa_bank_account_enc,
+               gwa.account_holder_enc as gwa_account_holder_enc,
+               gwa.account_name_enc as gwa_account_name_enc,
+               gwa.wallet_address_enc as gwa_wallet_address_enc,
+               gwa.bank_account_mask as gwa_bank_account_mask,
+               gwa.account_holder_mask as gwa_account_holder_mask,
+               gwa.account_name_mask as gwa_account_name_mask,
+               gwa.wallet_address_mask as gwa_wallet_address_mask,
+               owt.name as gwa_withdrawal_type, gwa.create_time as gwa_create_time
         from order_withdrawal ow
         left join order_user ou on ow.user_id = ou.id
         left join order_user pu on ou.parent_id = pu.id
@@ -82,6 +110,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isHidden != null and isHidden != ''">is_hidden,</if>
             <if test="fee != null">fee,</if>
             <if test="withdrawalAccountId != null">withdrawal_account_id,</if>
+            <if test="requestId != null and requestId != ''">request_id,</if>
+            <if test="netAmount != null">net_amount,</if>
+            <if test="accountSnapshotEncrypted != null">account_snapshot_enc,</if>
+            <if test="accountMask != null">account_mask,</if>
+            <if test="businessDate != null">business_date,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
@@ -95,6 +128,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isHidden != null and isHidden != ''">#{isHidden},</if>
             <if test="fee != null">#{fee},</if>
             <if test="withdrawalAccountId != null">#{withdrawalAccountId},</if>
+            <if test="requestId != null and requestId != ''">#{requestId},</if>
+            <if test="netAmount != null">#{netAmount},</if>
+            <if test="accountSnapshotEncrypted != null">#{accountSnapshotEncrypted},</if>
+            <if test="accountMask != null">#{accountMask},</if>
+            <if test="businessDate != null">#{businessDate},</if>
          </trim>
     </insert>
 
@@ -126,4 +164,83 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{id}
         </foreach>
     </delete>
+
+    <select id="selectByUserAndRequestId" resultMap="OrderWithdrawalResult">
+        <include refid="selectOrderWithdrawalVo"/>
+        where ow.user_id = #{userId} and ow.request_id = #{requestId}
+        limit 1
+    </select>
+
+    <select id="selectForUpdate" parameterType="Long" resultMap="OrderWithdrawalResult">
+        select id, user_id, amount, withdrawal_type, status, create_time, remarks,
+               transaction_type, order_number, is_hidden, fee, withdrawal_account_id,
+               request_id, net_amount, account_snapshot_enc, account_mask, business_date
+        from order_withdrawal
+        where id = #{id}
+        for update
+    </select>
+
+    <select id="existsPendingByUserId" parameterType="Long" resultType="int">
+        select exists(select 1 from order_withdrawal where user_id = #{userId} and status = '1')
+    </select>
+
+    <select id="existsPendingByAccountId" parameterType="Long" resultType="int">
+        select exists(select 1 from order_withdrawal where withdrawal_account_id = #{accountId} and status = '1')
+    </select>
+
+    <select id="selectDailyUsage" resultType="com.order.member.domain.WithdrawalDailyUsage">
+        select count(1) as withdrawalCount,
+               COALESCE(sum(amount), 0) as withdrawalAmount
+        from order_withdrawal
+        where user_id = #{userId} and status in ('0', '1')
+          and create_time &gt;= #{start} and create_time &lt; #{end}
+    </select>
+
+    <update id="transitionStatus">
+        update order_withdrawal
+        set status = #{toStatus}, remarks = #{remarks}
+        where id = #{id} and status = #{fromStatus}
+    </update>
+
+    <insert id="ensureDailyQuota">
+        insert into withdrawal_daily_quota (business_date, reserved_amount, update_time)
+        values (
+            #{businessDate},
+            (
+                select COALESCE(sum(amount), 0)
+                from order_withdrawal
+                where status in ('0', '1')
+                  and (business_date = #{businessDate}
+                    or (business_date is null
+                        and create_time &gt;= #{legacyStart}
+                        and create_time &lt; #{legacyEnd}))
+            ),
+            NOW(3)
+        )
+        on duplicate key update business_date = values(business_date)
+    </insert>
+
+    <update id="reserveDailyQuota">
+        update withdrawal_daily_quota
+        set reserved_amount = reserved_amount + #{amount}, update_time = NOW(3)
+        where business_date = #{businessDate}
+          and (#{limit} is null or #{limit} &lt;= 0 or reserved_amount + #{amount} &lt;= #{limit})
+    </update>
+
+    <update id="releaseDailyQuota">
+        update withdrawal_daily_quota
+        set reserved_amount = GREATEST(0, reserved_amount - #{amount}), update_time = NOW(3)
+        where business_date = #{businessDate}
+    </update>
+
+    <select id="selectPublicByUser" resultMap="OrderWithdrawalResult">
+        select id, user_id, amount, withdrawal_type, status, create_time, remarks,
+               transaction_type, order_number, is_hidden, fee, withdrawal_account_id,
+               request_id, net_amount, account_snapshot_enc, account_mask, business_date
+        from order_withdrawal
+        where user_id = #{userId}
+          and COALESCE(is_hidden, '1') != '0'
+          <if test="status != null and status != ''">and status = #{status}</if>
+        order by create_time desc, id desc
+    </select>
 </mapper>

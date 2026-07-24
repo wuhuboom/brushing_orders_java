@@ -55,7 +55,6 @@ public class GoodsTransactionFlow extends BaseEntity
 
     /** 创建时间 */
     @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
-    @Excel(name = "创建时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date createdTime;
 
     /** 用户名（来自 order_user 联表） */

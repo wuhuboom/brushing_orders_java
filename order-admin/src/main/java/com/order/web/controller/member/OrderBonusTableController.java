@@ -1,6 +1,8 @@
 package com.order.web.controller.member;
 
 import java.util.List;
+
+import com.order.common.utils.StringUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,6 +74,14 @@ public class OrderBonusTableController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody OrderBonusTable orderBonusTable)
     {
+        OrderBonusTable orderBonusTable1 = orderBonusTable.getOrderNum() == null
+                ? null
+                : orderBonusTableService.userHaveBonus(
+                        orderBonusTable.getUserId(),
+                        orderBonusTable.getOrderNum().intValue());
+        if (StringUtils.isNotNull(orderBonusTable1)) {
+            return error("该用户该订单已存在彩金记录，不能重复添加！");
+        }
         return toAjax(orderBonusTableService.insertOrderBonusTable(orderBonusTable));
     }
 

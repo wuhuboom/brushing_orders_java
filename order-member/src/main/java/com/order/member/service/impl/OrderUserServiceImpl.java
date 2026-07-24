@@ -1,10 +1,10 @@
 package com.order.member.service.impl;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Optional;
 
-import com.order.common.member.RandomCodeGenerator;
 import com.order.common.utils.DateUtils;
 import com.order.common.utils.StringUtils;
 import com.order.member.domain.GoodsMemberLevel;
@@ -12,6 +12,7 @@ import com.order.member.mapper.GoodsMemberLevelMapper;
 import com.order.member.service.IGoodsMemberLevelService;
 import com.order.member.service.IOrderConfigService;
 import com.order.member.service.ITransactionService;
+import com.order.member.service.RegistrationResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.order.member.mapper.OrderUserMapper;
@@ -28,6 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderUserServiceImpl implements IOrderUserService 
 {
+    private static final char[] INVITE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+    private static final int INVITE_CODE_ATTEMPTS = 10;
+    private final SecureRandom secureRandom = new SecureRandom();
+
     @Autowired
     private OrderUserMapper orderUserMapper;
 
@@ -86,12 +91,23 @@ public class OrderUserServiceImpl implements IOrderUserService
     }
 
     public String inviteCodeGenerator(){
-        String code = RandomCodeGenerator.generateRandomCode();
-        OrderUser orderUser = orderUserMapper.selectOrderUserByInviteCode(code);
-        if (StringUtils.isNotNull(orderUser)){
-            inviteCodeGenerator();
+        for (int attempt = 0; attempt < INVITE_CODE_ATTEMPTS; attempt++) {
+            String code = randomInviteCode();
+            if (!Boolean.TRUE.equals(orderUserMapper.existsInviteCode(code))) {
+                return code;
+            }
         }
-        return code;
+        throw new IllegalStateException("Unable to allocate a unique invite code");
+    }
+
+    private String randomInviteCode() {
+        return new String(new char[] {
+                INVITE_LETTERS[secureRandom.nextInt(INVITE_LETTERS.length)],
+                INVITE_LETTERS[secureRandom.nextInt(INVITE_LETTERS.length)],
+                (char) ('0' + secureRandom.nextInt(10)),
+                INVITE_LETTERS[secureRandom.nextInt(INVITE_LETTERS.length)],
+                INVITE_LETTERS[secureRandom.nextInt(INVITE_LETTERS.length)]
+        });
     }
 
     /**
@@ -147,34 +163,54 @@ public class OrderUserServiceImpl implements IOrderUserService
     }
 
     @Override
-    public String register(OrderUser user) {
-        OrderUser orderUser = orderUserMapper.selectOrderUserByInviteCode(user.getInviteCode());
-        if (StringUtils.isNull(orderUser)){
-            return "500";
-        }
-        GoodsMemberLevel goodsMemberLevel = memberLevelMapper.selectLowestPriceLevel();
-        user.setVipId(goodsMemberLevel.getId());
-        user.setParentId(orderUser.getId());
-        user.setInviteCode(inviteCodeGenerator());
-        user.setAncestors(orderUser.getAncestors()+","+orderUser.getId());
-        // 获取注册赠送金额配置
-        Optional<Object> configValue = configService.getConfigValue("trade", "registerBonusAmount");
-        if (configValue.isPresent()) {
-            BigDecimal value =  new BigDecimal((Integer) configValue.get());
-            if (value.compareTo(BigDecimal.ZERO) != 0) {
-                //增加用户赠送金额
-               user.setBalance(value);
-               orderUserMapper.insertOrderUser(user);
-               transactionService.recordFlow(user.getId(),"zczs",value,new BigDecimal(0), "注册赠送金额");
-                //记录用户余额变动日志
-            }else{
-                orderUserMapper.insertOrderUser(user);
-            }
-        }else{
-            orderUserMapper.insertOrderUser(user);
+    @Transactional(rollbackFor = Exception.class)
+    public RegistrationResult register(OrderUser user) {
+        OrderUser parent = orderUserMapper.selectReferralByInviteCode(user.getInviteCode());
+        if (parent == null) {
+            return RegistrationResult.INVITE_NOT_FOUND;
         }
 
-        return "200";
+        GoodsMemberLevel memberLevel = memberLevelMapper.selectLowestPriceLevel();
+        if (memberLevel == null) {
+            return RegistrationResult.MEMBER_LEVEL_NOT_FOUND;
+        }
+
+        user.setVipId(memberLevel.getId());
+        user.setParentId(parent.getId());
+        user.setInviteCode(inviteCodeGenerator());
+        user.setAncestors(StringUtils.isEmpty(parent.getAncestors())
+                ? "0," + parent.getId()
+                : parent.getAncestors() + "," + parent.getId());
+        user.setCreateTime(DateUtils.getNowDate());
+
+        BigDecimal bonus = BigDecimal.ZERO;
+        Optional<Object> configuredBonus = configService.getConfigValue("trade", "registerBonusAmount");
+        if (configuredBonus.isPresent() && configuredBonus.get() != null) {
+            try {
+                bonus = new BigDecimal(String.valueOf(configuredBonus.get()));
+            } catch (NumberFormatException ex) {
+                throw new IllegalStateException("Invalid register bonus configuration", ex);
+            }
+            if (bonus.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalStateException("Register bonus must not be negative");
+            }
+        }
+
+        if (bonus.compareTo(BigDecimal.ZERO) > 0) {
+            user.setBalance(bonus);
+        }
+        orderUserMapper.insertOrderUser(user);
+        if (bonus.compareTo(BigDecimal.ZERO) > 0) {
+            transactionService.recordFlow(
+                    user.getId(), "zczs", bonus, BigDecimal.ZERO, "Registration bonus");
+        }
+
+        return RegistrationResult.SUCCESS;
+    }
+
+    @Override
+    public Boolean existsPhone(String phone) {
+        return orderUserMapper.existsPhone(phone);
     }
 
     @Override

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.OrderApiRequestMapper">
+    <resultMap id="OrderApiRequestResult" type="OrderApiRequest">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="operationType" column="operation_type"/>
+        <result property="requestId" column="request_id"/>
+        <result property="resultType" column="result_type"/>
+        <result property="resultId" column="result_id"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="selectByRequestKey" resultMap="OrderApiRequestResult">
+        SELECT id, user_id, operation_type, request_id,
+               result_type, result_id, create_time
+        FROM order_api_request
+        WHERE user_id = #{userId}
+          AND operation_type = #{operationType}
+          AND request_id = #{requestId}
+        LIMIT 1
+    </select>
+
+    <insert id="insertOrderApiRequest"
+            parameterType="OrderApiRequest"
+            useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO order_api_request(
+            user_id, operation_type, request_id,
+            result_type, result_id, create_time
+        ) VALUES (
+            #{userId}, #{operationType}, #{requestId},
+            #{resultType}, #{resultId}, #{createTime}
+        )
+    </insert>
+</mapper>

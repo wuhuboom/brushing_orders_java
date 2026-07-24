@@ -203,4 +203,34 @@ public interface ISysUserService
      * @return 结果
      */
     public String importUser(List<SysUser> userList, Boolean isUpdateSupport, String operName);
+
+    /**
+     * 更新用户的谷歌验证启用状态
+     *
+     * @param userId 用户ID
+     * @param enabled 是否启用（true 启用，false 停用）
+     * @return 结果行数
+     */
+    public int updateGoogleAuthStatus(Long userId, boolean enabled);
+
+    /**
+     * 重置用户的谷歌验证（清空 secret 并设为未启用）
+     *
+     * @param userId 用户ID
+     * @return 结果行数
+     */
+    public int resetGoogleAuth(Long userId);
+
+    /**
+     * 持久化用户的 Google 密钥（加密后），并将 googleEnabled 设为启用，googleAuthEnabled 标记为已绑定
+     * 此操作只更新 Google 相关字段，避免影响角色等关联数据
+     *
+     * @param userId 用户ID
+     * @param encryptedSecret 已加密的 secret
+     * @return 结果行数
+     */
+    public int updateUserGoogleAuthSecret(Long userId, String encryptedSecret);
+
+    /** Clear persistent and cached login lock state for selected users. */
+    public int unlockUsers(Long[] userIds);
 }
