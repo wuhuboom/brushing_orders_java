@@ -33,9 +33,23 @@ import "@vueup/vue-quill/dist/vue-quill.snow.css";
 import { getToken } from "@/utils/auth";
 import Quill from "quill";
 
+const FONT_SIZES = [
+  "10px",
+  "12px",
+  "14px",
+  "16px",
+  "18px",
+  "20px",
+  "22px",
+  "24px",
+  "26px",
+  "28px",
+  "30px",
+];
+
 // ===== 注册像素字号白名单 =====
 const Size = Quill.import("attributors/style/size");
-Size.whitelist = ["10px", "12px", "14px", "18px", "32px"];
+Size.whitelist = FONT_SIZES;
 Quill.register(Size, true);
 
 const { proxy } = getCurrentInstance();
@@ -84,7 +98,7 @@ const options = ref({
       [{ list: "ordered" }, { list: "bullet" }],
       [{ indent: "-1" }, { indent: "+1" }],
       // ===== 改为像素值 =====
-      [{ size: ["10px", "12px", "14px", "18px", "32px"] }],
+      [{ size: FONT_SIZES }],
       [{ header: [1, 2, 3, 4, 5, 6, false] }],
       [{ color: [] }, { background: [] }],
       [{ align: [] }],
@@ -104,6 +118,8 @@ const styles = computed(() => {
   if (props.height) {
     style.height = `${props.height}px`;
   }
+  // Ensure editor fills available width by default
+  style.width = "100%";
   return style;
 });
 
@@ -237,13 +253,37 @@ function insertImage(file) {
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="14px"]::before {
   content: "14px";
 }
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="16px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="16px"]::before {
+  content: "16px";
+}
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="18px"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="18px"]::before {
   content: "18px";
 }
-.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="32px"]::before,
-.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="32px"]::before {
-  content: "32px";
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="20px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="20px"]::before {
+  content: "20px";
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="22px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="22px"]::before {
+  content: "22px";
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="24px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="24px"]::before {
+  content: "24px";
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="26px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="26px"]::before {
+  content: "26px";
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="28px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="28px"]::before {
+  content: "28px";
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="30px"]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="30px"]::before {
+  content: "30px";
 }
 
 /* 你的标题和字体样式保留原样 */

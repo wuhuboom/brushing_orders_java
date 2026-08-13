@@ -18,7 +18,9 @@ const elementLocaleMap = {
   en_US: enUSElement,
 };
 
-const savedLocale = Cookies.get(LANGUAGE_COOKIE_KEY) || fallbackLocale;
+// Normalize saved locale to use underscore variant (e.g. zh-CN -> zh_CN)
+const rawSaved = Cookies.get(LANGUAGE_COOKIE_KEY) || fallbackLocale;
+const savedLocale = (rawSaved || "").replace(/-/g, "_");
 
 const i18n = createI18n({
   legacy: false,
@@ -41,12 +43,14 @@ export function resolveElementLocale(locale) {
 }
 
 export function changeLocale(locale) {
-  if (!messages[locale]) {
+  if (!locale) return getCurrentLocale();
+  const norm = String(locale).replace(/-/g, "_");
+  if (!messages[norm]) {
     return getCurrentLocale();
   }
-  i18n.global.locale.value = locale;
-  Cookies.set(LANGUAGE_COOKIE_KEY, locale);
-  return locale;
+  i18n.global.locale.value = norm;
+  Cookies.set(LANGUAGE_COOKIE_KEY, norm);
+  return norm;
 }
 
 export const localeOptions = [

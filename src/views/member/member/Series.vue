@@ -27,6 +27,9 @@
         }}</el-button>
       </el-col>
       <el-col :span="1.5">
+        <el-button type="warning" plain icon="Plus" @click="handleAddTemplate">模板添加</el-button>
+      </el-col>
+      <el-col :span="1.5">
         <el-button
           type="success"
           plain
@@ -35,6 +38,7 @@
           >{{ $t("series.index.refreshData") }}</el-button
         >
       </el-col>
+
       <right-toolbar
         v-model:showSearch="showSearch"
         @queryTable="getList"
@@ -393,6 +397,44 @@
       </template>
     </el-drawer>
 
+    <!-- 模板选择弹窗 -->
+    <el-dialog
+      title="模板添加"
+      v-model="openTemplateDialog"
+      width="620px"
+      append-to-body
+    >
+      <div>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item :label="$t('series.index.userBalance')">
+            {{ userInfo.balance || '0.00' }}
+          </el-descriptions-item>
+          <el-descriptions-item :label="$t('series.index.currentOrderCount')">
+            {{ userInfo.dealCount || '0' }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <el-form :model="{ templateId: selectedTemplateId }" style="margin-top:16px">
+          <el-form-item :label="$t('series.index.selectTemplate')">
+            <el-select v-model="selectedTemplateId" placeholder="请选择模板" style="width:100%">
+              <el-option
+                v-for="item in templateOptions"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitTemplateAdd">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="openTemplateDialog = false">{{ $t('common.cancel') }}</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <el-dialog
       :title="$t('series.index.modifyPriceTitle')"
       v-model="openPriceDialog"
@@ -439,6 +481,7 @@ import {
   onMounted,
   onUnmounted,
   getCurrentInstance,
+
 } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -449,7 +492,9 @@ import {
   updateSeries,
   listGoods,
   getMember,
-  addSeriesList, // 确保引入了 addSeriesList
+  addSeriesList,
+  getTemplateOptions,
+  addTemplateSeries
 } from "@/api/member/series";
 
 const { t } = useI18n();
@@ -474,6 +519,11 @@ const goodsTotal = ref(0);
 const title = ref("");
 const userInfo = ref({});
 const timer = ref(null);
+
+// 模板相关
+const templateOptions = ref([]);
+const selectedTemplateId = ref(null);
+const openTemplateDialog = ref(false);
 
 const data = reactive({
   form: {
@@ -661,6 +711,17 @@ function handleAdd() {
   title.value = t("series.index.addSeriesTitle");
 }
 
+// 模板添加按钮操作
+function handleAddTemplate() {
+  selectedTemplateId.value = null;
+  openTemplateDialog.value = true;
+  // 获取模板选项
+  getTemplateOptions().then((res) => {
+    // 期望返回数组 [{id, name}, ...]
+    templateOptions.value = res.data || [];
+  });
+}
+
 // 修改价格按钮操作（列表页面的单个修改）
 function handleUpdatePrice(row) {
   data.priceForm.id = row.id;
@@ -713,6 +774,23 @@ function submitForm() {
   addSeriesList(submitList).then((response) => {
     proxy.$modal.msgSuccess(t("series.index.addSuccess")); // 或 "批量添加成功"
     open.value = false;
+    getList();
+  });
+}
+
+// 提交模板添加
+function submitTemplateAdd() {
+  if (!selectedTemplateId.value) {
+    proxy.$modal.msgWarning(t("series.index.selectTemplateRequired"));
+    return;
+  }
+  const payload = {
+    userId: data.queryParams.userId,
+    templateId: selectedTemplateId.value,
+  };
+  addTemplateSeries(payload).then(() => {
+    proxy.$modal.msgSuccess(t("series.index.addSuccess"));
+    openTemplateDialog.value = false;
     getList();
   });
 }

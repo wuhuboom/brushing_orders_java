@@ -16,20 +16,8 @@
           >
             <el-switch
               v-model="form.withdrawEnabled"
-              :active-value="0"
-              :inactive-value="1"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('tradeconfig.minUserBalance')"
-            prop="minUserBalance"
-          >
-            <el-input-number
-              v-model="form.minUserBalance"
-              :min="0"
-              :precision="2"
-              :placeholder="$t('tradeconfig.enterMinUserBalance')"
-              style="width: 20%"
+              active-value="0"
+              inactive-value="1"
             />
           </el-form-item>
           <el-form-item
@@ -38,50 +26,14 @@
           >
             <el-input-number
               v-model="form.minWithdrawCreditScore"
-              :min="0"
+              :min="1"
+              :max="100"
+              :step="1"
               :precision="0"
-              class="input-number-wide"
+              step-strictly
               style="width: 20%"
+              class="input-number-wide"
               :placeholder="$t('tradeconfig.enterMinWithdrawCreditScore')"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('tradeconfig.minWithdrawAmount')"
-            prop="minWithdrawAmount"
-          >
-            <el-input-number
-              v-model="form.minWithdrawAmount"
-              :min="0"
-              :precision="2"
-              class="input-number-wide"
-              style="width: 20%"
-              :placeholder="$t('tradeconfig.enterMinWithdrawAmount')"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('tradeconfig.maxWithdrawAmount')"
-            prop="maxWithdrawAmount"
-          >
-            <el-input-number
-              v-model="form.maxWithdrawAmount"
-              :min="0"
-              :precision="2"
-              style="width: 20%"
-              class="input-number-wide"
-              :placeholder="$t('tradeconfig.enterMaxWithdrawAmount')"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('tradeconfig.dailyWithdrawLimit')"
-            prop="dailyWithdrawLimit"
-          >
-            <el-input-number
-              v-model="form.dailyWithdrawLimit"
-              :min="0"
-              :precision="2"
-              style="width: 20%"
-              class="input-number-wide"
-              :placeholder="$t('tradeconfig.enterDailyWithdrawLimit')"
             />
           </el-form-item>
           <el-form-item
@@ -305,9 +257,11 @@ const data = reactive({
     ],
     minWithdrawCreditScore: [
       {
+        required: true,
         type: "number",
-        min: 0,
-        message: t("tradeconfig.minWithdrawCreditScoreMin"),
+        min: 1,
+        max: 100,
+        message: t("tradeconfig.minWithdrawCreditScoreRange"),
         trigger: "blur",
       },
     ],

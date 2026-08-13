@@ -9,84 +9,11 @@
           label-position="top"
           label-width="120px"
         >
-          <el-form-item :label="$t('siteconfig.siteName')" prop="siteName">
-            <el-input
-              v-model="form.siteName"
-              :placeholder="$t('siteconfig.enterSiteName')"
-            />
-          </el-form-item>
-
           <el-form-item
-            :label="$t('siteconfig.customerServiceUrl')"
-            prop="customerServiceUrl"
+            :label="$t('siteconfig.splashAdImage')"
+            prop="splashAdImage"
           >
-            <el-input
-              v-model="form.customerServiceUrl"
-              :placeholder="$t('siteconfig.enterCustomerServiceUrl')"
-            />
-          </el-form-item>
-
-          <!-- 新增：邮箱地址 + 复制按钮 -->
-          <el-form-item
-            :label="$t('siteconfig.emailAddress')"
-            prop="emailAddress"
-          >
-            <el-input
-              v-model="form.emailAddress"
-              :placeholder="$t('siteconfig.enterEmailAddress')"
-              clearable
-            >
-              <template #append>
-                <el-button :icon="DocumentCopy" @click="copyEmail">{{
-                  $t("common.copy")
-                }}</el-button>
-              </template>
-            </el-input>
-          </el-form-item>
-
-          <el-form-item
-            :label="$t('siteconfig.copyrightInfo')"
-            prop="copyrightInfo"
-          >
-            <el-input
-              v-model="form.copyrightInfo"
-              :placeholder="$t('siteconfig.enterCopyrightInfo')"
-            />
-          </el-form-item>
-
-          <el-form-item
-            :label="$t('siteconfig.registerBonusAmount')"
-            prop="registerBonusAmount"
-          >
-            <el-input
-              v-model="form.registerBonusAmount"
-              :placeholder="$t('siteconfig.enterRegisterBonusAmount')"
-            />
-          </el-form-item>
-
-          <el-form-item
-            :label="$t('siteconfig.maintenanceImage')"
-            prop="maintenanceImage"
-          >
-            <image-upload v-model="form.maintenanceImage" />
-          </el-form-item>
-
-          <el-form-item :label="$t('siteconfig.siteLogo')" prop="siteLogo">
-            <image-upload v-model="form.siteLogo" />
-          </el-form-item>
-
-          <el-form-item :label="$t('siteconfig.favicon')" prop="favicon">
-            <image-upload v-model="form.favicon" />
-          </el-form-item>
-
-          <el-form-item
-            :label="$t('siteconfig.currencyType')"
-            prop="currencyType"
-          >
-            <el-input
-              v-model="form.currencyType"
-              :placeholder="$t('siteconfig.enterCurrencyType')"
-            />
+            <image-upload v-model="form.splashAdImage" :limit="1" />
           </el-form-item>
 
           <el-form-item
@@ -139,6 +66,20 @@
               :active-text="$t('siteconfig.proportion')"
               :inactive-text="$t('siteconfig.multiplier')"
               @change="(val) => handleSwitchChange('seriesStatus', val)"
+            />
+          </el-form-item>
+
+           <el-form-item
+            label="选择商品数据"
+            prop="goodsTableType"
+          >
+            <el-switch
+              v-model="form.goodsTableType"
+              active-value="1"
+              inactive-value="2"
+              active-text = "商品"
+              inactive-text = "酒店"
+             :before-change="beforeGoodsTableTypeChange"
             />
           </el-form-item>
 
@@ -209,6 +150,28 @@
               @change="(val) => handleSwitchChange('totpEnabled', val)"
             />
           </el-form-item>
+
+          <el-form-item :label="$t('siteconfig.newUserCanTask')" prop="newUserCanTask">
+            <el-switch
+              v-model="form.newUserCanTask"
+              active-value="0"
+              inactive-value="1"
+              :active-text="$t('siteconfig.newUserCanTaskAllow')"
+              :inactive-text="$t('siteconfig.newUserCanTaskDeny')"
+              @change="(val) => handleSwitchChange('newUserCanTask', val)"
+            />
+          </el-form-item>
+
+          <el-form-item :label="$t('siteconfig.needPhone')" prop="needPhone">
+            <el-switch
+              v-model="form.needPhone"
+              active-value="0"
+              inactive-value="1"
+              :active-text="$t('siteconfig.needPhoneRequired')"
+              :inactive-text="$t('siteconfig.needPhoneNotRequired')"
+              @change="(val) => handleSwitchChange('needPhone', val)"
+            />
+          </el-form-item>
         </el-form>
 
         <div class="dialog-footer" style="margin-top: 20px; text-align: right">
@@ -248,6 +211,7 @@ const form = reactive({
   maintenanceImage: null,
   siteLogo: null,
   favicon: null,
+  splashAdImage: null,
   currencyType: null,
   maxRegisterPerIp: null,
   ipBlacklist: null,
@@ -262,7 +226,11 @@ const form = reactive({
   seriesStatus: "1",
   resetOrderCount: "1",
   minBalance: "1",
-  enableFullOrder:"0" ,
+  enableFullOrder: "0",
+  // 新字段：新用户是否能任务 0=能, 1=不能
+  newUserCanTask: "0",
+  // 新字段：是否需要手机 0=需要, 1=不需要
+  needPhone: "1",
 });
 
 const rules = {
@@ -327,6 +295,26 @@ async function copyEmail() {
   }
 }
 
+function beforeGoodsTableTypeChange() {
+  const newVal = form.goodsTableType === "1" ? "2" : "1";
+  const label = newVal === "1" ? "商品" : "酒店";
+
+  return new Promise((resolve) => {
+    ElMessageBox.confirm(
+      `确认切换为【${label}】数据源吗？`,
+      "提示",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    )
+      .then(() => resolve(true))   // 允许切换
+      .catch(() => resolve(false)); // 阻止切换
+  });
+}
+
+
 // 处理开关切换
 function handleSwitchChange(key, newVal) {
   // 计算旧值（因为是 toggle，所以旧值是 newVal 的反转）
@@ -336,58 +324,22 @@ function handleSwitchChange(key, newVal) {
   if ((key === "levelStatus" || key === "vipAutoShop") && newVal === "0") {
     const otherKey = key === "levelStatus" ? "vipAutoShop" : "levelStatus";
     if (form[otherKey] === "0") {
-      ElMessage.warning(
-        "通过余额更新VIP和订单数自动升级VIP，二者只能有一个设置为开启状态。"
-      );
+      ElMessage.warning(t('siteconfig.levelVipMutualExclusive') || "通过余额更新VIP和订单数自动升级VIP，二者只能有一个设置为开启状态。");
       // 回滚
       form[key] = oldVal;
       return;
     }
   }
 
-  // 获取功能标签
-  let label = "";
-  switch (key) {
-    case "levelStatus":
-      label = "等级状态";
-      break;
-    case "autoVip":
-      label = "自动VIP";
-      break;
-    case "seriesStatus":
-      label = "系列状态";
-      break;
-    case "registerEnabled":
-      label = "注册启用";
-      break;
-    case "autoReset":
-      label = "自动重置";
-      break;
-    case "resetOrderCount":
-      label = "重置订单计数";
-      break;
-    case "minBalance":
-      label = "最低余额";
-      break;
-    case "emailVerificationEnabled":
-      label = "邮箱验证启用";
-      break;
-    case "totpEnabled":
-      label = "TOTP 启用";
-      break;
-    case "enableFullOrder":
-      label = "满单提示";
-      break;
-    default:
-      label = key;
-  }
+  // 获取功能标签（从 i18n 中读取，回退到 key）
+  const label = t(`siteconfig.${key}`) || key;
 
-  const action = newVal === "0" ? "开启" : "关闭";
-  const message = `确认${action}${label}功能吗？`;
+  const action = newVal === "0" ? t('common.confirmEnable') || "开启" : t('common.confirmDisable') || "关闭";
+  const message = t('siteconfig.confirmToggle', { action, label }) || `确认${action}${label}功能吗？`;
 
-  ElMessageBox.confirm(message, "提示", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
+  ElMessageBox.confirm(message, t('common.prompt') || "提示", {
+    confirmButtonText: t('common.confirm') || "确定",
+    cancelButtonText: t('common.cancel') || "取消",
     type: "warning",
   })
     .then(() => {

@@ -5,32 +5,32 @@
     "3": { "zh": "未知", "en": "Unknown" }
   },
   "sys_show_hide": {
-    "1": { "zh": "显示", "en": "Show" },
-    "2": { "zh": "隐藏", "en": "Hide" }
+    "0": { "zh": "显示", "en": "Show" },
+    "1": { "zh": "隐藏", "en": "Hide" }
   },
   "sys_normal_disable": {
-    "1": { "zh": "正常", "en": "Normal" },
-    "2": { "zh": "停用", "en": "Disabled" }
+    "0": { "zh": "正常", "en": "Normal" },
+    "1": { "zh": "停用", "en": "Disabled" }
   },
   "sys_job_status": {
-    "1": { "zh": "正常", "en": "Normal" },
-    "2": { "zh": "暂停", "en": "Suspended" }
+    "0": { "zh": "正常", "en": "Normal" },
+    "1": { "zh": "暂停", "en": "Suspended" }
   },
   "sys_job_group": {
-    "1": { "zh": "默认", "en": "Default" },
-    "2": { "zh": "系统", "en": "System" }
+    "DEFAULT": { "zh": "默认", "en": "Default" },
+    "SYSTEM": { "zh": "系统", "en": "System" }
   },
   "sys_yes_no": {
-    "1": { "zh": "是", "en": "Yes" },
-    "2": { "zh": "否", "en": "No" }
+    "Y": { "zh": "是", "en": "Yes" },
+    "N": { "zh": "否", "en": "No" }
   },
   "sys_notice_type": {
     "1": { "zh": "通知", "en": "Notice" },
     "2": { "zh": "公告", "en": "Announcement" }
   },
   "sys_notice_status": {
-    "1": { "zh": "正常", "en": "Active" },
-    "2": { "zh": "关闭", "en": "Closed" }
+    "0": { "zh": "正常", "en": "Active" },
+    "1": { "zh": "关闭", "en": "Closed" }
   },
   "sys_oper_type": {
     "99": { "zh": "其他", "en": "Other" },

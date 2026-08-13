@@ -212,6 +212,12 @@
         <el-form-item :label="$t('customer.namePor')" prop="namePor">
           <el-input v-model="form.namePor" />
         </el-form-item>
+        <el-form-item :label="$t('customer.nameEs')" prop="nameEs">
+          <el-input
+            v-model="form.nameEs"
+            :placeholder="$t('customer.enterNameEs')"
+          />
+        </el-form-item>
         <el-form-item :label="$t('customer.linkUrl')" prop="linkUrl">
           <el-input
             v-model="form.linkUrl"
@@ -328,6 +334,8 @@ function reset() {
     nameKo: null,
     nameTh: null,
     nameZhTw: null,
+    namePor: null,
+    nameEs: null,
   };
   proxy.resetForm("customerRef");
 }

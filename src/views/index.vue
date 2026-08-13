@@ -94,12 +94,6 @@
         width="120"
       />
       <el-table-column
-        :label="t('order.phone')"
-        align="center"
-        prop="phone"
-        width="180"
-      />
-      <el-table-column
         :label="t('order.quantity')"
         align="center"
         prop="quantity"
@@ -249,7 +243,7 @@ function getList() {
 }
 function handleMore() {
   // 使用router.push进行页面跳转
-  router.push("/money/orderInfo");
+  router.push("/orderInfolist/orderInfo");
 }
 
 getList();

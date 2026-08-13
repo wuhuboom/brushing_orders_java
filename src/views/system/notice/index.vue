@@ -175,13 +175,13 @@
 
 
           <el-col :span="24">
-            <el-tabs type="border-card">
-              <el-tab-pane label="Default">
-                <el-form-item :label="$t('notice.noticeTitle')" prop="noticeTitle">
-                  <el-input v-model="form.noticeTitle" :placeholder="$t('notice.enterNoticeTitle')" />
+            <el-tabs type="border-card" v-model="activeTab">
+              <el-tab-pane label="Default" name="default">
+                <el-form-item :label="$t('notice.titleEn')" prop="titleEn">
+                  <el-input v-model="form.titleEn" :placeholder="$t('notice.enterTitleEn')" />
                 </el-form-item>
-                <el-form-item :label="$t('notice.content')">
-                  <editor v-model="form.noticeContent" :min-height="400" />
+                <el-form-item :label="$t('notice.contentEn')">
+                  <editor v-model="form.contentEn" :min-height="400" />
                 </el-form-item>
               </el-tab-pane>
               <el-tab-pane label="中文">
@@ -192,8 +192,8 @@
                   <editor v-model="form.contentZh" :min-height="400" />
                 </el-form-item>
               </el-tab-pane>
-              <el-tab-pane label="English">
-                <el-form-item :label="$t('notice.titleEn')" prop="titleEn">
+              <el-tab-pane label="English" name="english">
+                <el-form-item :label="$t('notice.titleEn')">
                   <el-input v-model="form.titleEn" :placeholder="$t('notice.enterTitleEn')" />
                 </el-form-item>
                 <el-form-item :label="$t('notice.contentEn')">
@@ -230,6 +230,14 @@
                 </el-form-item>
                 <el-form-item :label="$t('notice.contentPor')">
                   <editor v-model="form.contentPor" :min-height="400" />
+                </el-form-item>
+              </el-tab-pane>
+              <el-tab-pane label="Español">
+                <el-form-item :label="$t('notice.titleEs')" prop="titleEs">
+                  <el-input v-model="form.titleEs" :placeholder="$t('notice.enterTitleEs')" />
+                </el-form-item>
+                <el-form-item :label="$t('notice.contentEs')">
+                  <editor v-model="form.contentEs" :min-height="400" />
                 </el-form-item>
               </el-tab-pane>
               <el-tab-pane label="繁體">
@@ -275,6 +283,7 @@ const { sys_notice_status, sys_notice_type } = proxy.useDict(
 
 const noticeList = ref([]);
 const open = ref(false);
+const activeTab = ref('');
 const loading = ref(true);
 const showSearch = ref(true);
 const ids = ref([]);
@@ -293,18 +302,11 @@ const data = reactive({
     status: undefined,
   },
   rules: {
-    noticeTitle: [
+    titleEn: [
       {
         required: true,
         message: t("notice.noticeTitleRequired"),
         trigger: "blur",
-      },
-    ],
-    noticeType: [
-      {
-        required: true,
-        message: t("notice.noticeTypeRequired"),
-        trigger: "change",
       },
     ],
   },
@@ -342,6 +344,7 @@ function reset() {
     titleTh: undefined,
     titleKo: undefined,
     titlePor: undefined,
+    titleEs: undefined,
     titleZhTw: undefined,
     // localized contents
     contentZh: undefined,
@@ -350,6 +353,7 @@ function reset() {
     contentTh: undefined,
     contentKo: undefined,
     contentPor: undefined,
+    contentEs: undefined,
     contentZhTw: undefined,
     status: "0",
     createTime: undefined,
@@ -379,6 +383,7 @@ function handleSelectionChange(selection) {
 /** 新增按钮操作 */
 function handleAdd() {
   reset();
+  activeTab.value = 'default';
   open.value = true;
   title.value = t("notice.addNotice");
 }
@@ -386,6 +391,7 @@ function handleAdd() {
 /**修改按钮操作 */
 function handleUpdate(row) {
   reset();
+  activeTab.value = 'default';
   const noticeId = row.noticeId || ids.value;
   getNotice(noticeId).then((response) => {
     form.value = response.data;
@@ -398,6 +404,7 @@ function handleUpdate(row) {
 function submitForm() {
   proxy.$refs["noticeRef"].validate((valid) => {
     if (valid) {
+      form.value.noticeTitle = form.value.titleEn;
       if (form.value.noticeId != undefined) {
         updateNotice(form.value).then((response) => {
           proxy.$modal.msgSuccess(t("notice.updateSuccess"));

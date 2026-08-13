@@ -100,6 +100,14 @@ export function updateUserPwd(oldPassword, newPassword) {
   })
 }
 
+// 校验当前登录用户密码
+export function checkUserPassword(password) {
+  return request({
+    url: '/system/user/profile/checkPassword/' + encodeURIComponent(password),
+    method: 'get'
+  })
+}
+
 // 用户头像上传
 export function uploadAvatar(data) {
   return request({

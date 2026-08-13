@@ -23,14 +23,6 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item :label="$t('member.orderinfo.phone')" prop="phone">
-        <el-input
-          v-model="queryParams.phone"
-          :placeholder="$t('member.orderinfo.enterPhone')"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
       <el-form-item
         :label="$t('member.orderinfo.orderTime')"
         style="width: 400px"
@@ -40,8 +32,6 @@
           value-format="YYYY-MM-DD"
           type="daterange"
           range-separator="-"
-          :start-placeholder="$t('common.startDate')"
-          :end-placeholder="$t('common.endDate')"
         ></el-date-picker>
       </el-form-item>
       <el-form-item>
@@ -77,6 +67,7 @@
         :prop="column.prop"
         :width="column.width"
         :fixed="column.fixed"
+        :min-width="column.minWidth"
         align="center"
       >
         <template v-if="column.key === '5'" #default="scope">
@@ -328,6 +319,7 @@ const columns = ref([
     label: t("member.orderinfo.orderNo"),
     visible: true,
     prop: "orderNo",
+     width: "200",
   },
   {
     key: "2",
@@ -335,13 +327,6 @@ const columns = ref([
     visible: true,
     prop: "username",
     width: "120",
-  },
-  {
-    key: "3",
-    label: t("member.orderinfo.phone"),
-    visible: true,
-    prop: "phone",
-    width: "180",
   },
   {
     key: "4",
@@ -354,6 +339,7 @@ const columns = ref([
     key: "5",
     label: t("member.orderinfo.productName"),
     visible: true,
+    minWidth: "300",
     prop: null,
   },
   {

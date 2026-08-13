@@ -15,7 +15,6 @@
       <el-tab-pane :label="$t('siteconfig.latestEvent')" name="event" />
       <el-tab-pane :label="$t('siteconfig.terms')" name="terms" />
       <el-tab-pane :label="$t('siteconfig.incomeGuide')" name="income" />
-      <el-tab-pane :label="$t('siteconfig.popup')" name="popup" />
       <component :is="activeTabComponent" />
     </el-tabs>
   </div>

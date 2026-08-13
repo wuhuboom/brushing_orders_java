@@ -65,3 +65,18 @@ export function addSeriesList(data) {
     data: data,
   });
 }
+
+export function getTemplateOptions() {
+  return request({
+    url: "/member/template/options",
+    method: "get",
+  });
+}
+
+export function addTemplateSeries(data) {
+  return request({
+    url: "/member/series/addTemplateSeries",
+    method: "post",
+    data: data,
+  });
+}

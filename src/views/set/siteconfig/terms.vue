@@ -1,198 +1,176 @@
 <template>
   <div class="app-container">
     <el-card>
-      <div class="center-container">
-        <el-form
-          ref="globalconfigRef"
-          :model="form"
-          :rules="rules"
-          label-width="150px"
-          class="space-y-4"
-          label-position="top"
-        >
-          <el-form-item :label="$t('globalconfig.termsEn')" prop="termsEn">
-            <editor
-              v-model="form.termsEn"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-          <el-form-item :label="$t('globalconfig.termsZh')" prop="termsLocal">
-            <editor
-              v-model="form.termsLocal"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('globalconfig.termsJa')"
-            prop="termsConditionsJa"
-          >
-            <editor
-              v-model="form.termsConditionsJa"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('globalconfig.termsTh')"
-            prop="termsConditionsTh"
-          >
-            <editor
-              v-model="form.termsConditionsTh"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('globalconfig.termsKo')"
-            prop="termsConditionsKo"
-          >
-            <editor
-              v-model="form.termsConditionsKo"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('globalconfig.termsZhTw')"
-            prop="termsConditionsZhTw"
-          >
-            <editor
-              v-model="form.termsConditionsZhTw"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-          <el-form-item
-            :label="$t('globalconfig.termsPor')"
-            prop="termsConditionsPor"
-          >
-            <editor
-              v-model="form.termsConditionsPor"
-              :min-height="192"
-              class="editor-wide"
-            />
-          </el-form-item>
-        </el-form>
-        <div class="dialog-footer" style="margin-top: 20px; text-align: right">
-          <el-button type="primary" @click="submitForm">{{
-            $t("common.save")
-          }}</el-button>
+      <el-form
+        ref="globalconfigRef"
+        :model="form"
+        :rules="rules"
+        label-position="top"
+        class="space-y-4"
+      >
+        <el-tabs v-model="activeTab" type="border-card">
+          <el-tab-pane :label="$t('globalconfig.termsEn')" name="en">
+            <el-form-item prop="termsEn">
+              <editor
+                v-model="form.termsEn"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsZh')" name="zh">
+            <el-form-item prop="termsLocal">
+              <editor
+                v-model="form.termsLocal"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsJa')" name="ja">
+            <el-form-item prop="termsConditionsJa">
+              <editor
+                v-model="form.termsConditionsJa"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsTh')" name="th">
+            <el-form-item prop="termsConditionsTh">
+              <editor
+                v-model="form.termsConditionsTh"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsKo')" name="ko">
+            <el-form-item prop="termsConditionsKo">
+              <editor
+                v-model="form.termsConditionsKo"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsZhTw')" name="zhTw">
+            <el-form-item prop="termsConditionsZhTw">
+              <editor
+                v-model="form.termsConditionsZhTw"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsPor')" name="por">
+            <el-form-item prop="termsConditionsPor">
+              <editor
+                v-model="form.termsConditionsPor"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+
+          <el-tab-pane :label="$t('globalconfig.termsEs')" name="es">
+            <el-form-item prop="termsConditionsEs">
+              <editor
+                v-model="form.termsConditionsEs"
+                :min-height="260"
+                class="editor-wide"
+              />
+            </el-form-item>
+          </el-tab-pane>
+        </el-tabs>
+
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitForm">
+            {{ $t("common.save") }}
+          </el-button>
         </div>
-      </div>
+      </el-form>
     </el-card>
   </div>
 </template>
-
 <script setup>
-import { ref, reactive, toRefs, onMounted } from "vue";
+import { ref, reactive, toRefs, onMounted, getCurrentInstance } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   getGlobalconfig,
   addGlobalconfig,
   updateGlobalconfig,
 } from "@/api/set/globalconfig";
-import { getCurrentInstance } from "vue";
 
 const { t } = useI18n();
-
 const { proxy } = getCurrentInstance();
 
-const open = ref(true);
-const title = ref(t("globalconfig.termsTitle"));
+const activeTab = ref("en");
 const loading = ref(false);
 
 const data = reactive({
   form: {
     id: null,
-    registerProtocolEn: null,
-    registerProtocolLocal: null,
-    aboutUsEn: null,
-    aboutUsLocal: null,
-    certificateEn: null,
-    certificateLocal: null,
-    faqEn: null,
-    faqLocal: null,
-    latestEventEn: null,
-    latestEventLocal: null,
     termsEn: null,
     termsLocal: null,
-    incomeGuideEn: null,
-    incomeGuideLocal: null,
+    termsConditionsJa: null,
+    termsConditionsTh: null,
+    termsConditionsKo: null,
+    termsConditionsZhTw: null,
+    termsConditionsPor: null,
+    termsConditionsEs: null,
   },
   rules: {},
 });
 
 const { form, rules } = toRefs(data);
 
-// 页面加载时获取 ID=1 的配置
+// 初始化
 onMounted(() => {
   loading.value = true;
   getGlobalconfig(1)
-    .then((response) => {
-      if (response.data) {
-        form.value = response.data;
+    .then((res) => {
+      if (res.data) {
+        form.value = res.data;
       }
-      loading.value = false;
     })
-    .catch(() => {
+    .finally(() => {
       loading.value = false;
     });
 });
 
-// 取消按钮
-function cancel() {
-  open.value = false;
-  reset();
-}
-
-// 表单重置
-function reset() {
-  form.value = {
-    id: null,
-    registerProtocolEn: null,
-    registerProtocolLocal: null,
-    aboutUsEn: null,
-    aboutUsLocal: null,
-    certificateEn: null,
-    certificateLocal: null,
-    faqEn: null,
-    faqLocal: null,
-    latestEventEn: null,
-    latestEventLocal: null,
-    termsEn: null,
-    termsLocal: null,
-    incomeGuideEn: null,
-    incomeGuideLocal: null,
-  };
-  proxy.resetForm("globalconfigRef");
-}
-
-// 提交表单
+// 提交
 function submitForm() {
-  proxy.$refs["globalconfigRef"].validate((valid) => {
-    if (valid) {
-      if (form.value.id != null) {
-        updateGlobalconfig(form.value).then((response) => {
-          proxy.$modal.msgSuccess(t("globalconfig.updateSuccess"));
-          open.value = false;
-        });
-      } else {
-        addGlobalconfig(form.value).then((response) => {
-          proxy.$modal.msgSuccess(t("globalconfig.addSuccess"));
-          open.value = false;
-        });
-      }
-    }
+  proxy.$refs.globalconfigRef.validate((valid) => {
+    if (!valid) return;
+
+    const api = form.value.id
+      ? updateGlobalconfig(form.value)
+      : addGlobalconfig(form.value);
+
+    api.then(() => {
+      proxy.$modal.msgSuccess(
+        form.value.id
+          ? t("globalconfig.updateSuccess")
+          : t("globalconfig.addSuccess")
+      );
+    });
   });
 }
 </script>
-
 <style scoped>
-.center-container {
-  width: 60%;
-  margin: 0 auto;
-  padding-top: 20px;
+.editor-wide {
+  width: 100%;
+}
+
+.dialog-footer {
+  margin-top: 20px;
+  text-align: right;
 }
 </style>

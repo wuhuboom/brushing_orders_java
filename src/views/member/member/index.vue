@@ -16,7 +16,7 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item :label="$t('member.index.phone')" prop="phone">
+      <el-form-item v-if="showPhone" :label="$t('member.index.phone')" prop="phone">
         <el-input
           v-model="queryParams.phone"
           clearable
@@ -31,6 +31,21 @@
           style="width: 240px"
           @keyup.enter="handleQuery"
         />
+      </el-form-item>
+      <el-form-item :label="$t('member.index.memberLevel')" prop="levelId">
+        <el-select
+          v-model="queryParams.levelId"
+          :placeholder="$t('member.index.selectMemberLevel')"
+          clearable
+          style="width: 240px"
+        >
+          <el-option
+            v-for="item in LevelDatas"
+            :key="item.id"
+            :label="item.nameEn"
+            :value="item.id"
+          />
+        </el-select>
       </el-form-item>
       <el-form-item
         :label="$t('member.index.registerTime')"
@@ -83,17 +98,6 @@
       </el-col>
       <el-col :span="1.5">
         <el-button
-          type="success"
-          plain
-          icon="Edit"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['member:member:edit']"
-          >{{ $t("member.index.edit") }}</el-button
-        >
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
           type="danger"
           plain
           icon="Delete"
@@ -105,11 +109,20 @@
       </el-col>
       <right-toolbar
         v-model:showSearch="showSearch"
-        :columns="columns"
+        :columns="toolbarColumns"
         @queryTable="getList"
         @update:columns="handleColumnsUpdate"
       ></right-toolbar>
     </el-row>
+
+    <el-alert
+      v-if="listError"
+      :title="listError"
+      type="error"
+      :closable="false"
+      show-icon
+      class="mb8"
+    />
 
     <el-table
       v-loading="loading"
@@ -177,12 +190,14 @@
             <el-button
               icon="Sort"
               type="warning"
+              v-hasPermi="['member:member:topup']"
               @click="handleTopup(scope.row)"
               >{{ $t("member.index.topup") }}</el-button
             >
             <el-button
               icon="List"
               type="primary"
+              v-hasPermi="['member:member:series']"
               @click="handleSeries(scope.row)"
               >{{ $t("member.index.series") }}</el-button
             >
@@ -193,37 +208,50 @@
               @confirm="restOrderNum(scope.row)"
             >
               <template #reference>
-                <el-button icon="Refresh" type="danger">{{
+                <el-button icon="Refresh" type="danger" v-hasPermi="['member:member:resetOrder']">{{
                   $t("member.index.resetOrderNum")
                 }}</el-button>
               </template>
             </el-popconfirm>
-            <el-dropdown trigger="click">
-              <el-button type="primary">
-                {{ $t("member.index.operation") }}
+            <el-dropdown
+              trigger="click"
+              v-if="$auth.hasPermiOr(['member:member:edit','member:member:editDealCount','member:member:resetPwd','member:member:resetTradePwd','member:member:changeParent','member:member:giftBalance','member:member:toggleTask','member:member:adjustBalance','member:member:subList','member:member:accountChange','member:member:editWithdraw','member:member:editRemark','member:member:accountStatus','member:member:tradeStatus','member:member:setReal','member:member:withdrawStatus'])"
+            >
+              <el-button type="primary"  >
+                 <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>  {{ $t("member.index.operation") }}  <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
                 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:edit')"
                     command="edit"
                     icon="Edit"
                     @click="handleUpdate(scope.row)"
                     >{{ $t("member.index.edit") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:edit')"
+                    icon="Star"
+                    @click="openCreditScoreDialog(scope.row)"
+                    >{{ $t("member.index.modifyCreditScore") }}</el-dropdown-item
+                  >
+                  <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:editDealCount')"
                     command="account"
                     icon="Edit"
                     @click="openEditDealCountDialog(scope.row)"
                     >{{ $t("member.index.modifyOrderCount") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:resetPwd')"
                     command="account"
                     icon="Lock"
                     @click="openPasswordDialog(scope.row, 'login')"
                     >{{ $t("member.index.modifyPassword") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:resetTradePwd')"
                     command="account"
                     icon="Key"
                     @click="openPasswordDialog(scope.row, 'trade')"
@@ -232,33 +260,51 @@
                     }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:changeParent')"
                     command="changeParent"
                     icon="User"
                     @click="handleChangeParent(scope.row)"
                     >{{ $t("member.index.modifyParent") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:giftBalance')"
                     icon="Money"
                     @click="openGiftBalanceDialog(scope.row)"
-                    >{{ $t("member.index.giftBalance") }}</el-dropdown-item
                   >
+                    {{ $t("member.index.giftBalance") }}
+                  </el-dropdown-item>
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:toggleTask')"
+                    icon="Bell"
+                    @click="handleToggleTasksStatus(scope.row)"
+                  >
+                    {{
+                      scope.row.taskStatus === '0'
+                        ? $t('member.index.disableTasks')
+                        : $t('member.index.enableTasks')
+                    }}
+                  </el-dropdown-item>
+                  <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:adjustBalance')"
                     icon="Money"
                     @click="openAdjustBalanceDialog(scope.row)"
                     >{{ $t("member.index.modifyBalance") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:subList')"
                     icon="User"
                     @click="openSubList(scope.row)"
                     >{{ $t("member.index.subUsers") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:accountChange')"
                     command="account"
                     icon="Money"
                     @click="handleAccount(scope.row)"
                     >{{ $t("member.index.accountChange") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:editWithdraw')"
                     icon="CreditCard"
                     @click="openWithdrawDialog(scope.row)"
                     >{{
@@ -266,37 +312,13 @@
                     }}</el-dropdown-item
                   >
                   <el-dropdown-item
-                    icon="UserFilled"
-                    @click="openRealNameDialog(scope.row, 'full')"
-                    >{{ $t("member.index.modifyRealName") }}</el-dropdown-item
-                  >
-                  <el-dropdown-item
-                    icon="CircleCheck"
-                    @click="openRealNameDialog(scope.row, 'status')"
-                    >{{
-                      $t("member.index.modifyRealNameStatus")
-                    }}</el-dropdown-item
-                  >
-                  <el-dropdown-item
-                    icon="Star"
-                    @click="openCreditScoreDialog(scope.row)"
-                    >{{
-                      $t("member.index.modifyCreditScore")
-                    }}</el-dropdown-item
-                  >
-                  <el-dropdown-item
-                    icon="Edit"
-                    @click="openWithdrawTipDialog(scope.row)"
-                    >{{
-                      $t("member.index.modifyWithdrawTip")
-                    }}</el-dropdown-item
-                  >
-                  <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:editRemark')"
                     icon="Edit"
                     @click="openRemarkDialog(scope.row)"
                     >{{ $t("member.index.modifyRemark") }}</el-dropdown-item
                   >
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:accountStatus')"
                     :icon="
                       String(scope.row.accountStatus) === '0'
                         ? 'CircleClose'
@@ -317,6 +339,7 @@
                     }}
                   </el-dropdown-item>
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:tradeStatus')"
                     :icon="
                       String(scope.row.tradeStatus) === '0'
                         ? 'CircleClose'
@@ -337,6 +360,7 @@
                     }}
                   </el-dropdown-item>
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:setReal')"
                     :icon="
                       String(scope.row.isReal) === 'Y'
                         ? 'CircleCheck'
@@ -357,6 +381,7 @@
                     }}
                   </el-dropdown-item>
                   <el-dropdown-item
+                    v-if="$auth.hasPermi('member:member:withdrawStatus')"
                     :icon="
                       String(scope.row.withdrawStatus) === '0'
                         ? 'CircleClose'
@@ -416,19 +441,34 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12" v-if="!isEdit">
-            <el-form-item :label="$t('member.index.parentId')" prop="parentId">
-              <el-input
-                v-model="form.parentId"
-                :placeholder="$t('member.index.enterParentId')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
+          <el-col :span="12" v-if="showPhone">
             <el-form-item :label="$t('member.index.phone')" prop="phone">
               <el-input
                 v-model="form.phone"
                 :placeholder="$t('member.index.enterPhone')"
+                clearable
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item :label="$t('member.index.email')" prop="email">
+              <el-input
+                v-model.trim="form.email"
+                type="email"
+                :placeholder="$t('member.index.enterEmail')"
+                clearable
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" v-if="!isEdit">
+            <el-form-item
+              :label="$t('member.index.parentIdentifier')"
+              prop="parentIdentifier"
+            >
+              <el-input
+                v-model.trim="form.parentIdentifier"
+                :placeholder="$t('member.index.enterParentIdentifier')"
+                clearable
               />
             </el-form-item>
           </el-col>
@@ -446,29 +486,8 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12" v-if="isEdit">
-            <el-form-item
-              :label="$t('member.index.cardAmount')"
-              prop="cardAmount"
-            >
-              <el-input-number
-                v-model="form.cardAmount"
-                :min="0"
-                style="width: 240px"
-                :max="99999999"
-                :placeholder="$t('member.index.cardAmount')"
-              />
-            </el-form-item>
-          </el-col>
 
-          <el-col :span="12">
-            <el-form-item :label="$t('member.index.email')" prop="email">
-              <el-input
-                v-model="form.email"
-                :placeholder="$t('member.index.enterEmail')"
-              />
-            </el-form-item>
-          </el-col>
+
           <el-col :span="12">
             <el-form-item
               :label="$t('member.index.loginPassword')"
@@ -557,6 +576,22 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
+                <el-col :span="12">
+            <el-form-item
+              :label="$t('member.index.sex')"
+              prop="sex"
+            >
+              <el-radio-group v-model="form.sex">
+                <el-radio
+                  v-for="dict in sys_user_sex"
+                  :key="dict.value"
+                  :label="dict.value"
+                >
+                  {{ dict.label }}
+                </el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
         </el-row>
       </el-form>
       <template #footer>
@@ -603,8 +638,8 @@
           <el-input-number
             v-model.number="topupForm.amount"
             style="width: 100%"
-            :min="1"
             :placeholder="$t('member.index.enterAmount')"
+            @change="handleTopupAmountChange"
           />
         </el-form-item>
       </el-form>
@@ -716,6 +751,10 @@
       v-model="changeParentOpen"
       width="500px"
       append-to-body
+      :close-on-click-modal="!changeParentSubmitting"
+      :close-on-press-escape="!changeParentSubmitting"
+      :show-close="!changeParentSubmitting"
+      @closed="resetChangeParent"
     >
       <el-form
         ref="changeParentRef"
@@ -724,21 +763,52 @@
         label-position="top"
         label-width="100px"
       >
-        <el-form-item :label="$t('member.index.parentId')" prop="parentId">
-          <el-input-number
-            v-model="changeParentForm.parentId"
-            :min="0"
-            :placeholder="$t('member.index.enterParentId')"
-            style="width: 100%"
+        <el-alert
+          :title="$t('member.index.changeParentTarget', {
+            username: changeParentForm.username || '-',
+            id: changeParentForm.memberId,
+          })"
+          :description="$t('member.index.changeParentDescription', {
+            parent: changeParentCurrentLabel,
+          })"
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px"
+        />
+        <el-alert
+          v-if="changeParentError"
+          :title="changeParentError"
+          type="error"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 16px"
+        />
+        <el-form-item
+          :label="$t('member.index.parentIdentifier')"
+          prop="parentIdentifier"
+        >
+          <el-input
+            v-model.trim="changeParentForm.parentIdentifier"
+            :placeholder="$t('member.index.enterParentIdentifier')"
+            clearable
+            :disabled="changeParentSubmitting"
           />
         </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitChangeParent">{{
+          <el-button
+            type="primary"
+            :loading="changeParentSubmitting"
+            @click="submitChangeParent"
+          >{{
             $t("common.confirm")
           }}</el-button>
-          <el-button @click="cancelChangeParent">{{
+          <el-button
+            :disabled="changeParentSubmitting"
+            @click="cancelChangeParent"
+          >{{
             $t("common.cancel")
           }}</el-button>
         </div>
@@ -1046,15 +1116,17 @@
           <div class="score-row">
             <el-slider
               v-model.number="creditForm.creditScore"
-              :min="0"
+              :min="1"
               :max="100"
               :step="1"
             />
             <el-input-number
               v-model.number="creditForm.creditScore"
-              :min="0"
+              :min="1"
               :max="100"
               :step="1"
+              :precision="0"
+              step-strictly
               controls-position="right"
             />
           </div>
@@ -1164,13 +1236,16 @@ import {
   delMember,
   addMember,
   updateMember,
+  changeParent,
   levelList,
   topupAmount,
   restDealCount,
   upAmount,
   updateAmount,
   userBankList,
+  getPhoneFieldSet,
 } from "@/api/member/member";
+import { checkUserPassword } from "@/api/system/user";
 import { updateWallet } from "@/api/member/wallet";
 import Series from "@/views/member/member/Series.vue";
 import Account from "@/views/member/member/Account.vue";
@@ -1178,9 +1253,10 @@ import SubMemberList from "@/views/member/member/ScopeUser.vue";
 import { useI18n } from "vue-i18n";
 const { t, locale } = useI18n();
 const { proxy } = getCurrentInstance();
-const { sys_yes_no, sys_normal_disable } = proxy.useDict(
+const { sys_yes_no, sys_normal_disable ,sys_user_sex } = proxy.useDict(
   "sys_yes_no",
-  "sys_normal_disable"
+  "sys_normal_disable",
+  "sys_user_sex"
 );
 
 const tableKey = ref(Date.now());
@@ -1202,19 +1278,27 @@ const columns = ref([
     width: "120",
   },
   {
-    key: "2",
-    labelKey: "member.index.phone",
-    label: t("member.index.phone"),
-    visible: true,
-    prop: "phone",
-    width: "180",
-  },
-  {
     key: "3",
     labelKey: "member.index.vipLevel",
     label: t("member.index.vipLevel"),
     visible: true,
     prop: "userLevel.nameZh",
+    width: "80",
+  },
+  {
+    key: "2",
+    labelKey: "member.index.phone",
+    label: t("member.index.phone"),
+    visible: true,
+    prop: "phone",
+    width: "120",
+  },
+  {
+    key: "7",
+    labelKey: "member.index.email",
+    label: t("member.index.email"),
+    visible: true,
+    prop: "email",
     width: "180",
   },
   {
@@ -1223,7 +1307,7 @@ const columns = ref([
     label: t("member.index.upgradeRechargeNeeded"),
     visible: true,
     prop: "rechargeNeededForNextLevel",
-    width: "150",
+    width: "100",
   },
   {
     key: "5",
@@ -1242,28 +1326,12 @@ const columns = ref([
     width: "120",
   },
   {
-    key: "7",
-    labelKey: "member.index.parentPhone",
-    label: t("member.index.parentPhone"),
-    visible: true,
-    prop: "parentPhone",
-    width: "120",
-  },
-  {
-    key: "8",
-    labelKey: "member.index.email",
-    label: t("member.index.email"),
-    visible: true,
-    prop: "email",
-    width: "200",
-  },
-  {
     key: "9",
     labelKey: "member.index.directSubCount",
     label: t("member.index.directSubCount"),
     visible: true,
     prop: "directSubCount",
-    width: "120",
+    width: "100",
   },
   {
     key: "10",
@@ -1271,15 +1339,7 @@ const columns = ref([
     label: t("member.index.allSubCount"),
     visible: true,
     prop: "allSubCount",
-    width: "120",
-  },
-  {
-    key: "11",
-    labelKey: "member.index.creditScore",
-    label: t("member.index.creditScore"),
-    visible: true,
-    prop: "creditScore",
-    width: "80",
+    width: "100",
   },
   {
     key: "12",
@@ -1290,11 +1350,43 @@ const columns = ref([
     width: "120",
   },
   {
+    key: "30",
+    labelKey: "member.index.totalRecharge",
+    label: t("member.index.totalRecharge"),
+    visible: true,
+    prop: "totalRecharge",
+    width: "120",
+  },
+  {
+    key: "31",
+    labelKey: "member.index.totalWithdraw",
+    label: t("member.index.totalWithdraw"),
+    visible: true,
+    prop: "totalWithdraw",
+    width: "120",
+  },
+  {
+    key: "32",
+    labelKey: "member.index.diffAmount",
+    label: t("member.index.diffAmount"),
+    visible: true,
+    prop: "diffAmount",
+    width: "120",
+  },
+  {
     key: "13",
     labelKey: "member.index.frozenBalance",
     label: t("member.index.frozenBalance"),
     visible: true,
     prop: "frozenBalance",
+    width: "120",
+  },
+  {
+    key: "33",
+    labelKey: "member.index.withdrawFrozenAmount",
+    label: t("member.index.withdrawFrozenAmount"),
+    visible: true,
+    prop: "withdrawFrozenAmount",
     width: "120",
   },
   {
@@ -1424,13 +1516,27 @@ const columns = ref([
     label: t("member.index.operation"),
     visible: true,
     prop: null,
-    width: "480",
+    width: "320",
     fixed: "right",
     className: "operation-buttons",
   },
 ]);
 const filteredColumns = computed(() => {
   return columns.value.filter((column) => column.visible);
+});
+
+// Columns to pass into the right-toolbar component.
+// When `showPhone` is false, remove the phone column entirely
+// so the toolbar won't show or allow toggling it.
+const toolbarColumns = computed(() => {
+  const sp = showPhone && typeof showPhone === 'object' ? showPhone.value : showPhone;
+  if (sp === undefined || sp === null) {
+    return columns.value;
+  }
+  if (sp === false) {
+    return columns.value.filter((col) => !(col.prop === "phone" || col.key === "2"));
+  }
+  return columns.value;
 });
 
 // 当语言切换时，更新 columns 中的 label 字段以触发子组件重新渲染
@@ -1451,6 +1557,8 @@ const memberList = ref([]);
 const open = ref(false);
 const topupOpen = ref(false);
 const loading = ref(true);
+const listError = ref("");
+let listRequestId = 0;
 const dateRange = ref([]);
 const showSearch = ref(true);
 const ids = ref([]);
@@ -1468,6 +1576,8 @@ const passwordDialogVisible = ref(false);
 const passwordDialogTitle = ref("");
 const passwordType = ref("login");
 const changeParentOpen = ref(false);
+const changeParentSubmitting = ref(false);
+const changeParentError = ref("");
 const giftBalanceDialogVisible = ref(false);
 const adjustBalanceDialogVisible = ref(false);
 const withdrawDialogVisible = ref(false);
@@ -1480,6 +1590,8 @@ const remarkDialogVisible = ref(false);
 const subListOpen = ref(false);
 const subUserId = ref(null);
 const walletList = ref([]);
+// null = not loaded yet; true/false from backend
+const showPhone = ref(null);
 
 const data = reactive({
   form: {},
@@ -1489,6 +1601,7 @@ const data = reactive({
     pageSize: 10,
     username: null,
     phone: null,
+    levelId: null,
   },
   dealForm: {
     userId: null,
@@ -1507,8 +1620,12 @@ const data = reactive({
     amount: null,
   },
   changeParentForm: {
-    userId: null,
-    parentId: null,
+    memberId: null,
+    username: "",
+    currentParentId: null,
+    currentParentUsername: "",
+    parentIdentifier: "",
+    version: null,
   },
   giftBalanceForm: {
     userId: null,
@@ -1531,7 +1648,7 @@ const data = reactive({
   },
   creditForm: {
     userId: null,
-    creditScore: 0,
+    creditScore: 100,
   },
   withdrawTipForm: {
     userId: null,
@@ -1546,13 +1663,6 @@ const data = reactive({
       {
         required: true,
         message: t("member.index.usernameRequired"),
-        trigger: "blur",
-      },
-    ],
-    phone: [
-      {
-        required: true,
-        message: t("member.index.phoneRequired"),
         trigger: "blur",
       },
     ],
@@ -1586,10 +1696,19 @@ const data = reactive({
         trigger: "blur",
       },
       {
-        type: "number",
-        min: 0,
+        validator: (rule, value, callback) => {
+          if (value === null || value === undefined || value === "") {
+            callback();
+            return;
+          }
+          if (Number(value) <= 0) {
+            callback(new Error(t("member.index.amountPositive")));
+            return;
+          }
+          callback();
+        },
         message: t("member.index.amountPositive"),
-        trigger: "blur",
+        trigger: ["blur", "change"],
       },
     ],
   },
@@ -1603,10 +1722,15 @@ const data = reactive({
     ],
   },
   changeParentRules: {
-    parentId: [
+    parentIdentifier: [
       {
-        required: true,
-        message: t("member.index.parentIdRequired"),
+        validator: (_rule, value, callback) => {
+          if (!String(value ?? "").trim()) {
+            callback(new Error(t("member.index.parentIdentifierRequired")));
+            return;
+          }
+          callback();
+        },
         trigger: "blur",
       },
     ],
@@ -1707,7 +1831,7 @@ const data = reactive({
       },
       {
         type: "number",
-        min: 0,
+        min: 1,
         max: 100,
         message: t("member.index.creditScoreRange"),
         trigger: "blur",
@@ -1741,6 +1865,39 @@ const {
   withdrawTipForm,
   remarkForm,
 } = toRefs(data);
+
+const changeParentCurrentLabel = computed(() => {
+  const parentId = changeParentForm.value.currentParentId;
+  if (parentId == null) {
+    return "-";
+  }
+  if (Number(parentId) === 0) {
+    return t("member.index.rootMember");
+  }
+  const parentUsername = changeParentForm.value.currentParentUsername;
+  return parentUsername
+    ? `${parentUsername} (ID: ${parentId})`
+    : `ID: ${parentId}`;
+});
+
+function resolveRequestError(error, fallbackKey) {
+  const responseMessage = error?.response?.data?.msg;
+  if (responseMessage) {
+    return responseMessage;
+  }
+
+  const message = typeof error === "string" ? error : error?.message;
+  if (typeof message !== "string" || !message || message === "error") {
+    return t(fallbackKey);
+  }
+  if (message === "Network Error") {
+    return t("member.index.networkUnavailable");
+  }
+  if (message.toLowerCase().includes("timeout")) {
+    return t("member.index.requestTimeout");
+  }
+  return message;
+}
 
 /** 更新列顺序 */
 function handleColumnsUpdate(newColumns) {
@@ -1776,9 +1933,9 @@ watch(
     if (newVal) {
       rules.value.password = [];
       rules.value.tradePassword = [];
-    } else {
+      } else {
       rules.value.password = [
-        { required: true, message: "登录密码不能为空", trigger: "blur" },
+        { required: true, message: proxy.$t('member.index.loginPasswordRequired'), trigger: 'blur' },
       ];
     }
   },
@@ -1882,6 +2039,27 @@ function handleToggleAccountStatus(row) {
     .catch(() => {});
 }
 
+function handleToggleTasksStatus(row) {
+  const cur = String(row.taskStatus);
+  const target = cur === '0' ? '1' : '0';
+  const actionText =
+    target === '1' ? t('member.index.disable') : t('member.index.enable');
+  proxy.$modal
+    .confirm(
+      t('member.index.confirmToggleTasks', {
+        action: actionText,
+        userId: row.id,
+        username: row.username,
+      })
+    )
+    .then(() => updateMember({ id: row.id, taskStatus: target }))
+    .then(() => {
+      proxy.$modal.msgSuccess(t('member.index.toggleSuccess', { action: actionText }));
+      getList();
+    })
+    .catch(() => {});
+}
+
 function resetRemarkForm() {
   remarkForm.value = {
     userId: null,
@@ -1951,7 +2129,7 @@ function submitWithdrawTip() {
 function resetCreditForm() {
   creditForm.value = {
     userId: null,
-    creditScore: 0,
+    creditScore: 100,
   };
   proxy.resetForm("creditRef");
 }
@@ -1959,8 +2137,13 @@ function resetCreditForm() {
 function openCreditScoreDialog(row) {
   resetCreditForm();
   creditForm.value.userId = row.id;
-  creditForm.value.creditScore = Number(row.creditScore ?? 0);
+  creditForm.value.creditScore = Number(row.creditScore ?? 100);
   creditDialogVisible.value = true;
+}
+
+function closeCreditScoreDialog() {
+  creditDialogVisible.value = false;
+  resetCreditForm();
 }
 
 function submitCreditScore() {
@@ -2196,9 +2379,16 @@ function confirmGiftBalance() {
 }
 
 function resetChangeParent() {
-  changeParentForm.value.userId = null;
-  changeParentForm.value.parentId = null;
-  proxy.resetForm("changeParentRef");
+  changeParentForm.value = {
+    memberId: null,
+    username: "",
+    currentParentId: null,
+    currentParentUsername: "",
+    parentIdentifier: "",
+    version: null,
+  };
+  changeParentError.value = "";
+  proxy.$refs["changeParentRef"]?.clearValidate();
 }
 
 function cancelChangeParent() {
@@ -2208,24 +2398,52 @@ function cancelChangeParent() {
 
 function handleChangeParent(row) {
   resetChangeParent();
-  changeParentForm.value.userId = row.id;
+  changeParentForm.value.memberId = row.id;
+  changeParentForm.value.username = row.username;
+  changeParentForm.value.currentParentId = row.parentId ?? 0;
+  changeParentForm.value.currentParentUsername = row.parentUsername || "";
+  changeParentForm.value.version = row.version;
   changeParentOpen.value = true;
 }
 
-function submitChangeParent() {
-  proxy.$refs["changeParentRef"].validate((valid) => {
-    if (valid) {
-      const payload = {
-        id: changeParentForm.value.userId,
-        parentId: changeParentForm.value.parentId,
-      };
-      updateMember(payload).then(() => {
-        proxy.$modal.msgSuccess(t("member.index.updateSuccess"));
-        changeParentOpen.value = false;
-        getList();
-      });
-    }
-  });
+async function submitChangeParent() {
+  if (changeParentSubmitting.value) {
+    return;
+  }
+
+  let valid = false;
+  try {
+    valid = await proxy.$refs["changeParentRef"].validate();
+  } catch (_) {
+    return;
+  }
+  if (!valid) {
+    return;
+  }
+  if (changeParentForm.value.version == null) {
+    changeParentError.value = t("member.index.changeParentVersionMissing");
+    return;
+  }
+
+  changeParentSubmitting.value = true;
+  changeParentError.value = "";
+  try {
+    await changeParent({
+      memberId: changeParentForm.value.memberId,
+      parentIdentifier: changeParentForm.value.parentIdentifier.trim(),
+      version: changeParentForm.value.version,
+    });
+    proxy.$modal.msgSuccess(t("member.index.updateSuccess"));
+    changeParentOpen.value = false;
+    getList();
+  } catch (error) {
+    changeParentError.value = resolveRequestError(
+      error,
+      "member.index.changeParentFailed"
+    );
+  } finally {
+    changeParentSubmitting.value = false;
+  }
 }
 
 function restOrderNum(row) {
@@ -2300,15 +2518,31 @@ function handleSeries(row) {
   seriesOpen.value = true;
 }
 
-function getList() {
+async function getList() {
+  const requestId = ++listRequestId;
   loading.value = true;
-  listMember(proxy.addDateRange(queryParams.value, dateRange.value)).then(
-    (response) => {
-      memberList.value = response.rows;
-      total.value = response.total;
+  listError.value = "";
+  try {
+    const response = await listMember(
+      proxy.addDateRange(queryParams.value, dateRange.value)
+    );
+    if (requestId !== listRequestId) {
+      return;
+    }
+    memberList.value = response.rows;
+    total.value = response.total;
+  } catch (error) {
+    if (requestId !== listRequestId) {
+      return;
+    }
+    memberList.value = [];
+    total.value = 0;
+    listError.value = resolveRequestError(error, "member.index.listLoadFailed");
+  } finally {
+    if (requestId === listRequestId) {
       loading.value = false;
     }
-  );
+  }
 }
 
 function AllLevel() {
@@ -2317,6 +2551,21 @@ function AllLevel() {
   });
 }
 AllLevel();
+
+// determine whether to show phone field based on backend setting
+getPhoneFieldSet()
+  .then((res) => {
+    // Normalize API response to boolean correctly (handle 'false' string)
+    const val = res && res.data;
+    const str = val === null || val === undefined ? '' : String(val).toLowerCase();
+    const visible = val === true || val === 1 || ['true', '1', 'y', 'yes'].includes(str);
+    showPhone.value = visible;
+    const phoneCol = columns.value.find((c) => c.prop === "phone" || c.key === "2");
+    if (phoneCol) phoneCol.visible = visible;
+  })
+  .catch(() => {
+    // keep default (visible) on error
+  });
 
 function cancel() {
   open.value = false;
@@ -2336,6 +2585,7 @@ function reset() {
     password: null,
     tradePassword: null,
     parentId: null,
+    parentIdentifier: "",
     ancestors: null,
     email: null,
     creditScore: null,
@@ -2419,7 +2669,17 @@ function handleTopup(row) {
   topupOpen.value = true;
 }
 
+function handleTopupAmountChange(value) {
+  if (value !== null && value !== undefined && Number(value) < 1) {
+    proxy.$modal.msgWarning(t("member.index.amountPositive"));
+  }
+}
+
 function submitTopupForm() {
+  if (Number(topupForm.value.amount) <= 0) {
+    proxy.$modal.msgWarning(t("member.index.amountPositive"));
+    return;
+  }
   proxy.$refs["topupRef"].validate((valid) => {
     if (valid) {
       topupAmount({
@@ -2443,7 +2703,11 @@ function submitForm() {
   proxy.$refs["memberRef"].validate((valid) => {
     if (valid) {
       if (form.value.id != null) {
-        updateMember(form.value).then((response) => {
+        const payload = { ...form.value };
+        delete payload.parentId;
+        delete payload.parentIdentifier;
+        delete payload.ancestors;
+        updateMember(payload).then((response) => {
           proxy.$modal.msgSuccess(t("member.index.updateSuccess"));
           open.value = false;
           getList();
@@ -2459,18 +2723,34 @@ function submitForm() {
   });
 }
 
-function handleDelete(row) {
+async function handleDelete(row) {
   const _ids = row.id || ids.value;
-  proxy.$modal
-    .confirm(t("member.index.deleteConfirm", { ids: _ids }))
-    .then(function () {
-      return delMember(_ids);
-    })
-    .then(() => {
-      getList();
-      proxy.$modal.msgSuccess(t("member.index.deleteSuccess"));
-    })
-    .catch(() => {});
+  try {
+    await proxy.$modal.confirm(t("member.index.deleteConfirm", { ids: _ids }));
+    const { value } = await proxy.$prompt(
+      t("member.index.deletePasswordPrompt"),
+      t("member.index.deletePasswordTitle"),
+      {
+        confirmButtonText: t("common.confirm"),
+        cancelButtonText: t("common.cancel"),
+        closeOnClickModal: false,
+        inputType: "password",
+        inputPlaceholder: t("member.index.deletePasswordPlaceholder"),
+        inputValidator: (inputValue) => {
+          if (!inputValue) {
+            return t("member.index.deletePasswordRequired");
+          }
+          return true;
+        },
+      }
+    );
+    await checkUserPassword(value);
+    await delMember(_ids);
+    getList();
+    proxy.$modal.msgSuccess(t("member.index.deleteSuccess"));
+  } catch (error) {
+    // ignore user cancel actions; request errors are handled by the interceptor
+  }
 }
 
 function handleExport() {
@@ -2487,9 +2767,22 @@ getList();
 <style scoped>
 .operation-buttons {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
+  flex-wrap: wrap;
+  margin: -5px;  /* 抵消子元素的外边距 */
 }
+
+.operation-buttons button {
+  flex: 0 0 50%;  /* 每个占50%宽度 */
+  box-sizing: border-box;
+  padding: 5px;   /* 按钮之间的间距 */
+}
+
+/* 或者使用外边距 */
+.operation-buttons button {
+  flex: 0 0 calc(50% - 10px);
+  margin: 5px;
+}
+
 .score-row {
   display: flex;
   align-items: center;

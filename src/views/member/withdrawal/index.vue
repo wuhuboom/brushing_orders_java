@@ -1,5 +1,10 @@
 <template>
   <div class="app-container">
+    <el-tabs v-model="activeTab" class="withdrawal-tabs mb8">
+      <el-tab-pane :label="$t('member.withdrawal.realWithdrawal')" name="real" />
+      <el-tab-pane :label="$t('member.withdrawal.fakeWithdrawal')" name="fake" />
+    </el-tabs>
+
     <el-form
       :model="queryParams"
       ref="queryRef"
@@ -38,21 +43,27 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item :label="$t('member.withdrawal.isReal')" prop="isReal">
-        <el-select
-          v-model="queryParams.isReal"
-          :placeholder="$t('member.withdrawal.selectIsReal')"
+      <el-form-item :label="$t('member.withdrawal.applicationTime')" prop="applicationTimeRange">
+        <el-date-picker
+          v-model="queryParams.applicationTimeRange"
+          type="daterange"
+          range-separator="-"
+          value-format="YYYY-MM-DD"
+          style="width: 320px"
           clearable
-          style="width: 180px"
-        >
-          <el-option
-            v-for="dict in sys_yes_no"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
-          />
-        </el-select>
+        />
       </el-form-item>
+      <el-form-item :label="$t('member.withdrawal.auditTime')" prop="auditTimeRange">
+        <el-date-picker
+          v-model="queryParams.auditTimeRange"
+          type="daterange"
+          range-separator="-"
+          value-format="YYYY-MM-DD"
+          style="width: 320px"
+          clearable
+        />
+      </el-form-item>
+
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">{{
           $t("common.search")
@@ -63,10 +74,12 @@
       </el-form-item>
     </el-form>
 
+
+
     <el-row :gutter="10" class="mb8">
       <right-toolbar
         v-model:showSearch="showSearch"
-        :columns="columns"
+        :columns="toolbarColumns"
         @queryTable="getList"
         @update:columns="handleColumnsUpdate"
       ></right-toolbar>
@@ -89,9 +102,7 @@
         :fixed="column.fixed"
         align="left"
       >
-        <template v-if="column.key === '5'" #default="scope">
-          <dict-tag :options="sys_yes_no" :value="scope.row.isReal" />
-        </template>
+
         <template v-if="column.key === '10'" #default="scope">
           <div v-if="scope.row.walletId">
             <div v-if="scope.row.bankWallet.type == '1'">
@@ -175,6 +186,13 @@
             </el-tag>
           </div>
         </template>
+         <template v-if="column.key === '21'" #default="{ row }">
+          <div>
+            <div v-for="(ip, index) in row.ipAddress?.split(',')" :key="index">
+              {{ ip }}
+            </div>
+          </div>
+        </template>
       </el-table-column>
     </el-table>
 
@@ -222,6 +240,7 @@ import {
   addWithdrawal,
   updateWithdrawal,
 } from "@/api/member/withdrawal";
+import { getPhoneFieldSet } from "@/api/member/member";
 import {
   ref,
   reactive,
@@ -252,6 +271,8 @@ const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
 const tableKey = ref(Date.now());
+const showPhone = ref(null);
+const activeTab = ref("real");
 
 let intervalId = null;
 let isPaused = false;
@@ -268,6 +289,9 @@ const data = reactive({
     fee: null,
     applicationTime: null,
     auditTime: null,
+    applicationTimeRange: null,
+    auditTimeRange: null,
+    isReal: "N",
     status: null,
   },
   rules: {
@@ -339,17 +363,10 @@ const columns = ref([
     width: "160",
   },
   {
-    key: "4",
+    key: "5",
     label: t("member.withdrawal.phone"),
     visible: true,
     prop: "phone",
-    width: "180",
-  },
-  {
-    key: "5",
-    label: t("member.withdrawal.isFakeUser"),
-    visible: true,
-    prop: "isReal",
     width: "100",
   },
   {
@@ -367,18 +384,19 @@ const columns = ref([
     width: "160",
   },
   {
-    key: "8",
-    label: t("member.withdrawal.parentPhone"),
-    visible: true,
-    prop: "parentPhone",
-    width: "160",
-  },
-  {
     key: "9",
     label: t("member.withdrawal.dailyOrderCount"),
     visible: true,
     prop: "dailyOrderCount",
     width: "120",
+  },
+   {
+    key: "21",
+    labelKey: "member.index.ip",
+    label: t("member.index.ip"),
+    visible: true,
+    prop: null,
+    width: "180",
   },
   {
     key: "10",
@@ -451,6 +469,19 @@ const { queryParams, form, rules } = toRefs(data);
 const filteredColumns = computed(() => {
   return columns.value.filter((column) => column.visible);
 });
+
+const toolbarColumns = computed(() => {
+  const sp =
+    showPhone && typeof showPhone === "object" ? showPhone.value : showPhone;
+  if (sp === undefined || sp === null) {
+    return columns.value;
+  }
+  if (sp === false) {
+    return columns.value.filter((col) => !(col.prop === "phone" || col.key === "5"));
+  }
+  return columns.value;
+});
+
 /** 更新列顺序 */
 function handleColumnsUpdate(newColumns) {
   console.log("Received newColumns:", newColumns);
@@ -489,13 +520,14 @@ const isNoFilter = computed(() => {
     !queryParams.value.code &&
     !queryParams.value.username &&
     !queryParams.value.status &&
-    !queryParams.value.isReal
+    (!queryParams.value.applicationTimeRange || queryParams.value.applicationTimeRange.length === 0) &&
+    (!queryParams.value.auditTimeRange || queryParams.value.auditTimeRange.length === 0)
   );
 });
 
-/** 轮询条件：第一页且无筛选 */
+/** 轮询条件：真人 tab、第一页且无筛选 */
 const shouldPoll = computed(() => {
-  return isFirstPage.value && isNoFilter.value;
+  return activeTab.value === "real" && isFirstPage.value && isNoFilter.value;
 });
 
 /** 启动定时任务 */
@@ -537,18 +569,63 @@ function handleVisibilityChange() {
 /** 手动查询提现记录列表（带 loading，总是更新数据） */
 function getList() {
   loading.value = true;
-  listWithdrawal(queryParams.value).then((response) => {
-    console.log(response);
-    withdrawalList.value = response.rows;
-    total.value = response.total;
-    loading.value = false;
-    console.log("Table data:", response);
-  });
+  // 使用 addDateRange 以匹配后端参数结构（params[...]）
+  let params = proxy.addDateRange(queryParams.value, queryParams.value.applicationTimeRange);
+  // 如果 addDateRange 创建了 beginTime/endTime 但没有实际选择日期，移除这些空参数
+  if (params && params.params) {
+    if (!params.params.beginTime) {
+      delete params.params.beginTime;
+      delete params.params.endTime;
+    }
+  }
+
+  // 添加审核时间区间参数（只有在选择了区间时才传）
+  if (
+    queryParams.value.auditTimeRange &&
+    queryParams.value.auditTimeRange.length === 2 &&
+    queryParams.value.auditTimeRange[0] &&
+    queryParams.value.auditTimeRange[1]
+  ) {
+    params.params = params.params || {};
+    params.params.auditBeginTime = queryParams.value.auditTimeRange[0];
+    params.params.auditEndTime = queryParams.value.auditTimeRange[1];
+  } else if (params && params.params) {
+    delete params.params.auditBeginTime;
+    delete params.params.auditEndTime;
+  }
+
+  console.log("Calling listWithdrawal with params:", params);
+  listWithdrawal(params)
+    .then((response) => {
+      console.log(response);
+      withdrawalList.value = response.rows;
+      total.value = response.total;
+      loading.value = false;
+      console.log("Table data:", response);
+    })
+    .catch((err) => {
+      console.error("listWithdrawal error:", err, "params:", params);
+      loading.value = false;
+    });
 }
 
 /** 轮询查询提现记录列表（无 loading，仅变化时更新） */
 function pollList() {
-  listWithdrawal(queryParams.value)
+  // 轮询时使用 addDateRange 构造与 Topup 相同的参数结构
+  let params = proxy.addDateRange(queryParams.value, queryParams.value.applicationTimeRange);
+  if (
+    queryParams.value.auditTimeRange &&
+    queryParams.value.auditTimeRange.length === 2 &&
+    queryParams.value.auditTimeRange[0] &&
+    queryParams.value.auditTimeRange[1]
+  ) {
+    params.params = params.params || {};
+    params.params.auditBeginTime = queryParams.value.auditTimeRange[0];
+    params.params.auditEndTime = queryParams.value.auditTimeRange[1];
+  }
+
+  console.log("Polling listWithdrawal with params:", params);
+  listWithdrawal(params)
     .then((response) => {
       const newRows = response.rows;
       const newTotal = response.total;
@@ -601,9 +678,18 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
+  queryParams.value.applicationTimeRange = [];
+  queryParams.value.auditTimeRange = [];
   proxy.resetForm("queryRef");
+  queryParams.value.isReal = activeTab.value === "real" ? "N" : "Y";
   handleQuery();
 }
+
+watch(activeTab, (name) => {
+  queryParams.value.isReal = name === "real" ? "N" : "Y";
+  queryParams.value.pageNum = 1;
+  getList();
+});
 
 // 多选框选中数据
 function handleSelectionChange(selection) {
@@ -689,6 +775,20 @@ function handleExport() {
 }
 
 onMounted(() => {
+  getPhoneFieldSet()
+    .then((res) => {
+      const val = res && res.data;
+      const str = val === null || val === undefined ? "" : String(val).toLowerCase();
+      const visible =
+        val === true || val === 1 || ["true", "1", "y", "yes"].includes(str);
+      showPhone.value = visible;
+      const phoneCol = columns.value.find((c) => c.prop === "phone" || c.key === "5");
+      if (phoneCol) {
+        phoneCol.visible = visible;
+      }
+    })
+    .catch(() => {});
+
   getList();
   if (shouldPoll.value) {
     startPolling();
@@ -709,3 +809,9 @@ onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 </script>
+
+<style scoped>
+.withdrawal-tabs :deep(.el-tabs__content) {
+  display: none;
+}
+</style>

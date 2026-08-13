@@ -42,17 +42,6 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button
-          type="primary"
-          plain
-          icon="Plus"
-          @click="handleAdd"
-          v-hasPermi="['system:menu:add']"
-        >
-          {{ t("menu.add") }}
-        </el-button>
-      </el-col>
-      <el-col :span="1.5">
         <el-button type="info" plain icon="Sort" @click="toggleExpandAll">
           {{ t("menu.toggleExpand") }}
         </el-button>
@@ -136,14 +125,6 @@
           <el-button
             link
             type="primary"
-            icon="Plus"
-            @click="handleAdd(scope.row)"
-            v-hasPermi="['system:menu:add']"
-            >{{ t("menu.add") }}</el-button
-          >
-          <el-button
-            link
-            type="primary"
             icon="Delete"
             @click="handleDelete(scope.row)"
             v-hasPermi="['system:menu:remove']"
@@ -173,55 +154,6 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
-            <el-form-item :label="t('menu.menuType')" prop="menuType">
-              <el-radio-group v-model="form.menuType">
-                <el-radio value="M">{{ t("menu.directory") }}</el-radio>
-                <el-radio value="C">{{ t("menu.menu") }}</el-radio>
-                <el-radio value="F">{{ t("menu.button") }}</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType != 'F'">
-            <el-form-item :label="t('menu.menuIcon')" prop="icon">
-              <el-popover placement="bottom-start" :width="540" trigger="click">
-                <template #reference>
-                  <el-input
-                    v-model="form.icon"
-                    :placeholder="t('menu.selectIcon')"
-                    @blur="showSelectIcon"
-                    readonly
-                  >
-                    <template #prefix>
-                      <svg-icon
-                        v-if="form.icon"
-                        :icon-class="form.icon"
-                        class="el-input__icon"
-                        style="height: 32px; width: 16px"
-                      />
-                      <el-icon v-else style="height: 32px; width: 16px"
-                        ><search
-                      /></el-icon>
-                    </template>
-                  </el-input>
-                </template>
-                <icon-select
-                  ref="iconSelectRef"
-                  @selected="selected"
-                  :active-icon="form.icon"
-                />
-              </el-popover>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item :label="t('menu.displayOrder')" prop="orderNum">
-              <el-input-number
-                v-model="form.orderNum"
-                controls-position="right"
-                :min="0"
-              />
-            </el-form-item>
-          </el-col>
           <el-col :span="12">
             <el-form-item :label="t('menu.menuName')" prop="menuName">
               <el-input
@@ -233,174 +165,6 @@
           <el-col :span="12">
             <el-form-item :label="t('menu.enName')" prop="enName">
               <el-input v-model="form.enName" :placeholder="t('menu.enName')" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType == 'C'">
-            <el-form-item prop="routeName">
-              <template #label>
-                <span>
-                  <el-tooltip
-                    :content="t('menu.routeNameTooltip')"
-                    placement="top"
-                  >
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.routeName") }}
-                </span>
-              </template>
-              <el-input
-                v-model="form.routeName"
-                :placeholder="t('menu.enterRouteName')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType != 'F'">
-            <el-form-item>
-              <template #label>
-                <span>
-                  <el-tooltip
-                    :content="t('menu.externalLinkTooltip')"
-                    placement="top"
-                  >
-                    <el-icon><question-filled /></el-icon> </el-tooltip
-                  >{{ t("menu.isExternalLink") }}
-                </span>
-              </template>
-              <el-radio-group v-model="form.isFrame">
-                <el-radio value="0">{{ t("menu.yes") }}</el-radio>
-                <el-radio value="1">{{ t("menu.no") }}</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType != 'F'">
-            <el-form-item prop="path">
-              <template #label>
-                <span>
-                  <el-tooltip :content="t('menu.pathTooltip')" placement="top">
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.path") }}
-                </span>
-              </template>
-              <el-input
-                v-model="form.path"
-                :placeholder="t('menu.enterPath')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType == 'C'">
-            <el-form-item prop="component">
-              <template #label>
-                <span>
-                  <el-tooltip
-                    :content="t('menu.componentTooltip')"
-                    placement="top"
-                  >
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.component") }}
-                </span>
-              </template>
-              <el-input
-                v-model="form.component"
-                :placeholder="t('menu.enterComponent')"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType != 'M'">
-            <el-form-item>
-              <el-input
-                v-model="form.perms"
-                :placeholder="t('menu.enterPerms')"
-                maxlength="100"
-              />
-              <template #label>
-                <span>
-                  <el-tooltip :content="t('menu.permsTooltip')" placement="top">
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.perms") }}
-                </span>
-              </template>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType == 'C'">
-            <el-form-item>
-              <el-input
-                v-model="form.query"
-                :placeholder="t('menu.enterQuery')"
-                maxlength="255"
-              />
-              <template #label>
-                <span>
-                  <el-tooltip :content="t('menu.queryTooltip')" placement="top">
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.query") }}
-                </span>
-              </template>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType == 'C'">
-            <el-form-item>
-              <template #label>
-                <span>
-                  <el-tooltip :content="t('menu.cacheTooltip')" placement="top">
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.isCache") }}
-                </span>
-              </template>
-              <el-radio-group v-model="form.isCache">
-                <el-radio value="0">{{ t("menu.cache") }}</el-radio>
-                <el-radio value="1">{{ t("menu.noCache") }}</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12" v-if="form.menuType != 'F'">
-            <el-form-item>
-              <template #label>
-                <span>
-                  <el-tooltip
-                    :content="t('menu.visibleTooltip')"
-                    placement="top"
-                  >
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.visibleStatus") }}
-                </span>
-              </template>
-              <el-radio-group v-model="form.visible">
-                <el-radio
-                  v-for="dict in sys_show_hide"
-                  :key="dict.value"
-                  :value="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item>
-              <template #label>
-                <span>
-                  <el-tooltip
-                    :content="t('menu.statusTooltip')"
-                    placement="top"
-                  >
-                    <el-icon><question-filled /></el-icon>
-                  </el-tooltip>
-                  {{ t("menu.menuStatus") }}
-                </span>
-              </template>
-              <el-radio-group v-model="form.status">
-                <el-radio
-                  v-for="dict in sys_normal_disable"
-                  :key="dict.value"
-                  :value="dict.value"
-                  >{{ dict.label }}</el-radio
-                >
-              </el-radio-group>
             </el-form-item>
           </el-col>
         </el-row>
@@ -419,7 +183,6 @@
 
 <script setup name="Menu">
 import {
-  addMenu,
   delMenu,
   getMenu,
   listMenu,
@@ -446,6 +209,7 @@ const menuOptions = ref([]);
 const isExpandAll = ref(false);
 const refreshTable = ref(true);
 const iconSelectRef = ref(null);
+const isEditMode = ref(false);
 
 const data = reactive({
   form: {},
@@ -507,6 +271,7 @@ function reset() {
     visible: "0",
     status: "0",
   };
+  isEditMode.value = false;
   proxy.resetForm("menuRef");
 }
 
@@ -531,18 +296,7 @@ function resetQuery() {
   handleQuery();
 }
 
-/** 新增按钮操作 */
-function handleAdd(row) {
-  reset();
-  getTreeselect();
-  if (row != null && row.menuId) {
-    form.value.parentId = row.menuId;
-  } else {
-    form.value.parentId = 0;
-  }
-  open.value = true;
-  title.value = t("menu.addMenu");
-}
+// Add action removed: adding menus is disabled in this view.
 
 /** 展开/折叠操作 */
 function toggleExpandAll() {
@@ -561,6 +315,7 @@ async function handleUpdate(row) {
     form.value = response.data;
     open.value = true;
     title.value = t("menu.editMenu");
+    isEditMode.value = true;
   });
 }
 
@@ -575,11 +330,7 @@ function submitForm() {
           getList();
         });
       } else {
-        addMenu(form.value).then((response) => {
-          proxy.$modal.msgSuccess(t("menu.addSuccess"));
-          open.value = false;
-          getList();
-        });
+        proxy.$modal.msgWarning("不允许新增菜单，请选择一条已有菜单进行编辑");
       }
     }
   });

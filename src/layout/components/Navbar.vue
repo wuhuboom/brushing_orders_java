@@ -231,7 +231,7 @@ function toggleSideBar() {
 }
 
 function handleOrderClick() {
-  router.push("/money/orderInfo");
+  router.push("/orderInfolist/orderInfo");
 }
 
 function handleWithdrawClick() {

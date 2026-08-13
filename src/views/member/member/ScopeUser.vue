@@ -10,17 +10,17 @@
     >
       <el-form-item :label="$t('member.submember.username')">
         <el-input
-          v-model="queryParams.username"
+          v-model="queryParams.subUsername"
           :placeholder="$t('member.submember.enterUsername')"
           clearable
           @keyup.enter="handleQuery"
         />
       </el-form-item>
 
-      <el-form-item :label="$t('member.submember.phone')">
+      <el-form-item :label="$t('member.submember.inviteCode')">
         <el-input
-          v-model="queryParams.phone"
-          :placeholder="$t('member.submember.enterPhone')"
+          v-model="queryParams.subPhone"
+          :placeholder="$t('member.submember.enterInviteCode')"
           clearable
           @keyup.enter="handleQuery"
         />
@@ -243,8 +243,8 @@ const props = defineProps({
 const queryParams = ref({
   pageNum: 1,
   pageSize: 10,
-  username: null,
-  phone: null,
+  subUsername: null,
+  subPhone: null,
   userId: null, // ✅ 将由 props.userId 同步
   scope: "direct", // ✅ 默认直属下级
 });
@@ -273,17 +273,24 @@ const selectedUserId = ref(null);
 
 // 获取列表（改为 scopeList(userId, scope)）
 function getList() {
-  console.log(props.userId);
-  if (!props.userId) return;
+  console.log("ScopeUser.getList() - props.userId:", props.userId);
+  if (!props.userId) {
+    console.warn("ScopeUser: no userId provided");
+    memberList.value = [];
+    total.value = 0;
+    return;
+  }
   loading.value = true;
-  console.log(queryParams.value);
+  console.log("ScopeUser.queryParams:", queryParams.value);
   scopeList(queryParams.value)
     .then((response) => {
+      console.log("scopeList response:", response);
       memberList.value = response.rows || response.data || [];
       total.value = response.total || memberList.value.length || 0;
       loading.value = false;
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error("scopeList error:", err);
       loading.value = false;
     });
 }
@@ -293,11 +300,11 @@ function handleQuery() {
   getList();
 }
 function resetQuery() {
-  queryParams.pageNum = 1;
-  queryParams.pageSize = 10;
-  queryParams.username = null;
-  queryParams.phone = null;
-  queryParams.scope = "direct"; // 每次重置回直属
+  queryParams.value.pageNum = 1;
+  queryParams.value.pageSize = 10;
+  queryParams.value.subUsername = null;
+  queryParams.value.subPhone = null;
+  queryParams.value.scope = "direct"; // 每次重置回直属
   getList();
 }
 // 打开账变信息

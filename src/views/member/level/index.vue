@@ -202,8 +202,8 @@
       @pagination="getList"
     />
 
-    <!-- 添加或修改会员等级对话框 -->
-    <el-dialog :title="title" v-model="open" width="800px" append-to-body>
+    <!-- 添加或修改会员等级抽屉 -->
+    <el-drawer :title="title" v-model="open" size="50%" append-to-body :with-header="true">
       <el-form
         ref="levelRef"
         :model="form"
@@ -274,7 +274,11 @@
                 :step="0.1"
                 :max="100"
                 style="width: 100%"
-              />
+              >
+                <template #suffix>
+                  <span>%</span>
+                </template>
+              </el-input-number>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -288,7 +292,11 @@
                 :step="0.1"
                 :max="100"
                 style="width: 100%"
-              />
+              >
+                <template #suffix>
+                  <span>%</span>
+                </template>
+              </el-input-number>
             </el-form-item>
           </el-col>
         </el-row>
@@ -392,7 +400,11 @@
                 :step="0.1"
                 :max="100"
                 style="width: 100%"
-              />
+              >
+               <template #suffix>
+                  <span>%</span>
+                </template>
+              </el-input-number>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -405,46 +417,67 @@
                 :min="0"
                 :step="1"
                 style="width: 100%"
-              />
+              >
+
+              </el-input-number>
             </el-form-item>
           </el-col>
         </el-row>
 
-        <!-- 独占一行：描述 -->
-        <el-form-item :label="$t('member.level.descriptionZh')">
-          <editor v-model="form.descriptionZh" :min-height="192" />
-        </el-form-item>
-
-        <el-form-item :label="$t('member.level.descriptionEn')">
-          <editor v-model="form.descriptionEn" :min-height="192" />
-        </el-form-item>
-
-        <el-form-item :label="$t('member.level.descriptionJa')">
-          <editor v-model="form.descriptionJa" :min-height="192" />
-        </el-form-item>
-        <el-form-item :label="$t('member.level.descriptionTh')">
-          <editor v-model="form.descriptionTh" :min-height="192" />
-        </el-form-item>
-        <el-form-item :label="$t('member.level.descriptionKo')">
-          <editor v-model="form.descriptionKo" :min-height="192" />
-        </el-form-item>
-        <el-form-item :label="$t('member.level.descriptionZhTw')">
-          <editor v-model="form.descriptionZhTw" :min-height="192" />
-        </el-form-item>
-        <el-form-item :label="$t('member.level.descriptionPor')">
-          <editor v-model="form.descriptionPor" :min-height="192" />
+        <!-- 独占一行：描述，使用 Tabs 展示多语种编辑 -->
+        <el-form-item style="width: 100%;">
+          <el-tabs v-model="activeTab" type="card" stretch >
+            <el-tab-pane :label="$t('member.level.descriptionZh')" name="zh">
+              <el-form-item :label="$t('member.level.descriptionZh')" >
+                <editor v-model="form.descriptionZh" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionEn')" name="en">
+              <el-form-item :label="$t('member.level.descriptionEn')">
+                <editor v-model="form.descriptionEn" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionJa')" name="ja">
+              <el-form-item :label="$t('member.level.descriptionJa')">
+                <editor v-model="form.descriptionJa" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionTh')" name="th">
+              <el-form-item :label="$t('member.level.descriptionTh')">
+                <editor v-model="form.descriptionTh" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionKo')" name="ko">
+              <el-form-item :label="$t('member.level.descriptionKo')">
+                <editor v-model="form.descriptionKo" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionZhTw')" name="zhTw">
+              <el-form-item :label="$t('member.level.descriptionZhTw')">
+                <editor v-model="form.descriptionZhTw" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionPor')" name="por">
+              <el-form-item :label="$t('member.level.descriptionPor')">
+                <editor v-model="form.descriptionPor" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('member.level.descriptionEs')" name="es">
+              <el-form-item :label="$t('member.level.descriptionEs')">
+                <editor v-model="form.descriptionEs" :min-height="200" style="width: 100%;" />
+              </el-form-item>
+            </el-tab-pane>
+          </el-tabs>
         </el-form-item>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button type="primary" @click="submitForm">{{
-            $t("common.confirm")
-          }}</el-button>
-          <el-button @click="cancel">{{ $t("common.cancel") }}</el-button>
+          <el-button type="primary" @click="submitForm">{{ $t('common.confirm') }}</el-button>
+          <el-button @click="cancel">{{ $t('common.cancel') }}</el-button>
         </div>
       </template>
-    </el-dialog>
+    </el-drawer>
   </div>
 </template>
 
@@ -472,6 +505,7 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const activeTab = ref("zh");
 
 const data = reactive({
   form: {},
@@ -662,6 +696,8 @@ function reset() {
     descriptionTh: null,
     descriptionKo: null,
     descriptionZhTw: null,
+    descriptionPor: null,
+    descriptionEs: null,
     createTime: null,
   };
   proxy.resetForm("levelRef");
@@ -689,6 +725,8 @@ function handleSelectionChange(selection) {
 /** 新增按钮操作 */
 function handleAdd() {
   reset();
+  // 新增时默认打开中文标签（可根据需要改为其它语言）
+  activeTab.value = "zh";
   open.value = true;
   title.value = t("member.level.addLevel");
 }
