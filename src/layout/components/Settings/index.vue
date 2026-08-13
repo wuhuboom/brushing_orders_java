@@ -142,11 +142,6 @@
         </div>
       </section>
 
-      <div class="setting-warning">
-        <span class="warning-icon" aria-hidden="true">!</span>
-        <span>配置栏只在开发环境用于预览，生产环境不会展现，请拷贝后手动修改配置文件</span>
-      </div>
-
       <a-button block class="copy-button" @click="copySetting">
         <template #icon>
           <svg-icon icon-class="clipboard" />
@@ -612,34 +607,6 @@ defineExpose({
 
 .content-width-select {
   width: 80px;
-}
-
-.setting-warning {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 10px 12px;
-  border: 1px solid #ffe58f;
-  border-radius: 6px;
-  background: #fffbe6;
-  color: rgba(0, 0, 0, 0.88);
-  line-height: 22px;
-}
-
-.warning-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  margin-top: 3px;
-  color: #faad14;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  border: 1px solid currentColor;
-  border-radius: 50%;
 }
 
 .copy-button {

@@ -105,6 +105,13 @@
         </div>
       </div>
 
+      <div v-if="selectedRowCount" class="ant-pro-selection-info">
+        <span>已选择</span>
+        <strong>{{ selectedRowCount }}</strong>
+        <span>项</span>
+        <a-button type="link" size="small" @click="clearSelection">取消选择</a-button>
+      </div>
+
       <a-table
         v-bind="$attrs"
         class="ant-pro-table"
@@ -129,8 +136,9 @@
           :current="pagination.current"
           :page-size="pagination.pageSize"
           :total="pagination.total"
-          show-size-changer
-          show-quick-jumper
+          :show-size-changer="pagination.showSizeChanger ?? pagination.total > 50"
+          :show-quick-jumper="pagination.showQuickJumper ?? pagination.total > pagination.pageSize"
+          :page-size-options="pagination.pageSizeOptions"
           :show-total="(total, range) => `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`"
           @change="handlePageChange"
           @showSizeChange="handlePageChange"
@@ -215,6 +223,10 @@ const someColumnsVisible = computed(() => {
   const count = columnStates.value.filter((item) => item.visible).length;
   return count > 0 && count < columnStates.value.length;
 });
+const selectedRowCount = computed(() => {
+  const selectedKeys = props.rowSelection?.selectedRowKeys;
+  return Array.isArray(selectedKeys) ? selectedKeys.length : 0;
+});
 
 const effectiveScroll = computed(() => {
   if (!props.scroll) return undefined;
@@ -253,6 +265,10 @@ function handleTableChange(pagination, filters, sorter, extra) {
 
 function reloadTable() {
   emit("refresh");
+}
+
+function clearSelection() {
+  props.rowSelection?.onChange?.([], []);
 }
 
 function handleDensityChange({ key }) {
@@ -344,6 +360,9 @@ onBeforeUnmount(() => {
 .ant-pro-table-title { color: var(--text-primary); font-size: 16px; font-weight: 500; line-height: 16px; }
 .ant-pro-table-actions { display: flex; align-items: center; gap: 8px; }
 .ant-pro-table-actions > :deep(.ant-btn), .ant-pro-table-actions > :deep(.ant-upload-wrapper .ant-btn) { height: 32px; padding-inline: 15px; }
+.ant-pro-selection-info { display: flex; align-items: center; gap: 6px; min-height: 40px; margin-bottom: 12px; padding: 8px 16px; color: rgba(0, 0, 0, 0.65); background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 2px; }
+.ant-pro-selection-info strong { color: #1890ff; font-weight: 500; }
+.ant-pro-selection-info :deep(.ant-btn-link) { height: auto; padding: 0 4px; }
 .ant-pro-table-tool-icons { margin-left: 4px; }
 .ant-pro-tool-action { display: inline-flex; align-items: center; justify-content: center; padding: 4px; color: rgba(0, 0, 0, 0.65); font-size: 16px; line-height: 1; cursor: pointer; border-radius: 4px; transition: color .2s, background-color .2s; }
 .ant-pro-tool-action:hover { color: #1890ff; background: rgba(0, 0, 0, 0.025); }

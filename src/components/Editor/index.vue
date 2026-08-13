@@ -27,9 +27,36 @@
 
 <script setup>
 import axios from "axios";
-import { QuillEditor } from "@vueup/vue-quill";
+import { Quill, QuillEditor } from "@vueup/vue-quill";
 import "@vueup/vue-quill/dist/vue-quill.snow.css";
 import { getToken } from "@/utils/auth";
+
+const FONT_SIZES = [
+  "12px",
+  "14px",
+  "16px",
+  "18px",
+  "20px",
+  "24px",
+  "28px",
+  "30px",
+  "32px",
+  "36px",
+  "40px",
+  "48px",
+  "56px",
+  "64px",
+  "72px",
+  "96px",
+  "120px",
+  "144px",
+];
+const FONT_SIZE_OPTIONS = FONT_SIZES.map((size) =>
+  size === "14px" ? false : size
+);
+const SizeStyle = Quill.import("attributors/style/size");
+SizeStyle.whitelist = FONT_SIZES;
+Quill.register(SizeStyle, true);
 
 const { proxy } = getCurrentInstance();
 const emit = defineEmits(["update:modelValue"]);
@@ -87,7 +114,7 @@ const options = ref({
       [{ list: "ordered" }, { list: "bullet" }], // 有序、无序列表
       [{ indent: "-1" }, { indent: "+1" }], // 缩进
       [{ script: "sub" }, { script: "super" }],
-      [{ size: ["small", false, "large", "huge"] }], // 字体大小
+      [{ size: FONT_SIZE_OPTIONS }], // 字体大小
       [{ header: [1, 2, 3, 4, 5, 6, false] }], // 标题
       [{ color: [] }, { background: [] }], // 字体颜色、字体背景颜色
       [{ align: [] }, { direction: "rtl" }], // 对齐方式与书写方向
@@ -235,7 +262,7 @@ function insertImage(file) {
 
 .editor {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid #d9d9d9;
   background: #fff;
   transition: border-color 0.2s;
@@ -273,9 +300,12 @@ function insertImage(file) {
   width: 100%;
   min-height: var(--editor-min-height, 240px);
   padding: 16px;
+  font-size: 14px;
 }
 
 :deep(.ql-toolbar.ql-snow) {
+  position: relative;
+  z-index: 2;
   border: 0;
   border-bottom: 1px solid #e8e8e8;
   background: #fff;
@@ -315,21 +345,28 @@ function insertImage(file) {
 .ql-snow .ql-tooltip[data-mode="video"]::before {
   content: "请输入视频地址:";
 }
-.ql-snow .ql-picker.ql-size .ql-picker-label::before,
-.ql-snow .ql-picker.ql-size .ql-picker-item::before {
+.ql-snow .ql-picker.ql-size {
+  width: 68px;
+}
+.ql-snow .ql-picker.ql-size .ql-picker-label::before {
   content: "14px";
 }
-.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
-.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
-  content: "10px";
+.ql-snow .ql-picker.ql-size .ql-picker-label[data-value]::before,
+.ql-snow .ql-picker.ql-size .ql-picker-item::before {
+  content: attr(data-value);
 }
-.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
-.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
-  content: "18px";
+.ql-snow .ql-picker.ql-size .ql-picker-item:not([data-value])::before {
+  content: "14px";
 }
-.ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
-.ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
-  content: "32px";
+.ql-snow .ql-picker.ql-size .ql-picker-options {
+  min-width: 76px;
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.ql-snow .ql-picker.ql-size .ql-picker-item::before {
+  font-size: 14px !important;
+  line-height: 24px;
 }
 .ql-snow .ql-picker.ql-header .ql-picker-label::before,
 .ql-snow .ql-picker.ql-header .ql-picker-item::before {

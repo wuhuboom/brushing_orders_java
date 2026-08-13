@@ -7,7 +7,7 @@ export default {
   /**
    * 布局配置版本，用于淘汰旧版本地缓存
    */
-  layoutVersion: 'ant-pro-layout-20260710-shell-align-v3',
+  layoutVersion: 'ant-pro-layout-20260804-brand-cleanup-v1',
 
   /**
    * 主题色
@@ -27,7 +27,7 @@ export default {
   /**
    * 是否系统布局配置
    */
-  showSettings: import.meta.env.DEV,
+  showSettings: true,
 
   /**
    * 是否显示顶部导航
@@ -102,6 +102,6 @@ export default {
   /**
    * 底部版权文本内容
    */
-  footerContent: 'Copyright © 2018-2025 RuoYi. All Rights Reserved.'
+  footerContent: 'Copyright © 2026 DataCenter. All Rights Reserved.'
 }
 

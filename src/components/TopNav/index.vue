@@ -19,7 +19,7 @@
 
 <script setup>
 import { isHttp } from "@/utils/validate";
-import { getNormalPath } from "@/utils/ruoyi";
+import { getNormalPath } from "@/utils/common";
 import useAppStore from "@/store/modules/app";
 import usePermissionStore from "@/store/modules/permission";
 import useSettingsStore from "@/store/modules/settings";

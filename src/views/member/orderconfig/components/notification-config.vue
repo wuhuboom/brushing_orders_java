@@ -1,39 +1,72 @@
 <template>
-  <a-form ref="notificationFormRef" :model="localForm" layout="vertical" class="config-form">
-    <a-tabs v-model:activeKey="activeTab" type="card" class="config-tabs">
-      <a-tab-pane v-for="tab in tabs" :key="tab.key" :tab="tab.label">
-        <a-row :gutter="[20, 0]">
-          <a-col :span="8">
+  <a-form
+    ref="notificationFormRef"
+    :model="localForm"
+    layout="vertical"
+    class="notification-form"
+  >
+    <a-tabs v-model:activeKey="activeTab" class="notification-tabs">
+      <a-tab-pane
+        v-for="notification in notificationKinds"
+        :key="notification.key"
+        :tab="notification.label"
+      >
+        <a-row :gutter="[24, 0]">
+          <a-col :span="24">
             <a-form-item
-              :label="`${tab.label}是否启用`"
-              :name="[tab.key, 'enabled']"
-              :rules="[{ required: true, message: `请选择${tab.label}是否启用`, trigger: 'change' }]"
+              label="是否启用"
+              :name="[notification.key, 'enabled']"
+              :rules="[{ required: true, message: '请选择是否启用' }]"
             >
-              <a-radio-group v-model:value="localForm[tab.key].enabled">
-                <a-radio :value="0">启用</a-radio>
-                <a-radio :value="1">停用</a-radio>
+              <a-radio-group
+                v-model:value="localForm[notification.key].enabled"
+                :disabled="readonly"
+              >
+                <a-radio :value="0">禁用</a-radio>
+                <a-radio :value="1">启用</a-radio>
               </a-radio-group>
-            </a-form-item>
-          </a-col>
-          <a-col :span="16">
-            <a-form-item
-              :label="`${tab.label}标题`"
-              :name="[tab.key, 'title']"
-              :rules="[{ required: true, message: `请输入${tab.label}标题`, trigger: 'blur' }]"
-            >
-              <a-input v-model:value="localForm[tab.key].title" placeholder="请输入标题" allow-clear />
             </a-form-item>
           </a-col>
           <a-col :span="24">
             <a-form-item
-              :label="`${tab.label}内容`"
-              :name="[tab.key, 'content']"
-              :rules="[
-                { required: true, message: `请输入${tab.label}内容`, trigger: 'blur' },
-                { min: 10, message: '内容长度不能少于10字符', trigger: 'blur' }
-              ]"
+              label="是否格式化金额"
+              :name="[notification.key, 'formatAmount']"
+              :rules="[{ required: true, message: '请选择是否格式化金额' }]"
             >
-              <editor v-model="localForm[tab.key].content" :min-height="200" />
+              <a-radio-group
+                v-model:value="localForm[notification.key].formatAmount"
+                :disabled="readonly"
+              >
+                <a-radio :value="0">否</a-radio>
+                <a-radio :value="1">是</a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item
+              label="标题"
+              :name="[notification.key, 'title']"
+              :rules="requiredRules(notification.key, '请输入标题')"
+            >
+              <a-input
+                v-model:value="localForm[notification.key].title"
+                :disabled="readonly"
+                placeholder="请输入标题"
+                allow-clear
+              />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item
+              label="内容"
+              :name="[notification.key, 'content']"
+              :rules="requiredRules(notification.key, '请输入内容')"
+            >
+              <editor
+                v-model="localForm[notification.key].content"
+                :min-height="260"
+                :read-only="readonly"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -43,110 +76,117 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from "vue"
-import { message } from "ant-design-vue"
+import { reactive, ref, watch } from "vue";
+import { message } from "ant-design-vue";
+import {
+  createNotificationTemplate,
+  notificationKinds,
+} from "../notificationKinds";
 
 const props = defineProps({
   form: {
     type: Object,
-    default: () => ({})
+    default: () => ({}),
   },
-  loading: Boolean
-})
+  loading: Boolean,
+  readonly: Boolean,
+});
 
-const emit = defineEmits(["update:form", "submit", "cancel"])
-const notificationFormRef = ref()
-const activeTab = ref("gift")
-
-const tabs = [
-  { key: "gift", label: "赠送" },
-  { key: "deduction", label: "扣款" },
-  { key: "recharge", label: "充值" },
-  { key: "withdrawing", label: "提现中" },
-  { key: "withdrawalUnfreeze", label: "提现解冻" },
-  { key: "withdrawal", label: "提现" },
-  { key: "task", label: "任务" },
-  { key: "principalReturn", label: "本金返还" },
-  { key: "rebate", label: "返佣" },
-  { key: "subRebate", label: "下级返佣" },
-  { key: "signIn", label: "签到" },
-  { key: "fee", label: "手续费" },
-  { key: "deposit", label: "存款" },
-  { key: "bonus", label: "奖金" },
-  { key: "baseSalary", label: "底薪" },
-  { key: "aid", label: "援助金" },
-  { key: "registerBonus", label: "注册赠送" },
-  { key: "productShare", label: "商品分润" },
-  { key: "taskReward", label: "任务奖励" },
-  { key: "balanceOut", label: "余额宝转出" },
-  { key: "balanceIn", label: "余额宝转入" },
-  { key: "workBonus", label: "工作奖金" },
-  { key: "upgradeBonus", label: "升级奖金" },
-  { key: "other", label: "其他" }
-]
-
-const localForm = reactive({})
-tabs.forEach(tab => {
-  localForm[tab.key] = {
-    enabled: 1,
-    title: "",
-    content: ""
-  }
-})
+const emit = defineEmits(["update:form", "submit", "cancel"]);
+const notificationFormRef = ref();
+const activeTab = ref(notificationKinds[0].key);
+const localForm = reactive(
+  Object.fromEntries(
+    notificationKinds.map(({ key }) => [key, createNotificationTemplate()])
+  )
+);
+let hydrating = false;
 
 watch(
   () => props.form.content,
-  newContent => {
-    if (!newContent) {
-      return
-    }
+  (content) => {
+    hydrating = true;
     try {
-      const parsed = JSON.parse(newContent)
-      tabs.forEach(tab => {
-        Object.assign(localForm[tab.key], parsed[tab.key] || {})
-      })
-    } catch (e) {
-      message.error("解析配置失败")
+      const parsed = content ? JSON.parse(content) : {};
+      notificationKinds.forEach(({ key }) => {
+        Object.assign(localForm[key], createNotificationTemplate(parsed[key]));
+      });
+    } catch {
+      message.error("通知配置格式错误");
+    } finally {
+      queueMicrotask(() => {
+        hydrating = false;
+      });
     }
   },
   { immediate: true }
-)
+);
 
 watch(
   localForm,
   () => {
-    const data = {}
-    tabs.forEach(tab => {
-      data[tab.key] = { ...localForm[tab.key] }
-    })
+    if (hydrating) {
+      return;
+    }
+    const content = Object.fromEntries(
+      notificationKinds.map(({ key }) => [key, { ...localForm[key] }])
+    );
     emit("update:form", {
       ...props.form,
-      content: JSON.stringify(data)
-    })
+      content: JSON.stringify(content),
+    });
   },
   { deep: true }
-)
+);
 
-function handleSubmit() {
-  notificationFormRef.value?.validate?.().then(() => {
-    emit("submit")
-  }).catch(() => {})
+function requiredRules(key, messageText) {
+  return localForm[key].enabled === 1
+    ? [{ required: true, message: messageText, trigger: "blur" }]
+    : [];
+}
+
+async function handleSubmit() {
+  try {
+    await notificationFormRef.value?.validate?.();
+    emit("submit");
+    return true;
+  } catch (error) {
+    const firstError = error?.errorFields?.[0];
+    const invalidTab = firstError?.name?.[0];
+    if (invalidTab && notificationKinds.some(({ key }) => key === invalidTab)) {
+      activeTab.value = invalidTab;
+    }
+    message.error(firstError?.errors?.[0] || "请完善通知配置后再提交");
+    return false;
+  }
 }
 
 function handleCancel() {
-  emit("cancel")
+  emit("cancel");
 }
 
-defineExpose({ handleSubmit, handleCancel })
+defineExpose({ handleSubmit, handleCancel });
 </script>
 
 <style scoped>
-.config-tabs {
+.notification-tabs {
   margin-top: 4px;
 }
 
-:deep(.editor-container) {
+.notification-tabs :deep(.ant-tabs-nav) {
+  margin-bottom: 16px;
+}
+
+.notification-tabs :deep(.ant-tabs-nav-wrap) {
+  padding-bottom: 2px;
+}
+
+.notification-form :deep(.ant-form-item) {
+  margin-bottom: 16px;
+}
+
+.notification-form :deep(.editor-container) {
   border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 </style>

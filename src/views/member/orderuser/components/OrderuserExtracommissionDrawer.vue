@@ -26,7 +26,7 @@
         @refresh="fetchList"
       >
         <template #toolbar>
-          <a-button type="primary" @click="handleAdd">新 增</a-button>
+          <a-button type="primary" @click="handleAdd" v-hasPermi="['member:extracommission:add']">新 增</a-button>
         </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'isLocked'">
@@ -37,8 +37,8 @@
           </template>
           <template v-else-if="column.dataIndex === 'action'">
             <a-space>
-              <a-button type="link" size="small" @click="handleEdit(record)">修改</a-button>
-              <a-button type="link" danger size="small" @click="handleDelete(record)">删除</a-button>
+              <a-button type="link" size="small" @click="handleEdit(record)" v-hasPermi="['member:extracommission:edit']">修改</a-button>
+              <a-button type="link" danger size="small" @click="handleDelete(record)" v-hasPermi="['member:extracommission:remove']">删除</a-button>
             </a-space>
           </template>
         </template>

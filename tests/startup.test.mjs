@@ -18,3 +18,15 @@ test('startup configuration has an immediate environment fallback and no polling
 test('runtime configuration is included in the public build input', () => {
   assert.equal(existsSync(new URL('../public/config/config.js', import.meta.url)), true)
 })
+
+test('protected timezone initialization only runs after authentication', () => {
+  const main = source('src/main.js')
+  const permission = source('src/permission.js')
+  const timezoneHelper = source('src/utils/timezone-helper.js')
+  const request = source('src/utils/request.js')
+
+  assert.doesNotMatch(main, /refreshActiveTimeZone/)
+  assert.ok(permission.indexOf('refreshActiveTimeZone()') > permission.indexOf('.getInfo()'))
+  assert.match(timezoneHelper, /if \(!getToken\(\)\) \{\s*return getActiveTimeZone\(\)/)
+  assert.match(request, /if \(!getToken\(\) \|\| isAuthenticationPage\) \{\s*return Promise\.reject\(new Error\(msg\)\)/)
+})

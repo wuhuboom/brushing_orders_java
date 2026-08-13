@@ -26,8 +26,17 @@ export function addWithdrawal(data) {
   })
 }
 
-// 修改提现
+// 修改提现备注/显示状态
 export function updateWithdrawal(data) {
+  return request({
+    url: '/member/withdrawal',
+    method: 'put',
+    data
+  })
+}
+
+// 审核提现
+export function reviewWithdrawal(data) {
   return request({
     url: '/member/withdrawal/' + data.id + '/status',
     method: 'put',
@@ -43,6 +52,15 @@ export function getSensitiveWithdrawalAccount(id) {
   return request({
     url: '/member/withdrawal/' + id + '/sensitive-account',
     method: 'get'
+  })
+}
+
+// 修改提现地址
+export function updateSensitiveWithdrawalAccount(id, data) {
+  return request({
+    url: '/member/withdrawal/' + id + '/sensitive-account',
+    method: 'put',
+    data
   })
 }
 

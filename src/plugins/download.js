@@ -3,7 +3,7 @@ import { message } from "ant-design-vue";
 import { saveAs } from "file-saver";
 import { getToken } from "@/utils/auth";
 import errorCode from "@/utils/errorCode";
-import { blobValidate } from "@/utils/ruoyi";
+import { blobValidate } from "@/utils/common";
 
 const config = window.APP_CONFIG;
 const baseURL = config.baseApiUrl;

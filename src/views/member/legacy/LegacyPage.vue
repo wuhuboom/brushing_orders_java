@@ -23,12 +23,18 @@
               :md="8"
               :lg="field.lg || 6"
             >
-              <a-form-item :label="field.label">
+              <a-form-item>
+                <template #label>
+                  <span>{{ field.label }}</span>
+                  <a-tooltip v-if="field.tooltip" :title="field.tooltip">
+                    <QuestionCircleOutlined class="field-help" />
+                  </a-tooltip>
+                </template>
                 <a-select
                   v-if="field.type === 'select'"
                   v-model:value="queryParams[field.prop]"
                   allow-clear
-                  :placeholder="field.placeholder || `请选择${field.label}`"
+                  :placeholder="field.placeholder || '请选择'"
                 >
                   <a-select-option
                     v-for="option in dictOptions(field.dict, field.options)"
@@ -41,8 +47,10 @@
                 <a-range-picker
                   v-else-if="field.type === 'daterange'"
                   v-model:value="queryParams[field.prop]"
-                  value-format="YYYY-MM-DD HH:mm:ss"
+                  :value-format="field.valueFormat || (field.showTime === false ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm:ss')"
                   :show-time="field.showTime !== false"
+                  :placeholder="field.rangePlaceholder || ['请选择', '请选择']"
+                  allow-clear
                   class="full-width"
                 />
                 <a-space v-else-if="field.type === 'numberRange'" compact class="full-width">
@@ -73,7 +81,7 @@
                   v-else
                   v-model:value="queryParams[field.prop]"
                   allow-clear
-                  :placeholder="field.placeholder || `请输入${field.label}`"
+                  :placeholder="field.placeholder || '请输入'"
                   @pressEnter="handleQuery"
                 />
               </a-form-item>
@@ -82,7 +90,95 @@
               <a-space>
                 <a-button @click="resetQuery">重 置</a-button>
                 <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button
+                  v-if="advancedSearchFields.length"
+                  type="link"
+                  class="ant-pro-expand-btn"
+                  @click="advancedSearchVisible = !advancedSearchVisible"
+                >
+                  {{ advancedSearchVisible ? '收起' : '展开' }}
+                  <UpOutlined v-if="advancedSearchVisible" />
+                  <DownOutlined v-else />
+                </a-button>
               </a-space>
+            </a-col>
+          </a-row>
+          <a-row
+            v-if="advancedSearchVisible && advancedSearchFields.length"
+            :gutter="[24, 16]"
+            class="advanced-query-row"
+          >
+            <a-col
+              v-for="field in advancedSearchFields"
+              :key="field.prop || field.minProp || field.startProp"
+              :xs="24"
+              :sm="12"
+              :md="8"
+              :lg="field.lg || 6"
+            >
+              <a-form-item>
+                <template #label>
+                  <span>{{ field.label }}</span>
+                  <a-tooltip v-if="field.tooltip" :title="field.tooltip">
+                    <QuestionCircleOutlined class="field-help" />
+                  </a-tooltip>
+                </template>
+                <a-select
+                  v-if="field.type === 'select'"
+                  v-model:value="queryParams[field.prop]"
+                  allow-clear
+                  :placeholder="field.placeholder || '请选择'"
+                >
+                  <a-select-option
+                    v-for="option in dictOptions(field.dict, field.options)"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </a-select-option>
+                </a-select>
+                <a-range-picker
+                  v-else-if="field.type === 'daterange'"
+                  v-model:value="queryParams[field.prop]"
+                  :value-format="field.valueFormat || (field.showTime === false ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm:ss')"
+                  :show-time="field.showTime !== false"
+                  :placeholder="field.rangePlaceholder || ['请选择', '请选择']"
+                  allow-clear
+                  class="full-width"
+                />
+                <a-space v-else-if="field.type === 'numberRange'" compact class="full-width">
+                  <a-input-number
+                    v-model:value="queryParams[field.minProp]"
+                    :min="field.min"
+                    :precision="field.precision"
+                    placeholder="请输入"
+                    class="range-number"
+                  />
+                  <a-input disabled value="~" class="range-divider" />
+                  <a-input-number
+                    v-model:value="queryParams[field.maxProp]"
+                    :min="field.min"
+                    :precision="field.precision"
+                    placeholder="请输入"
+                    class="range-number"
+                  />
+                </a-space>
+                <a-input-number
+                  v-else-if="field.type === 'number'"
+                  v-model:value="queryParams[field.prop]"
+                  :min="field.min"
+                  :precision="field.precision"
+                  :placeholder="field.placeholder || '请输入'"
+                  class="full-width"
+                />
+                <a-input
+                  v-else
+                  v-model:value="queryParams[field.prop]"
+                  allow-clear
+                  :placeholder="field.placeholder || '请输入'"
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
             </a-col>
           </a-row>
         </a-form>
@@ -131,24 +227,30 @@
           :disabled="multiple"
           @click="handleDelete()"
           v-hasPermi="[perms.remove]"
-        >删除</a-button>
+        ><DeleteOutlined />删除</a-button>
         <a-button
           v-if="hasToolbar('export')"
           @click="handleExport"
           v-hasPermi="[perms.export]"
-        >导出</a-button>
+        ><DownloadOutlined />导出</a-button>
         <slot name="toolbarExtra" :ids="ids" :single="single" :multiple="multiple" />
       </template>
 
       <template #bodyCell="{ column, record }">
-        <template v-if="column.dict || column.options">
+        <slot
+          v-if="$slots[`cell-${column.key || column.dataIndex}`]"
+          :name="`cell-${column.key || column.dataIndex}`"
+          :column="column"
+          :record="record"
+        />
+        <template v-else-if="column.dict || column.options">
           <dict-tag :options="dictOptions(column.dict, column.options)" :value="record[column.dataIndex]" />
         </template>
         <template v-else-if="column.type === 'image'">
           <media-preview :src="record[column.dataIndex]" :width="50" :height="50" />
         </template>
         <template v-else-if="column.type === 'date'">
-          {{ parseTime(record[column.dataIndex]) }}
+          {{ record[column.dataIndex] ? parseTime(record[column.dataIndex]) : '-' }}
         </template>
         <template v-else-if="column.key === 'operation'">
           <a-space>
@@ -176,6 +278,9 @@
             >删除</a-button>
             <slot name="rowActions" :record="record" />
           </a-space>
+        </template>
+        <template v-else>
+          {{ displayValue(record[column.dataIndex]) }}
         </template>
       </template>
     </ant-pro-table>
@@ -251,6 +356,13 @@
 
 <script setup>
 import { computed, getCurrentInstance, nextTick, reactive, ref, toRefs, unref } from 'vue'
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  DownOutlined,
+  QuestionCircleOutlined,
+  UpOutlined
+} from '@ant-design/icons-vue'
 import { addLegacy, delLegacy, getLegacy, listLegacy, updateLegacy, updateLegacyHidden } from '@/api/member/legacy'
 import mediaPreview from '@/components/MediaPreview/index.vue'
 import mediaUpload from '@/components/MediaUpload/index.vue'
@@ -261,6 +373,7 @@ const props = defineProps({
   resource: { type: String, required: true },
   columns: { type: Array, required: true },
   searchFields: { type: Array, default: () => [] },
+  advancedSearchFields: { type: Array, default: () => [] },
   dialogFields: { type: Array, default: () => [] },
   toolbar: { type: Array, default: () => [] },
   dicts: { type: Array, default: () => ['user_yes_no'] },
@@ -290,19 +403,21 @@ const total = ref(0)
 const dialogTitle = ref('')
 const submitting = ref(false)
 const legacyRef = ref()
+const advancedSearchVisible = ref(false)
+const allSearchFields = computed(() => [...props.searchFields, ...props.advancedSearchFields])
 
 const data = reactive({
   form: {},
   queryParams: {
     pageNum: 1,
-    pageSize: 10
+    pageSize: 20
   },
   rules: {}
 })
 
 const { queryParams, form, rules } = toRefs(data)
 
-props.searchFields.forEach((field) => {
+allSearchFields.value.forEach((field) => {
   if (field.prop) queryParams.value[field.prop] = null
   if (field.minProp) queryParams.value[field.minProp] = null
   if (field.maxProp) queryParams.value[field.maxProp] = null
@@ -362,11 +477,12 @@ function handleQuery() {
 }
 
 function resetQuery() {
-  props.searchFields.forEach((field) => {
+  allSearchFields.value.forEach((field) => {
     if (field.prop) queryParams.value[field.prop] = null
     if (field.minProp) queryParams.value[field.minProp] = null
     if (field.maxProp) queryParams.value[field.maxProp] = null
   })
+  Object.assign(queryParams.value, props.initialQuery)
   handleQuery()
 }
 
@@ -484,12 +600,16 @@ function handleDelete(row) {
 
 function handleExport() {
   proxy.download(props.exportPath || `member/legacy/${props.resource}/export`, {
-    ...queryParams.value
+    ...buildQueryParams()
   }, `${props.resource}_${new Date().getTime()}.csv`)
 }
 
 function buildQueryParams() {
-  return expandDateRanges(queryParams.value, props.searchFields)
+  return expandDateRanges(queryParams.value, allSearchFields.value)
+}
+
+function displayValue(value) {
+  return value === null || value === undefined || value === '' ? '-' : value
 }
 
 defineExpose({ getList, handleQuery })
@@ -510,5 +630,15 @@ getList()
   width: 36px;
   text-align: center;
   pointer-events: none;
+}
+
+.field-help {
+  margin-left: 4px;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: help;
+}
+
+.advanced-query-row {
+  margin-top: 16px;
 }
 </style>

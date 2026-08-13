@@ -35,6 +35,17 @@ export function updateRecharge(data) {
   })
 }
 
+export function reviewRecharge(data) {
+  return request({
+    url: '/member/recharge/' + data.id + '/status',
+    method: 'put',
+    data: {
+      status: data.status,
+      remarks: data.remarks
+    }
+  })
+}
+
 // 删除充值记录
 export function delRecharge(id) {
   return request({

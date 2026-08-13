@@ -2,7 +2,7 @@ import axios from "axios";
 import { message, Modal, notification } from "ant-design-vue";
 import { getToken } from "@/utils/auth";
 import errorCode from "@/utils/errorCode";
-import { tansParams, blobValidate } from "@/utils/ruoyi";
+import { tansParams, blobValidate } from "@/utils/common";
 import cache from "@/plugins/cache";
 import { saveAs } from "file-saver";
 import useUserStore from "@/store/modules/user";
@@ -108,6 +108,11 @@ service.interceptors.response.use(
     }
 
     if (code === 401) {
+      const isAuthenticationPage = ["/login", "/register"].includes(window.location.pathname);
+      if (!getToken() || isAuthenticationPage) {
+        return Promise.reject(new Error(msg));
+      }
+
       if (!isRelogin.show) {
         isRelogin.show = true;
         confirmRelogin()

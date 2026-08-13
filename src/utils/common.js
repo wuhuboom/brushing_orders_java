@@ -1,4 +1,4 @@
-// 你原来的 utils/ruoyi.js 里，替换 parseTime
+// 管理后台通用工具
 import { getActiveTimeZone, isValidIanaTZ } from "@/utils/timezone-helper";
 
 export function parseTime(time, pattern, tzOverride) {

@@ -167,7 +167,13 @@
 
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'id'">
-          <a class="table-action-link" @click="handleView(record)">{{ record.id }}</a>
+          <a
+            v-if="hasPermission('member:orderuser:query')"
+            v-hasPermi="['member:orderuser:query']"
+            class="table-action-link"
+            @click="handleView(record)"
+          >{{ record.id }}</a>
+          <span v-else>{{ record.id }}</span>
         </template>
         <template v-else-if="column.key === 'username'">
           <span
@@ -184,13 +190,14 @@
         <template v-else-if="column.key === 'parentInfo'">
           <div>
             <a
-              v-if="record.parentInviteCode"
+              v-if="record.parentInviteCode && hasPermission('member:orderuser:edit')"
+              v-hasPermi="['member:orderuser:edit']"
               class="table-action-link"
               @click="handleModifyParent(record)"
             >
               上级邀请码: {{ record.parentInviteCode }}
             </a>
-            <span v-else>上级邀请码: -</span>
+            <span v-else>上级邀请码: {{ record.parentInviteCode || '-' }}</span>
             <a-tooltip v-if="record.parentInviteCode" title="复制上级邀请码">
               <a-button
                 type="text"
@@ -218,9 +225,15 @@
           <div>今日上级佣金: {{ record.todayParentCommission || 0 }}</div>
         </template>
         <template v-else-if="column.key === 'taskProgress'">
-          <a class="table-action-link" @click="openModifyCount(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="openModifyCount(record)"
+          >
             {{ record.taskProgress || 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}
           </a>
+          <span v-else>{{ record.taskProgress || 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}</span>
         </template>
         <template v-else-if="column.key === 'completeGroupNum'">
           {{ completeGroupText(record) }}
@@ -232,9 +245,15 @@
         </template>
         <template v-else-if="column.key === 'signinInfo'">
           <div>
-            <a class="table-action-link" @click="handleModifySignDays(record)">
+            <a
+              v-if="hasPermission('member:orderuser:edit')"
+              v-hasPermi="['member:orderuser:edit']"
+              class="table-action-link"
+              @click="handleModifySignDays(record)"
+            >
               签到天数: {{ record.signDays || 0 }}
             </a>
+            <span v-else>签到天数: {{ record.signDays || 0 }}</span>
           </div>
           <div>今日签到次数: {{ record.todaySignCount || 0 }}</div>
           <div>累计签到次数: {{ record.totalSignDays || 0 }}</div>
@@ -252,9 +271,15 @@
           {{ parseTime(record.birthday, '{y}-{m}-{d}') || '-' }}
         </template>
         <template v-else-if="column.key === 'reputationScore'">
-          <a class="table-action-link" @click="handleModifyReputation(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleModifyReputation(record)"
+          >
             {{ record.reputationScore ?? 100 }}
           </a>
+          <span v-else>{{ record.reputationScore ?? 100 }}</span>
         </template>
         <template v-else-if="column.key === 'inviteCode'">
           {{ record.inviteCode || '-' }}
@@ -277,34 +302,70 @@
           {{ record.workLimit ?? 0 }}
         </template>
         <template v-else-if="column.key === 'isFake'">
-          <a class="table-action-link" @click="handleToggleFake(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleToggleFake(record)"
+          >
             {{ dictText(user_yes_no, record.isFake) }}
           </a>
+          <span v-else>{{ dictText(user_yes_no, record.isFake) }}</span>
         </template>
         <template v-else-if="column.key === 'productMatching'">
-          <a class="table-action-link" @click="handleToggleProductMatching(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleToggleProductMatching(record)"
+          >
             {{ dictText(sys_enabled, record.productMatching) }}
           </a>
+          <span v-else>{{ dictText(sys_enabled, record.productMatching) }}</span>
         </template>
         <template v-else-if="column.key === 'accountStatus'">
-          <a class="table-action-link" @click="handleToggleAccountStatus(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleToggleAccountStatus(record)"
+          >
             {{ dictText(sys_enabled, record.accountStatus) }}
           </a>
+          <span v-else>{{ dictText(sys_enabled, record.accountStatus) }}</span>
         </template>
         <template v-else-if="column.key === 'transactionStatus'">
-          <a class="table-action-link" @click="handleToggleTransactionStatus(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleToggleTransactionStatus(record)"
+          >
             {{ dictText(sys_enabled, record.transactionStatus) }}
           </a>
+          <span v-else>{{ dictText(sys_enabled, record.transactionStatus) }}</span>
         </template>
         <template v-else-if="column.key === 'withdrawalStatus'">
-          <a class="table-action-link" @click="handleToggleWithdrawalStatus(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleToggleWithdrawalStatus(record)"
+          >
             {{ dictText(sys_enabled, record.withdrawalStatus) }}
           </a>
+          <span v-else>{{ dictText(sys_enabled, record.withdrawalStatus) }}</span>
         </template>
         <template v-else-if="column.key === 'assistWithdrawalStatus'">
-          <a class="table-action-link" @click="handleToggleAssistWithdrawalStatus(record)">
+          <a
+            v-if="hasPermission('member:orderuser:edit')"
+            v-hasPermi="['member:orderuser:edit']"
+            class="table-action-link"
+            @click="handleToggleAssistWithdrawalStatus(record)"
+          >
             {{ dictText(sys_enabled, record.assistWithdrawalStatus) }}
           </a>
+          <span v-else>{{ dictText(sys_enabled, record.assistWithdrawalStatus) }}</span>
         </template>
         <template v-else-if="column.dict === 'yesNo'">
           {{ dictText(user_yes_no, record[column.dataIndex]) }}
@@ -321,39 +382,42 @@
         <template v-else-if="column.key === 'operation'">
           <div class="ant-action-grid">
             <a-space :size="6" wrap>
-              <a-button size="small" type="primary" class="ant-action-warning" @click="handleTransaction(record)">上下分</a-button>
-              <a-button size="small" type="primary" @click="handleOpenLink(record)">连单设置</a-button>
-              <a-button size="small" type="primary" danger @click="handleReset(record)">重置单数</a-button>
-              <a-button size="small" type="primary" @click="handleUpdate(record)">修 改</a-button>
-              <a-button size="small" type="primary" @click="openModifyCount(record)">修改单数</a-button>
-              <a-button size="small" type="primary" class="ant-action-success" @click="handleOpenBonus(record)">彩金设置</a-button>
-              <a-button size="small" type="primary" @click="handleModifyLoginPassword(record)">修改登录密码</a-button>
-              <a-button size="small" type="primary" @click="handleModifyTradePassword(record)">修改交易密码</a-button>
-              <a-button size="small" type="primary" @click="handleOpenFlow(record)">查看交易流水</a-button>
-              <a-button size="small" type="primary" @click="handleOpenWithdrawal(record)">修改提现账户</a-button>
-              <a-button size="small" type="primary" @click="handleModifyReputation(record)">修改信誉分</a-button>
-              <a-button size="small" type="primary" @click="handleModifyParent(record)">修改上级</a-button>
-              <a-button size="small" type="primary" @click="handleModifyVip(record)">修改等级</a-button>
-              <a-dropdown :trigger="['click']">
+              <a-button size="small" type="primary" class="ant-action-warning" @click="handleTransaction(record)" v-hasPermi="['member:orderuser:edit']">上下分</a-button>
+              <a-button size="small" type="primary" @click="handleOpenLink(record)" v-hasPermi="['member:orderlink:list']">连单设置</a-button>
+              <a-button size="small" type="primary" danger @click="handleReset(record)" v-hasPermi="['member:orderuser:edit']">重置单数</a-button>
+              <a-button size="small" type="primary" @click="handleUpdate(record)" v-hasPermi="['member:orderuser:edit']">修 改</a-button>
+              <a-button size="small" type="primary" @click="openModifyCount(record)" v-hasPermi="['member:orderuser:edit']">修改单数</a-button>
+              <a-button size="small" type="primary" class="ant-action-success" @click="handleOpenBonus(record)" v-hasPermi="['member:bonus:list']">彩金设置</a-button>
+              <a-button size="small" type="primary" @click="handleModifyLoginPassword(record)" v-hasPermi="['member:orderuser:edit']">修改登录密码</a-button>
+              <a-button size="small" type="primary" @click="handleModifyTradePassword(record)" v-hasPermi="['member:orderuser:edit']">修改交易密码</a-button>
+              <a-button size="small" type="primary" @click="handleOpenFlow(record)" v-hasPermi="['member:flow:list']">查看交易流水</a-button>
+              <a-button size="small" type="primary" @click="handleOpenWithdrawal(record)" v-hasPermi="['member:withdrawalAcc:list']">修改提现账户</a-button>
+              <a-button size="small" type="primary" @click="handleModifyReputation(record)" v-hasPermi="['member:orderuser:edit']">修改信誉分</a-button>
+              <a-button size="small" type="primary" @click="handleModifyParent(record)" v-hasPermi="['member:orderuser:edit']">修改上级</a-button>
+              <a-button size="small" type="primary" @click="handleModifyVip(record)" v-hasPermi="['member:orderuser:edit']">修改等级</a-button>
+              <a-dropdown
+                v-if="hasAnyPermission(moreActionPermissions)"
+                :trigger="['click']"
+              >
                 <a-button size="small" type="primary">
                   更多
                   <DownOutlined />
                 </a-button>
                 <template #overlay>
                   <a-menu>
-                    <a-menu-item @click="handleCopyMember(record)">复制</a-menu-item>
-                    <a-menu-item @click="handleGift(record)">赠送</a-menu-item>
-                    <a-menu-item @click="handleSubMembers(record)">查看下级会员</a-menu-item>
-                    <a-menu-item @click="handleModifySignDays(record)">修改签到天数</a-menu-item>
-                    <a-menu-item @click="handleOrderDetails(record)">查看订单明细</a-menu-item>
-                    <a-menu-item @click="handleExtraCommission(record)">额外佣金设置</a-menu-item>
-                    <a-menu-item @click="handleToggleFake(record)">设为{{ record.isFake === '1' ? '\u771f\u4eba' : '\u5047\u4eba' }}</a-menu-item>
-                    <a-menu-item @click="handleToggleAccountStatus(record)">{{ record.accountStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}账户</a-menu-item>
-                    <a-menu-item @click="handleToggleTransactionStatus(record)">{{ record.transactionStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}交易</a-menu-item>
-                    <a-menu-item @click="handleToggleWithdrawalStatus(record)">{{ record.withdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}提现</a-menu-item>
-                    <a-menu-item @click="handleToggleAssistWithdrawalStatus(record)">{{ record.assistWithdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}协助金提现</a-menu-item>
-                    <a-menu-item @click="handleEditIdentity(record)">编辑身份信息</a-menu-item>
-                    <a-menu-item @click="handleEditContract(record)">编辑合同</a-menu-item>
+                    <a-menu-item @click="handleCopyMember(record)" v-hasPermi="['member:orderuser:add']">复制</a-menu-item>
+                    <a-menu-item @click="handleGift(record)" v-hasPermi="['member:orderuser:edit']">赠送</a-menu-item>
+                    <a-menu-item @click="handleSubMembers(record)" v-hasPermi="['member:orderuser:query']">查看下级会员</a-menu-item>
+                    <a-menu-item @click="handleModifySignDays(record)" v-hasPermi="['member:orderuser:edit']">修改签到天数</a-menu-item>
+                    <a-menu-item @click="handleOrderDetails(record)" v-hasPermi="['member:orderinfo:list']">查看订单明细</a-menu-item>
+                    <a-menu-item @click="handleExtraCommission(record)" v-hasPermi="['member:extracommission:list']">额外佣金设置</a-menu-item>
+                    <a-menu-item @click="handleToggleFake(record)" v-hasPermi="['member:orderuser:edit']">设为{{ record.isFake === '1' ? '\u771f\u4eba' : '\u5047\u4eba' }}</a-menu-item>
+                    <a-menu-item @click="handleToggleAccountStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.accountStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}账户</a-menu-item>
+                    <a-menu-item @click="handleToggleTransactionStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.transactionStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}交易</a-menu-item>
+                    <a-menu-item @click="handleToggleWithdrawalStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.withdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}提现</a-menu-item>
+                    <a-menu-item @click="handleToggleAssistWithdrawalStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.assistWithdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}协助金提现</a-menu-item>
+                    <a-menu-item @click="handleEditIdentity(record)" v-hasPermi="['member:orderuser:edit']">编辑身份信息</a-menu-item>
+                    <a-menu-item @click="handleEditContract(record)" v-hasPermi="['member:orderuser:edit']">编辑合同</a-menu-item>
                   </a-menu>
                 </template>
               </a-dropdown>
@@ -629,8 +693,27 @@ import OrderuserExtracommissionDrawer from "./components/OrderuserExtracommissio
 import OrderuserOrderinfoDrawer from "./components/OrderuserOrderinfoDrawer.vue";
 import OrderuserIdentityModal from "./components/OrderuserIdentityModal.vue";
 import OrderuserContractModal from "./components/OrderuserContractModal.vue";
+import useUserStore from "@/store/modules/user";
 
 const { proxy } = getCurrentInstance();
+const userStore = useUserStore();
+const moreActionPermissions = [
+  "member:orderuser:add",
+  "member:orderuser:query",
+  "member:orderuser:edit",
+  "member:orderinfo:list",
+  "member:extracommission:list",
+];
+
+function hasPermission(permission) {
+  const permissions = userStore.permissions || [];
+  return permissions.includes("*:*:*") || permissions.includes(permission);
+}
+
+function hasAnyPermission(permissions) {
+  return permissions.some((permission) => hasPermission(permission));
+}
+
 const { user_yes_no, sys_user_sex, sys_enabled } = proxy.useDict(
   "user_yes_no",
   "sys_user_sex",
@@ -1034,9 +1117,17 @@ function getList() {
     total.value = response.total;
     loading.value = false;
   });
-  getLevel().then((res) => {
-    levelList.value = res.data;
-  });
+  if (hasAnyPermission([
+    "member:orderuser:query",
+    "member:orderuser:add",
+    "member:orderuser:edit",
+  ])) {
+    getLevel().then((res) => {
+      levelList.value = res.data;
+    });
+  } else {
+    levelList.value = [];
+  }
 }
 
 // 表单重置
@@ -1301,10 +1392,15 @@ function handleModifyTradePassword(row) {
 
 async function submitTradePassword() {
   tradeFormRef?.value?.validate?.().then(async () => {
+    const normalizedPassword = String(tradeForm.tradePassword || "").trim();
+    if (normalizedPassword.length < 6) {
+      proxy.$modal.msgError("交易密码长度不能少于6位");
+      return;
+    }
     try {
       await editTradePassword({
         id: tradeForm.id,
-        tradePassword: tradeForm.tradePassword,
+        tradePassword: normalizedPassword,
       });
       getList();
       tradePasswordVisible.value = false;

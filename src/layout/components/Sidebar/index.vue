@@ -78,7 +78,7 @@
 import Logo from "./Logo";
 import variables from "@/assets/styles/variables.module.scss";
 import { isExternal } from "@/utils/validate";
-import { getNormalPath } from "@/utils/ruoyi";
+import { getNormalPath } from "@/utils/common";
 import useAppStore from "@/store/modules/app";
 import useSettingsStore from "@/store/modules/settings";
 import usePermissionStore from "@/store/modules/permission";

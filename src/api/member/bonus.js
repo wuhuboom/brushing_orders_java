@@ -35,6 +35,20 @@ export function updateBonus(data) {
   })
 }
 
+export function receiveBonus(id) {
+  return request({
+    url: `/member/bonus/${id}/receive`,
+    method: 'put'
+  })
+}
+
+export function giveBonus(id) {
+  return request({
+    url: `/member/bonus/${id}/given`,
+    method: 'put'
+  })
+}
+
 // 删除彩金
 export function delBonus(id) {
   return request({

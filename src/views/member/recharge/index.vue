@@ -1,14 +1,14 @@
 <template>
   <div class="app-container ant-pro-member-page">
     <ant-pro-table
-      title="充值记录"
+      title="充值记录列表"
       :columns="rechargeColumns"
       :data-source="rechargeList"
       :loading="loading"
       row-key="id"
       :row-selection="rowSelection"
       :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
-      :scroll="{ x: 1600 }"
+      :scroll="{ x: 2200 }"
       @page-change="handleAntPageChange"
       @refresh="getList"
     >
@@ -18,7 +18,7 @@
             <a-col :xs="24" :sm="12" :md="8" :lg="7">
               <a-form-item label="用户名">
                 <a-input
-                  v-model:value="queryParams.userName"
+                  v-model:value="queryParams.username"
                   placeholder="请输入用户名"
                   allow-clear
                   @pressEnter="handleQuery"
@@ -26,7 +26,7 @@
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="12" :md="8" :lg="7">
-              <a-form-item label="手机号">
+              <a-form-item label="手机号码">
                 <a-input
                   v-model:value="queryParams.phoneNumber"
                   placeholder="请输入手机号"
@@ -36,10 +36,10 @@
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="12" :md="8" :lg="7">
-              <a-form-item label="订单号">
+              <a-form-item label="上级用户名">
                 <a-input
-                  v-model:value="queryParams.orderNumber"
-                  placeholder="请输入订单号"
+                  v-model:value="queryParams.parentUsername"
+                  placeholder="请输入上级用户名"
                   allow-clear
                   @pressEnter="handleQuery"
                 />
@@ -49,19 +49,131 @@
               <a-space>
                 <a-button @click="resetQuery">重 置</a-button>
                 <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button type="link" @click="advancedSearchVisible = !advancedSearchVisible">
+                  {{ advancedSearchVisible ? "收起" : "展开" }}
+                </a-button>
               </a-space>
+            </a-col>
+          </a-row>
+          <a-row v-if="advancedSearchVisible" :gutter="[24, 16]" class="advanced-query-row">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="用户钱包地址">
+                <a-input
+                  v-model:value="queryParams.accountAddress"
+                  allow-clear
+                  placeholder="请输入"
+                  @pressEnter="handleQuery"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="金额">
+                <a-space-compact block>
+                  <a-input-number
+                    v-model:value="queryParams.amountMin"
+                    placeholder="请输入"
+                    :precision="2"
+                    class="amount-range-input"
+                  />
+                  <a-input disabled value="~" class="amount-range-separator" />
+                  <a-input-number
+                    v-model:value="queryParams.amountMax"
+                    placeholder="请输入"
+                    :precision="2"
+                    class="amount-range-input"
+                  />
+                </a-space-compact>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="出金类型">
+                <a-select v-model:value="queryParams.withdrawalType" allow-clear placeholder="请选择">
+                  <a-select-option v-for="dict in order_zhlx" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="状态">
+                <a-select v-model:value="queryParams.status" allow-clear placeholder="请选择状态">
+                  <a-select-option v-for="dict in apply_status" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="是否假人">
+                <a-select v-model:value="queryParams.isFake" allow-clear placeholder="请选择">
+                  <a-select-option v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="创建时间">
+                <a-range-picker
+                  v-model:value="dateRange"
+                  value-format="YYYY-MM-DD HH:mm:ss"
+                  show-time
+                  class="full-width"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="交易类型">
+                <a-select v-model:value="queryParams.transactionType" allow-clear placeholder="请选择交易类型">
+                  <a-select-option v-for="dict in transaction_type" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+              <a-form-item label="是否隐藏">
+                <a-select v-model:value="queryParams.isHidden" allow-clear placeholder="请选择">
+                  <a-select-option v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">
+                    {{ dict.label }}
+                  </a-select-option>
+                </a-select>
+              </a-form-item>
             </a-col>
           </a-row>
         </a-form>
       </template>
 
       <template #toolbar>
-        <a-button :disabled="multiple" @click="handleHidden('0')" v-hasPermi="['member:recharge:edit']">显示</a-button>
-        <a-button :disabled="multiple" @click="handleHidden('1')" v-hasPermi="['member:recharge:edit']">隐藏</a-button>
+        <a-popconfirm
+          title="显示"
+          ok-text="确 定"
+          cancel-text="取 消"
+          :disabled="multiple"
+          @confirm="handleHidden('1')"
+        >
+          <a-button :disabled="multiple" v-hasPermi="['member:recharge:edit']">
+            <EyeOutlined />显示
+          </a-button>
+        </a-popconfirm>
+        <a-popconfirm
+          title="隐藏"
+          ok-text="确 定"
+          cancel-text="取 消"
+          :disabled="multiple"
+          @confirm="handleHidden('0')"
+        >
+          <a-button :disabled="multiple" v-hasPermi="['member:recharge:edit']">
+            <EyeInvisibleOutlined />隐藏
+          </a-button>
+        </a-popconfirm>
       </template>
 
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'status'">
+        <template v-if="column.key === 'rechargeAccount'">
+          {{ record.rechargeAccount || "-" }}
+        </template>
+        <template v-else-if="column.key === 'status'">
           <dict-tag :options="apply_status" :value="record.status" />
         </template>
         <template v-else-if="column.dataIndex === 'createTime'">
@@ -70,30 +182,46 @@
         <template v-else-if="column.dataIndex === 'transactionType'">
           <dict-tag :options="transaction_type" :value="record.transactionType" />
         </template>
+        <template v-else-if="column.dataIndex === 'withdrawalType'">
+          {{ dictText(order_zhlx, record.withdrawalType) }}
+        </template>
         <template v-else-if="column.dataIndex === 'isHidden'">
           <dict-tag :options="user_yes_no" :value="record.isHidden" />
         </template>
+        <template v-else-if="column.dataIndex === 'updateTime'">
+          {{ parseTime(record.updateTime) }}
+        </template>
+        <template v-else-if="column.dataIndex === 'remark' || column.dataIndex === 'updateBy'">
+          {{ record[column.dataIndex] || "-" }}
+        </template>
         <template v-else-if="column.key === 'operation'">
           <a-space :size="4">
-            <a-button
-              type="link"
-              size="small"
+            <a-popconfirm
+              title="通过选中的记录？"
+              ok-text="确 定"
+              cancel-text="取 消"
               :disabled="String(record.status) !== '1'"
-              @click="handleApprove(record)"
-              v-hasPermi="['member:recharge:edit']"
-            >通过</a-button>
+              @confirm="handleApprove(record)"
+            >
+              <a-button
+                type="link"
+                size="small"
+                :disabled="String(record.status) !== '1'"
+                v-hasPermi="['member:recharge:edit']"
+              >通过</a-button>
+            </a-popconfirm>
             <a-button
               type="link"
               danger
               size="small"
               :disabled="String(record.status) !== '1'"
-              @click="handleReject(record)"
+              @click="openReviewDialog(record, 'reject')"
               v-hasPermi="['member:recharge:edit']"
             >拒绝</a-button>
             <a-button
               type="link"
               size="small"
-              @click="handleUpdate(record)"
+              @click="openReviewDialog(record, 'remark')"
               v-hasPermi="['member:recharge:edit']"
             >备注</a-button>
           </a-space>
@@ -129,19 +257,21 @@
 </template>
 
 <script setup name="Recharge">
+import { EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons-vue";
 import {
   listRecharge,
-  getRecharge,
   delRecharge,
   addRecharge,
   updateRecharge,
+  reviewRecharge,
 } from "@/api/member/recharge";
 
 const { proxy } = getCurrentInstance();
-const { transaction_type, user_yes_no, apply_status } = proxy.useDict(
+const { transaction_type, user_yes_no, apply_status, order_zhlx } = proxy.useDict(
   "transaction_type",
   "user_yes_no",
-  "apply_status"
+  "apply_status",
+  "order_zhlx"
 );
 
 const rechargeList = ref([]);
@@ -152,25 +282,32 @@ const ids = ref([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
+const advancedSearchVisible = ref(false);
+const dateRange = ref([]);
 const title = ref("");
+const dialogMode = ref("remark");
 const submitting = ref(false);
 const rechargeRef = ref();
 
 const rechargeColumns = [
   { title: "用户名", dataIndex: "username", align: "center", width: 140 },
-  { title: "手机号", dataIndex: "phoneNumber", align: "center", width: 140 },
+  { title: "手机号码", dataIndex: "phoneNumber", align: "center", width: 140 },
   { title: "上级用户名", dataIndex: "parentUsername", align: "center", width: 150 },
+  { title: "充值账户", dataIndex: "rechargeAccount", key: "rechargeAccount", align: "center", width: 220 },
   { title: "金额", dataIndex: "amount", align: "center", width: 120 },
-  { title: "充值类型", dataIndex: "withdrawalType", align: "center", width: 130 },
+  { title: "出金类型", dataIndex: "withdrawalType", align: "center", width: 130 },
   { title: "赠送金额", dataIndex: "giftAmount", align: "center", width: 130 },
   { title: "到账金额", dataIndex: "receivedAmount", align: "center", width: 130 },
+  { title: "转换后金额", dataIndex: "receivedAmount", key: "convertedAmount", align: "center", width: 140, hidden: true },
   { title: "状态", key: "status", dataIndex: "status", align: "center", width: 110 },
   { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
   { title: "备注", dataIndex: "remark", align: "center", width: 150 },
   { title: "交易类型", dataIndex: "transactionType", align: "center", width: 130 },
   { title: "订单号", dataIndex: "orderNumber", align: "center", width: 180 },
   { title: "是否隐藏", dataIndex: "isHidden", align: "center", width: 120 },
-  { title: "操作", key: "operation", align: "center", fixed: "right", width: 100 },
+  { title: "最后修改人", dataIndex: "updateBy", align: "center", width: 140 },
+  { title: "最后修改时间", dataIndex: "updateTime", align: "center", width: 180 },
+  { title: "操作", key: "operation", align: "center", fixed: "right", width: 180 },
 ];
 
 const rowSelection = computed(() => ({
@@ -182,9 +319,14 @@ const data = reactive({
   form: {},
   queryParams: {
     pageNum: 1,
-    pageSize: 10,
-    userName: null,
+    pageSize: 20,
+    username: null,
     phoneNumber: null,
+    parentUsername: null,
+    accountAddress: null,
+    amountMin: null,
+    amountMax: null,
+    isFake: null,
     userId: null,
     amount: null,
     withdrawalType: null,
@@ -209,10 +351,28 @@ const data = reactive({
 
 const { queryParams, form, rules } = toRefs(data);
 
+function dictText(options, value) {
+  return proxy.selectDictLabel(options, value) || value || "-";
+}
+
 /** 查询充值记录列表 */
 function getList() {
   loading.value = true;
-  listRecharge(queryParams.value).then((response) => {
+  const {
+    amountMin,
+    amountMax,
+    ...base
+  } = queryParams.value;
+  const request = { ...base };
+  const params = {};
+  if (amountMin !== null && amountMin !== undefined) params.amountMin = amountMin;
+  if (amountMax !== null && amountMax !== undefined) params.amountMax = amountMax;
+  if (dateRange.value?.length === 2) {
+    params.beginTime = dateRange.value[0];
+    params.endTime = dateRange.value[1];
+  }
+  if (Object.keys(params).length) request.params = params;
+  listRecharge(request).then((response) => {
     rechargeList.value = response.rows;
     total.value = response.total;
     loading.value = false;
@@ -252,9 +412,18 @@ function handleQuery() {
 
 /** 重置按钮操作 */
 function resetQuery() {
-  queryParams.value.userName = null;
+  queryParams.value.username = null;
   queryParams.value.phoneNumber = null;
-  queryParams.value.orderNumber = null;
+  queryParams.value.parentUsername = null;
+  queryParams.value.accountAddress = null;
+  queryParams.value.amountMin = null;
+  queryParams.value.amountMax = null;
+  queryParams.value.withdrawalType = null;
+  queryParams.value.status = null;
+  queryParams.value.isFake = null;
+  queryParams.value.transactionType = null;
+  queryParams.value.isHidden = null;
+  dateRange.value = [];
   handleQuery();
 }
 
@@ -279,36 +448,20 @@ function handleAdd() {
 }
 
 /** 修改按钮操作 */
-function handleUpdate(row) {
-  reset();
-  const _id = row.id || ids.value;
-  getRecharge(_id).then((response) => {
-    form.value = response.data;
-    open.value = true;
-    title.value = "修改备注";
-  });
-}
-
 function handleApprove(row) {
-  proxy.$modal
-    .confirm("确认通过该充值申请？")
-    .then(() => updateRecharge({ id: row.id, status: "0" }))
+  return reviewRecharge({ id: row.id, status: "2" })
     .then(() => {
       proxy.$modal.msgSuccess("操作成功");
       getList();
-    })
-    .catch(() => {});
+    });
 }
 
-function handleReject(row) {
-  proxy.$modal
-    .confirm("确认拒绝该充值申请？")
-    .then(() => updateRecharge({ id: row.id, status: "2" }))
-    .then(() => {
-      proxy.$modal.msgSuccess("操作成功");
-      getList();
-    })
-    .catch(() => {});
+function openReviewDialog(row, mode) {
+  reset();
+  form.value = { ...row };
+  dialogMode.value = mode;
+  title.value = mode === "reject" ? "拒绝" : "备注";
+  open.value = true;
 }
 
 /** 提交按钮 */
@@ -321,7 +474,13 @@ async function submitForm() {
 
   submitting.value = true;
   try {
-    if (form.value.id != null) {
+    if (dialogMode.value === "reject") {
+      await reviewRecharge({
+        id: form.value.id,
+        status: "3",
+        remarks: form.value.remark,
+      });
+    } else if (form.value.id != null) {
       await updateRecharge(form.value);
     } else {
       await addRecharge(form.value);
@@ -369,3 +528,19 @@ function handleExport() {
 
 getList();
 </script>
+
+<style scoped>
+.full-width {
+  width: 100%;
+}
+
+.amount-range-input {
+  width: calc(50% - 18px);
+}
+
+.amount-range-separator {
+  width: 36px;
+  padding-inline: 8px;
+  text-align: center;
+}
+</style>

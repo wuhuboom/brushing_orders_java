@@ -11,7 +11,7 @@
   >
     <a-tabs v-model:activeKey="activeLanguage" class="translation-tabs">
       <a-tab-pane
-        v-for="language in translationLanguages"
+        v-for="language in visibleLanguages"
         :key="language.field"
         :tab="`${language.flag} ${language.label}`"
         force-render
@@ -288,6 +288,7 @@ import {
   createEmptyTranslations,
   translationLanguages,
 } from "./translationLanguages";
+import { notificationKinds } from "../orderconfig/notificationKinds";
 
 const props = defineProps({
   modelValue: {
@@ -307,6 +308,10 @@ const props = defineProps({
     default: "",
   },
   settingId: [String, Number],
+  languageFields: {
+    type: Array,
+    default: null,
+  },
 });
 
 const emit = defineEmits(["update:modelValue", "submit"]);
@@ -325,33 +330,6 @@ const richDefinitions = {
   balance: { field: "rule", label: "余额宝规则" },
   privacy: { field: "privacyPolicy", label: "隐私协议" },
 };
-
-const notificationKinds = [
-  { key: "gift", label: "赠送" },
-  { key: "deduction", label: "扣款" },
-  { key: "recharge", label: "充值" },
-  { key: "withdrawing", label: "提现中" },
-  { key: "withdrawalUnfreeze", label: "提现解冻" },
-  { key: "withdrawal", label: "提现" },
-  { key: "task", label: "任务" },
-  { key: "principalReturn", label: "本金返还" },
-  { key: "rebate", label: "返佣" },
-  { key: "subRebate", label: "下级返佣" },
-  { key: "signIn", label: "签到" },
-  { key: "fee", label: "手续费" },
-  { key: "deposit", label: "存款" },
-  { key: "bonus", label: "奖金" },
-  { key: "baseSalary", label: "底薪" },
-  { key: "aid", label: "援助金" },
-  { key: "registerBonus", label: "注册赠送" },
-  { key: "productShare", label: "商品分润" },
-  { key: "taskReward", label: "任务奖励" },
-  { key: "balanceOut", label: "余额宝转出" },
-  { key: "balanceIn", label: "余额宝转入" },
-  { key: "workBonus", label: "工作奖金" },
-  { key: "upgradeBonus", label: "升级奖金" },
-  { key: "other", label: "其他" },
-];
 
 const noticeTokens = [
   "{username}",
@@ -386,6 +364,13 @@ const errorColumns = [
 const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit("update:modelValue", value),
+});
+const visibleLanguages = computed(() => {
+  if (!Array.isArray(props.languageFields) || !props.languageFields.length) {
+    return translationLanguages;
+  }
+  const fields = new Set(props.languageFields);
+  return translationLanguages.filter((language) => fields.has(language.field));
 });
 const translationMode = computed(() => {
   if (props.type === "customerService") return "customerService";
@@ -503,7 +488,7 @@ function hydrateTranslations(value) {
   originalTranslations.value = { ...(value || {}) };
   const models = {};
   const noticeTabs = {};
-  translationLanguages.forEach((language) => {
+  visibleLanguages.value.forEach((language) => {
     models[language.field] = createLanguageModel(source[language.field]);
     noticeTabs[language.field] = notificationKinds[0].key;
   });
@@ -558,7 +543,7 @@ function encodeLanguageModel(model) {
 }
 
 watch(
-  [() => props.translations, () => props.type],
+  [() => props.translations, () => props.type, () => props.languageFields],
   ([value]) => hydrateTranslations(value),
   { immediate: true, deep: true }
 );
@@ -567,7 +552,7 @@ watch(
   () => props.modelValue,
   (value) => {
     if (value) {
-      activeLanguage.value = translationLanguages[0].field;
+      activeLanguage.value = visibleLanguages.value[0]?.field || translationLanguages[0].field;
       hydrateTranslations(props.translations);
     }
   }
@@ -592,7 +577,7 @@ function handleCancel() {
 
 function handleSubmit() {
   const result = { ...originalTranslations.value };
-  translationLanguages.forEach((language) => {
+  visibleLanguages.value.forEach((language) => {
     result[language.field] = encodeLanguageModel(localModels.value[language.field]);
   });
   emit("submit", result);

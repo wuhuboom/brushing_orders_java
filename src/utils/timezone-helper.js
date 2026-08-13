@@ -1,4 +1,5 @@
 import { getZoneActive } from "@/api/system/zone";
+import { getToken } from "@/utils/auth";
 
 let _ACTIVE_TZ = null;
 const LS_KEY = "ACTIVE_TZ_NAME";
@@ -6,6 +7,10 @@ const LS_KEY = "ACTIVE_TZ_NAME";
 // 模块加载就打一条，确认文件被引入了
 
 export async function refreshActiveTimeZone() {
+  if (!getToken()) {
+    return getActiveTimeZone();
+  }
+
   try {
     const res = await getZoneActive();
 

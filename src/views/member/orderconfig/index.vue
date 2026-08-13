@@ -10,8 +10,8 @@
         current: queryParams.pageNum,
         pageSize: queryParams.pageSize,
         total,
-        pageSizeOptions: ['10', '20', '50', '100', '200', '500', '1000'],
-        showQuickJumper: true,
+        showSizeChanger: false,
+        showQuickJumper: false,
       }"
       :scroll="{ x: 1050, y: 'calc(100vh - 440px)' }"
       @page-change="handleAntPageChange"
@@ -25,11 +25,10 @@
                 <a-select
                   v-model:value="queryParams.type"
                   :options="typeOptions"
-                  placeholder="请选择类型"
+                  placeholder="请选择"
                   allow-clear
                   show-search
                   :filter-option="filterTypeOption"
-                  @change="handleQuery"
                 />
               </a-form-item>
             </a-col>
@@ -38,6 +37,7 @@
                 <a-range-picker
                   v-model:value="createdDateRange"
                   value-format="YYYY-MM-DD"
+                  :placeholder="['请选择', '请选择']"
                   class="full-width"
                 />
               </a-form-item>
@@ -54,10 +54,7 @@
 
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'name'">
-          <a class="settings-kind-link" @click="handleView(record)">
-            <span class="settings-kind-dot"></span>
-            {{ displayName(record) }}
-          </a>
+          {{ displayName(record) }}
         </template>
         <template v-else-if="column.dataIndex === 'createTime'">
           {{ formatDateTime(record.createTime) }}
@@ -169,6 +166,7 @@
       :translations="translationForm"
       :type="currentTranslationRow?.type"
       :setting-id="currentTranslationRow?.id"
+      :language-fields="websiteTranslationLanguageFields"
       @submit="submitTranslations"
     />
   </div>
@@ -185,6 +183,25 @@ import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
 import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
+const websiteTranslationLanguageFields = [
+  "enUs",
+  "jaJp",
+  "arSa",
+  "esEs",
+  "svSe",
+  "itIt",
+  "deDe",
+  "noNo",
+  "ruRu",
+  "huHu",
+  "plPl",
+  "skSk",
+  "frFr",
+  "csCz",
+  "ptBr",
+  "hiIn",
+  "koKr",
+];
 
 const typeDefinitions = [
   ["website", "网站设置"],
@@ -434,12 +451,8 @@ async function openSettingsDrawer(row, readonly) {
     return;
   }
   drawerReadonly.value = readonly;
-  title.value = `${readonly ? "查看" : "修改"}${displayName(response.data)}`;
+  title.value = "修改";
   open.value = true;
-}
-
-function handleView(row) {
-  openSettingsDrawer(row, true);
 }
 
 function handleUpdate(row) {
@@ -456,7 +469,7 @@ async function openTranslationDialog(row) {
     ...createEmptyTranslations(),
     ...(response.data.translations || {}),
   };
-  translationTitle.value = `修改${displayName(response.data)}`;
+  translationTitle.value = "修改";
   translationOpen.value = true;
 }
 
@@ -496,7 +509,7 @@ async function handleDrawerSubmit() {
     return;
   }
   if (componentRef.value?.handleSubmit) {
-    componentRef.value.handleSubmit();
+    await componentRef.value.handleSubmit();
   } else {
     await persistForm();
   }

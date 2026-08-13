@@ -35,10 +35,10 @@ export function updateOrderinfo(data) {
   })
 }
 
-// 删除订单
-export function delOrderinfo(id) {
+// 取消待提交订单
+export function cancelOrderinfo(id) {
   return request({
-    url: '/member/orderinfo/' + id,
-    method: 'delete'
+    url: '/member/orderinfo/' + id + '/cancel',
+    method: 'put'
   })
 }

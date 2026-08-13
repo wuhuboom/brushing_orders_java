@@ -7,7 +7,7 @@ import directive from "./directive";
 import { download } from "@/utils/request";
 import { useDict } from "@/utils/dict";
 import { getConfigKey } from "@/api/system/config";
-import { addDateRange, handleTree, parseTime, resetForm, selectDictLabel, selectDictLabels } from "@/utils/ruoyi";
+import { addDateRange, handleTree, parseTime, resetForm, selectDictLabel, selectDictLabels } from "@/utils/common";
 import SvgIcon from "@/components/SvgIcon";
 import "virtual:svg-icons-register";
 import "@/assets/styles/index.scss";

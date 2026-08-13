@@ -1,6 +1,6 @@
 <template>
   <legacy-page
-    title="业绩统计"
+    title="业绩统计列表"
     resource="performanceStatistics"
     :columns="columns"
     :search-fields="searchFields"
@@ -20,7 +20,14 @@ const perms = {
 }
 
 const searchFields = [
-  { label: '统计日期', prop: 'statDate', placeholder: '请输入统计日期 YYYY-MM-DD' },
+  {
+    label: '统计日期',
+    prop: 'statDateRange',
+    type: 'daterange',
+    showTime: false,
+    startProp: 'startDate',
+    endProp: 'endDate'
+  },
   { label: '用户名', prop: 'username' }
 ]
 

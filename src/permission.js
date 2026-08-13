@@ -8,6 +8,7 @@ import { isRelogin } from "@/utils/request";
 import useUserStore from "@/store/modules/user";
 import useSettingsStore from "@/store/modules/settings";
 import usePermissionStore from "@/store/modules/permission";
+import { refreshActiveTimeZone } from "@/utils/timezone-helper";
 
 NProgress.configure({ showSpinner: false });
 
@@ -37,8 +38,9 @@ router.beforeEach((to, from, next) => {
       isRelogin.show = true;
       useUserStore()
         .getInfo()
-        .then(() => {
+        .then(async () => {
           isRelogin.show = false;
+          await refreshActiveTimeZone();
           usePermissionStore().generateRoutes().then((accessRoutes) => {
             accessRoutes.forEach((route) => {
               if (!isHttp(route.path)) {

@@ -1,9 +1,12 @@
 <template>
   <legacy-page
-    title="每日统计"
+    title="每日统计列表"
     resource="memberDateStatistics"
     :columns="columns"
     :search-fields="searchFields"
+    :advanced-search-fields="advancedSearchFields"
+    :initial-query="{ isFake: '0' }"
+    :dicts="['sys_enabled']"
     :scroll-x="2200"
   />
 </template>
@@ -11,9 +14,28 @@
 <script setup name="Memberdatestat">
 import LegacyPage from '@/views/member/legacy/LegacyPage.vue'
 
+const yesNoOptions = [
+  { label: '否', value: '0' },
+  { label: '是', value: '1' }
+]
+
 const searchFields = [
-  { label: '统计日期', prop: 'statDate', placeholder: '请输入统计日期 YYYY-MM-DD' },
-  { label: '用户名', prop: 'username' }
+  {
+    label: '统计日期',
+    prop: 'statDateRange',
+    type: 'daterange',
+    showTime: false,
+    startProp: 'startDate',
+    endProp: 'endDate'
+  },
+  { label: '用户名', prop: 'username' },
+  { label: '是否假人', prop: 'isFake', type: 'select', options: yesNoOptions }
+]
+
+const advancedSearchFields = [
+  { label: '是否启用', prop: 'isEnabled', type: 'select', dict: 'sys_enabled' },
+  { label: '允许邀请', prop: 'allowInvite', type: 'select', options: yesNoOptions },
+  { label: '是否冻结', prop: 'isFrozen', type: 'select', options: yesNoOptions }
 ]
 
 const columns = [

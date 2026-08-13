@@ -54,6 +54,7 @@
           <a-form-item label="交易类型" name="transactionType">
             <a-select v-model:value="form.transactionType" placeholder="请选择交易类型">
               <a-select-option value="sxf">手续费</a-select-option>
+              <a-select-option value="ck">存款</a-select-option>
               <a-select-option value="cz">充值</a-select-option>
               <a-select-option value="jj">奖金</a-select-option>
               <a-select-option value="dx">底薪</a-select-option>
@@ -152,7 +153,7 @@ const user = reactive({
 const formRef = ref(null);
 const form = reactive({
   operationType: 0,
-  transactionType: "cz",
+  transactionType: "ck",
   amount: null,
   giftType: 0,
   giftRatio: null,
@@ -229,7 +230,7 @@ async function fetchUser(id) {
 
 function resetForm() {
   form.operationType = 0;
-  form.transactionType = "cz";
+  form.transactionType = "ck";
   form.amount = null;
   form.giftType = 0;
   form.giftRatio = 0;

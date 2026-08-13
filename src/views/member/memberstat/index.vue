@@ -1,9 +1,12 @@
 <template>
   <legacy-page
-    title="会员统计"
+    title="会员统计列表"
     resource="memberStatistics"
     :columns="columns"
     :search-fields="searchFields"
+    :advanced-search-fields="advancedSearchFields"
+    :initial-query="{ isFake: '0' }"
+    :dicts="['sys_enabled']"
     :scroll-x="2400"
   />
 </template>
@@ -11,9 +14,28 @@
 <script setup name="Memberstat">
 import LegacyPage from '@/views/member/legacy/LegacyPage.vue'
 
+const yesNoOptions = [
+  { label: '否', value: '0' },
+  { label: '是', value: '1' }
+]
+
 const searchFields = [
   { label: '用户名', prop: 'username' },
-  { label: '手机号码', prop: 'phoneNumber' }
+  { label: '是否假人', prop: 'isFake', type: 'select', options: yesNoOptions },
+  { label: '是否启用', prop: 'isEnabled', type: 'select', dict: 'sys_enabled' }
+]
+
+const advancedSearchFields = [
+  { label: '允许邀请', prop: 'allowInvite', type: 'select', options: yesNoOptions },
+  { label: '是否冻结', prop: 'isFrozen', type: 'select', options: yesNoOptions },
+  {
+    label: '创建时间',
+    prop: 'createTimeRange',
+    type: 'daterange',
+    showTime: false,
+    startProp: 'beginCreateTime',
+    endProp: 'endCreateTime'
+  }
 ]
 
 const columns = [

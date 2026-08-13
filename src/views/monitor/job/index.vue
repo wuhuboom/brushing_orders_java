@@ -120,8 +120,8 @@
                   <span>调用方法</span>
                   <a-tooltip>
                     <template #title>
-                      <div>Bean调用示例：ryTask.ryParams('ry')</div>
-                      <div>Class类调用示例：com.ruoyi.quartz.task.RyTask.ryParams('ry')</div>
+                      <div>Bean调用格式：beanName.method('参数')</div>
+                      <div>Class调用格式：com.order.module.Task.method('参数')</div>
                       <div>参数说明：支持字符串、布尔、长整型、浮点型、整型</div>
                     </template>
                     <QuestionCircleOutlined />
