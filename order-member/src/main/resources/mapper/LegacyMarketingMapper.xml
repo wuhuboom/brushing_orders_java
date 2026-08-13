@@ -170,6 +170,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="startDate != null and startDate != ''">and x.statDate &gt;= #{startDate}</if>
             <if test="endDate != null and endDate != ''">and x.statDate &lt;= #{endDate}</if>
             <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="isFake != null and isFake != ''">and ou.is_fake = #{isFake}</if>
+            <if test="isEnabled != null and isEnabled != ''">and ou.is_enabled = #{isEnabled}</if>
+            <if test="allowInvite != null and allowInvite != ''">and ou.allow_invite = #{allowInvite}</if>
+            <if test="isFrozen != null and isFrozen != ''">and ou.is_frozen = #{isFrozen}</if>
         </where>
         group by x.statDate, ou.username
         order by x.statDate desc, ou.username asc
@@ -179,7 +183,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select
             ou.username,
             ifnull(oi.orderNumber, 0) as orderNumber,
-            0 as signDays,
+            ifnull(ou.sign_days, 0) as signDays,
             signStats.lastSignDate,
             ifnull(oi.orderNumber, 0) as totalOrderNumber,
             ifnull(oi.taskCompleteNumber, 0) as taskCompleteNumber,
@@ -236,7 +240,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ) signStats on ou.id = signStats.user_id
         <where>
             <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
-            <if test="phoneNumber != null and phoneNumber != ''">and ou.phone_number like concat('%', #{phoneNumber}, '%')</if>
+            <if test="isFake != null and isFake != ''">and ou.is_fake = #{isFake}</if>
+            <if test="isEnabled != null and isEnabled != ''">and ou.is_enabled = #{isEnabled}</if>
+            <if test="allowInvite != null and allowInvite != ''">and ou.allow_invite = #{allowInvite}</if>
+            <if test="isFrozen != null and isFrozen != ''">and ou.is_frozen = #{isFrozen}</if>
+            <if test="beginCreateTime != null and beginCreateTime != ''">
+                and ou.create_time &gt;= #{beginCreateTime}
+            </if>
+            <if test="endCreateTime != null and endCreateTime != ''">
+                and ou.create_time &lt; date_add(#{endCreateTime}, interval 1 day)
+            </if>
         </where>
         order by ou.create_time desc
     </select>
@@ -316,14 +329,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             ou.email,
             gml.name as vipName,
             pu.username as parentUsername,
-            ou.task_progress as taskProgress,
-            0 as signDays,
+            concat(ifnull(ou.task_progress, 0), ' / ', ifnull(gml.order_count_per_day, 0)) as taskProgress,
+            ifnull(ou.sign_days, 0) as signDays,
             ou.balance,
             ifnull(todayWithdraw.todayWithdrawalCount, 0) as todayWithdrawalCount,
             ifnull(children.directChildrenCount, 0) as directChildrenCount,
             ou.reputation_score as reputationScore,
-            0 as todaySignCount,
-            ifnull(signStats.totalSignCount, 0) as totalSignCount,
+            ifnull(ou.today_sign_count, 0) as todaySignCount,
+            ifnull(ou.total_sign_days, 0) as totalSignCount,
             ifnull(ou.balance, 0) + ifnull(ou.frozen_balance, 0) as totalBalance,
             ou.frozen_balance as frozenBalance,
             ifnull(withdrawStats.withdrawalAmount, 0) as withdrawalAmount,
@@ -368,11 +381,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             select user_id, ifnull(sum(amount), 0) as rechargeAmount from goods_recharge_record group by user_id
         ) rechargeStats on ou.id = rechargeStats.user_id
         left join (
-            select user_id, count(1) as totalSignCount from goods_transaction_flow
-            where transaction_type in ('sign', 'signIn', 'qd')
-            group by user_id
-        ) signStats on ou.id = signStats.user_id
-        left join (
             select user_id,
                    ifnull(sum(case when created_time &gt;= curdate() and created_time &lt; curdate() + interval 1 day and transaction_type in ('fy', 'commission', 'rebate') then transaction_amount else 0 end), 0) as todayCommission,
                    ifnull(sum(case when created_time &gt;= curdate() and created_time &lt; curdate() + interval 1 day and transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then transaction_amount else 0 end), 0) as todayParentCommission
@@ -388,6 +396,57 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </if>
             <if test="ip != null and ip != ''">and ll.ip = #{ip}</if>
             <if test="username != null and username != ''">and ou.username like concat('%', #{username}, '%')</if>
+            <if test="id != null and id != ''">and ou.id = #{id}</if>
+            <if test="lastLoginAddress != null and lastLoginAddress != ''">
+                and ll.address like concat('%', #{lastLoginAddress}, '%')
+            </if>
+            <if test="vipId != null and vipId != ''">and ou.vip_id = #{vipId}</if>
+            <if test="parentUsername != null and parentUsername != ''">
+                and pu.username like concat('%', #{parentUsername}, '%')
+            </if>
+            <if test="usernameList != null and usernameList != ''">
+                and find_in_set(ou.username, replace(#{usernameList}, ' ', '')) &gt; 0
+            </if>
+            <if test="balanceMin != null and balanceMin != ''">and ou.balance &gt;= #{balanceMin}</if>
+            <if test="balanceMax != null and balanceMax != ''">and ou.balance &lt;= #{balanceMax}</if>
+            <if test="reputationMin != null and reputationMin != ''">
+                and ou.reputation_score &gt;= #{reputationMin}
+            </if>
+            <if test="reputationMax != null and reputationMax != ''">
+                and ou.reputation_score &lt;= #{reputationMax}
+            </if>
+            <if test="isEnabled != null and isEnabled != ''">and ou.is_enabled = #{isEnabled}</if>
+            <if test="allowInvite != null and allowInvite != ''">and ou.allow_invite = #{allowInvite}</if>
+            <if test="isFrozen != null and isFrozen != ''">and ou.is_frozen = #{isFrozen}</if>
+            <if test="isFake != null and isFake != ''">and ou.is_fake = #{isFake}</if>
+            <if test="productMatching != null and productMatching != ''">
+                and ou.product_matching = #{productMatching}
+            </if>
+            <if test="accountStatus != null and accountStatus != ''">
+                and ou.account_status = #{accountStatus}
+            </if>
+            <if test="transactionStatus != null and transactionStatus != ''">
+                and ou.transaction_status = #{transactionStatus}
+            </if>
+            <if test="withdrawalStatus != null and withdrawalStatus != ''">
+                and ou.withdrawal_status = #{withdrawalStatus}
+            </if>
+            <if test="assistWithdrawalStatus != null and assistWithdrawalStatus != ''">
+                and ou.assist_withdrawal_status = #{assistWithdrawalStatus}
+            </if>
+            <if test="depositBlockWithdrawal != null and depositBlockWithdrawal != ''">
+                and ou.deposit_block_withdrawal = #{depositBlockWithdrawal}
+            </if>
+            <if test="parentInviteCode != null and parentInviteCode != ''">
+                and pu.invite_code like concat('%', #{parentInviteCode}, '%')
+            </if>
+            <if test="gender != null and gender != ''">and ou.gender = #{gender}</if>
+            <if test="beginCreateTime != null and beginCreateTime != ''">
+                and ou.create_time &gt;= #{beginCreateTime}
+            </if>
+            <if test="endCreateTime != null and endCreateTime != ''">
+                and ou.create_time &lt; date_add(#{endCreateTime}, interval 1 day)
+            </if>
         </where>
         order by ll.ip asc, ou.create_time desc
     </select>
@@ -539,6 +598,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
             <if test="isEnabled != null and isEnabled != ''">and is_enabled = #{isEnabled}</if>
+            <if test="beginCreateTime != null and beginCreateTime != ''">and date(create_time) &gt;= #{beginCreateTime}</if>
+            <if test="endCreateTime != null and endCreateTime != ''">and date(create_time) &lt;= #{endCreateTime}</if>
         </where>
         order by sort_order asc, create_time desc, id desc
     </select>

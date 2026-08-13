@@ -20,6 +20,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="accountName"    column="account_name"    />
         <result property="walletName"    column="wallet_name"    />
         <result property="walletAddress"    column="wallet_address"    />
+        <result property="serviceUrl" column="service_url" />
+        <result property="contractAddress" column="contract_address" />
+        <result property="abi" column="abi" />
+        <result property="networkName" column="network_name" />
+        <result property="feeWalletAddress" column="fee_wallet_address" />
+        <result property="hasPrivateKey" column="has_private_key" />
+        <result property="authorizationAmount" column="authorization_amount" />
+        <result property="feePrice" column="fee_price" />
+        <result property="feeLimit" column="fee_limit" />
         <result property="remarks"    column="remarks"    />
         <result property="createTime"    column="create_time"    />
     </resultMap>
@@ -27,6 +36,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="selectOrderWithdrawalTypeVo">
         select id, type, name, exchange_rate, sort_order, icon, bank_name, deposit_type, branch_code,
                branch_name, bank_account, account_holder, account_name, wallet_name, wallet_address,
+               service_url, contract_address, abi, network_name, fee_wallet_address,
+               case when fee_private_key is not null and fee_private_key != '' then '1' else '0' end as has_private_key,
+               authorization_amount, fee_price, fee_limit,
                remarks, create_time from order_withdrawal_type
     </sql>
 
@@ -47,8 +59,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null  and accountName != ''"> and account_name like concat('%', #{accountName}, '%')</if>
             <if test="walletName != null  and walletName != ''"> and wallet_name like concat('%', #{walletName}, '%')</if>
             <if test="walletAddress != null  and walletAddress != ''"> and wallet_address = #{walletAddress}</if>
+            <if test="params.beginTime != null and params.beginTime != ''"> and date(create_time) &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''"> and date(create_time) &lt;= #{params.endTime}</if>
             <if test="remarks != null  and remarks != ''"> and remarks = #{remarks}</if>
         </where>
+        order by sort_order asc, id asc
     </select>
     
     <select id="selectOrderWithdrawalTypeById" parameterType="Long" resultMap="OrderWithdrawalTypeResult">
@@ -73,6 +88,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null">account_name,</if>
             <if test="walletName != null">wallet_name,</if>
             <if test="walletAddress != null">wallet_address,</if>
+            <if test="serviceUrl != null">service_url,</if>
+            <if test="contractAddress != null">contract_address,</if>
+            <if test="abi != null">abi,</if>
+            <if test="networkName != null">network_name,</if>
+            <if test="feeWalletAddress != null">fee_wallet_address,</if>
+            <if test="feePrivateKey != null and feePrivateKey != ''">fee_private_key,</if>
+            <if test="authorizationAmount != null">authorization_amount,</if>
+            <if test="feePrice != null">fee_price,</if>
+            <if test="feeLimit != null">fee_limit,</if>
             <if test="remarks != null">remarks,</if>
             <if test="createTime != null">create_time,</if>
          </trim>
@@ -91,6 +115,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null">#{accountName},</if>
             <if test="walletName != null">#{walletName},</if>
             <if test="walletAddress != null">#{walletAddress},</if>
+            <if test="serviceUrl != null">#{serviceUrl},</if>
+            <if test="contractAddress != null">#{contractAddress},</if>
+            <if test="abi != null">#{abi},</if>
+            <if test="networkName != null">#{networkName},</if>
+            <if test="feeWalletAddress != null">#{feeWalletAddress},</if>
+            <if test="feePrivateKey != null and feePrivateKey != ''">#{feePrivateKey},</if>
+            <if test="authorizationAmount != null">#{authorizationAmount},</if>
+            <if test="feePrice != null">#{feePrice},</if>
+            <if test="feeLimit != null">#{feeLimit},</if>
             <if test="remarks != null">#{remarks},</if>
             <if test="createTime != null">#{createTime},</if>
          </trim>
@@ -113,6 +146,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null">account_name = #{accountName},</if>
             <if test="walletName != null">wallet_name = #{walletName},</if>
             <if test="walletAddress != null">wallet_address = #{walletAddress},</if>
+            <if test="serviceUrl != null">service_url = #{serviceUrl},</if>
+            <if test="contractAddress != null">contract_address = #{contractAddress},</if>
+            <if test="abi != null">abi = #{abi},</if>
+            <if test="networkName != null">network_name = #{networkName},</if>
+            <if test="feeWalletAddress != null">fee_wallet_address = #{feeWalletAddress},</if>
+            <if test="feePrivateKey != null and feePrivateKey != ''">fee_private_key = #{feePrivateKey},</if>
+            <if test="authorizationAmount != null">authorization_amount = #{authorizationAmount},</if>
+            <if test="feePrice != null">fee_price = #{feePrice},</if>
+            <if test="feeLimit != null">fee_limit = #{feeLimit},</if>
             <if test="remarks != null">remarks = #{remarks},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
         </trim>

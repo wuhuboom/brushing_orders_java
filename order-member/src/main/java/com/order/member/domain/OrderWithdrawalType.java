@@ -76,6 +76,36 @@ public class OrderWithdrawalType extends BaseEntity
     @Excel(name = "钱包地址")
     private String walletAddress;
 
+    /** 接口服务地址 */
+    private String serviceUrl;
+
+    /** 货币合约地址 */
+    private String contractAddress;
+
+    /** 合约 ABI */
+    private String abi;
+
+    /** 网络名称 */
+    private String networkName;
+
+    /** 手续费钱包地址 */
+    private String feeWalletAddress;
+
+    /** 手续费私钥，仅写入，不从查询接口返回 */
+    private String feePrivateKey;
+
+    /** 是否已经配置手续费私钥 */
+    private String hasPrivateKey;
+
+    /** 授权金额 */
+    private BigDecimal authorizationAmount;
+
+    /** 手续费价格 */
+    private BigDecimal feePrice;
+
+    /** 手续费限制 */
+    private BigDecimal feeLimit;
+
     /** 备注 */
     @Excel(name = "备注")
     private String remarks;
@@ -230,6 +260,106 @@ public class OrderWithdrawalType extends BaseEntity
         return walletAddress;
     }
 
+    public String getServiceUrl()
+    {
+        return serviceUrl;
+    }
+
+    public void setServiceUrl(String serviceUrl)
+    {
+        this.serviceUrl = serviceUrl;
+    }
+
+    public String getContractAddress()
+    {
+        return contractAddress;
+    }
+
+    public void setContractAddress(String contractAddress)
+    {
+        this.contractAddress = contractAddress;
+    }
+
+    public String getAbi()
+    {
+        return abi;
+    }
+
+    public void setAbi(String abi)
+    {
+        this.abi = abi;
+    }
+
+    public String getNetworkName()
+    {
+        return networkName;
+    }
+
+    public void setNetworkName(String networkName)
+    {
+        this.networkName = networkName;
+    }
+
+    public String getFeeWalletAddress()
+    {
+        return feeWalletAddress;
+    }
+
+    public void setFeeWalletAddress(String feeWalletAddress)
+    {
+        this.feeWalletAddress = feeWalletAddress;
+    }
+
+    public String getFeePrivateKey()
+    {
+        return feePrivateKey;
+    }
+
+    public void setFeePrivateKey(String feePrivateKey)
+    {
+        this.feePrivateKey = feePrivateKey;
+    }
+
+    public String getHasPrivateKey()
+    {
+        return hasPrivateKey;
+    }
+
+    public void setHasPrivateKey(String hasPrivateKey)
+    {
+        this.hasPrivateKey = hasPrivateKey;
+    }
+
+    public BigDecimal getAuthorizationAmount()
+    {
+        return authorizationAmount;
+    }
+
+    public void setAuthorizationAmount(BigDecimal authorizationAmount)
+    {
+        this.authorizationAmount = authorizationAmount;
+    }
+
+    public BigDecimal getFeePrice()
+    {
+        return feePrice;
+    }
+
+    public void setFeePrice(BigDecimal feePrice)
+    {
+        this.feePrice = feePrice;
+    }
+
+    public BigDecimal getFeeLimit()
+    {
+        return feeLimit;
+    }
+
+    public void setFeeLimit(BigDecimal feeLimit)
+    {
+        this.feeLimit = feeLimit;
+    }
+
     public void setRemarks(String remarks) 
     {
         this.remarks = remarks;
@@ -258,6 +388,15 @@ public class OrderWithdrawalType extends BaseEntity
             .append("accountName", getAccountName())
             .append("walletName", getWalletName())
             .append("walletAddress", getWalletAddress())
+            .append("serviceUrl", getServiceUrl())
+            .append("contractAddress", getContractAddress())
+            .append("abi", getAbi())
+            .append("networkName", getNetworkName())
+            .append("feeWalletAddress", getFeeWalletAddress())
+            .append("hasPrivateKey", getHasPrivateKey())
+            .append("authorizationAmount", getAuthorizationAmount())
+            .append("feePrice", getFeePrice())
+            .append("feeLimit", getFeeLimit())
             .append("remarks", getRemarks())
             .append("createTime", getCreateTime())
             .toString();

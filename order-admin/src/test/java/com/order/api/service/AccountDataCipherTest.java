@@ -42,8 +42,11 @@ class AccountDataCipherTest {
         GoodsWithdrawalAccount account = account();
         cipher.protect(account);
         String encrypted = account.getBankAccountEncrypted();
-        account.setBankAccountEncrypted(encrypted.substring(0, encrypted.length() - 1)
-                + (encrypted.endsWith("A") ? "B" : "A"));
+        String[] parts = encrypted.split("\\.", 3);
+        byte[] payload = Base64.getUrlDecoder().decode(parts[2]);
+        payload[payload.length / 2] ^= 1;
+        account.setBankAccountEncrypted(parts[0] + "." + parts[1] + "."
+                + Base64.getUrlEncoder().withoutPadding().encodeToString(payload));
 
         assertThrows(IllegalStateException.class, () -> cipher.reveal(account));
     }
@@ -59,6 +62,20 @@ class AccountDataCipherTest {
         assertThrows(IllegalStateException.class,
                 () -> new AccountDataCipher(
                         "LEGACY_READ", "v1", "", new ObjectMapper(), true));
+    }
+
+    @Test
+    void withdrawalSnapshotKeepsAttachment() {
+        AccountDataCipher cipher = new AccountDataCipher(
+                "DUAL_WRITE", "v1", "v1:" + KEY, new ObjectMapper());
+        GoodsWithdrawalAccount account = account();
+        account.setAttachment("/profile/upload/wallet-proof.png");
+
+        String encrypted = cipher.encryptSnapshot(account);
+
+        assertEquals(
+                "/profile/upload/wallet-proof.png",
+                cipher.decryptSnapshot(account.getUserId(), encrypted).get("attachment"));
     }
 
     private GoodsWithdrawalAccount account() {

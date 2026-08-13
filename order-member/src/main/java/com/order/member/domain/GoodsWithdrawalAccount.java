@@ -72,6 +72,9 @@ public class GoodsWithdrawalAccount extends BaseEntity
     @Excel(name = "钱包地址")
     private String walletAddress;
 
+    /** Optional wallet proof image URL. */
+    private String attachment;
+
     private String withdrawalType;
 
     /** 软删除：0=有效，1=删除 */
@@ -240,6 +243,14 @@ public class GoodsWithdrawalAccount extends BaseEntity
         return walletAddress;
     }
 
+    public String getAttachment() {
+        return attachment;
+    }
+
+    public void setAttachment(String attachment) {
+        this.attachment = attachment;
+    }
+
     public String getDeleted() {
         return deleted;
     }
@@ -336,6 +347,7 @@ public class GoodsWithdrawalAccount extends BaseEntity
             .append("accountName", maskForLog(getAccountName()))
             .append("walletName", getWalletName())
             .append("walletAddress", maskForLog(getWalletAddress()))
+            .append("attachment", getAttachment())
             .append("createTime", getCreateTime())
             .toString();
     }

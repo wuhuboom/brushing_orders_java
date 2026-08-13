@@ -3,6 +3,7 @@ package com.order.web.controller.member;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,6 +35,7 @@ public class OrderLinkController extends BaseController
     /**
      * 查询连单列表
      */
+    @PreAuthorize("@ss.hasPermi('member:orderlink:list')")
     @GetMapping("/list")
     public TableDataInfo list(OrderLink orderLink)
     {
@@ -45,6 +47,7 @@ public class OrderLinkController extends BaseController
     /**
      * 导出连单列表
      */
+    @PreAuthorize("@ss.hasPermi('member:orderlink:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, OrderLink orderLink)
     {
@@ -56,6 +59,7 @@ public class OrderLinkController extends BaseController
     /**
      * 获取连单详细信息
      */
+    @PreAuthorize("@ss.hasPermi('member:orderlink:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -65,24 +69,31 @@ public class OrderLinkController extends BaseController
     /**
      * 新增连单
      */
+    @PreAuthorize("@ss.hasPermi('member:orderlink:add')")
     @PostMapping
     public AjaxResult add(@RequestBody OrderLink orderLink)
     {
+        String username = getUsername();
+        orderLink.setCreateBy(username);
+        orderLink.setUpdateBy(username);
         return toAjax(orderLinkService.insertOrderLink(orderLink));
     }
 
     /**
      * 修改连单
      */
+    @PreAuthorize("@ss.hasPermi('member:orderlink:edit')")
     @PutMapping
     public AjaxResult edit(@RequestBody OrderLink orderLink)
     {
+        orderLink.setUpdateBy(getUsername());
         return toAjax(orderLinkService.updateOrderLink(orderLink));
     }
 
     /**
      * 删除连单
      */
+    @PreAuthorize("@ss.hasPermi('member:orderlink:remove')")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {

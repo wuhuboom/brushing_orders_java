@@ -1,6 +1,7 @@
 package com.order.member.service.impl;
 
 import java.util.List;
+import com.order.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.order.member.mapper.GoodsBannerMapper;
@@ -52,6 +53,7 @@ public class GoodsBannerServiceImpl implements IGoodsBannerService
     @Override
     public int insertGoodsBanner(GoodsBanner goodsBanner)
     {
+        goodsBanner.setCreateTime(DateUtils.getNowDate());
         return goodsBannerMapper.insertGoodsBanner(goodsBanner);
     }
 

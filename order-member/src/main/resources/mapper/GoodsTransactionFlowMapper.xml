@@ -32,8 +32,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>  
             <if test="serialCode != null  and serialCode != ''"> and gtf.serial_code = #{serialCode}</if>
             <if test="userId != null "> and gtf.user_id = #{userId}</if>
-            <if test="username != null "> and ou.username = #{username}</if>
-            <if test="transactionType != null "> and gtf.transaction_type = #{transactionType}</if>
+            <if test="username != null and username != ''"> and ou.username = #{username}</if>
+            <if test="transactionType != null and transactionType != ''"> and gtf.transaction_type = #{transactionType}</if>
+            <if test="isHidden != null and isHidden != ''"> and gtf.is_hidden = #{isHidden}</if>
+            <if test="transactionCode != null and transactionCode != ''"> and gtf.transaction_code = #{transactionCode}</if>
+            <if test="params.amountMin != null and params.amountMin != ''">
+                and gtf.transaction_amount &gt;= #{params.amountMin}
+            </if>
+            <if test="params.amountMax != null and params.amountMax != ''">
+                and gtf.transaction_amount &lt;= #{params.amountMax}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and gtf.created_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and gtf.created_time &lt;= #{params.endTime}
+            </if>
         </where>
         order by gtf.created_time desc
     </select>

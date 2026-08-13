@@ -22,3 +22,30 @@ logs/
 # 临时文件
 *.tmp
 *.temp
+
+# Cross-machine safety
+# Local secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/application-local.yml
+**/application-*.local.yml
+**/settings.xml
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+# Local database exports and migration source material
+sql/backups/
+sql/init/*.sql
+sql/migration_*/**/*-source.json*
+sql/migration_*/**/*.tsv
+sql/migration_*/**/*-download.json
+sql/migration_*/**/replacement-images/
+sql/migration_*/**/*verification*.png
+sql/delivery_*/
+sql/backend_database_upgrade_*.zip
+sql/2026-07-11_h5_e2e_data.sql

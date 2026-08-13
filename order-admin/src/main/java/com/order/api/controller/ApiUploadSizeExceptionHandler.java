@@ -2,6 +2,7 @@ package com.order.api.controller;
 
 import com.order.api.service.ApiLocaleService;
 import com.order.api.service.LocalizedApiMessageService;
+import com.order.api.service.PublicApiMessageCatalog;
 import com.order.common.core.domain.AjaxResult;
 import com.order.common.i18n.SupportedLocale;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,11 +33,15 @@ public class ApiUploadSizeExceptionHandler {
             HttpServletRequest request) {
         String uri = request.getRequestURI();
         SupportedLocale locale = localeService.resolve(request.getParameter("lang"), request);
+        boolean publicApi = uri != null && uri.startsWith("/api/");
         AjaxResult result = AjaxResult.error(
-                703, messageService.message(703, locale, "Upload failed"));
+                703,
+                publicApi
+                        ? PublicApiMessageCatalog.message(703)
+                        : messageService.message(703, locale, "Upload failed"));
         if (uri != null && uri.endsWith("/api/config/upload")) {
             return ResponseEntity.ok()
-                    .headers(localeService.legacyHeaders(locale, "/api/user/avatar"))
+                    .headers(localeService.responseHeaders(locale))
                     .body(result);
         }
         if (uri != null && uri.endsWith("/api/user/avatar")) {

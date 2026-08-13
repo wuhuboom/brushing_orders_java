@@ -66,6 +66,10 @@ public interface OrderInfoMapper
 
     OrderInfo selectPublicOrderById(@Param("id") Long id, @Param("userId") Long userId);
 
+    List<OrderInfo> selectLinkedGroupOrdersForUpdate(
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount);
+
     List<OrderInfo> selectPublicOrderInfoList(
             @Param("userId") Long userId,
             @Param("status") String status);
@@ -75,4 +79,8 @@ public interface OrderInfoMapper
             @Param("userId") Long userId,
             @Param("fromStatus") String fromStatus,
             @Param("toStatus") String toStatus);
+
+    int completeLinkedOrderGroup(
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount);
 }

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import com.order.common.annotation.Log;
 import com.order.common.core.controller.BaseController;
 import com.order.common.core.domain.AjaxResult;
@@ -75,9 +77,10 @@ public class GoodsTransactionFlowController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:flow:add')")
     @Log(title = "交易流水", businessType = BusinessType.INSERT)
     @PostMapping
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public AjaxResult add(@RequestBody GoodsTransactionFlow goodsTransactionFlow)
     {
-        return toAjax(goodsTransactionFlowService.insertGoodsTransactionFlow(goodsTransactionFlow));
+        return AjaxResult.error(405, "交易流水只能由业务流程创建");
     }
 
     /**
@@ -88,7 +91,17 @@ public class GoodsTransactionFlowController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody GoodsTransactionFlow goodsTransactionFlow)
     {
-        return toAjax(goodsTransactionFlowService.updateGoodsTransactionFlow(goodsTransactionFlow));
+        if (goodsTransactionFlow.getId() == null) {
+            return AjaxResult.error(400, "流水ID不能为空");
+        }
+        if (!"0".equals(goodsTransactionFlow.getIsHidden())
+                && !"1".equals(goodsTransactionFlow.getIsHidden())) {
+            return AjaxResult.error(400, "只能修改显示/隐藏状态");
+        }
+        GoodsTransactionFlow update = new GoodsTransactionFlow();
+        update.setId(goodsTransactionFlow.getId());
+        update.setIsHidden(goodsTransactionFlow.getIsHidden());
+        return toAjax(goodsTransactionFlowService.updateGoodsTransactionFlow(update));
     }
 
     /**
@@ -97,8 +110,9 @@ public class GoodsTransactionFlowController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:flow:remove')")
     @Log(title = "交易流水", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public AjaxResult remove(@PathVariable Long[] ids)
     {
-        return toAjax(goodsTransactionFlowService.deleteGoodsTransactionFlowByIds(ids));
+        return AjaxResult.error(405, "交易流水属于资金审计数据，禁止删除");
     }
 }

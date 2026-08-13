@@ -1,11 +1,11 @@
 package com.order.api.controller;
 
-import com.order.api.controller.dto.OrderApiDtos.BonusClaimResponse;
 import com.order.api.controller.dto.OrderApiDtos.CreationResult;
 import com.order.api.controller.dto.OrderApiDtos.SubmitResponse;
 import com.order.api.service.OrderApiException;
 import com.order.api.service.OrderApplicationService;
 import com.order.common.core.page.TableDataInfo;
+import com.order.framework.web.exception.GlobalExceptionHandler;
 import com.order.member.domain.OrderBonusTable;
 import com.order.member.domain.OrderInfo;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,6 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static com.order.api.service.OrderErrorCodes.ORDER_STATE_CONFLICT;
-import static com.order.api.service.OrderErrorCodes.INVALID_BONUS;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,7 +36,11 @@ class OrderControllerContractTest {
     void setUp() {
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new OrderController(orderService))
-                .setControllerAdvice(new OrderApiExceptionHandler())
+                .setControllerAdvice(
+                        new OrderApiExceptionHandler(),
+                        new PublicApiFallbackExceptionHandler(),
+                        new GlobalExceptionHandler(),
+                        new ApiResponseLocalizationAdvice())
                 .build();
     }
 
@@ -68,7 +71,7 @@ class OrderControllerContractTest {
     }
 
     @Test
-    void bonusUsesSuccessCodeAndSafeDtoOnNewAndLegacyCreate() throws Exception {
+    void bonusUsesSuccessCodeAndSafeDto() throws Exception {
         OrderBonusTable bonus = new OrderBonusTable();
         bonus.setId(88L);
         bonus.setUserId(7L);
@@ -77,7 +80,6 @@ class OrderControllerContractTest {
         bonus.setIsReceived("1");
         when(orderService.create(7L, "request-bonus-1234"))
                 .thenReturn(CreationResult.bonus(bonus));
-        when(orderService.create(7L)).thenReturn(CreationResult.bonus(bonus));
 
         mockMvc.perform(post("/api/order")
                         .requestAttr("userId", 7L)
@@ -89,50 +91,37 @@ class OrderControllerContractTest {
                 .andExpect(jsonPath("$.data.userId").doesNotExist())
                 .andExpect(jsonPath("$.data.isDistributed").doesNotExist())
                 .andExpect(jsonPath("$.data.isReceived").doesNotExist());
-
-        mockMvc.perform(get("/api/order/createOrder").requestAttr("userId", 7L))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.resultType").value("BONUS"));
     }
 
     @Test
     void newCreateRequiresAnIdempotencyKey() throws Exception {
         mockMvc.perform(post("/api/order").requestAttr("userId", 7L))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(923))
+                .andExpect(jsonPath("$.msg").value("Invalid request"));
     }
 
     @Test
-    void submitAndClaimUsePostOnly() throws Exception {
+    void submitUsesPost() throws Exception {
         when(orderService.submit(7L, 20L))
                 .thenReturn(new SubmitResponse(20L, "0", false));
-        when(orderService.claimBonus(7L, 88L))
-                .thenReturn(new BonusClaimResponse(
-                        88L, new BigDecimal("28.88"), new BigDecimal("128.88"), false));
 
         mockMvc.perform(post("/api/order/20/submit").requestAttr("userId", 7L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("0"));
         mockMvc.perform(get("/api/order/20/submit").requestAttr("userId", 7L))
-                .andExpect(status().isMethodNotAllowed());
-        mockMvc.perform(post("/api/order/bonuses/88/claim").requestAttr("userId", 7L))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.alreadyClaimed").value(false));
-        mockMvc.perform(get("/api/order/bonuses/88/claim").requestAttr("userId", 7L))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.code").value(405))
+                .andExpect(jsonPath("$.msg").value("Method not allowed"));
     }
 
     @Test
-    void newEndpointUsesHttpConflictAndLegacyKeepsHttp200() throws Exception {
+    void submitConflictUsesHttpConflict() throws Exception {
         when(orderService.submit(7L, 20L)).thenThrow(
                 OrderApiException.conflict(ORDER_STATE_CONFLICT, "conflict"));
 
         mockMvc.perform(post("/api/order/20/submit").requestAttr("userId", 7L))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value(ORDER_STATE_CONFLICT));
-
-        mockMvc.perform(get("/api/order/submitOrder/20").requestAttr("userId", 7L))
-                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(ORDER_STATE_CONFLICT));
     }
 
@@ -153,19 +142,6 @@ class OrderControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.total").value(0));
-    }
-
-    @Test
-    void bonusErrorsParticipateInLanguageNegotiation() throws Exception {
-        when(orderService.claimBonus(7L, 88L)).thenThrow(
-                OrderApiException.notFound(INVALID_BONUS, "Invalid bonus"));
-
-        mockMvc.perform(post("/api/order/bonuses/88/claim")
-                        .requestAttr("userId", 7L)
-                        .header("Accept-Language", "zh-CN"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value(INVALID_BONUS))
-                .andExpect(jsonPath("$.msg").value("\u5f69\u91d1\u4e0d\u5b58\u5728\u6216\u4e0d\u5c5e\u4e8e\u5f53\u524d\u7528\u6237"));
     }
 
     private OrderInfo order() {

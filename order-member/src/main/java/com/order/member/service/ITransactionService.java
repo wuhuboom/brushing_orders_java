@@ -33,4 +33,36 @@ public interface ITransactionService {
      * @return TransactionFlowResult 包含生成的流水编号、交易编号与计算后的余额
      */
     TransactionFlowResult recordFlow(Long userId, String transactionType, java.math.BigDecimal amount, java.math.BigDecimal balanceBefore, String remark);
+
+    /**
+     * Records a transaction flow when the caller publishes the business notification itself.
+     */
+    TransactionFlowResult recordFlowWithoutNotification(
+            Long userId,
+            String transactionType,
+            java.math.BigDecimal amount,
+            java.math.BigDecimal balanceBefore,
+            String remark);
+
+    /**
+     * Records a flow whose transaction code is the related business order number.
+     */
+    TransactionFlowResult recordFlowWithTransactionCode(
+            Long userId,
+            String transactionType,
+            java.math.BigDecimal amount,
+            java.math.BigDecimal balanceBefore,
+            String transactionCode,
+            String remark);
+
+    /**
+     * Records an order-linked flow without publishing a duplicate notification.
+     */
+    TransactionFlowResult recordFlowWithTransactionCodeWithoutNotification(
+            Long userId,
+            String transactionType,
+            java.math.BigDecimal amount,
+            java.math.BigDecimal balanceBefore,
+            String transactionCode,
+            String remark);
 }

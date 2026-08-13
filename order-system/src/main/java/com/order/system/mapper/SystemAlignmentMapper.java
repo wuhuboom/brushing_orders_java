@@ -58,6 +58,7 @@ public interface SystemAlignmentMapper
     Map<String, Object> selectFileById(Long id);
     Map<String, Object> selectFileByHash(@Param("bucket") String bucket, @Param("hash") String hash);
     int insertFile(Map<String, Object> data);
+    int updateFileStorageIfMatch(Map<String, Object> data);
     int deleteFiles(Long[] ids);
     int countFileReferences(Long[] ids);
     List<Map<String, Object>> selectFileReferenceList(Map<String, Object> params);

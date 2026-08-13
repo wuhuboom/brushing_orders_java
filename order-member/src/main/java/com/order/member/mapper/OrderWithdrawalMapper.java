@@ -81,7 +81,13 @@ public interface OrderWithdrawalMapper
     int transitionStatus(@Param("id") Long id,
                          @Param("fromStatus") String fromStatus,
                          @Param("toStatus") String toStatus,
-                         @Param("remarks") String remarks);
+                         @Param("remarks") String remarks,
+                         @Param("updateBy") String updateBy);
+
+    int updateAccountSnapshot(@Param("id") Long id,
+                              @Param("accountSnapshotEncrypted") String accountSnapshotEncrypted,
+                              @Param("accountMask") String accountMask,
+                              @Param("updateBy") String updateBy);
 
     int ensureDailyQuota(@Param("businessDate") LocalDate businessDate,
                          @Param("legacyStart") Date legacyStart,

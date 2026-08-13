@@ -29,7 +29,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>  
             <if test="userId != null "> and oll.user_id = #{userId}</if>
             <if test="ip != null  and ip != ''"> and oll.ip = #{ip}</if>
-            <if test="username != null  and username != ''"> and ou.username = #{username}</if>
+            <if test="username != null  and username != ''"> and ou.username like concat('%', #{username}, '%')</if>
+            <if test="success != null and success != ''"> and oll.success = #{success}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and oll.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and oll.create_time &lt; date_add(#{params.endTime}, interval 1 day)
+            </if>
         </where>
         order by create_time desc
     </select>

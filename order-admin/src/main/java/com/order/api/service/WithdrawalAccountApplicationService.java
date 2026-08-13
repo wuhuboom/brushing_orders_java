@@ -50,7 +50,7 @@ public class WithdrawalAccountApplicationService {
     }
 
     public List<WithdrawalTypeResponse> listTypes() {
-        return withdrawalTypeService.selectOrderWithdrawalTypeList(null).stream()
+        return withdrawalTypeService.selectOrderWithdrawalTypeList(new OrderWithdrawalType()).stream()
                 .sorted(Comparator.comparing(OrderWithdrawalType::getSortOrder,
                                 Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(OrderWithdrawalType::getId))
@@ -64,6 +64,10 @@ public class WithdrawalAccountApplicationService {
 
     public WithdrawalAccountResponse get(Long userId, Long id) {
         return toResponse(requireOwned(userId, id));
+    }
+
+    public WithdrawalAccountResponse getForEdit(Long userId, Long id) {
+        return toFullResponse(cipher.reveal(requireOwned(userId, id)));
     }
 
     /** Compatibility-only full data. Do not use from new public endpoints. */
@@ -156,9 +160,10 @@ public class WithdrawalAccountApplicationService {
         account.setWithdrawalType(type.getName());
 
         if ("1".equals(type.getType())) {
-            account.setAccountName(required(request.accountName(), "accountName"));
+            account.setAccountName(trimToNull(request.accountName()));
             account.setWalletName(required(request.walletName(), "walletName"));
             account.setWalletAddress(required(request.walletAddress(), "walletAddress"));
+            account.setAttachment(trimToNull(request.attachment()));
         } else {
             account.setBankName(required(request.bankName(), "bankName"));
             account.setBankAccount(required(request.bankAccount(), "bankAccount"));
@@ -187,7 +192,7 @@ public class WithdrawalAccountApplicationService {
 
     private void ensureModificationAllowed() {
         Object value = configService.getConfigValue("trade", "allowModifyWithdrawalAddress").orElse("0");
-        if (!isYes(value)) {
+        if (!isEnabled(value)) {
             throw AccountApiException.forbidden(WITHDRAWAL_DISABLED, "Withdrawal account modification is disabled");
         }
     }
@@ -211,13 +216,35 @@ public class WithdrawalAccountApplicationService {
                 firstNonBlank(account.getAccountNameMask(), maskName(account.getAccountName())),
                 account.getWalletName(),
                 firstNonBlank(account.getWalletAddressMask(), maskWallet(account.getWalletAddress())),
+                account.getAttachment(),
                 account.getCreateTime(),
                 account.getUpdateTime());
     }
 
-    private boolean isYes(Object value) {
+    private WithdrawalAccountResponse toFullResponse(GoodsWithdrawalAccount account) {
+        return new WithdrawalAccountResponse(
+                account.getId(),
+                account.getType(),
+                account.getWithdrawalTypeId(),
+                account.getWithdrawalType(),
+                "0".equals(account.getIsDefault()),
+                account.getBankName(),
+                account.getDepositType(),
+                account.getBranchCode(),
+                account.getBranchName(),
+                account.getBankAccount(),
+                account.getAccountHolder(),
+                account.getAccountName(),
+                account.getWalletName(),
+                account.getWalletAddress(),
+                account.getAttachment(),
+                account.getCreateTime(),
+                account.getUpdateTime());
+    }
+
+    private boolean isEnabled(Object value) {
         String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
-        return "0".equals(normalized) || "yes".equals(normalized)
+        return "1".equals(normalized) || "yes".equals(normalized)
                 || "true".equals(normalized) || "enabled".equals(normalized);
     }
 

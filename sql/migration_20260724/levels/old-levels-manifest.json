@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-07-24T07:57:34.773Z",
+  "sourceBaseUrl": "https://g9p7q0i2-20260513.top",
+  "levelCount": 5,
+  "imageCount": 5,
+  "imageDirectory": "E:\\order\\uploadPath\\level\\img",
+  "imageUrlPrefix": "/profile/level/img",
+  "imageDownload": {
+    "total": 5,
+    "downloaded": 0,
+    "skipped": 5,
+    "failed": 0,
+    "failures": []
+  },
+  "sourcePath": "E:\\code\\order\\java-admin-new-code\\sql\\migration_20260724\\levels\\old-levels-source.json",
+  "preparedPath": "E:\\code\\order\\java-admin-new-code\\sql\\migration_20260724\\levels\\old-levels-prepared.json",
+  "applySqlPath": "E:\\code\\order\\java-admin-new-code\\sql\\migration_20260724\\levels\\apply-old-levels.sql"
+}

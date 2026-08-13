@@ -62,6 +62,16 @@ public interface OrderUserMapper
             @Param("amount") java.math.BigDecimal amount,
             @Param("rebate") java.math.BigDecimal rebate);
 
+    int settleLinkedOrderGroup(
+            @Param("userId") Long userId,
+            @Param("amount") java.math.BigDecimal amount,
+            @Param("rebate") java.math.BigDecimal rebate);
+
+    int releaseCancelledOrderFunds(
+            @Param("userId") Long userId,
+            @Param("amount") java.math.BigDecimal amount,
+            @Param("progressDelta") long progressDelta);
+
     /**
      * Minimal referral lookup used during registration.
      */
@@ -103,6 +113,9 @@ public interface OrderUserMapper
     int updateTradePasswordById(@Param("userId") Long userId,
                                 @Param("currentPassword") String currentPassword,
                                 @Param("newPassword") String newPassword);
+
+    int resetTradePasswordByAdmin(@Param("userId") Long userId,
+                                  @Param("tradePassword") String tradePassword);
 
     int updateWithdrawalPasswordFailCount(@Param("userId") Long userId,
                                           @Param("failCount") Integer failCount);

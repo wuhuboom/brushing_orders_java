@@ -13,7 +13,6 @@ import com.order.member.service.IGoodsMemberLevelService;
 import com.order.member.service.IOrderConfigService;
 import com.order.system.service.ISysNoticeService;
 import com.order.system.service.ISysTimeZoneService;
-import com.order.system.domain.SysTimeZone;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +31,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
 
-import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class ConfigQueryServiceTest {
@@ -167,13 +165,44 @@ class ConfigQueryServiceTest {
     }
 
     @Test
-    void customerServicesFilterEnabledRowsAndUseStrictJsonFallback() {
-        SysTimeZone timeZone = new SysTimeZone();
-        timeZone.setTzName("UTC");
-        when(timeZoneService.getActive()).thenReturn(timeZone);
-        when(orderConfigService.getConfigValue("trade", "serviceTimeRange"))
-                .thenReturn(Optional.of(List.of("00:00", "00:00")));
+    void websiteReturnsOnlyPresentationFieldsAndSupportsLegacyAliases() {
+        OrderConfig website = config(
+                4L,
+                null,
+                "website",
+                """
+                {
+                  "siteName": "IRON",
+                  "currencyUnit": "EUR",
+                  "siteLogo": "/profile/logo.png",
+                  "splashAdImage": "/profile/popup.png",
+                  "siteBackground": "/profile/background.jpg",
+                  "h5BackgroundImage": "/profile/h5.jpg",
+                  "popUpLimit": 3,
+                  "showLogo": "1",
+                  "enableImageHide": "0",
+                  "imageDisplayTimeRange": ["09:00", "22:00"],
+                  "redirectUrl": "https://internal.example",
+                  "customServiceScript": "secret-script"
+                }
+                """);
+        when(orderConfigService.selectOrderConfigByType("website")).thenReturn(website);
 
+        ConfigApiDtos.WebsiteConfigResponse result = service.website();
+
+        assertEquals("IRON", result.name());
+        assertEquals("EUR", result.currencyUnit());
+        assertEquals("/profile/logo.png", result.logo());
+        assertEquals("/profile/popup.png", result.popUpImage());
+        assertEquals("/profile/background.jpg", result.backgroundImage());
+        assertEquals("/profile/h5.jpg", result.h5BackgroundImage());
+        assertEquals(3, result.popUpLimit());
+        assertEquals("1", result.hideImage());
+        assertEquals(List.of("09:00", "22:00"), result.imageShowTimeRange());
+    }
+
+    @Test
+    void customerServicesFilterEnabledRowsAndUseStrictJsonFallback() {
         GoodsCustomerService customer = new GoodsCustomerService();
         customer.setId("customer-1");
         customer.setName("Base support");

@@ -55,11 +55,39 @@ class WithdrawalAccountApplicationServiceTest {
 
         var response = service.create(9L, new WithdrawalAccountRequest(
                 "2", false, "Bank A", null, null, null,
-                "12345678", "Alice", null, null, null));
+                "12345678", "Alice", null, null, null, null));
 
         assertEquals("0", saved.get().getType());
         assertEquals("0", saved.get().getIsDefault());
         assertEquals(true, response.isDefault());
+    }
+
+    @Test
+    void walletAttachmentIsSavedAndReturned() {
+        OrderWithdrawalType type = new OrderWithdrawalType();
+        type.setId(3L);
+        type.setType("1");
+        type.setName("USDT");
+        when(typeService.selectOrderWithdrawalTypeById(3L)).thenReturn(type);
+        when(userMapper.lockUserById(9L)).thenReturn(9L);
+        when(accountMapper.existsDefaultByUserId(9L)).thenReturn(0);
+        AtomicReference<GoodsWithdrawalAccount> saved = new AtomicReference<>();
+        when(accountMapper.insertGoodsWithdrawalAccount(any())).thenAnswer(invocation -> {
+            GoodsWithdrawalAccount account = invocation.getArgument(0);
+            account.setId(34L);
+            saved.set(account);
+            return 1;
+        });
+        when(accountMapper.selectActiveByIdAndUserId(34L, 9L))
+                .thenAnswer(invocation -> saved.get());
+
+        var response = service().create(9L, new WithdrawalAccountRequest(
+                "3", true, null, null, null, null,
+                null, null, null, "USDT", "0x123456",
+                "/profile/upload/wallet-proof.png"));
+
+        assertEquals("/profile/upload/wallet-proof.png", saved.get().getAttachment());
+        assertEquals("/profile/upload/wallet-proof.png", response.attachment());
     }
 
     @Test
@@ -81,13 +109,35 @@ class WithdrawalAccountApplicationServiceTest {
     }
 
     @Test
+    void listsConfiguredWithdrawalTypesWithANonNullFilterAndStableOrder() {
+        OrderWithdrawalType usdt = new OrderWithdrawalType();
+        usdt.setId(3L);
+        usdt.setName("USDT");
+        usdt.setType("1");
+        usdt.setSortOrder(20L);
+        OrderWithdrawalType bank = new OrderWithdrawalType();
+        bank.setId(2L);
+        bank.setName("Bank");
+        bank.setType("0");
+        bank.setSortOrder(10L);
+        when(typeService.selectOrderWithdrawalTypeList(any(OrderWithdrawalType.class)))
+                .thenReturn(List.of(usdt, bank));
+
+        var response = service().listTypes();
+
+        assertEquals(List.of("Bank", "USDT"),
+                response.stream().map(item -> item.typeName()).toList());
+        verify(typeService).selectOrderWithdrawalTypeList(any(OrderWithdrawalType.class));
+    }
+
+    @Test
     void deletingDefaultAccountPromotesNewestRemainingAccount() {
         GoodsWithdrawalAccount account = new GoodsWithdrawalAccount();
         account.setId(3L);
         account.setUserId(9L);
         account.setIsDefault("0");
         when(configService.getConfigValue("trade", "allowModifyWithdrawalAddress"))
-                .thenReturn(Optional.of("0"));
+                .thenReturn(Optional.of("1"));
         when(userMapper.lockUserById(9L)).thenReturn(9L);
         when(accountMapper.selectActiveByIdAndUserId(3L, 9L)).thenReturn(account);
         when(withdrawalMapper.existsPendingByAccountId(3L)).thenReturn(0);
@@ -101,7 +151,7 @@ class WithdrawalAccountApplicationServiceTest {
     @Test
     void configurationCanDisableExistingAccountChanges() {
         when(configService.getConfigValue("trade", "allowModifyWithdrawalAddress"))
-                .thenReturn(Optional.of("1"));
+                .thenReturn(Optional.of("0"));
 
         assertThrows(AccountApiException.class, () -> service().delete(9L, 3L));
 

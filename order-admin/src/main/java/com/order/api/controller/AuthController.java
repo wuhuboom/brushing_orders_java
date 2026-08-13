@@ -10,7 +10,7 @@ import com.order.api.controller.dto.RegisterDto;
 import com.order.api.service.UserApiService;
 import com.order.api.service.UserLoginResult;
 import com.order.api.service.ApiLocaleService;
-import com.order.api.service.LocalizedApiMessageService;
+import com.order.api.service.WithdrawalAccountAccessService;
 import com.order.common.core.controller.BaseController;
 import com.order.common.core.domain.AjaxResult;
 import com.order.common.i18n.SupportedLocale;
@@ -45,17 +45,17 @@ public class AuthController extends BaseController {
     private final UserApiService userApiService;
     private final ServerConfig serverConfig;
     private final ApiLocaleService localeService;
-    private final LocalizedApiMessageService messageService;
+    private final WithdrawalAccountAccessService withdrawalAccountAccessService;
 
     public AuthController(
             UserApiService userApiService,
             ServerConfig serverConfig,
             ApiLocaleService localeService,
-            LocalizedApiMessageService messageService) {
+            WithdrawalAccountAccessService withdrawalAccountAccessService) {
         this.userApiService = userApiService;
         this.serverConfig = serverConfig;
         this.localeService = localeService;
-        this.messageService = messageService;
+        this.withdrawalAccountAccessService = withdrawalAccountAccessService;
     }
 
     @PostMapping("/login")
@@ -64,21 +64,21 @@ public class AuthController extends BaseController {
             @Valid @RequestBody LoginUserDto loginRequest,
             HttpServletRequest request) {
         UserLoginResult result = userApiService.login(loginRequest, request);
-        return success(result);
+        return AjaxResult.success("Success", result);
     }
 
     @PostMapping("/register")
     @Operation(summary = "注册")
     public AjaxResult register(@Valid @RequestBody RegisterDto registerRequest) {
         userApiService.register(registerRequest);
-        return success("register success");
+        return AjaxResult.success("Success");
     }
 
     @PostMapping("/logout")
     @Operation(summary = "退出登录")
     public AjaxResult logout(HttpServletRequest request) {
         userApiService.logout(request.getHeader("Authorization"));
-        return success("Logout successful");
+        return AjaxResult.success("Success");
     }
 
     @GetMapping("/getInfo")
@@ -90,17 +90,9 @@ public class AuthController extends BaseController {
         SupportedLocale locale = SupportedLocale.resolve(
                 lang, request.getHeader("Accept-Language"));
         AjaxResult result = AjaxResult.success(
-                messageService.message(200, locale, "Success"),
+                "Success",
                 userApiService.userInfo(userId, locale));
         return ResponseEntity.ok().headers(localeService.responseHeaders(locale)).body(result);
-    }
-
-    @PostMapping("/updateAvatar")
-    @Operation(summary = "添加或修改用户头像")
-    public AjaxResult updateAvatar(
-            @Valid @RequestBody AvatarDto request,
-            @RequestAttribute("userId") Long userId) {
-        return success(userApiService.updateAvatar(userId, request));
     }
 
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -119,7 +111,7 @@ public class AuthController extends BaseController {
             avatar.setAvatar(fileName);
             userApiService.updateAvatar(userId, avatar);
             AjaxResult result = AjaxResult.success(
-                    messageService.message(200, locale, "Success"),
+                    "Success",
                     new ConfigApiDtos.AvatarUploadResponse(
                             fileName, serverConfig.getUrl() + fileName, fileName));
             return ResponseEntity.ok().headers(localeService.responseHeaders(locale)).body(result);
@@ -145,7 +137,7 @@ public class AuthController extends BaseController {
             @Valid @RequestBody EditPasswordDto request,
             @RequestAttribute("userId") Long userId) {
         userApiService.editPassword(userId, request);
-        return success();
+        return AjaxResult.success("Success");
     }
 
     @PostMapping("/editTradePassword")
@@ -154,7 +146,7 @@ public class AuthController extends BaseController {
             @Valid @RequestBody EditTradePasswordDto request,
             @RequestAttribute("userId") Long userId) {
         userApiService.editTradePassword(userId, request);
-        return success();
+        return AjaxResult.success("Success");
     }
 
     @PostMapping("/checkTradePassword")
@@ -163,6 +155,6 @@ public class AuthController extends BaseController {
             @Valid @RequestBody CheckTradePassword request,
             @RequestAttribute("userId") Long userId) {
         userApiService.checkTradePassword(userId, request);
-        return success();
+        return AjaxResult.success("Success", withdrawalAccountAccessService.issue(userId));
     }
 }

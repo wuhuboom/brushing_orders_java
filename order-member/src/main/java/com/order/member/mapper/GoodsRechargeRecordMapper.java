@@ -61,4 +61,13 @@ public interface GoodsRechargeRecordMapper
     public int deleteGoodsRechargeRecordByIds(Long[] ids);
 
     List<GoodsRechargeRecord> selectPublicByUserId(@Param("userId") Long userId);
+
+    GoodsRechargeRecord selectForUpdate(@Param("id") Long id);
+
+    int transitionStatus(
+            @Param("id") Long id,
+            @Param("expectedStatus") String expectedStatus,
+            @Param("targetStatus") String targetStatus,
+            @Param("remark") String remark,
+            @Param("updateBy") String updateBy);
 }

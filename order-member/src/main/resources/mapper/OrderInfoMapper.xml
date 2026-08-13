@@ -19,6 +19,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="expiryTime"    column="expiry_time"    />
         <result property="productId"    column="product_id"    />
         <result property="extraCommissionId"    column="extra_commission_id"    />
+        <result property="extraCommissionAmount" column="extra_commission_amount" />
         <result property="createTime"    column="create_time"    />
         <result property="remarks"    column="remarks"    />
         <result property="commentId"    column="comment_id"    />
@@ -52,10 +53,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             oi.link_id,
             ou.username as username,
             COALESCE(oi.product_image, g.image) as product_image,
-            COALESCE(oi.product_title, g.title) as product_title
+            COALESCE(oi.product_title, g.title) as product_title,
+            COALESCE(gecs.amount, 0) as extra_commission_amount
         from order_info oi
         left join order_user ou on oi.user_id = ou.id
         left join goods g on oi.product_id = g.id
+        left join goods_extra_commission_setting gecs on oi.extra_commission_id = gecs.id
     </sql>
 
     <select id="selectOrderInfoList" parameterType="com.order.member.domain.OrderInfo" resultMap="OrderInfoResult">
@@ -66,8 +69,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="username != null "> and ou.username = #{username}</if>
             <if test="type != null  and type != ''"> and oi.type = #{type}</if>
             <if test="orderCount != null "> and oi.order_count = #{orderCount}</if>
-            <if test="amount != null "> and oi.amount = #{amount}</if>
             <if test="status != null and status != ''"> and oi.status = #{status}</if>
+            <if test="productTitle != null and productTitle != ''">
+                and COALESCE(oi.product_title, g.title) like concat('%', #{productTitle}, '%')
+            </if>
+            <if test="params != null and params.amountMin != null and params.amountMin != ''">
+                and oi.amount &gt;= #{params.amountMin}
+            </if>
+            <if test="params != null and params.amountMax != null and params.amountMax != ''">
+                and oi.amount &lt;= #{params.amountMax}
+            </if>
+            <if test="params != null and params.beginTime != null and params.beginTime != ''">
+                and oi.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params != null and params.endTime != null and params.endTime != ''">
+                and oi.create_time &lt;= #{params.endTime}
+            </if>
+            <if test="params != null and params.expiryDate != null and params.expiryDate != ''">
+                and DATE(oi.expiry_time) = #{params.expiryDate}
+            </if>
+            <if test="params != null and params.extraCommission != null and params.extraCommission != ''">
+                and COALESCE(gecs.amount, 0) = #{params.extraCommission}
+            </if>
         </where>
         order by oi.create_time desc
     </select>
@@ -88,10 +111,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="selectOwnedOrderForUpdate" resultMap="OrderInfoResult">
-        SELECT id, order_number, type, amount, rebate, upper_rebate,
-               status, link_id
+        SELECT id, order_number, type, order_count, amount, rebate, upper_rebate,
+               status, extra_commission_id, link_id
         FROM order_info
         WHERE id = #{id} AND user_id = #{userId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectLinkedGroupOrdersForUpdate" resultMap="OrderInfoResult">
+        SELECT id, order_number, user_id, type, order_count, amount, rebate,
+               upper_rebate, status, extra_commission_id, link_id
+        FROM order_info
+        WHERE user_id = #{userId}
+          AND order_count = #{orderCount}
+          AND type = '1'
+          AND status IN ('1', '2')
+        ORDER BY id ASC
         FOR UPDATE
     </select>
 
@@ -164,8 +199,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <update id="updateOrderInfo" parameterType="com.order.member.domain.OrderInfo">
         UPDATE order_info
-        SET remarks = #{remarks},
-            comment_id = #{commentId}
+        SET expiry_time = #{expiryTime},
+            remarks = #{remarks}
         WHERE id = #{id}
     </update>
 
@@ -175,6 +210,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE id = #{id}
           AND user_id = #{userId}
           AND status = #{fromStatus}
+    </update>
+
+    <update id="completeLinkedOrderGroup">
+        UPDATE order_info
+        SET status = '0'
+        WHERE user_id = #{userId}
+          AND order_count = #{orderCount}
+          AND type = '1'
+          AND status IN ('1', '2')
     </update>
 
     <delete id="deleteOrderInfoById" parameterType="Long">

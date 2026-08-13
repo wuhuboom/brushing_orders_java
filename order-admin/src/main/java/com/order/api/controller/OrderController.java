@@ -1,7 +1,6 @@
 package com.order.api.controller;
 
 import com.order.api.controller.dto.OrderApiDtos.CreationResult;
-import com.order.api.controller.dto.WithdrawalPage;
 import com.order.api.service.OrderApplicationService;
 import com.order.common.core.domain.AjaxResult;
 import com.order.common.core.page.TableDataInfo;
@@ -39,7 +38,7 @@ public class OrderController {
     public AjaxResult submit(
             @RequestAttribute("userId") Long userId,
             @PathVariable Long id) {
-        return AjaxResult.success(orderService.submit(userId, id));
+        return AjaxResult.success("Success", orderService.submit(userId, id));
     }
 
     @GetMapping
@@ -52,47 +51,8 @@ public class OrderController {
         return orderService.orders(userId, status, pageNum, pageSize);
     }
 
-    @PostMapping("/bonuses/{id}/claim")
-    @Operation(summary = "领取订单彩金")
-    public AjaxResult claimBonus(
-            @RequestAttribute("userId") Long userId,
-            @PathVariable Long id) {
-        return AjaxResult.success(orderService.claimBonus(userId, id));
-    }
-
-    // ---- Legacy compatibility routes ----
-
-    @Deprecated
-    @GetMapping("/createOrder")
-    @Operation(summary = "创建订单（兼容接口）", deprecated = true)
-    public AjaxResult createOrderLegacy(@RequestAttribute("userId") Long userId) {
-        return creationResponse(orderService.create(userId));
-    }
-
-    @Deprecated
-    @GetMapping("/submitOrder/{id}")
-    @Operation(summary = "提交订单（兼容接口）", deprecated = true)
-    public AjaxResult submitOrderLegacy(
-            @RequestAttribute("userId") Long userId,
-            @PathVariable Long id) {
-        orderService.submit(userId, id);
-        return AjaxResult.success();
-    }
-
-    @Deprecated
-    @GetMapping("/getOrderInfos")
-    @Operation(summary = "查询订单（兼容接口）", deprecated = true)
-    public TableDataInfo getOrderInfosLegacy(
-            WithdrawalPage page,
-            @RequestAttribute("userId") Long userId) {
-        int pageNum = page == null || page.getPageNum() == null ? 1 : page.getPageNum();
-        int pageSize = page == null || page.getPageSize() == null ? 20 : page.getPageSize();
-        String status = page == null ? null : page.getStatus();
-        return orderService.orders(userId, status, pageNum, pageSize);
-    }
-
     private AjaxResult creationResponse(CreationResult result) {
-        return AjaxResult.success(result.data())
+        return AjaxResult.success("Success", result.data())
                 .put("resultType", result.resultType().name());
     }
 }

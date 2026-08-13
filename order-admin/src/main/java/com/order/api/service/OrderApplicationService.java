@@ -10,6 +10,7 @@ import com.order.api.controller.dto.OrderApiDtos.SubmitResponse;
 import com.order.common.core.page.TableDataInfo;
 import com.order.common.utils.DateUtils;
 import com.order.member.domain.Goods;
+import com.order.member.domain.GoodsExtraCommissionSetting;
 import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderApiRequest;
 import com.order.member.domain.OrderBonusTable;
@@ -17,6 +18,7 @@ import com.order.member.domain.OrderInfo;
 import com.order.member.domain.OrderLink;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.GoodsMapper;
+import com.order.member.mapper.GoodsExtraCommissionSettingMapper;
 import com.order.member.mapper.OrderApiRequestMapper;
 import com.order.member.mapper.OrderBonusTableMapper;
 import com.order.member.mapper.OrderInfoMapper;
@@ -31,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -63,6 +65,7 @@ public class OrderApplicationService {
     private final OrderLinkMapper linkMapper;
     private final OrderBonusTableMapper bonusMapper;
     private final GoodsMapper goodsMapper;
+    private final GoodsExtraCommissionSettingMapper extraCommissionMapper;
     private final OrderTradePolicyService policyService;
     private final IOrderSequenceManagerService sequenceService;
     private final ITransactionService transactionService;
@@ -74,6 +77,7 @@ public class OrderApplicationService {
             OrderLinkMapper linkMapper,
             OrderBonusTableMapper bonusMapper,
             GoodsMapper goodsMapper,
+            GoodsExtraCommissionSettingMapper extraCommissionMapper,
             OrderTradePolicyService policyService,
             IOrderSequenceManagerService sequenceService,
             ITransactionService transactionService) {
@@ -83,6 +87,7 @@ public class OrderApplicationService {
         this.linkMapper = linkMapper;
         this.bonusMapper = bonusMapper;
         this.goodsMapper = goodsMapper;
+        this.extraCommissionMapper = extraCommissionMapper;
         this.policyService = policyService;
         this.sequenceService = sequenceService;
         this.transactionService = transactionService;
@@ -119,15 +124,11 @@ public class OrderApplicationService {
         }
 
         OrderTradePolicyService.TradePolicy policy = policyService.activePolicy();
-        validateCreateUser(user, policy);
+        validateCreateUser(user);
         long taskProgress = valueOrZero(user.getTaskProgress());
         long nextOrderIndex = Math.addExact(taskProgress, 1L);
         OrderBonusTable bonus = bonusMapper.selectActiveDistributedReceivedByUserAndOrder(
                 userId, nextOrderIndex);
-        if (bonus == null
-                && nextOrderIndex >= user.getMemberLevel().getOrderCountPerDay()) {
-            bonus = bonusMapper.selectNextCompletionBonus(userId);
-        }
         if (bonus != null) {
             CreationResult result = CreationResult.bonus(bonus);
             rememberCreateResult(
@@ -135,12 +136,16 @@ public class OrderApplicationService {
             return result;
         }
 
-        OrderLink link = linkMapper.selectNextOrderLink(userId, taskProgress);
+        OrderLink link = linkMapper.selectNextOrderLink(userId, nextOrderIndex);
+        if (link == null) {
+            validateMinimumBalance(user, policy);
+        }
         PreparedOrder prepared = link == null
                 ? prepareNormalOrder(user, policy, nextOrderIndex)
-                : prepareLinkedOrder(user, policy, link);
+                : prepareLinkedOrder(user, policy, link, nextOrderIndex);
 
         OrderInfo order = prepared.order();
+        bindExtraCommission(userId, order);
         if (orderMapper.insertOrderInfo(order) != 1) {
             throw new IllegalStateException("Unable to create order");
         }
@@ -183,6 +188,9 @@ public class OrderApplicationService {
         if ("0".equals(order.getStatus())) {
             return new SubmitResponse(orderId, "0", true);
         }
+        if ("2".equals(order.getStatus())) {
+            return new SubmitResponse(orderId, "2", true);
+        }
         if (!"1".equals(order.getStatus())) {
             throw OrderApiException.conflict(
                     ORDER_STATE_CONFLICT,
@@ -194,6 +202,12 @@ public class OrderApplicationService {
         policyService.activePolicy();
         OrderUser user = userMapper.selectOrderBalanceById(userId);
         validateSettlement(user, order);
+
+        if ("1".equals(order.getType()) && order.getLinkId() != null) {
+            return submitLinkedOrder(userId, user, order);
+        }
+
+        ExtraCommissionAward extraCommission = lockExtraCommission(userId, order);
 
         if (orderMapper.transitionStatus(orderId, userId, "1", "0") != 1) {
             throw OrderApiException.conflict(
@@ -223,11 +237,10 @@ public class OrderApplicationService {
                 order.getRebate(),
                 principalBalance,
                 "order-rebate:" + order.getOrderNumber());
-
-        if ("1".equals(order.getType()) && order.getLinkId() != null
-                && linkMapper.completeOrderLink(order.getLinkId(), userId) != 1) {
-            throw new IllegalStateException("Unable to complete linked order");
-        }
+        settleExtraCommission(
+                userId,
+                extraCommission,
+                money(principalBalance.add(order.getRebate())));
         log.info("event=order_submitted userId={} orderId={}", userId, orderId);
         return new SubmitResponse(orderId, "0", false);
     }
@@ -243,46 +256,9 @@ public class OrderApplicationService {
         if (bonus == null) {
             throw OrderApiException.notFound(INVALID_BONUS, "Invalid bonus");
         }
-        if ("0".equals(bonus.getIsReceived())) {
-            OrderUser current = userMapper.selectOrderBalanceById(userId);
-            return new BonusClaimResponse(
-                    bonusId,
-                    moneyOrZero(bonus.getAmount()),
-                    current == null ? null : current.getBalance(),
-                    true);
-        }
-        if (!"1".equals(bonus.getIsDistributed())
-                || bonus.getExpiryTime() != null
-                && bonus.getExpiryTime().toInstant().isBefore(Instant.now())) {
-            throw OrderApiException.conflict(BONUS_UNAVAILABLE, "Bonus is expired or unavailable");
-        }
-        BigDecimal amount = moneyOrZero(bonus.getAmount());
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw OrderApiException.conflict(BONUS_UNAVAILABLE, "Bonus is unavailable");
-        }
-
-        if (userMapper.lockUserById(userId) == null) {
-            throw OrderApiException.notFound(INVALID_USER, "Invalid users");
-        }
-        OrderUser user = userMapper.selectOrderBalanceById(userId);
-        if (user == null || user.getBalance() == null) {
-            throw OrderApiException.notFound(INVALID_USER, "Invalid users");
-        }
-        if (bonusMapper.claimBonus(bonusId, userId) != 1) {
-            throw OrderApiException.conflict(BONUS_UNAVAILABLE, "Bonus was claimed concurrently");
-        }
-        if (userMapper.creditBalance(userId, amount) != 1) {
-            throw new IllegalStateException("Unable to credit bonus");
-        }
-        transactionService.recordFlow(
-                userId,
-                "bonus",
-                amount,
-                user.getBalance(),
-                "order-bonus:" + bonusId);
-        BigDecimal balance = money(user.getBalance().add(amount));
-        log.info("event=order_bonus_claimed userId={} bonusId={}", userId, bonusId);
-        return new BonusClaimResponse(bonusId, amount, balance, false);
+        throw OrderApiException.conflict(
+                BONUS_UNAVAILABLE,
+                "Bonus receiving and distribution must be handled by an administrator");
     }
 
     @Transactional(readOnly = true)
@@ -326,6 +302,7 @@ public class OrderApplicationService {
                         money(goods.getPrice()),
                         money(goods.getPrice()),
                         goods,
+                        percentage(user.getMemberLevel().getMinCommissionRate()),
                         BigDecimal.ONE,
                         null),
                 1L,
@@ -335,7 +312,8 @@ public class OrderApplicationService {
     private PreparedOrder prepareLinkedOrder(
             OrderUser user,
             OrderTradePolicyService.TradePolicy policy,
-            OrderLink link) {
+            OrderLink link,
+            long nextOrderIndex) {
         if (link.getPrice() == null
                 || link.getPrice().compareTo(BigDecimal.ZERO) <= 0
                 || link.getCommissionMultiple() == null
@@ -350,19 +328,119 @@ public class OrderApplicationService {
         BigDecimal amount = "1".equals(link.getPriceType())
                 ? money(basePrice.add(user.getBalance()))
                 : basePrice;
+        BigDecimal commissionPercentage = linkedCommissionPercentage(user);
         return new PreparedOrder(
                 newOrder(
                         user,
                         policy,
                         "1",
-                        valueOrZero(user.getTaskProgress()),
+                        nextOrderIndex,
                         amount,
-                        basePrice,
+                        amount,
                         goods,
+                        commissionPercentage,
                         BigDecimal.valueOf(link.getCommissionMultiple()),
                         link.getId()),
                 0L,
                 true);
+    }
+
+    private SubmitResponse submitLinkedOrder(Long userId, OrderUser user, OrderInfo order) {
+        long orderCount = valueOrZero(order.getOrderCount());
+        if (orderCount <= 0) {
+            throw OrderApiException.conflict(
+                    ORDER_STATE_CONFLICT, "Invalid linked order sequence");
+        }
+
+        int remaining = linkMapper.countRemainingOrderLinks(
+                userId, orderCount, order.getLinkId());
+        if (remaining > 0) {
+            if (orderMapper.transitionStatus(order.getId(), userId, "1", "2") != 1
+                    || linkMapper.freezeOrderLink(order.getLinkId(), userId) != 1) {
+                throw OrderApiException.conflict(
+                        ORDER_STATE_CONFLICT,
+                        "The linked order status was updated concurrently");
+            }
+            log.info(
+                    "event=linked_order_frozen userId={} orderId={} orderCount={} remaining={}",
+                    userId, order.getId(), orderCount, remaining);
+            return new SubmitResponse(order.getId(), "2", false);
+        }
+
+        List<OrderInfo> group = orderMapper.selectLinkedGroupOrdersForUpdate(userId, orderCount);
+        if (group.isEmpty()
+                || group.stream().noneMatch(item -> order.getId().equals(item.getId()))) {
+            throw OrderApiException.conflict(
+                    ORDER_STATE_CONFLICT, "The linked order group is incomplete");
+        }
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal totalRebate = BigDecimal.ZERO;
+        List<ExtraCommissionAward> extraCommissions = new ArrayList<>();
+        for (OrderInfo item : group) {
+            validateSettlementAmounts(item);
+            totalAmount = totalAmount.add(item.getAmount());
+            totalRebate = totalRebate.add(item.getRebate());
+            ExtraCommissionAward award = lockExtraCommission(userId, item);
+            if (award != null) {
+                if (extraCommissions.stream().anyMatch(existing ->
+                        existing.setting().getId().equals(award.setting().getId()))) {
+                    throw OrderApiException.conflict(
+                            ORDER_STATE_CONFLICT,
+                            "The extra commission setting is bound to multiple orders");
+                }
+                extraCommissions.add(award);
+            }
+        }
+        totalAmount = money(totalAmount);
+        totalRebate = money(totalRebate);
+
+        if (user.getFrozenBalance().compareTo(totalAmount) < 0) {
+            throw OrderApiException.conflict(
+                    INSUFFICIENT_BALANCE,
+                    "The linked order frozen funds are inconsistent");
+        }
+        if (orderMapper.completeLinkedOrderGroup(userId, orderCount) != group.size()
+                || linkMapper.completeOrderLinkGroup(userId, orderCount) < 1) {
+            throw OrderApiException.conflict(
+                    ORDER_STATE_CONFLICT,
+                    "The linked order group was updated concurrently");
+        }
+
+        for (OrderInfo item : group) {
+            creditParentCommission(user, item);
+        }
+        if (userMapper.settleLinkedOrderGroup(
+                userId, totalAmount, totalRebate) != 1) {
+            throw OrderApiException.conflict(
+                    INSUFFICIENT_BALANCE,
+                    "The balance is insufficient or linked funds are inconsistent");
+        }
+
+        BigDecimal runningBalance = money(user.getBalance());
+        for (OrderInfo item : group) {
+            transactionService.recordFlow(
+                    userId,
+                    "bjfh",
+                    item.getAmount(),
+                    runningBalance,
+                    "order-principal:" + item.getOrderNumber());
+            runningBalance = money(runningBalance.add(item.getAmount()));
+            transactionService.recordFlow(
+                    userId,
+                    "fy",
+                    item.getRebate(),
+                    runningBalance,
+                    "order-rebate:" + item.getOrderNumber());
+            runningBalance = money(runningBalance.add(item.getRebate()));
+        }
+        for (ExtraCommissionAward award : extraCommissions) {
+            runningBalance = settleExtraCommission(userId, award, runningBalance);
+        }
+        log.info(
+                "event=linked_order_group_completed userId={} orderId={} orderCount={} size={}",
+                userId, order.getId(), orderCount, group.size());
+        return new SubmitResponse(order.getId(), "0", false);
     }
 
     private OrderInfo newOrder(
@@ -373,9 +451,9 @@ public class OrderApplicationService {
             BigDecimal amount,
             BigDecimal commissionBase,
             Goods goods,
+            BigDecimal commissionPercentage,
             BigDecimal commissionMultiple,
             Long linkId) {
-        BigDecimal commissionPercentage = percentage(user.getMemberLevel().getMinCommissionRate());
         BigDecimal rebate = money(
                 commissionBase.multiply(commissionPercentage)
                         .multiply(commissionMultiple)
@@ -398,11 +476,104 @@ public class OrderApplicationService {
         order.setRebate(rebate);
         order.setUpperRebatePercentage(parentPercentage);
         order.setUpperRebate(upperRebate);
-        order.setExtraCommissionId(linkId);
         order.setLinkId(linkId);
         order.setStatus("1");
         order.setCreateTime(DateUtils.getNowDate());
         return order;
+    }
+
+    private void bindExtraCommission(Long userId, OrderInfo order) {
+        GoodsExtraCommissionSetting setting = extraCommissionMapper.selectAvailableForUpdate(
+                userId,
+                order.getOrderCount(),
+                money(order.getAmount()));
+        if (setting == null) {
+            return;
+        }
+        BigDecimal amount = validatedExtraCommissionAmount(setting);
+        if (extraCommissionMapper.reserveForOrder(
+                setting.getId(),
+                userId,
+                order.getOrderCount(),
+                money(order.getAmount())) != 1) {
+            throw OrderApiException.conflict(
+                    ORDER_STATE_CONFLICT,
+                    "The extra commission setting was reserved concurrently");
+        }
+        order.setExtraCommissionId(setting.getId());
+        order.setExtraCommissionAmount(amount);
+    }
+
+    private ExtraCommissionAward lockExtraCommission(Long userId, OrderInfo order) {
+        Long settingId = order.getExtraCommissionId();
+        if (settingId == null) {
+            return null;
+        }
+        GoodsExtraCommissionSetting setting = extraCommissionMapper.selectReservedForUpdate(
+                settingId,
+                userId,
+                order.getOrderCount(),
+                money(order.getAmount()));
+        if (setting == null) {
+            if (order.getLinkId() != null && order.getLinkId().equals(settingId)) {
+                log.warn(
+                        "event=legacy_link_extra_commission_ignored userId={} orderId={} linkId={}",
+                        userId, order.getId(), order.getLinkId());
+                return null;
+            }
+            throw OrderApiException.conflict(
+                    ORDER_STATE_CONFLICT,
+                    "The extra commission setting is unavailable");
+        }
+        return new ExtraCommissionAward(
+                order,
+                setting,
+                validatedExtraCommissionAmount(setting));
+    }
+
+    private BigDecimal settleExtraCommission(
+            Long userId,
+            ExtraCommissionAward award,
+            BigDecimal balanceBefore) {
+        if (award == null) {
+            return balanceBefore;
+        }
+        OrderInfo order = award.order();
+        GoodsExtraCommissionSetting setting = award.setting();
+        if (extraCommissionMapper.completeReserved(
+                setting.getId(),
+                userId,
+                order.getOrderCount(),
+                money(order.getAmount())) != 1) {
+            throw OrderApiException.conflict(
+                    ORDER_STATE_CONFLICT,
+                    "The extra commission setting was completed concurrently");
+        }
+        if (userMapper.creditBalance(userId, award.amount()) != 1) {
+            throw new IllegalStateException("Unable to credit extra commission");
+        }
+        transactionService.recordFlow(
+                userId,
+                "jj",
+                award.amount(),
+                balanceBefore,
+                "extra-commission:" + setting.getId() + ":" + order.getOrderNumber());
+        BigDecimal balanceAfter = money(balanceBefore.add(award.amount()));
+        log.info(
+                "event=extra_commission_settled userId={} orderId={} settingId={} amount={}",
+                userId, order.getId(), setting.getId(), award.amount());
+        return balanceAfter;
+    }
+
+    private BigDecimal validatedExtraCommissionAmount(GoodsExtraCommissionSetting setting) {
+        if (setting.getId() == null
+                || setting.getAmount() == null
+                || setting.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw OrderApiException.unavailable(
+                    INVALID_CONFIG,
+                    "Invalid extra commission configuration");
+        }
+        return money(setting.getAmount());
     }
 
     private void creditParentCommission(OrderUser user, OrderInfo order) {
@@ -429,9 +600,7 @@ public class OrderApplicationService {
                 "child-order-rebate:" + order.getOrderNumber());
     }
 
-    private void validateCreateUser(
-            OrderUser user,
-            OrderTradePolicyService.TradePolicy policy) {
+    private void validateCreateUser(OrderUser user) {
         if (user == null) {
             throw OrderApiException.notFound(USER_NOT_FOUND, "The user does not exist");
         }
@@ -454,18 +623,40 @@ public class OrderApplicationService {
                     WORK_NOT_ALLOWED,
                     "This user is not allowed to grab orders");
         }
+        percentage(level.getMinCommissionRate());
+    }
+
+    private void validateMinimumBalance(
+            OrderUser user,
+            OrderTradePolicyService.TradePolicy policy) {
         if (user.getBalance().compareTo(policy.minimumBalance()) < 0) {
             throw OrderApiException.forbidden(
                     MINIMUM_BALANCE,
                     "The minimum transaction amount is insufficient");
         }
-        percentage(level.getMinCommissionRate());
+    }
+
+    private BigDecimal linkedCommissionPercentage(OrderUser user) {
+        BigDecimal configured = user.getMemberLevel().getMinContinuousCommissionRate();
+        return percentage(configured == null
+                ? user.getMemberLevel().getMinCommissionRate()
+                : configured);
     }
 
     private void validateSettlement(OrderUser user, OrderInfo order) {
         if (user == null || user.getBalance() == null || user.getFrozenBalance() == null) {
             throw OrderApiException.notFound(INVALID_USER, "Invalid users");
         }
+        validateSettlementAmounts(order);
+        if (user.getBalance().compareTo(BigDecimal.ZERO) < 0
+                || user.getFrozenBalance().compareTo(order.getAmount()) < 0) {
+            throw OrderApiException.conflict(
+                    INSUFFICIENT_BALANCE,
+                    "The balance is insufficient or frozen funds are inconsistent");
+        }
+    }
+
+    private void validateSettlementAmounts(OrderInfo order) {
         if (order.getAmount() == null
                 || order.getAmount().compareTo(BigDecimal.ZERO) <= 0
                 || order.getRebate() == null
@@ -475,12 +666,6 @@ public class OrderApplicationService {
         order.setAmount(money(order.getAmount()));
         order.setRebate(money(order.getRebate()));
         order.setUpperRebate(moneyOrZero(order.getUpperRebate()));
-        if (user.getBalance().compareTo(BigDecimal.ZERO) < 0
-                || user.getFrozenBalance().compareTo(order.getAmount()) < 0) {
-            throw OrderApiException.conflict(
-                    INSUFFICIENT_BALANCE,
-                    "The balance is insufficient or frozen funds are inconsistent");
-        }
     }
 
     private BigDecimal percentage(BigDecimal value) {
@@ -602,5 +787,11 @@ public class OrderApplicationService {
     }
 
     private record PreparedOrder(OrderInfo order, long progressDelta, boolean allowNegative) {
+    }
+
+    private record ExtraCommissionAward(
+            OrderInfo order,
+            GoodsExtraCommissionSetting setting,
+            BigDecimal amount) {
     }
 }

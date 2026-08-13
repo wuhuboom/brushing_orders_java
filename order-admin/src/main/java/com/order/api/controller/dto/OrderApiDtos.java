@@ -79,6 +79,7 @@ public final class OrderApiDtos {
             BigDecimal amount,
             Long animationDuration,
             Long displayDuration,
+            String distributionType,
             @JsonFormat(shape = JsonFormat.Shape.NUMBER) Date expiryTime) {
 
         public static BonusResponse from(OrderBonusTable value) {
@@ -91,6 +92,7 @@ public final class OrderApiDtos {
                     value.getAmount(),
                     value.getAnimationDuration(),
                     value.getDisplayDuration(),
+                    value.getDistributionType(),
                     value.getExpiryTime());
         }
     }

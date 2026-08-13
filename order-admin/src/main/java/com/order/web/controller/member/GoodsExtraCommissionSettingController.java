@@ -3,6 +3,7 @@ package com.order.web.controller.member;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,6 +37,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
     /**
      * 查询额外佣金设置列表
      */
+    @PreAuthorize("@ss.hasPermi('member:extracommission:list')")
     @GetMapping("/list")
     public TableDataInfo list(GoodsExtraCommissionSetting goodsExtraCommissionSetting)
     {
@@ -48,6 +50,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
      * 导出额外佣金设置列表
      */
     @Log(title = "额外佣金设置", businessType = BusinessType.EXPORT)
+    @PreAuthorize("@ss.hasPermi('member:extracommission:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, GoodsExtraCommissionSetting goodsExtraCommissionSetting)
     {
@@ -59,6 +62,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
     /**
      * 获取额外佣金设置详细信息
      */
+    @PreAuthorize("@ss.hasPermi('member:extracommission:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -69,6 +73,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
      * 新增额外佣金设置
      */
     @Log(title = "额外佣金设置", businessType = BusinessType.INSERT)
+    @PreAuthorize("@ss.hasPermi('member:extracommission:add')")
     @PostMapping
     public AjaxResult add(@RequestBody GoodsExtraCommissionSetting goodsExtraCommissionSetting)
     {
@@ -79,6 +84,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
      * 修改额外佣金设置
      */
     @Log(title = "额外佣金设置", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('member:extracommission:edit')")
     @PutMapping
     public AjaxResult edit(@RequestBody GoodsExtraCommissionSetting goodsExtraCommissionSetting)
     {
@@ -89,6 +95,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
      * 删除额外佣金设置
      */
     @Log(title = "额外佣金设置", businessType = BusinessType.DELETE)
+	@PreAuthorize("@ss.hasPermi('member:extracommission:remove')")
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {

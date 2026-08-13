@@ -74,6 +74,9 @@ public class OrderInfo extends BaseEntity
     @Excel(name = "额外佣金ID")
     private Long extraCommissionId;
 
+    /** 额外佣金金额（来自 goods_extra_commission_setting.amount） */
+    private BigDecimal extraCommissionAmount;
+
     /** 备注 */
     @Excel(name = "备注")
     private String remarks;
@@ -239,6 +242,14 @@ public class OrderInfo extends BaseEntity
         return extraCommissionId;
     }
 
+    public BigDecimal getExtraCommissionAmount() {
+        return extraCommissionAmount;
+    }
+
+    public void setExtraCommissionAmount(BigDecimal extraCommissionAmount) {
+        this.extraCommissionAmount = extraCommissionAmount;
+    }
+
     public void setRemarks(String remarks) 
     {
         this.remarks = remarks;
@@ -300,6 +311,7 @@ public class OrderInfo extends BaseEntity
             .append("expiryTime", getExpiryTime())
             .append("productId", getProductId())
             .append("extraCommissionId", getExtraCommissionId())
+            .append("extraCommissionAmount", getExtraCommissionAmount())
             .append("createTime", getCreateTime())
             .append("remarks", getRemarks())
             .append("commentId", getCommentId())

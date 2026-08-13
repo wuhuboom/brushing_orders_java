@@ -78,5 +78,16 @@ public interface OrderLinkMapper
 
     OrderLink selectNextOrderLink(@Param("userId") Long userId, @Param("orderCount") Long orderCount);
 
+    int countRemainingOrderLinks(
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount,
+            @Param("excludeId") Long excludeId);
+
+    int freezeOrderLink(@Param("id") Long id, @Param("userId") Long userId);
+
     int completeOrderLink(@Param("id") Long id, @Param("userId") Long userId);
+
+    int completeOrderLinkGroup(
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount);
 }

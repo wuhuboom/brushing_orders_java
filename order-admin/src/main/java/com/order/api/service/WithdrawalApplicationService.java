@@ -4,6 +4,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.order.api.controller.dto.AccountApiDtos.DepositResponse;
 import com.order.api.controller.dto.AccountApiDtos.SensitiveWithdrawalAccountResponse;
+import com.order.api.controller.dto.AccountApiDtos.SensitiveWithdrawalAccountUpdateRequest;
 import com.order.api.controller.dto.AccountApiDtos.TransactionResponse;
 import com.order.api.controller.dto.AccountApiDtos.WithdrawalHistoryResponse;
 import com.order.api.controller.dto.AccountApiDtos.WithdrawalRequest;
@@ -24,6 +25,7 @@ import com.order.member.mapper.OrderUserMapper;
 import com.order.member.mapper.OrderWithdrawalMapper;
 import com.order.member.service.IOrderSequenceManagerService;
 import com.order.member.service.ITransactionService;
+import com.order.member.service.SiteMessageNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -78,6 +80,7 @@ public class WithdrawalApplicationService {
     private final TradePasswordVerificationService passwordVerificationService;
     private final IOrderSequenceManagerService sequenceService;
     private final ITransactionService transactionService;
+    private final SiteMessageNotificationService siteMessageNotificationService;
     private final TradeConfigSnapshotService snapshotService;
     private final AccountDataCipher cipher;
 
@@ -90,6 +93,7 @@ public class WithdrawalApplicationService {
             TradePasswordVerificationService passwordVerificationService,
             IOrderSequenceManagerService sequenceService,
             ITransactionService transactionService,
+            SiteMessageNotificationService siteMessageNotificationService,
             TradeConfigSnapshotService snapshotService,
             AccountDataCipher cipher) {
         this.userMapper = userMapper;
@@ -100,6 +104,7 @@ public class WithdrawalApplicationService {
         this.passwordVerificationService = passwordVerificationService;
         this.sequenceService = sequenceService;
         this.transactionService = transactionService;
+        this.siteMessageNotificationService = siteMessageNotificationService;
         this.snapshotService = snapshotService;
         this.cipher = cipher;
     }
@@ -199,7 +204,12 @@ public class WithdrawalApplicationService {
         if (userMapper.debitBalance(userId, amount) != 1) {
             throw AccountApiException.conflict(BALANCE, "Insufficient balance or concurrent balance update");
         }
-        transactionService.recordFlow(userId, "tx", amount.negate(), balanceBefore,
+        transactionService.recordFlowWithTransactionCode(
+                userId,
+                "txz",
+                amount.negate(),
+                balanceBefore,
+                withdrawal.getOrderNumber(),
                 "withdrawal:" + withdrawal.getOrderNumber());
         log.info("event=withdrawal_submitted userId={} withdrawalId={} requestId={}",
                 userId, withdrawal.getId(), requestId);
@@ -212,8 +222,13 @@ public class WithdrawalApplicationService {
 
     @Transactional(rollbackFor = Exception.class)
     public void review(Long withdrawalId, String targetStatus, String remarks) {
-        if (!"0".equals(targetStatus) && !"2".equals(targetStatus)) {
-            throw AccountApiException.badRequest(REVIEW_CONFLICT, "Status must be success(0) or rejected(2)");
+        review(withdrawalId, targetStatus, remarks, "system");
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void review(Long withdrawalId, String targetStatus, String remarks, String updateBy) {
+        if (!"2".equals(targetStatus) && !"3".equals(targetStatus)) {
+            throw AccountApiException.badRequest(REVIEW_CONFLICT, "Status must be approved(2) or rejected(3)");
         }
         OrderWithdrawal withdrawal = withdrawalMapper.selectForUpdate(withdrawalId);
         if (withdrawal == null) {
@@ -222,13 +237,35 @@ public class WithdrawalApplicationService {
         if (!"1".equals(withdrawal.getStatus())) {
             throw AccountApiException.conflict(REVIEW_CONFLICT, "Only pending withdrawals can be reviewed");
         }
+        OrderUser user = userMapper.selectWithdrawalUserByIdForUpdate(withdrawal.getUserId());
+        if (user == null) {
+            throw new IllegalStateException("Withdrawal user does not exist");
+        }
+        BigDecimal pendingBalance = user.getBalance() == null ? BigDecimal.ZERO : user.getBalance();
+        if (userMapper.creditBalance(withdrawal.getUserId(), withdrawal.getAmount()) != 1) {
+            throw new IllegalStateException("Unable to unfreeze withdrawal balance");
+        }
+        BigDecimal unfrozenBalance = pendingBalance.add(withdrawal.getAmount());
+        transactionService.recordFlowWithTransactionCode(
+                withdrawal.getUserId(),
+                "txjd",
+                withdrawal.getAmount(),
+                pendingBalance,
+                withdrawal.getOrderNumber(),
+                "withdrawal-unfreeze:" + withdrawal.getOrderNumber());
+
         if ("2".equals(targetStatus)) {
-            OrderUser user = userMapper.selectWithdrawalUserByIdForUpdate(withdrawal.getUserId());
-            if (user == null || userMapper.creditBalance(withdrawal.getUserId(), withdrawal.getAmount()) != 1) {
-                throw new IllegalStateException("Unable to refund rejected withdrawal");
+            if (userMapper.debitBalance(withdrawal.getUserId(), withdrawal.getAmount()) != 1) {
+                throw new IllegalStateException("Unable to settle approved withdrawal");
             }
-            transactionService.recordFlow(withdrawal.getUserId(), "txbh", withdrawal.getAmount(),
-                    user.getBalance(), "withdrawal-refund:" + withdrawal.getOrderNumber());
+            transactionService.recordFlowWithTransactionCode(
+                    withdrawal.getUserId(),
+                    "tx",
+                    withdrawal.getAmount().negate(),
+                    unfrozenBalance,
+                    withdrawal.getOrderNumber(),
+                    "withdrawal:" + withdrawal.getOrderNumber());
+        } else {
             LocalDate businessDate = withdrawal.getBusinessDate();
             if (businessDate == null) {
                 businessDate = Instant.ofEpochMilli(withdrawal.getCreateTime().getTime())
@@ -241,8 +278,21 @@ public class WithdrawalApplicationService {
                     Date.from(quotaStart.plusDays(1).toInstant()));
             withdrawalMapper.releaseDailyQuota(businessDate, withdrawal.getAmount());
         }
-        if (withdrawalMapper.transitionStatus(withdrawalId, "1", targetStatus, trimToNull(remarks)) != 1) {
+        if (withdrawalMapper.transitionStatus(
+                withdrawalId,
+                "1",
+                targetStatus,
+                trimToNull(remarks),
+                trimToNull(updateBy)) != 1) {
             throw AccountApiException.conflict(REVIEW_CONFLICT, "Withdrawal was reviewed by another request");
+        }
+        if ("2".equals(targetStatus)) {
+            siteMessageNotificationService.createForTransaction(
+                    withdrawal.getUserId(),
+                    "txwc",
+                    withdrawal.getAmount(),
+                    pendingBalance,
+                    pendingBalance);
         }
         log.info("event=withdrawal_reviewed withdrawalId={} targetStatus={}", withdrawalId, targetStatus);
     }
@@ -270,10 +320,16 @@ public class WithdrawalApplicationService {
                     text(snapshot.get("accountHolder")),
                     text(snapshot.get("accountName")),
                     text(snapshot.get("walletName")),
-                    text(snapshot.get("walletAddress")));
+                    text(snapshot.get("walletAddress")),
+                    text(snapshot.get("attachment")));
         }
 
-        GoodsWithdrawalAccount account = cipher.reveal(withdrawal.getWithdrawalAccountInfo());
+        GoodsWithdrawalAccount account = null;
+        if (withdrawal.getWithdrawalAccountId() != null) {
+            account = accountMapper.selectActiveByIdAndUserId(
+                    withdrawal.getWithdrawalAccountId(), withdrawal.getUserId());
+        }
+        account = cipher.reveal(account);
         if (account == null) {
             throw AccountApiException.notFound(WITHDRAWAL_NOT_FOUND, "Withdrawal account snapshot is unavailable");
         }
@@ -289,7 +345,68 @@ public class WithdrawalApplicationService {
                 account.getAccountHolder(),
                 account.getAccountName(),
                 account.getWalletName(),
-                account.getWalletAddress());
+                account.getWalletAddress(),
+                account.getAttachment());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSensitiveAccount(
+            Long withdrawalId,
+            SensitiveWithdrawalAccountUpdateRequest request,
+            String updateBy) {
+        if (request == null) {
+            throw AccountApiException.badRequest(INVALID_REQUEST, "Withdrawal account details are required");
+        }
+        OrderWithdrawal withdrawal = withdrawalMapper.selectForUpdate(withdrawalId);
+        if (withdrawal == null) {
+            throw AccountApiException.notFound(WITHDRAWAL_NOT_FOUND, "Withdrawal does not exist");
+        }
+        if (withdrawal.getWithdrawalAccountId() == null) {
+            throw AccountApiException.notFound(WITHDRAWAL_ACCOUNT, "Withdrawal account is unavailable");
+        }
+
+        GoodsWithdrawalAccount account = accountMapper.selectActiveByIdAndUserId(
+                withdrawal.getWithdrawalAccountId(), withdrawal.getUserId());
+        account = cipher.reveal(account);
+        if (account == null) {
+            throw AccountApiException.notFound(WITHDRAWAL_ACCOUNT, "Withdrawal account is unavailable");
+        }
+
+        if ("1".equals(account.getType())) {
+            String walletAddress = trimToNull(request.walletAddress());
+            if (walletAddress == null) {
+                throw AccountApiException.badRequest(WITHDRAWAL_ACCOUNT, "Wallet address is required");
+            }
+            account.setAccountName(trimToNull(request.accountName()));
+            account.setWalletName(trimToNull(request.walletName()));
+            account.setWalletAddress(walletAddress);
+        } else {
+            String bankAccount = trimToNull(request.bankAccount());
+            if (bankAccount == null) {
+                throw AccountApiException.badRequest(WITHDRAWAL_ACCOUNT, "Bank account is required");
+            }
+            account.setBankName(trimToNull(request.bankName()));
+            account.setDepositType(trimToNull(request.depositType()));
+            account.setBranchCode(trimToNull(request.branchCode()));
+            account.setBranchName(trimToNull(request.branchName()));
+            account.setBankAccount(bankAccount);
+            account.setAccountHolder(trimToNull(request.accountHolder()));
+        }
+        if (request.attachment() != null) {
+            account.setAttachment(trimToNull(request.attachment()));
+        }
+
+        String encryptedSnapshot = cipher.encryptSnapshot(account);
+        cipher.protect(account);
+        String accountMask = cipher.displayMask(account);
+        if (accountMapper.updateOwnedAccount(account) != 1
+                || withdrawalMapper.updateAccountSnapshot(
+                        withdrawalId,
+                        encryptedSnapshot,
+                        accountMask,
+                        trimToNull(updateBy)) != 1) {
+            throw AccountApiException.conflict(REVIEW_CONFLICT, "Withdrawal account was updated by another request");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -470,7 +587,7 @@ public class WithdrawalApplicationService {
     private TableDataInfo page(List<?> rows, long total) {
         TableDataInfo result = new TableDataInfo();
         result.setCode(200);
-        result.setMsg("查询成功");
+        result.setMsg("Success");
         result.setRows(rows);
         result.setTotal(total);
         return result;
@@ -492,7 +609,7 @@ public class WithdrawalApplicationService {
 
     private String normalizeStatus(String value) {
         if (value == null || value.isBlank()) return null;
-        if (!List.of("0", "1", "2").contains(value)) {
+        if (!List.of("1", "2", "3").contains(value)) {
             throw AccountApiException.badRequest(INVALID_REQUEST, "Invalid withdrawal status");
         }
         return value;
@@ -516,7 +633,7 @@ public class WithdrawalApplicationService {
     private boolean isEnabled(Object value) {
         if (value == null) return false;
         String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
-        return "0".equals(normalized) || "enabled".equals(normalized)
+        return "1".equals(normalized) || "enabled".equals(normalized)
                 || "true".equals(normalized) || "yes".equals(normalized);
     }
 

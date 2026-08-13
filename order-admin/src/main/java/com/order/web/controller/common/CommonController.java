@@ -101,6 +101,7 @@ public class CommonController
         }
         catch (Exception e)
         {
+            log.error("上传文件失败", e);
             return AjaxResult.error(e.getMessage());
         }
     }
@@ -147,6 +148,7 @@ public class CommonController
         }
         catch (Exception e)
         {
+            log.error("批量上传文件失败", e);
             return AjaxResult.error(e.getMessage());
         }
     }

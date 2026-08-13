@@ -65,4 +65,8 @@ public interface IOrderBonusTableService
     public List<OrderBonusTable> selectBonusByType(Long userId);
 
     public OrderBonusTable userHaveBonus( Long userId,Integer orderNum);
+
+    int receiveBonus(Long id);
+
+    int distributeBonus(Long id);
 }

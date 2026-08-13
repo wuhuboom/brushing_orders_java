@@ -77,6 +77,7 @@ public class GoodsCustomerServiceController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody GoodsCustomerService goodsCustomerService)
     {
+        goodsCustomerService.setCreateBy(getUsername());
         return toAjax(goodsCustomerServiceService.insertGoodsCustomerService(goodsCustomerService));
     }
 

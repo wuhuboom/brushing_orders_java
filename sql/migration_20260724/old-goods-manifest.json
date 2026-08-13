@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-07-24T06:29:10.572Z",
+  "sourceBaseUrl": "https://g9p7q0i2-20260513.top",
+  "expectedTotal": 44636,
+  "categoryCount": 7,
+  "productCount": 44636,
+  "uniqueImageCount": 12862,
+  "missingImageCount": 0,
+  "maxTitleLength": 255,
+  "maxSubtitleLength": 582,
+  "missingImageProductIds": [],
+  "imageReplacements": [
+    {
+      "sourceUrl": "https://osswotlk.oss-ap-northeast-1.aliyuncs.com/df056f25b872b94f226570c0b180d333.jpg",
+      "downloadUrl": "https://www.gosupps.com/media/catalog/product/cache/25/image/9df78eab33525d08d6e5fb8d27136e95/7/1/71T9PuayW5L_1.jpg",
+      "filename": "79dbb15d8651326aa8619c3946da18d4.jpg",
+      "sourcePage": "https://www.gosupps.com/hawaiian-tropic-spf-50-broad-spectrum-sunscreen-sheer-touch-moisturizing-protection-sunscreen-lotion-coconut-16-0-fl-oz-pack-of-2-lotion-twin-pack.html"
+    },
+    {
+      "sourceUrl": "https://osswotlk.oss-ap-northeast-1.aliyuncs.com/3aa051e55d854a05fcbe21928a32a439.jpg",
+      "downloadUrl": "https://sony.scene7.com/is/image/sonyglobalsolutions/wh-ch720_Primary_image_white?$primaryshotPreset$&fmt=png-alpha",
+      "filename": "15b4b3786a8554d041fd5c11a8936c65.png",
+      "sourcePage": "https://store.sony.co.nz/headphones-noisecancelling/WHCH720NW.html"
+    },
+    {
+      "sourceUrl": "https://osswotlk.oss-ap-northeast-1.aliyuncs.com/8b39031f772fa0dec8f8a0463820334f.jpg",
+      "downloadUrl": "https://www.sigma-global.com/lenses/c016_30_14_product_img01.png",
+      "filename": "9a321a750d2318d685b865fd245a36f5.png",
+      "sourcePage": "https://www.sigma-global.com/en/lenses/c016_30_14/"
+    }
+  ],
+  "productTextCorrections": [
+    {
+      "sourceId": "1000156",
+      "title": "Lenspen NLP1 New Lenspen Original",
+      "subtitle": "Lenspen NLP1 New Lenspen Original",
+      "reason": "Removed a truncated mojibake suffix from the source title."
+    },
+    {
+      "sourceId": "1002762",
+      "title": "Replacement ear pads and cup covers for Sony PS3/PS4 Gold Wireless PlayStation 3/4 CECHYA-0083 Stereo 7.1 Virtual Surround Headphones",
+      "subtitle": "Replacement ear pads and cup covers for Sony PS3/PS4 Gold Wireless PlayStation 3/4 CECHYA-0083 Stereo 7.1 Virtual Surround Headphones",
+      "reason": "Replaced a mojibake product-name fragment from the source title."
+    }
+  ],
+  "sourceSha256": "c9be696c43b25a76499f269c2e44753d13a8b6f8a216bd1d99a3bd2358bd9dbd",
+  "imageDownload": {
+    "total": 12862,
+    "downloaded": 0,
+    "skipped": 12862,
+    "failed": 0,
+    "failures": []
+  },
+  "imageDirectory": "E:\\order\\uploadPath\\goods\\img",
+  "applySqlPath": "E:\\code\\order\\java-admin-new-code\\sql\\migration_20260724\\apply-old-goods.sql"
+}

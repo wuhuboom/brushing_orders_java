@@ -161,8 +161,8 @@
                 FROM goods_transaction_flow gtf
                 WHERE gtf.user_id = ou.id
                   AND gtf.transaction_type = 'fy'
-                  AND gtf.created_time >= CURDATE()
-                  AND gtf.created_time < CURDATE() + INTERVAL 1 DAY
+                  AND gtf.created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
+                  AND gtf.created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
             ), 0) AS today_commission,
             gml.id AS member_level_id, gml.name, gml.level, gml.icon, gml.price,
             gml.min_balance, gml.invite_count, gml.order_count_per_day,
@@ -224,7 +224,9 @@
         SELECT ou.id, ou.parent_id, ou.balance, ou.frozen_balance,
                ou.task_progress, ou.is_banned,
                gml.id AS member_level_id, gml.order_count_per_day,
-               gml.min_commission_rate
+               gml.min_commission_rate,
+               gml.min_continuous_commission_rate,
+               gml.max_continuous_commission_rate
         FROM order_user ou
         LEFT JOIN goods_member_level gml ON gml.id = ou.vip_id
         WHERE ou.id = #{id}
@@ -262,6 +264,33 @@
           AND frozen_balance &gt;= #{amount}
     </update>
 
+    <update id="settleLinkedOrderGroup">
+        UPDATE order_user
+        SET balance = balance + #{amount} + #{rebate},
+            frozen_balance = frozen_balance - #{amount},
+            task_progress = COALESCE(task_progress, 0) + 1,
+            version = COALESCE(version, 0) + 1,
+            update_time = NOW(3)
+        WHERE id = #{userId}
+          AND balance &gt;= 0
+          AND frozen_balance &gt;= #{amount}
+    </update>
+
+    <update id="releaseCancelledOrderFunds">
+        UPDATE order_user
+        SET balance = balance + #{amount},
+            frozen_balance = frozen_balance - #{amount},
+            task_progress = GREATEST(
+                0,
+                COALESCE(task_progress, 0) - #{progressDelta}
+            ),
+            version = COALESCE(version, 0) + 1,
+            update_time = NOW(3)
+        WHERE id = #{userId}
+          AND balance IS NOT NULL
+          AND frozen_balance &gt;= #{amount}
+    </update>
+
 
     <sql id="selectOrderUserVo">
     <![CDATA[
@@ -272,7 +301,8 @@
                     user_id,
                     IFNULL(SUM(CASE WHEN transaction_type = 'fy' THEN transaction_amount ELSE 0 END), 0) AS today_commission
                 FROM goods_transaction_flow
-                WHERE created_time >= CURDATE() AND created_time < CURDATE() + INTERVAL 1 DAY
+                WHERE created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
+                  AND created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
         GROUP BY user_id
             ),
             -- CTE2: 上级佣金（针对每个下级ou.id过滤；性能仍需表结构调整，假设remark包含下级ID）
@@ -283,7 +313,8 @@
             IFNULL(SUM(gtf.transaction_amount), 0) AS today_parent_commission
         FROM goods_transaction_flow gtf
             JOIN order_user gtf_child ON gtf.remark LIKE CONCAT('%', gtf_child.id, '%')
-        WHERE gtf.created_time >= CURDATE() AND gtf.created_time < CURDATE() + INTERVAL 1 DAY
+        WHERE gtf.created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
+          AND gtf.created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
           AND gtf.transaction_type = 'fy'
         GROUP BY gtf.user_id, gtf_child.id
             ),
@@ -298,7 +329,11 @@
             withdrawal_stats AS (
         SELECT
             user_id,
-            COUNT(CASE WHEN create_time >= CURDATE() AND create_time < CURDATE() + INTERVAL 1 DAY THEN 1 END) AS today_withdrawal_count,
+            COUNT(CASE
+                WHEN create_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
+                 AND create_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
+                THEN 1
+            END) AS today_withdrawal_count,
             IFNULL(SUM(amount), 0) AS total_withdrawal_amount
         FROM order_withdrawal
         GROUP BY user_id
@@ -724,6 +759,15 @@
             version = COALESCE(version, 0) + 1
         WHERE id = #{userId}
           AND trade_password = #{currentPassword}
+    </update>
+
+    <update id="resetTradePasswordByAdmin">
+        UPDATE order_user
+        SET trade_password = #{tradePassword},
+            withdrawal_password_fail_count = 0,
+            update_time = NOW(),
+            version = COALESCE(version, 0) + 1
+        WHERE id = #{userId}
     </update>
 
     <update id="updateWithdrawalPasswordFailCount">

@@ -10,7 +10,7 @@
 
     <name>order</name>
     <url>http://fastbuild.run</url>
-    <description>若依管理系统</description>
+    <description>Order management system</description>
     
     <properties>
         <order.version>3.9.0</order.version>

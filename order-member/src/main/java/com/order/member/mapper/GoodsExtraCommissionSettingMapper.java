@@ -1,7 +1,9 @@
 package com.order.member.mapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.order.member.domain.GoodsExtraCommissionSetting;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 额外佣金设置Mapper接口
@@ -42,6 +44,55 @@ public interface GoodsExtraCommissionSettingMapper
      * @return 结果
      */
     public int updateGoodsExtraCommissionSetting(GoodsExtraCommissionSetting goodsExtraCommissionSetting);
+
+    /**
+     * Lock the first incomplete, unlocked setting matching an order.
+     */
+    GoodsExtraCommissionSetting selectAvailableForUpdate(
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount,
+            @Param("productPrice") BigDecimal productPrice);
+
+    /**
+     * Reserve a matched setting for the order being created.
+     */
+    int reserveForOrder(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount,
+            @Param("productPrice") BigDecimal productPrice);
+
+    /**
+     * Lock a previously reserved setting before settlement.
+     */
+    GoodsExtraCommissionSetting selectReservedForUpdate(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount,
+            @Param("productPrice") BigDecimal productPrice);
+
+    /**
+     * Complete a reserved setting exactly once.
+     */
+    int completeReserved(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount,
+            @Param("productPrice") BigDecimal productPrice);
+
+    /**
+     * Release an incomplete setting when its pending order is cancelled.
+     */
+    int releaseReserved(
+            @Param("id") Long id,
+            @Param("userId") Long userId,
+            @Param("orderCount") Long orderCount,
+            @Param("productPrice") BigDecimal productPrice);
+
+    /**
+     * Lock a setting before an administrative edit or delete decision.
+     */
+    GoodsExtraCommissionSetting selectByIdForUpdate(@Param("id") Long id);
 
     /**
      * 删除额外佣金设置

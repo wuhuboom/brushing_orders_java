@@ -17,19 +17,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="transactionType"    column="transaction_type"    />
         <result property="orderNumber"    column="order_number"    />
         <result property="isHidden"    column="is_hidden"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
         <!-- 从 order_user 联表得到的额外字段 -->
         <result property="username" column="username" />
         <result property="phoneNumber" column="phone_number" />
         <result property="parentUsername" column="parent_username" />
+        <result property="isFake" column="is_fake" />
+        <result property="rechargeAccount" column="recharge_account" />
     </resultMap>
 
     <sql id="selectGoodsRechargeRecordVo">
         select gr.id, gr.user_id, gr.amount, gr.withdrawal_type, gr.gift_amount,
                gr.received_amount, gr.status, gr.create_time, gr.remark, gr.transaction_type,
-               gr.order_number, gr.is_hidden,
+               gr.order_number, gr.is_hidden, gr.update_by, gr.update_time,
                -- 用户表字段
                ou.username as username, ou.phone_number as phone_number,
-               pu.username as parent_username
+               pu.username as parent_username, ou.is_fake as is_fake,
+               gr.recharge_account as recharge_account
         from goods_recharge_record gr
         left join order_user ou on gr.user_id = ou.id
         left join order_user pu on ou.parent_id = pu.id
@@ -39,8 +44,30 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectGoodsRechargeRecordVo"/>
         <where>  
             <if test="userId != null "> and gr.user_id = #{userId}</if>
-            <if test="username != null "> and ou.username = #{username}</if>
+            <if test="username != null and username != ''"> and ou.username = #{username}</if>
+            <if test="phoneNumber != null and phoneNumber != ''"> and ou.phone_number = #{phoneNumber}</if>
+            <if test="parentUsername != null and parentUsername != ''"> and pu.username = #{parentUsername}</if>
+            <if test="accountAddress != null and accountAddress != ''">
+                and gr.recharge_account like concat('%', #{accountAddress}, '%')
+            </if>
             <if test="orderNumber != null  and orderNumber != ''"> and gr.order_number = #{orderNumber}</if>
+            <if test="withdrawalType != null and withdrawalType != ''"> and gr.withdrawal_type = #{withdrawalType}</if>
+            <if test="status != null and status != ''"> and gr.status = #{status}</if>
+            <if test="isFake != null and isFake != ''"> and ou.is_fake = #{isFake}</if>
+            <if test="transactionType != null and transactionType != ''"> and gr.transaction_type = #{transactionType}</if>
+            <if test="isHidden != null and isHidden != ''"> and gr.is_hidden = #{isHidden}</if>
+            <if test="params.amountMin != null and params.amountMin != ''">
+                and gr.amount &gt;= #{params.amountMin}
+            </if>
+            <if test="params.amountMax != null and params.amountMax != ''">
+                and gr.amount &lt;= #{params.amountMax}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and gr.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and gr.create_time &lt;= #{params.endTime}
+            </if>
         </where>
         order by gr.create_time desc
     </select>
@@ -64,6 +91,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="transactionType != null and transactionType != ''">transaction_type,</if>
             <if test="orderNumber != null and orderNumber != ''">order_number,</if>
             <if test="isHidden != null">is_hidden,</if>
+            <if test="rechargeAccount != null">recharge_account,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
@@ -77,6 +107,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="transactionType != null and transactionType != ''">#{transactionType},</if>
             <if test="orderNumber != null and orderNumber != ''">#{orderNumber},</if>
             <if test="isHidden != null">#{isHidden},</if>
+            <if test="rechargeAccount != null">#{rechargeAccount},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
          </trim>
     </insert>
 
@@ -94,6 +127,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="transactionType != null and transactionType != ''">transaction_type = #{transactionType},</if>
             <if test="orderNumber != null and orderNumber != ''">order_number = #{orderNumber},</if>
             <if test="isHidden != null">is_hidden = #{isHidden},</if>
+            <if test="rechargeAccount != null">recharge_account = #{rechargeAccount},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now(3),
         </trim>
         where id = #{id}
     </update>
@@ -116,4 +152,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where user_id = #{userId} and COALESCE(is_hidden, '1') != '0'
         order by create_time desc, id desc
     </select>
+
+    <select id="selectForUpdate" resultMap="GoodsRechargeRecordResult">
+        <include refid="selectGoodsRechargeRecordVo"/>
+        where gr.id = #{id}
+        for update
+    </select>
+
+    <update id="transitionStatus">
+        update goods_recharge_record
+        set status = #{targetStatus},
+            remark = #{remark},
+            update_by = COALESCE(NULLIF(#{updateBy}, ''), 'system'),
+            update_time = now(3)
+        where id = #{id}
+          and status = #{expectedStatus}
+    </update>
 </mapper>

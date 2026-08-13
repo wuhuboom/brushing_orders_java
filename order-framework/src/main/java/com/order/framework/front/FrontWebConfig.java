@@ -18,15 +18,10 @@ public class FrontWebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/api/user/login",
                         "/api/user/register",
                         "/api/user/logout",
-                        "/api/config/languages",
                         "/api/config/error-messages",
                         "/api/config/content",
+                        "/api/config/website",
                         "/api/config/customer-services",
-                        "/api/config/time-zone",
-                        "/api/config/getCustomerService",
-                        "/api/config/getGlobalConfig",
-                        "/api/config/getZoneActive",
-                        "/api/config/getConfigByLang",
-                        "/api/config/getCustomerServiceByLang" );
+                        "/api/config/time-zone" );
     }
 }

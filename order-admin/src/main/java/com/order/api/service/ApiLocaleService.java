@@ -21,11 +21,4 @@ public class ApiLocaleService {
         headers.add(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE);
         return headers;
     }
-
-    public HttpHeaders legacyHeaders(SupportedLocale locale, String successorPath) {
-        HttpHeaders headers = responseHeaders(locale);
-        headers.add("Deprecation", "true");
-        headers.add(HttpHeaders.LINK, "<" + successorPath + ">; rel=\"successor-version\"");
-        return headers;
-    }
 }

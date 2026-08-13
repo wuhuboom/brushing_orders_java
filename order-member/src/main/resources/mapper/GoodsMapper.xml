@@ -50,10 +50,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectGoodsList" parameterType="Goods" resultMap="GoodsResult">
         <include refid="selectGoodsVo"/>
         <where>  
-            <if test="title != null  and title != ''"> and g.title = #{title}</if>
+            <if test="title != null  and title != ''">
+                and g.title like concat('%', #{title}, '%')
+            </if>
+            <if test="typeId != null"> and g.type_id = #{typeId}</if>
             <if test="isEnabled != null  and isEnabled != ''"> and g.is_enabled = #{isEnabled}</if>
+            <if test="params != null and params.beginPrice != null">
+                and g.price &gt;= #{params.beginPrice}
+            </if>
+            <if test="params != null and params.endPrice != null">
+                and g.price &lt;= #{params.endPrice}
+            </if>
         </where>
-        order by g.id asc
+        order by g.serial_number asc, g.id asc
     </select>
     
     <select id="selectGoodsById" parameterType="Long" resultMap="GoodsResult">

@@ -8,11 +8,11 @@ import java.util.Locale;
 public class RegisterDto {
 
     @NotBlank(message = "Username must not be blank")
-    @Pattern(regexp = "[A-Za-z0-9_]{2,20}", message = "Username format is invalid")
+    @Pattern(regexp = "[A-Za-z0-9_]{4,10}", message = "Username length must be 4-10 characters")
     private String username;
 
     @NotBlank(message = "Password must not be blank")
-    @Size(min = 8, max = 64, message = "Password length must be between 8 and 64 characters")
+    @Size(min = 6, max = 64, message = "Password length must be between 6 and 64 characters")
     private String password;
 
     @NotBlank(message = "Trade password must not be blank")
@@ -23,7 +23,7 @@ public class RegisterDto {
     @Pattern(regexp = "\\+[1-9]\\d{7,14}", message = "Phone number must use E.164 format")
     private String phoneNumber;
 
-    // 0: male, 1: female, 2: unknown
+    // Keep the original H5 enum: 0 unknown, 1 male, 2 female.
     @NotBlank(message = "Sex must not be blank")
     @Pattern(regexp = "[012]", message = "Sex must be 0, 1 or 2")
     private String gender;

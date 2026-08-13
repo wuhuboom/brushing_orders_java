@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.order.member.domain.dto.GoodsDetails;
+import com.order.common.utils.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,6 +68,8 @@ public class OrderLinkServiceImpl implements IOrderLinkService
         // defensive checks
         if (orderLink == null) return 0;
 
+        orderLink.setCreateTime(DateUtils.getNowDate());
+        orderLink.setUpdateTime(orderLink.getCreateTime());
         List<GoodsDetails> details = orderLink.getDetails();
 
         // generate a batch-level linkOrderId: if details are created in the same call they share the same id
@@ -92,7 +95,11 @@ public class OrderLinkServiceImpl implements IOrderLinkService
                 link.setCommissionMultiple(orderLink.getCommissionMultiple());
                 link.setPriceType(detail.getPriceType());
                 link.setPrice(detail.getPrice());
-                // copy other fields if needed
+                link.setStatus(orderLink.getStatus());
+                link.setCreateBy(orderLink.getCreateBy());
+                link.setCreateTime(orderLink.getCreateTime());
+                link.setUpdateBy(orderLink.getUpdateBy());
+                link.setUpdateTime(orderLink.getUpdateTime());
                 inserted += orderLinkMapper.insertOrderLink(link);
             }
             // don't insert the parent container object again to avoid duplicate entries
@@ -114,6 +121,7 @@ public class OrderLinkServiceImpl implements IOrderLinkService
     @Override
     public int updateOrderLink(OrderLink orderLink)
     {
+        orderLink.setUpdateTime(DateUtils.getNowDate());
         return orderLinkMapper.updateOrderLink(orderLink);
     }
 

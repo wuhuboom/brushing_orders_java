@@ -28,4 +28,5 @@ public final class AccountErrorCodes {
     public static final int DAILY_WITHDRAWAL_COUNT = 523;
     public static final int DAILY_WITHDRAWAL_AMOUNT = 524;
     public static final int IDEMPOTENCY_CONFLICT = 525;
+    public static final int WITHDRAWAL_ACCOUNT_ACCESS = 526;
 }

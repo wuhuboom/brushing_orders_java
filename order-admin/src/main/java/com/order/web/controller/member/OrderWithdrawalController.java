@@ -1,6 +1,7 @@
 package com.order.web.controller.member;
 
 import com.order.api.controller.dto.AccountApiDtos.ReviewStatusRequest;
+import com.order.api.controller.dto.AccountApiDtos.SensitiveWithdrawalAccountUpdateRequest;
 import com.order.api.service.WithdrawalApplicationService;
 import com.order.common.annotation.Log;
 import com.order.common.core.controller.BaseController;
@@ -66,13 +67,23 @@ public class OrderWithdrawalController extends BaseController {
         return success(withdrawalApplicationService.sensitiveAccount(id));
     }
 
+    @PreAuthorize("@ss.hasPermi('member:withdrawal:sensitive')")
+    @Log(title = "提现地址", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/sensitive-account")
+    public AjaxResult updateSensitiveAccount(
+            @PathVariable Long id,
+            @Valid @RequestBody SensitiveWithdrawalAccountUpdateRequest request) {
+        withdrawalApplicationService.updateSensitiveAccount(id, request, getUsername());
+        return success();
+    }
+
     @PreAuthorize("@ss.hasPermi('member:withdrawal:edit')")
     @Log(title = "提现审核", businessType = BusinessType.UPDATE)
     @PutMapping("/{id}/status")
     public AjaxResult review(
             @PathVariable Long id,
             @Valid @RequestBody ReviewStatusRequest request) {
-        withdrawalApplicationService.review(id, request.status(), request.remarks());
+        withdrawalApplicationService.review(id, request.status(), request.remarks(), getUsername());
         return success();
     }
 
@@ -87,9 +98,22 @@ public class OrderWithdrawalController extends BaseController {
         if (withdrawal.getId() == null) {
             return error("提现ID不能为空");
         }
-        withdrawalApplicationService.review(
-                withdrawal.getId(), withdrawal.getStatus(), withdrawal.getRemarks());
-        return success();
+        if (withdrawal.getStatus() != null && !withdrawal.getStatus().isBlank()) {
+            withdrawalApplicationService.review(
+                    withdrawal.getId(), withdrawal.getStatus(), withdrawal.getRemarks(), getUsername());
+            return success();
+        }
+        if (withdrawal.getIsHidden() != null
+                && !"0".equals(withdrawal.getIsHidden())
+                && !"1".equals(withdrawal.getIsHidden())) {
+            return AjaxResult.error(400, "显示状态无效");
+        }
+        OrderWithdrawal update = new OrderWithdrawal();
+        update.setId(withdrawal.getId());
+        update.setRemarks(withdrawal.getRemarks());
+        update.setIsHidden(withdrawal.getIsHidden());
+        update.setUpdateBy(getUsername());
+        return toAjax(withdrawalQueryService.updateOrderWithdrawal(update));
     }
 
     @PreAuthorize("@ss.hasPermi('member:withdrawal:add')")

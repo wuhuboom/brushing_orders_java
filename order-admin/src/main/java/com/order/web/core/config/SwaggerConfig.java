@@ -15,9 +15,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import java.util.List;
 
 /**
- * Swagger2的接口配置
- * 
- * @author order
+ * H5 OpenAPI 基础配置。
  */
 @Configuration
 public class SwaggerConfig
@@ -31,7 +29,6 @@ public class SwaggerConfig
         return new OpenAPI()
                 .servers(List.of(new Server().url("/")))
                 .components(new Components()
-                        // 设置认证的请求头
                         .addSecuritySchemes("BearerAuth", securityScheme()))
                 .addSecurityItem(new SecurityRequirement().addList("BearerAuth"))
                 .info(getApiInfo());
@@ -48,18 +45,20 @@ public class SwaggerConfig
     }
     
     /**
-     * 添加摘要信息
+     * 添加摘要信息。
      */
     public Info getApiInfo()
     {
         return new Info()
-            // 设置标题
-            .title("标题：DataCenter管理系统_接口文档")
-            // 描述
-            .description("描述")
-            // 作者信息
+            .title("H5 前台接口文档")
+            .description("""
+                    仅包含 `/api/**` 下的 H5 接口，不包含后台管理端接口。
+
+                    响应中的 `code` 是业务状态码：`200` 表示成功，其他值表示具体业务失败原因；
+                    REST 风格接口还会使用对应的 HTTP 状态码，兼容接口可能始终返回 HTTP 200，
+                    调用方应始终以响应体中的 `code` 为准。
+                    """)
             .contact(new Contact().name(orderConfig.getName()))
-            // 版本
-            .version("版本号:" + orderConfig.getVersion());
+            .version("版本号：" + orderConfig.getVersion());
     }
 }

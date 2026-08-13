@@ -2,8 +2,10 @@ package com.order.member.service.impl;
 
 import java.util.List;
 import com.order.common.utils.DateUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.order.common.i18n.ITranslationsService;
+import com.order.common.i18n.Translations;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.order.member.mapper.OrderSiteMessageMapper;
 import com.order.member.domain.OrderSiteMessage;
 import com.order.member.service.IOrderSiteMessageService;
@@ -15,10 +17,19 @@ import com.order.member.service.IOrderSiteMessageService;
  * @date 2025-11-10
  */
 @Service
+@Transactional
 public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService 
 {
-    @Autowired
-    private OrderSiteMessageMapper orderSiteMessageMapper;
+    private final OrderSiteMessageMapper orderSiteMessageMapper;
+    private final ITranslationsService translationsService;
+
+    public OrderSiteMessageServiceImpl(
+            OrderSiteMessageMapper orderSiteMessageMapper,
+            ITranslationsService translationsService)
+    {
+        this.orderSiteMessageMapper = orderSiteMessageMapper;
+        this.translationsService = translationsService;
+    }
 
     /**
      * 查询站内信
@@ -29,7 +40,7 @@ public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService
     @Override
     public OrderSiteMessage selectOrderSiteMessageById(Long id)
     {
-        return orderSiteMessageMapper.selectOrderSiteMessageById(id);
+        return attachTranslations(orderSiteMessageMapper.selectOrderSiteMessageById(id));
     }
 
     /**
@@ -53,7 +64,12 @@ public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService
     @Override
     public int insertOrderSiteMessage(OrderSiteMessage orderSiteMessage)
     {
+        if (orderSiteMessage.getIsEnabled() == null) {
+            orderSiteMessage.setIsEnabled(1);
+        }
+        normalizeMemberList(orderSiteMessage);
         orderSiteMessage.setCreateTime(DateUtils.getNowDate());
+        saveTranslations(orderSiteMessage);
         return orderSiteMessageMapper.insertOrderSiteMessage(orderSiteMessage);
     }
 
@@ -66,6 +82,8 @@ public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService
     @Override
     public int updateOrderSiteMessage(OrderSiteMessage orderSiteMessage)
     {
+        normalizeMemberList(orderSiteMessage);
+        saveTranslations(orderSiteMessage);
         return orderSiteMessageMapper.updateOrderSiteMessage(orderSiteMessage);
     }
 
@@ -91,5 +109,41 @@ public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService
     public int deleteOrderSiteMessageById(Long id)
     {
         return orderSiteMessageMapper.deleteOrderSiteMessageById(id);
+    }
+
+    private void normalizeMemberList(OrderSiteMessage message)
+    {
+        if (message.getMemberList() != null) {
+            String normalized = String.join(",",
+                    java.util.Arrays.stream(message.getMemberList().split(","))
+                            .map(String::trim)
+                            .filter(value -> value.matches("\\d+"))
+                            .distinct()
+                            .toList());
+            message.setMemberList(normalized);
+        }
+    }
+
+    private void saveTranslations(OrderSiteMessage message)
+    {
+        Translations translations = message.getTranslations();
+        if (translations == null || (translations.getId() == null && !translations.hasAnyValue())) {
+            return;
+        }
+        if (translations.getId() == null) {
+            translationsService.insertTranslations(translations);
+        } else {
+            translationsService.updateTranslations(translations);
+        }
+        message.setTranslationsId(translations.getId());
+    }
+
+    private OrderSiteMessage attachTranslations(OrderSiteMessage message)
+    {
+        if (message != null && message.getTranslationsId() != null) {
+            message.setTranslations(
+                    translationsService.selectTranslationsById(message.getTranslationsId()));
+        }
+        return message;
     }
 }

@@ -178,6 +178,12 @@
   <select id="selectFileById" resultType="java.util.Map">SELECT file_id fileId,bucket,file_type fileType,file_hash fileHash,content_type contentType,storage_path storagePath,file_url fileUrl,file_size fileSize,create_by createBy,create_time createTime,remark FROM sys_file WHERE file_id=#{id}</select>
   <select id="selectFileByHash" resultType="java.util.Map">SELECT file_id fileId,bucket,file_type fileType,file_hash fileHash,content_type contentType,storage_path storagePath,file_url fileUrl,file_size fileSize,create_by createBy,create_time createTime,remark FROM sys_file WHERE bucket=#{bucket} AND file_hash=#{hash}</select>
   <insert id="insertFile" parameterType="map" useGeneratedKeys="true" keyProperty="fileId">INSERT IGNORE INTO sys_file(bucket,file_type,file_hash,content_type,storage_path,file_url,file_size,create_by,create_time,remark) VALUES(#{bucket},#{fileType},#{fileHash},#{contentType},#{storagePath},#{fileUrl},#{fileSize},#{createBy},NOW(),#{remark})</insert>
+  <update id="updateFileStorageIfMatch" parameterType="map">
+    UPDATE sys_file
+    SET file_type=#{fileType},content_type=#{contentType},storage_path=#{storagePath},
+        file_url=#{fileUrl},file_size=#{fileSize},remark=COALESCE(#{remark},remark)
+    WHERE file_id=#{fileId} AND storage_path=#{expectedStoragePath}
+  </update>
   <delete id="deleteFiles">DELETE FROM sys_file WHERE file_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></delete>
   <select id="countFileReferences" resultType="int">SELECT COUNT(*) FROM sys_file_reference WHERE file_id IN <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach></select>
   <select id="selectFileReferenceList" resultType="java.util.Map">

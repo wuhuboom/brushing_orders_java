@@ -20,6 +20,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="accountName"    column="account_name"    />
         <result property="walletName"    column="wallet_name"    />
         <result property="walletAddress"    column="wallet_address"    />
+        <result property="attachment"    column="attachment"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
         <result property="deleted"    column="deleted"    />
@@ -38,6 +39,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select gwa.id, gwa.user_id, gwa.type, gwa.withdrawal_type_id,
                gwa.is_default, gwa.bank_name, gwa.deposit_type, gwa.branch_code, gwa.branch_name,
                gwa.bank_account, gwa.account_holder, gwa.account_name, gwa.wallet_name, gwa.wallet_address,
+               gwa.attachment,
                gwa.create_time, gwa.update_time, gwa.deleted, gwa.deleted_time,
                gwa.bank_account_enc, gwa.account_holder_enc, gwa.account_name_enc, gwa.wallet_address_enc,
                gwa.bank_account_mask, gwa.account_holder_mask, gwa.account_name_mask, gwa.wallet_address_mask,
@@ -75,6 +77,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null">account_name,</if>
             <if test="walletName != null">wallet_name,</if>
             <if test="walletAddress != null">wallet_address,</if>
+            <if test="attachment != null">attachment,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
             <if test="deleted != null">deleted,</if>
@@ -101,6 +104,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null">#{accountName},</if>
             <if test="walletName != null">#{walletName},</if>
             <if test="walletAddress != null">#{walletAddress},</if>
+            <if test="attachment != null">#{attachment},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateTime != null">#{updateTime},</if>
             <if test="deleted != null">#{deleted},</if>
@@ -131,6 +135,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountName != null">account_name = #{accountName},</if>
             <if test="walletName != null">wallet_name = #{walletName},</if>
             <if test="walletAddress != null">wallet_address = #{walletAddress},</if>
+            <if test="attachment != null">attachment = #{attachment},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
         </trim>
         where id = #{id}
@@ -212,6 +217,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             account_name = #{accountName},
             wallet_name = #{walletName},
             wallet_address = #{walletAddress},
+            attachment = #{attachment},
             bank_account_enc = #{bankAccountEncrypted},
             account_holder_enc = #{accountHolderEncrypted},
             account_name_enc = #{accountNameEncrypted},

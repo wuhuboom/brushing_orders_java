@@ -5,6 +5,7 @@ import java.util.List;
 import com.order.common.utils.StringUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -38,6 +39,7 @@ public class OrderBonusTableController extends BaseController
     /**
      * 查询彩金列表
      */
+    @PreAuthorize("@ss.hasPermi('member:bonus:list')")
     @GetMapping("/list")
     public TableDataInfo list(OrderBonusTable orderBonusTable)
     {
@@ -50,6 +52,7 @@ public class OrderBonusTableController extends BaseController
      * 导出彩金列表
      */
     @Log(title = "彩金", businessType = BusinessType.EXPORT)
+    @PreAuthorize("@ss.hasPermi('member:bonus:export')")
     @PostMapping("/export")
     public void export(HttpServletResponse response, OrderBonusTable orderBonusTable)
     {
@@ -61,6 +64,7 @@ public class OrderBonusTableController extends BaseController
     /**
      * 获取彩金详细信息
      */
+    @PreAuthorize("@ss.hasPermi('member:bonus:query')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -71,6 +75,7 @@ public class OrderBonusTableController extends BaseController
      * 新增彩金
      */
     @Log(title = "彩金", businessType = BusinessType.INSERT)
+    @PreAuthorize("@ss.hasPermi('member:bonus:add')")
     @PostMapping
     public AjaxResult add(@RequestBody OrderBonusTable orderBonusTable)
     {
@@ -80,7 +85,7 @@ public class OrderBonusTableController extends BaseController
                         orderBonusTable.getUserId(),
                         orderBonusTable.getOrderNum().intValue());
         if (StringUtils.isNotNull(orderBonusTable1)) {
-            return error("该用户该订单已存在彩金记录，不能重复添加！");
+            return error("该用户的当前单数已存在未领取彩金，不能重复添加");
         }
         return toAjax(orderBonusTableService.insertOrderBonusTable(orderBonusTable));
     }
@@ -89,16 +94,34 @@ public class OrderBonusTableController extends BaseController
      * 修改彩金
      */
     @Log(title = "彩金", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('member:bonus:edit')")
     @PutMapping
     public AjaxResult edit(@RequestBody OrderBonusTable orderBonusTable)
     {
         return toAjax(orderBonusTableService.updateOrderBonusTable(orderBonusTable));
     }
 
+    @Log(title = "彩金领取", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('member:bonus:receive')")
+    @PutMapping("/{id}/receive")
+    public AjaxResult receive(@PathVariable Long id)
+    {
+        return toAjax(orderBonusTableService.receiveBonus(id));
+    }
+
+    @Log(title = "彩金发放", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('member:bonus:give')")
+    @PutMapping("/{id}/given")
+    public AjaxResult given(@PathVariable Long id)
+    {
+        return toAjax(orderBonusTableService.distributeBonus(id));
+    }
+
     /**
      * 删除彩金
      */
     @Log(title = "彩金", businessType = BusinessType.DELETE)
+	@PreAuthorize("@ss.hasPermi('member:bonus:remove')")
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {

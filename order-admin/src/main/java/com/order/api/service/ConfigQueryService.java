@@ -19,7 +19,6 @@ import com.order.system.domain.SysNotice;
 import com.order.system.domain.SysTimeZone;
 import com.order.system.service.ISysNoticeService;
 import com.order.system.service.ISysTimeZoneService;
-import com.order.web.controller.tool.TimeRangeChecker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -30,7 +29,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -100,8 +98,27 @@ public class ConfigQueryService {
                 configField(byType.get("usage"), translations, locale, "usageDescription"));
     }
 
+    public ConfigApiDtos.WebsiteConfigResponse website() {
+        OrderConfig config = orderConfigService.selectOrderConfigByType("website");
+        Map<String, Object> values = parseMap(
+                config == null ? null : config.getContent(),
+                config == null ? null : config.getId(),
+                "website");
+        return new ConfigApiDtos.WebsiteConfigResponse(
+                textValue(firstValue(values, "name", "siteName")),
+                textValue(values.get("currencyUnit")),
+                textValue(values.get("copyright")),
+                textValue(firstValue(values, "logo", "siteLogo")),
+                nonNegativeInt(values.get("popUpLimit")),
+                textValue(firstValue(values, "popUpImage", "splashAdImage")),
+                textValue(firstValue(values, "backgroundImage", "siteBackground")),
+                textValue(values.get("h5BackgroundImage")),
+                flagValue(values.get("showLogo"), "1"),
+                hideImageFlag(values),
+                stringList(firstValue(values, "imageShowTimeRange", "imageDisplayTimeRange")));
+    }
+
     public List<ConfigApiDtos.CustomerServiceResponse> customerServices(SupportedLocale locale) {
-        assertCustomerServiceAvailable();
         GoodsCustomerService criteria = new GoodsCustomerService();
         criteria.setIsEnabled("1");
         List<GoodsCustomerService> services = customerServiceService.selectGoodsCustomerServiceList(criteria);
@@ -243,24 +260,6 @@ public class ConfigQueryService {
                 level.getProductMatchMax());
     }
 
-    private void assertCustomerServiceAvailable() {
-        SysTimeZone active = timeZoneService.getActive();
-        Optional<Object> serviceTimeRange = orderConfigService.getConfigValue("trade", "serviceTimeRange");
-        try {
-            if (active == null
-                    || !TimeRangeChecker.isCurrentTimeInRange(serviceTimeRange, active.getTzName())) {
-                throw new ConfigApiException(
-                        920, HttpStatus.SERVICE_UNAVAILABLE, "Customer service is currently unavailable");
-            }
-        } catch (ConfigApiException exception) {
-            throw exception;
-        } catch (RuntimeException exception) {
-            log.warn("event=customer_service_schedule_invalid");
-            throw new ConfigApiException(
-                    920, HttpStatus.SERVICE_UNAVAILABLE, "Customer service is currently unavailable");
-        }
-    }
-
     private String configField(
             OrderConfig config,
             Map<Long, Translations> translationsById,
@@ -354,6 +353,62 @@ public class ConfigQueryService {
 
     private Map<Long, Translations> translationsFor(Collection<Long> ids) {
         return translationsService.selectTranslationsByIds(ids);
+    }
+
+    private Object firstValue(Map<String, Object> values, String... keys) {
+        for (String key : keys) {
+            Object value = values.get(key);
+            if (value != null && TranslationResolver.hasText(String.valueOf(value))) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private String textValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
+    }
+
+    private String flagValue(Object value, String fallback) {
+        String text = textValue(value);
+        return text == null ? fallback : text;
+    }
+
+    private String hideImageFlag(Map<String, Object> values) {
+        String current = textValue(values.get("hideImage"));
+        if (current != null) {
+            return current;
+        }
+        String legacy = textValue(values.get("enableImageHide"));
+        if (legacy == null) {
+            return "0";
+        }
+        return "0".equals(legacy) ? "1" : "0";
+    }
+
+    private int nonNegativeInt(Object value) {
+        if (value instanceof Number number) {
+            return Math.max(0, number.intValue());
+        }
+        try {
+            return Math.max(0, Integer.parseInt(String.valueOf(value)));
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private List<String> stringList(Object value) {
+        if (!(value instanceof Collection<?> collection)) {
+            return List.of();
+        }
+        return collection.stream()
+                .map(this::textValue)
+                .filter(item -> item != null)
+                .toList();
     }
 
     @SuppressWarnings("unchecked")

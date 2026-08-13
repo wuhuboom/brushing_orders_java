@@ -13,10 +13,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="link"    column="link"    />
         <result property="media"    column="media"    />
         <result property="remarks"    column="remarks"    />
+        <result property="createTime" column="create_time" />
     </resultMap>
 
     <sql id="selectGoodsBannerVo">
-        select id, name, type, is_enabled, sort_order, link, media, remarks from goods_banner
+        select id, name, type, is_enabled, sort_order, link, media, remarks, create_time from goods_banner
     </sql>
 
     <select id="selectGoodsBannerList" parameterType="GoodsBanner" resultMap="GoodsBannerResult">
@@ -29,7 +30,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="link != null  and link != ''"> and link = #{link}</if>
             <if test="media != null  and media != ''"> and media = #{media}</if>
             <if test="remarks != null  and remarks != ''"> and remarks = #{remarks}</if>
+            <if test="params.beginTime != null and params.beginTime != ''"> and date(create_time) &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''"> and date(create_time) &lt;= #{params.endTime}</if>
         </where>
+        order by sort_order asc, create_time desc, id desc
     </select>
     
     <select id="selectGoodsBannerById" parameterType="Long" resultMap="GoodsBannerResult">
@@ -47,6 +51,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="link != null">link,</if>
             <if test="media != null">media,</if>
             <if test="remarks != null">remarks,</if>
+            <if test="createTime != null">create_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -56,6 +61,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="link != null">#{link},</if>
             <if test="media != null">#{media},</if>
             <if test="remarks != null">#{remarks},</if>
+            <if test="createTime != null">#{createTime},</if>
          </trim>
     </insert>
 

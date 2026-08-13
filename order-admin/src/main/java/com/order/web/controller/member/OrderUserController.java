@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.order.common.utils.StringUtils;
+import com.order.api.service.AdminMemberCredentialService;
 import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.service.IGoodsMemberLevelService;
 import com.order.member.service.ITransactionService;
@@ -58,6 +59,9 @@ public class OrderUserController extends BaseController
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private AdminMemberCredentialService adminMemberCredentialService;
 
     private static final String MEMBER_LOGIN_FAIL_PREFIX = "member_login_fail:";
     private static final String FRONT_USER_TOKEN_PREFIX = "front:user_tokens:";
@@ -183,12 +187,14 @@ public class OrderUserController extends BaseController
         return usernames;
     }
 
+    @PreAuthorize("@ss.hasAnyPermi('member:orderuser:query,member:orderuser:add,member:orderuser:edit')")
     @GetMapping("/getLevel")
     public AjaxResult getLevel(){
         List<GoodsMemberLevel> list = goodsMemberLevelService.selectGoodsMemberLevelList(null);
         return success(list);
     }
 
+    @PreAuthorize("@ss.hasAnyPermi('member:orderuser:query,member:orderuser:edit,member:bonus:add,member:bonus:edit')")
     @GetMapping("/allUser")
     public AjaxResult getAllUser(){
         List<OrderUser> list = orderUserService.selectOrderUserList(null);
@@ -349,6 +355,7 @@ public class OrderUserController extends BaseController
     }
 
     //修改密码
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PutMapping("/editPassword")
     public AjaxResult editPassword(@RequestBody OrderUser orderUser)
     {
@@ -360,16 +367,16 @@ public class OrderUserController extends BaseController
     }
 
     //修改交易密码
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PutMapping("/editTradePassword")
     public AjaxResult editTradePassword(@RequestBody OrderUser orderUser)
     {
-        OrderUser orderUser1 = orderUserService.selectOrderUserById(orderUser.getId());
-        orderUser.setVersion(orderUser1.getVersion());
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        orderUser.setTradePassword(encoder.encode(orderUser.getTradePassword()));
-        return toAjax(orderUserService.updateOrderUser(orderUser));
+        adminMemberCredentialService.resetTradePassword(
+                orderUser.getId(), orderUser.getTradePassword());
+        return success();
     }
 
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PutMapping("/editParentId")
     public AjaxResult editParentId(@RequestBody OrderUser orderUser)
     {
@@ -432,6 +439,7 @@ public class OrderUserController extends BaseController
     }
 
     @Log(title = "订单用户交易", businessType = BusinessType.OTHER)
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PostMapping("/transaction")
     public AjaxResult transaction(@RequestBody TransactionDto dto)
     {
@@ -459,6 +467,7 @@ public class OrderUserController extends BaseController
     }
 
 
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @GetMapping("/resetOrder/{id}")
     public AjaxResult resetOrder(@PathVariable("id") Long id){
         OrderUser orderUser = orderUserService.selectOrderUserById(id);
@@ -473,6 +482,7 @@ public class OrderUserController extends BaseController
         return AjaxResult.success("重置成功");
     }
 
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PostMapping("/giftAmount")
     public AjaxResult giftAmount(@RequestBody TransactionDto dto) {
         OrderUser orderUser = orderUserService.selectOrderUserById(dto.getUserId());
@@ -493,6 +503,7 @@ public class OrderUserController extends BaseController
     }
 
 
+    @PreAuthorize("@ss.hasPermi('member:orderuser:query')")
     @GetMapping("/selectChildrenById")
     public TableDataInfo selectChildrenById(OrderUser orderUser)
     {

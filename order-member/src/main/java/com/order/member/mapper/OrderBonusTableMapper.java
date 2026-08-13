@@ -75,9 +75,11 @@ public interface OrderBonusTableMapper
 
     public OrderBonusTable userHaveBonus(@Param("userId") Long userId,@Param("orderNum") Integer orderNum);
 
-    OrderBonusTable selectNextCompletionBonus(Long userId);
-
     OrderBonusTable selectOwnedBonusForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
-    int claimBonus(@Param("id") Long id, @Param("userId") Long userId);
+    OrderBonusTable selectBonusForUpdate(Long id);
+
+    int receiveBonus(Long id);
+
+    int distributeBonus(Long id);
 }

@@ -67,6 +67,15 @@ public class GoodsRechargeRecord extends BaseEntity
     /** 上级用户名（来自 order_user 的 parent） */
     private String parentUsername;
 
+    /** 钱包地址筛选条件（来自会员提现账户） */
+    private String accountAddress;
+
+    /** 是否假人（来自 order_user） */
+    private String isFake;
+
+    /** 充值账户展示值（脱敏） */
+    private String rechargeAccount;
+
     public void setId(Long id)
     {
         this.id = id;
@@ -199,6 +208,36 @@ public class GoodsRechargeRecord extends BaseEntity
         this.parentUsername = parentUsername;
     }
 
+    public String getAccountAddress()
+    {
+        return accountAddress;
+    }
+
+    public void setAccountAddress(String accountAddress)
+    {
+        this.accountAddress = accountAddress;
+    }
+
+    public String getIsFake()
+    {
+        return isFake;
+    }
+
+    public void setIsFake(String isFake)
+    {
+        this.isFake = isFake;
+    }
+
+    public String getRechargeAccount()
+    {
+        return rechargeAccount;
+    }
+
+    public void setRechargeAccount(String rechargeAccount)
+    {
+        this.rechargeAccount = rechargeAccount;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -216,6 +255,9 @@ public class GoodsRechargeRecord extends BaseEntity
             .append("username", getUsername())
             .append("phoneNumber", getPhoneNumber())
             .append("parentUsername", getParentUsername())
+            .append("accountAddress", getAccountAddress())
+            .append("isFake", getIsFake())
+            .append("rechargeAccount", getRechargeAccount())
             .toString();
     }
 }

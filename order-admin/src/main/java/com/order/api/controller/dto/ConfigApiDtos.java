@@ -26,6 +26,20 @@ public final class ConfigApiDtos {
             String usageDescription) {
     }
 
+    public record WebsiteConfigResponse(
+            String name,
+            String currencyUnit,
+            String copyright,
+            String logo,
+            int popUpLimit,
+            String popUpImage,
+            String backgroundImage,
+            String h5BackgroundImage,
+            String showLogo,
+            String hideImage,
+            List<String> imageShowTimeRange) {
+    }
+
     public record CustomerServiceResponse(
             String id,
             String name,

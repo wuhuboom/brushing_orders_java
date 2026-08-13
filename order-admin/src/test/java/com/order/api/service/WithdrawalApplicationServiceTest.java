@@ -1,7 +1,9 @@
 package com.order.api.service;
 
 import com.github.pagehelper.PageHelper;
+import com.order.api.controller.dto.AccountApiDtos.SensitiveWithdrawalAccountUpdateRequest;
 import com.order.api.controller.dto.AccountApiDtos.WithdrawalRequest;
+import com.order.member.domain.GoodsWithdrawalAccount;
 import com.order.member.domain.OrderUser;
 import com.order.member.domain.OrderWithdrawal;
 import com.order.member.mapper.GoodsRechargeRecordMapper;
@@ -11,6 +13,7 @@ import com.order.member.mapper.OrderUserMapper;
 import com.order.member.mapper.OrderWithdrawalMapper;
 import com.order.member.service.IOrderSequenceManagerService;
 import com.order.member.service.ITransactionService;
+import com.order.member.service.SiteMessageNotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -41,6 +44,7 @@ class WithdrawalApplicationServiceTest {
     @Mock TradePasswordVerificationService passwordService;
     @Mock IOrderSequenceManagerService sequenceService;
     @Mock ITransactionService transactionService;
+    @Mock SiteMessageNotificationService siteMessageNotificationService;
     @Mock TradeConfigSnapshotService snapshotService;
     @Mock AccountDataCipher cipher;
 
@@ -132,10 +136,10 @@ class WithdrawalApplicationServiceTest {
 
     @Test
     void terminalWithdrawalCannotBeRefundedAgain() {
-        OrderWithdrawal existing = withdrawal(8L, "2");
+        OrderWithdrawal existing = withdrawal(8L, "3");
         when(withdrawalMapper.selectForUpdate(8L)).thenReturn(existing);
 
-        assertThrows(AccountApiException.class, () -> service().review(8L, "2", "again"));
+        assertThrows(AccountApiException.class, () -> service().review(8L, "3", "again"));
         verify(userMapper, never()).creditBalance(existing.getUserId(), existing.getAmount());
     }
 
@@ -151,15 +155,102 @@ class WithdrawalApplicationServiceTest {
         when(snapshotService.snapshot()).thenReturn(new TradeConfigSnapshotService.TradeConfigSnapshot(
                 Map.of(), "UTC"));
         when(userMapper.creditBalance(7L, new BigDecimal("10.00"))).thenReturn(1);
-        when(withdrawalMapper.transitionStatus(8L, "1", "2", "rejected")).thenReturn(1);
+        when(withdrawalMapper.transitionStatus(8L, "1", "3", "rejected", "system")).thenReturn(1);
 
-        service().review(8L, "2", "rejected");
+        service().review(8L, "3", "rejected");
 
         verify(userMapper).creditBalance(7L, new BigDecimal("10.00"));
-        verify(transactionService).recordFlow(7L, "txbh", new BigDecimal("10.00"),
-                new BigDecimal("90.00"), "withdrawal-refund:W-1");
+        verify(transactionService).recordFlowWithTransactionCode(
+                7L, "txjd", new BigDecimal("10.00"), new BigDecimal("90.00"),
+                "W-1", "withdrawal-unfreeze:W-1");
         verify(withdrawalMapper).releaseDailyQuota(LocalDate.of(2026, 7, 17),
                 new BigDecimal("10.00"));
+    }
+
+    @Test
+    void approvalCreatesWithdrawalNotification() {
+        OrderWithdrawal existing = withdrawal(8L, "1");
+        OrderUser user = new OrderUser();
+        user.setId(7L);
+        user.setBalance(new BigDecimal("90.00"));
+        when(withdrawalMapper.selectForUpdate(8L)).thenReturn(existing);
+        when(userMapper.selectWithdrawalUserByIdForUpdate(7L)).thenReturn(user);
+        when(userMapper.creditBalance(7L, new BigDecimal("10.00"))).thenReturn(1);
+        when(userMapper.debitBalance(7L, new BigDecimal("10.00"))).thenReturn(1);
+        when(withdrawalMapper.transitionStatus(8L, "1", "2", null, "system")).thenReturn(1);
+
+        service().review(8L, "2", null);
+
+        verify(transactionService).recordFlowWithTransactionCode(
+                7L, "txjd", new BigDecimal("10.00"), new BigDecimal("90.00"),
+                "W-1", "withdrawal-unfreeze:W-1");
+        verify(transactionService).recordFlowWithTransactionCode(
+                7L, "tx", new BigDecimal("-10.00"), new BigDecimal("100.00"),
+                "W-1", "withdrawal:W-1");
+        verify(siteMessageNotificationService).createForTransaction(
+                7L,
+                "txwc",
+                new BigDecimal("10.00"),
+                new BigDecimal("90.00"),
+                new BigDecimal("90.00"));
+    }
+
+    @Test
+    void sensitiveAccountLoadsTheOwnedAccountForLegacyWithdrawals() {
+        OrderWithdrawal existing = withdrawal(8L, "2");
+        existing.setWithdrawalAccountId(3L);
+        GoodsWithdrawalAccount account = new GoodsWithdrawalAccount();
+        account.setId(3L);
+        account.setUserId(7L);
+        account.setType("1");
+        account.setWalletName("PayPal");
+        account.setWalletAddress("full-wallet-address");
+
+        when(withdrawalMapper.selectOrderWithdrawalById(8L)).thenReturn(existing);
+        when(accountMapper.selectActiveByIdAndUserId(3L, 7L)).thenReturn(account);
+        when(cipher.reveal(account)).thenReturn(account);
+
+        var response = service().sensitiveAccount(8L);
+
+        assertEquals("PayPal", response.walletName());
+        assertEquals("full-wallet-address", response.walletAddress());
+        verify(accountMapper).selectActiveByIdAndUserId(3L, 7L);
+    }
+
+    @Test
+    void adminCanUpdateTheWithdrawalAddressAndEncryptedSnapshot() {
+        OrderWithdrawal existing = withdrawal(8L, "1");
+        existing.setWithdrawalAccountId(3L);
+        GoodsWithdrawalAccount account = new GoodsWithdrawalAccount();
+        account.setId(3L);
+        account.setUserId(7L);
+        account.setType("1");
+        account.setWalletName("Old wallet");
+        account.setWalletAddress("old-address");
+
+        when(withdrawalMapper.selectForUpdate(8L)).thenReturn(existing);
+        when(accountMapper.selectActiveByIdAndUserId(3L, 7L)).thenReturn(account);
+        when(cipher.reveal(account)).thenReturn(account);
+        when(cipher.encryptSnapshot(account)).thenReturn("encrypted-snapshot");
+        when(cipher.displayMask(account)).thenReturn("Wallet ****5678");
+        when(accountMapper.updateOwnedAccount(account)).thenReturn(1);
+        when(withdrawalMapper.updateAccountSnapshot(
+                8L, "encrypted-snapshot", "Wallet ****5678", "admin")).thenReturn(1);
+
+        service().updateSensitiveAccount(
+                8L,
+                new SensitiveWithdrawalAccountUpdateRequest(
+                        null, null, null, null, null, null,
+                        "Primary", "PayPal", "0x12345678", null),
+                "admin");
+
+        assertEquals("Primary", account.getAccountName());
+        assertEquals("PayPal", account.getWalletName());
+        assertEquals("0x12345678", account.getWalletAddress());
+        verify(cipher).protect(account);
+        verify(accountMapper).updateOwnedAccount(account);
+        verify(withdrawalMapper).updateAccountSnapshot(
+                8L, "encrypted-snapshot", "Wallet ****5678", "admin");
     }
 
     private OrderWithdrawal withdrawal(Long id, String status) {
@@ -178,6 +269,7 @@ class WithdrawalApplicationServiceTest {
     private WithdrawalApplicationService service() {
         return new WithdrawalApplicationService(
                 userMapper, withdrawalMapper, accountMapper, rechargeMapper, flowMapper,
-                passwordService, sequenceService, transactionService, snapshotService, cipher);
+                passwordService, sequenceService, transactionService,
+                siteMessageNotificationService, snapshotService, cipher);
     }
 }

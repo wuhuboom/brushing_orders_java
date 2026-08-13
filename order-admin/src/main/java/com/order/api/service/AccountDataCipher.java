@@ -135,6 +135,7 @@ public class AccountDataCipher {
         snapshot.put("accountName", revealed.getAccountName());
         snapshot.put("walletName", revealed.getWalletName());
         snapshot.put("walletAddress", revealed.getWalletAddress());
+        snapshot.put("attachment", revealed.getAttachment());
         try {
             return encrypt(objectMapper.writeValueAsString(snapshot), aad(account.getUserId(), "withdrawalSnapshot"));
         } catch (JsonProcessingException ex) {

@@ -31,7 +31,10 @@ public abstract class RepeatSubmitInterceptor implements HandlerInterceptor
             {
                 if (this.isRepeatSubmit(request, annotation))
                 {
-                    AjaxResult ajaxResult = AjaxResult.error(annotation.message());
+                    String message = request.getRequestURI().startsWith("/api/")
+                            ? "Request was already submitted"
+                            : annotation.message();
+                    AjaxResult ajaxResult = AjaxResult.error(message);
                     ServletUtils.renderString(response, JSON.toJSONString(ajaxResult));
                     return false;
                 }

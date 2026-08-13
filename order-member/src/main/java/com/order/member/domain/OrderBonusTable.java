@@ -33,6 +33,12 @@ public class OrderBonusTable extends BaseEntity
     @Excel(name = "金额")
     private BigDecimal amount;
 
+    /** 查询金额下限 */
+    private BigDecimal minAmount;
+
+    /** 查询金额上限 */
+    private BigDecimal maxAmount;
+
     /** 动画时长 */
     @Excel(name = "动画时长")
     private Long animationDuration;
@@ -114,6 +120,26 @@ public class OrderBonusTable extends BaseEntity
     public BigDecimal getAmount()
     {
         return amount;
+    }
+
+    public BigDecimal getMinAmount()
+    {
+        return minAmount;
+    }
+
+    public void setMinAmount(BigDecimal minAmount)
+    {
+        this.minAmount = minAmount;
+    }
+
+    public BigDecimal getMaxAmount()
+    {
+        return maxAmount;
+    }
+
+    public void setMaxAmount(BigDecimal maxAmount)
+    {
+        this.maxAmount = maxAmount;
     }
 
     public void setAnimationDuration(Long animationDuration)
@@ -223,6 +249,8 @@ public class OrderBonusTable extends BaseEntity
                 .append("orderNum", getOrderNum())
                 .append("userId", getUserId())
                 .append("amount", getAmount())
+                .append("minAmount", getMinAmount())
+                .append("maxAmount", getMaxAmount())
                 .append("animationDuration", getAnimationDuration())
                 .append("displayDuration", getDisplayDuration())
                 .append("distributionType", getDistributionType())

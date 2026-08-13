@@ -62,6 +62,9 @@ public class OrderLink extends BaseEntity
     @Excel(name = "状态")
     private String status;
 
+    /** 展示状态：3 表示已发起订单、待用户提交（查询用，不入库） */
+    private String displayStatus;
+
 
 
     private List<GoodsDetails>  details;
@@ -175,6 +178,16 @@ public class OrderLink extends BaseEntity
         return status;
     }
 
+    public String getDisplayStatus()
+    {
+        return displayStatus;
+    }
+
+    public void setDisplayStatus(String displayStatus)
+    {
+        this.displayStatus = displayStatus;
+    }
+
 
 
     @Override
@@ -191,6 +204,7 @@ public class OrderLink extends BaseEntity
             .append("priceType", getPriceType())
             .append("price", getPrice())
             .append("status", getStatus())
+            .append("displayStatus", getDisplayStatus())
             .toString();
     }
 }

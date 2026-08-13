@@ -2,6 +2,7 @@ package com.order.member.mapper;
 
 import java.util.List;
 import com.order.member.domain.OrderSiteMessage;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 站内信Mapper接口
@@ -26,6 +27,12 @@ public interface OrderSiteMessageMapper
      * @return 站内信集合
      */
     public List<OrderSiteMessage> selectOrderSiteMessageList(OrderSiteMessage orderSiteMessage);
+
+    public List<OrderSiteMessage> selectEnabledByMemberId(@Param("memberId") Long memberId);
+
+    public OrderSiteMessage selectEnabledByIdAndMemberId(
+            @Param("id") Long id,
+            @Param("memberId") Long memberId);
 
     /**
      * 新增站内信

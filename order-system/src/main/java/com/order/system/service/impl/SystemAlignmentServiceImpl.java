@@ -299,14 +299,18 @@ public class SystemAlignmentServiceImpl implements ISystemAlignmentService
             int inserted = mapper.insertFile(data);
             file = inserted > 0 ? mapper.selectFileById(longValue(data.get("fileId")))
                     : mapper.selectFileByHash(String.valueOf(data.get("bucket")), String.valueOf(data.get("fileHash")));
-            if (inserted == 0 && file != null && !storagePath.equals(String.valueOf(file.get("storagePath"))))
+            if (inserted == 0 && file != null)
             {
-                FileUtils.deleteFile(storagePath);
+                file = reconcileFileStorage(data, file, storagePath);
             }
         }
-        else if (!storagePath.equals(String.valueOf(file.get("storagePath"))))
+        else
         {
-            FileUtils.deleteFile(storagePath);
+            file = reconcileFileStorage(data, file, storagePath);
+        }
+        if (file == null)
+        {
+            throw new ServiceException("文件索引创建失败");
         }
         Map<String, Object> reference = new HashMap<>();
         reference.put("fileId", file.get("fileId"));
@@ -319,6 +323,68 @@ public class SystemAlignmentServiceImpl implements ISystemAlignmentService
         Map<String, Object> result = new HashMap<>(file);
         result.put("referenceId", reference.get("referenceId"));
         return result;
+    }
+
+    /**
+     * Reuses a healthy duplicate, but repairs a stale index whose physical file
+     * no longer exists. The conditional update prevents concurrent uploads from
+     * replacing each other and preserves the original file id and references.
+     */
+    private Map<String, Object> reconcileFileStorage(Map<String, Object> data,
+            Map<String, Object> indexedFile, String uploadedStoragePath)
+    {
+        Map<String, Object> current = indexedFile;
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            String indexedStoragePath = textValue(current.get("storagePath"));
+            if (uploadedStoragePath.equals(indexedStoragePath))
+            {
+                return current;
+            }
+            if (isRegularFile(indexedStoragePath))
+            {
+                FileUtils.deleteFile(uploadedStoragePath);
+                return current;
+            }
+
+            Map<String, Object> replacement = new HashMap<>(data);
+            replacement.put("fileId", current.get("fileId"));
+            replacement.put("expectedStoragePath", indexedStoragePath);
+            if (mapper.updateFileStorageIfMatch(replacement) > 0)
+            {
+                Map<String, Object> repaired = mapper.selectFileById(longValue(current.get("fileId")));
+                return repaired == null ? replacement : repaired;
+            }
+
+            current = mapper.selectFileByHash(String.valueOf(data.get("bucket")),
+                    String.valueOf(data.get("fileHash")));
+            if (current == null)
+            {
+                throw new ServiceException("文件索引不存在，无法完成上传");
+            }
+        }
+        throw new ServiceException("文件索引正在更新，请重新上传");
+    }
+
+    private boolean isRegularFile(String storagePath)
+    {
+        if (StringUtils.isEmpty(storagePath))
+        {
+            return false;
+        }
+        try
+        {
+            return Files.isRegularFile(Path.of(storagePath));
+        }
+        catch (RuntimeException ex)
+        {
+            return false;
+        }
+    }
+
+    private String textValue(Object value)
+    {
+        return value == null ? null : String.valueOf(value);
     }
 
     @Override

@@ -4,6 +4,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.order.common.annotation.Excel;
 import com.order.common.core.domain.BaseEntity;
+import com.order.common.i18n.Translations;
 
 /**
  * 站内信对象 order_site_message
@@ -26,6 +27,9 @@ public class OrderSiteMessage extends BaseEntity
     @Excel(name = "会员列表")
     private String memberList;
 
+    /** 会员用户名列表 */
+    private String memberNames;
+
     /** 是否启用 */
     @Excel(name = "是否启用")
     private Integer isEnabled;
@@ -33,6 +37,12 @@ public class OrderSiteMessage extends BaseEntity
     /** 内容 */
     @Excel(name = "内容")
     private String content;
+
+    /** 多语言翻译ID */
+    private Long translationsId;
+
+    /** 多语言翻译 */
+    private Translations translations;
 
     public void setId(Long id) 
     {
@@ -64,6 +74,16 @@ public class OrderSiteMessage extends BaseEntity
         return memberList;
     }
 
+    public String getMemberNames()
+    {
+        return memberNames;
+    }
+
+    public void setMemberNames(String memberNames)
+    {
+        this.memberNames = memberNames;
+    }
+
     public void setIsEnabled(Integer isEnabled) 
     {
         this.isEnabled = isEnabled;
@@ -84,15 +104,37 @@ public class OrderSiteMessage extends BaseEntity
         return content;
     }
 
+    public Long getTranslationsId()
+    {
+        return translationsId;
+    }
+
+    public void setTranslationsId(Long translationsId)
+    {
+        this.translationsId = translationsId;
+    }
+
+    public Translations getTranslations()
+    {
+        return translations;
+    }
+
+    public void setTranslations(Translations translations)
+    {
+        this.translations = translations;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("id", getId())
             .append("title", getTitle())
             .append("memberList", getMemberList())
+            .append("memberNames", getMemberNames())
             .append("isEnabled", getIsEnabled())
             .append("createTime", getCreateTime())
             .append("content", getContent())
+            .append("translationsId", getTranslationsId())
             .toString();
     }
 }

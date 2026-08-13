@@ -1,12 +1,14 @@
 package com.order.api.service;
 
 import com.order.member.domain.Goods;
+import com.order.member.domain.GoodsExtraCommissionSetting;
 import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderBonusTable;
 import com.order.member.domain.OrderInfo;
 import com.order.member.domain.OrderLink;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.GoodsMapper;
+import com.order.member.mapper.GoodsExtraCommissionSettingMapper;
 import com.order.member.mapper.OrderApiRequestMapper;
 import com.order.member.mapper.OrderBonusTableMapper;
 import com.order.member.mapper.OrderInfoMapper;
@@ -80,6 +82,7 @@ class OrderConcurrencyMySqlTest {
             statement.execute("DROP TABLE IF EXISTS goods_transaction_flow");
             statement.execute("DROP TABLE IF EXISTS order_user");
             statement.execute("DROP TABLE IF EXISTS goods");
+            statement.execute("DROP TABLE IF EXISTS goods_extra_commission_setting");
             statement.execute("""
                     CREATE TABLE order_user (
                         id BIGINT PRIMARY KEY,
@@ -101,14 +104,30 @@ class OrderConcurrencyMySqlTest {
                     ) ENGINE=InnoDB
                     """);
             statement.execute("""
+                    CREATE TABLE goods_extra_commission_setting (
+                        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                        user_id BIGINT NOT NULL,
+                        order_count INT NOT NULL,
+                        product_price DECIMAL(20,2) NOT NULL,
+                        amount DECIMAL(20,2) NOT NULL,
+                        is_locked CHAR(1) NOT NULL DEFAULT '1',
+                        status CHAR(1) NOT NULL DEFAULT '1',
+                        create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+                    ) ENGINE=InnoDB
+                    """);
+            statement.execute("""
                     CREATE TABLE order_info (
                         id BIGINT AUTO_INCREMENT PRIMARY KEY,
                         order_number VARCHAR(64),
                         user_id BIGINT NOT NULL,
+                        type CHAR(1),
+                        order_count INT,
                         status CHAR(1) NOT NULL,
+                        expiry_time DATETIME(3),
                         amount DECIMAL(20,2) NOT NULL,
                         rebate DECIMAL(20,2) NOT NULL DEFAULT 0,
                         product_id BIGINT,
+                        extra_commission_id BIGINT,
                         link_id BIGINT,
                         remarks VARCHAR(500),
                         comment_id BIGINT,
@@ -126,7 +145,10 @@ class OrderConcurrencyMySqlTest {
                         price_type CHAR(1),
                         price DECIMAL(20,2),
                         status CHAR(1) NOT NULL,
-                        create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+                        create_by VARCHAR(64),
+                        create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+                        update_by VARCHAR(64),
+                        update_time DATETIME(3)
                     ) ENGINE=InnoDB
                     """);
             statement.execute("""
@@ -370,6 +392,111 @@ class OrderConcurrencyMySqlTest {
     }
 
     @Test
+    void failedFundsReservationRollsBackExtraCommissionBindingAndOrderInsert()
+            throws Exception {
+        execute("""
+                INSERT INTO order_user(id, balance, frozen_balance, task_progress)
+                VALUES (7, 20, 0, 0)
+                """);
+        execute("INSERT INTO goods VALUES (31, 'Product', '/product.jpg', '0', 30)");
+        execute("""
+                INSERT INTO goods_extra_commission_setting(
+                    id, user_id, order_count, product_price, amount, is_locked, status
+                ) VALUES (77, 7, 1, 30, 0.50, '1', '1')
+                """);
+
+        try (RollbackHarness harness = rollbackHarness()) {
+            when(harness.userMapper.lockUserById(7L)).thenAnswer(invocation ->
+                    harness.jdbc.queryForObject(
+                            "SELECT id FROM order_user WHERE id = 7 FOR UPDATE",
+                            Long.class));
+            when(harness.userMapper.selectOrderTaskUserById(7L))
+                    .thenReturn(taskUser(new BigDecimal("20.00"), BigDecimal.ZERO, 0L));
+            when(harness.orderMapper.hasOpenOrders(7L)).thenReturn(null);
+            when(harness.policyService.activePolicy()).thenReturn(activePolicy());
+            when(harness.goodsMapper.selectNearestPriceGoods(any(BigDecimal.class)))
+                    .thenReturn(goods(31L, new BigDecimal("30.00")));
+            when(harness.sequenceService.generateCode("TRADE_NO"))
+                    .thenReturn("O-EXTRA-ROLLBACK");
+            when(harness.extraCommissionMapper.selectAvailableForUpdate(
+                    7L, 1L, new BigDecimal("30.00"))).thenAnswer(invocation ->
+                    harness.jdbc.queryForObject("""
+                            SELECT id, user_id, order_count, product_price,
+                                   amount, is_locked, status
+                            FROM goods_extra_commission_setting
+                            WHERE id = 77 FOR UPDATE
+                            """, (result, row) -> {
+                                GoodsExtraCommissionSetting setting =
+                                        new GoodsExtraCommissionSetting();
+                                setting.setId(result.getLong("id"));
+                                setting.setUserId(result.getLong("user_id"));
+                                setting.setOrderCount(result.getInt("order_count"));
+                                setting.setProductPrice(result.getBigDecimal("product_price"));
+                                setting.setAmount(result.getBigDecimal("amount"));
+                                setting.setIsLocked(result.getString("is_locked"));
+                                setting.setStatus(result.getString("status"));
+                                return setting;
+                            }));
+            when(harness.extraCommissionMapper.reserveForOrder(
+                    77L, 7L, 1L, new BigDecimal("30.00"))).thenAnswer(invocation ->
+                    harness.jdbc.update("""
+                            UPDATE goods_extra_commission_setting
+                            SET is_locked = '0'
+                            WHERE id = 77 AND status = '1' AND is_locked = '1'
+                            """));
+            when(harness.orderMapper.insertOrderInfo(any(OrderInfo.class)))
+                    .thenAnswer(invocation -> {
+                        OrderInfo order = invocation.getArgument(0);
+                        return harness.jdbc.update("""
+                                INSERT INTO order_info(
+                                    order_number, user_id, type, order_count, status,
+                                    amount, rebate, product_id, extra_commission_id,
+                                    product_title, product_image
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """,
+                                order.getOrderNumber(),
+                                order.getUserId(),
+                                order.getType(),
+                                order.getOrderCount(),
+                                order.getStatus(),
+                                order.getAmount(),
+                                order.getRebate(),
+                                order.getProductId(),
+                                order.getExtraCommissionId(),
+                                order.getProductTitle(),
+                                order.getProductImage());
+                    });
+            when(harness.userMapper.reserveOrderFunds(
+                    7L, new BigDecimal("30.00"), 1L, false)).thenAnswer(invocation ->
+                    harness.jdbc.update("""
+                            UPDATE order_user
+                            SET balance = balance - 30,
+                                frozen_balance = frozen_balance + 30,
+                                task_progress = task_progress + 1
+                            WHERE id = 7 AND balance >= 30
+                            """));
+
+            assertTrue(AopUtils.isAopProxy(harness.service));
+            assertThrows(OrderApiException.class, () -> harness.service.create(7L));
+        }
+
+        assertEquals("1", queryString("""
+                SELECT is_locked FROM goods_extra_commission_setting WHERE id = 77
+                """));
+        assertEquals("1", queryString("""
+                SELECT status FROM goods_extra_commission_setting WHERE id = 77
+                """));
+        assertEquals(0L, queryLong("""
+                SELECT COUNT(*) FROM order_info WHERE order_number = 'O-EXTRA-ROLLBACK'
+                """));
+        assertEquals(new BigDecimal("20.00"),
+                queryDecimal("SELECT balance FROM order_user WHERE id = 7"));
+        assertEquals(new BigDecimal("0.00"),
+                queryDecimal("SELECT frozen_balance FROM order_user WHERE id = 7"));
+        assertEquals(0L, queryLong("SELECT task_progress FROM order_user WHERE id = 7"));
+    }
+
+    @Test
     void submitRollsBackStatusSettlementAndFlowWhenFlowPersistenceFails()
             throws Exception {
         execute("""
@@ -429,68 +556,6 @@ class OrderConcurrencyMySqlTest {
                 queryDecimal("SELECT balance FROM order_user WHERE id = 7"));
         assertEquals(new BigDecimal("30.00"),
                 queryDecimal("SELECT frozen_balance FROM order_user WHERE id = 7"));
-        assertEquals(0L, queryLong("SELECT COUNT(*) FROM goods_transaction_flow"));
-    }
-
-    @Test
-    void bonusClaimRollsBackClaimBalanceAndFlowWhenFlowPersistenceFails()
-            throws Exception {
-        execute("INSERT INTO order_user(id, balance, frozen_balance) VALUES (7, 100, 0)");
-        execute("""
-                INSERT INTO order_bonus_table(
-                    id, user_id, amount, is_received, is_distributed, distribution_type
-                ) VALUES (88, 7, 28.88, '1', '1', '0')
-                """);
-
-        try (RollbackHarness harness = rollbackHarness()) {
-            when(harness.bonusMapper.selectOwnedBonusForUpdate(88L, 7L))
-                    .thenAnswer(invocation -> {
-                        harness.jdbc.queryForObject("""
-                                SELECT id FROM order_bonus_table
-                                WHERE id = 88 AND user_id = 7 FOR UPDATE
-                                """, Long.class);
-                        OrderBonusTable bonus = new OrderBonusTable();
-                        bonus.setId(88L);
-                        bonus.setUserId(7L);
-                        bonus.setAmount(new BigDecimal("28.88"));
-                        bonus.setIsReceived("1");
-                        bonus.setIsDistributed("1");
-                        return bonus;
-                    });
-            when(harness.userMapper.lockUserById(7L)).thenAnswer(invocation ->
-                    harness.jdbc.queryForObject(
-                            "SELECT id FROM order_user WHERE id = 7 FOR UPDATE",
-                            Long.class));
-            when(harness.userMapper.selectOrderBalanceById(7L))
-                    .thenReturn(balanceUser(new BigDecimal("100.00"), BigDecimal.ZERO));
-            when(harness.bonusMapper.claimBonus(88L, 7L))
-                    .thenAnswer(invocation -> harness.jdbc.update("""
-                            UPDATE order_bonus_table
-                            SET is_received = '0', received_time = NOW(3)
-                            WHERE id = 88 AND user_id = 7
-                              AND is_received = '1' AND is_distributed = '1'
-                            """));
-            when(harness.userMapper.creditBalance(7L, new BigDecimal("28.88")))
-                    .thenAnswer(invocation -> {
-                        Long userId = invocation.getArgument(0);
-                        BigDecimal amount = invocation.getArgument(1);
-                        return harness.jdbc.update("""
-                                UPDATE order_user SET balance = balance + ?
-                                WHERE id = ?
-                                """, amount, userId);
-                    });
-            failFlowAfterInsert(harness);
-
-            assertTrue(AopUtils.isAopProxy(harness.service));
-            assertThrows(
-                    IllegalStateException.class,
-                    () -> harness.service.claimBonus(7L, 88L));
-        }
-
-        assertEquals("1", queryString(
-                "SELECT is_received FROM order_bonus_table WHERE id = 88"));
-        assertEquals(new BigDecimal("100.00"),
-                queryDecimal("SELECT balance FROM order_user WHERE id = 7"));
         assertEquals(0L, queryLong("SELECT COUNT(*) FROM goods_transaction_flow"));
     }
 
@@ -604,26 +669,56 @@ class OrderConcurrencyMySqlTest {
     }
 
     @Test
-    void concurrentBonusClaimCreditsOnlyOnce() throws Exception {
-        execute("INSERT INTO order_user(id, balance, frozen_balance) VALUES (7, 100, 0)");
+    void linkedOrderListDistinguishesPendingSubmissionFromUnstarted() throws Exception {
+        execute("INSERT INTO goods VALUES (31, 'Pending', '/pending.jpg', '0', 30)");
+        execute("INSERT INTO goods VALUES (32, 'Unstarted', '/unstarted.jpg', '0', 40)");
         execute("""
-                INSERT INTO order_bonus_table(
-                    id, user_id, amount, is_received, is_distributed, distribution_type
-                ) VALUES (88, 7, 28.88, '1', '1', '0')
+                INSERT INTO order_link(
+                    id, link_order_id, user_id, order_count, commission_multiple,
+                    product_id, price_type, price, status
+                ) VALUES
+                    (9, 1, 7, 1, 2, 31, '0', 30, '1'),
+                    (10, 1, 7, 1, 2, 32, '0', 40, '1')
+                """);
+        execute("""
+                INSERT INTO order_info(
+                    id, order_number, user_id, status, amount, rebate, product_id, link_id
+                ) VALUES (20, 'O-PENDING', 7, '1', 30, 0.30, 31, 9)
                 """);
 
-        List<Boolean> results = concurrently(
-                () -> claimBonus(88L), () -> claimBonus(88L));
+        try (SqlSession session = mapperSessionFactory().openSession()) {
+            OrderLinkMapper mapper = session.getMapper(OrderLinkMapper.class);
+            OrderLink allCriteria = new OrderLink();
+            allCriteria.setUserId(7L);
+            List<OrderLink> links = mapper.selectOrderLinkList(allCriteria);
 
-        assertEquals(1, results.stream().filter(Boolean::booleanValue).count());
-        assertEquals("0", queryString(
-                "SELECT is_received FROM order_bonus_table WHERE id = 88"));
-        assertEquals(new BigDecimal("128.88"), queryDecimal(
-                "SELECT balance FROM order_user WHERE id = 7"));
-        assertEquals(1L, queryLong("""
-                SELECT COUNT(*) FROM goods_transaction_flow
-                WHERE user_id = 7 AND transaction_type = 'bonus'
-                """));
+            OrderLink pending = links.stream()
+                    .filter(item -> item.getId().equals(9L))
+                    .findFirst()
+                    .orElseThrow();
+            OrderLink unstarted = links.stream()
+                    .filter(item -> item.getId().equals(10L))
+                    .findFirst()
+                    .orElseThrow();
+            assertEquals("1", pending.getStatus());
+            assertEquals("3", pending.getDisplayStatus());
+            assertEquals("1", unstarted.getStatus());
+            assertEquals("1", unstarted.getDisplayStatus());
+
+            OrderLink pendingCriteria = new OrderLink();
+            pendingCriteria.setUserId(7L);
+            pendingCriteria.setStatus("3");
+            List<OrderLink> pendingOnly = mapper.selectOrderLinkList(pendingCriteria);
+            assertEquals(1, pendingOnly.size());
+            assertEquals(9L, pendingOnly.get(0).getId());
+
+            OrderLink unstartedCriteria = new OrderLink();
+            unstartedCriteria.setUserId(7L);
+            unstartedCriteria.setStatus("1");
+            List<OrderLink> unstartedOnly = mapper.selectOrderLinkList(unstartedCriteria);
+            assertEquals(1, unstartedOnly.size());
+            assertEquals(10L, unstartedOnly.get(0).getId());
+        }
     }
 
     @Test
@@ -819,58 +914,6 @@ class OrderConcurrencyMySqlTest {
         }
     }
 
-    private boolean claimBonus(long bonusId) throws Exception {
-        try (Connection connection = connection()) {
-            connection.setAutoCommit(false);
-            try {
-                BigDecimal amount;
-                String received;
-                try (PreparedStatement lockBonus = connection.prepareStatement("""
-                        SELECT amount, is_received
-                        FROM order_bonus_table
-                        WHERE id = ? AND user_id = 7
-                        FOR UPDATE
-                        """)) {
-                    lockBonus.setLong(1, bonusId);
-                    try (ResultSet result = lockBonus.executeQuery()) {
-                        result.next();
-                        amount = result.getBigDecimal("amount");
-                        received = result.getString("is_received");
-                    }
-                }
-                if (!"1".equals(received)) {
-                    connection.commit();
-                    return false;
-                }
-                lockUser(connection);
-                try (PreparedStatement claim = connection.prepareStatement("""
-                        UPDATE order_bonus_table
-                        SET is_received = '0', received_time = NOW(3)
-                        WHERE id = ? AND user_id = 7
-                          AND is_received = '1' AND is_distributed = '1'
-                          AND (expiry_time IS NULL OR expiry_time > NOW())
-                        """)) {
-                    claim.setLong(1, bonusId);
-                    if (claim.executeUpdate() != 1) {
-                        connection.rollback();
-                        return false;
-                    }
-                }
-                try (PreparedStatement credit = connection.prepareStatement(
-                        "UPDATE order_user SET balance = balance + ? WHERE id = 7")) {
-                    credit.setBigDecimal(1, amount);
-                    credit.executeUpdate();
-                }
-                insertFlow(connection, "bonus", amount);
-                connection.commit();
-                return true;
-            } catch (Exception exception) {
-                connection.rollback();
-                throw exception;
-            }
-        }
-    }
-
     private void lockUser(Connection connection) throws Exception {
         try (PreparedStatement lock = connection.prepareStatement(
                 "SELECT id FROM order_user WHERE id = 7 FOR UPDATE")) {
@@ -995,6 +1038,8 @@ class OrderConcurrencyMySqlTest {
         OrderLinkMapper linkMapper = mock(OrderLinkMapper.class);
         OrderBonusTableMapper bonusMapper = mock(OrderBonusTableMapper.class);
         GoodsMapper goodsMapper = mock(GoodsMapper.class);
+        GoodsExtraCommissionSettingMapper extraCommissionMapper =
+                mock(GoodsExtraCommissionSettingMapper.class);
         OrderTradePolicyService policyService = mock(OrderTradePolicyService.class);
         IOrderSequenceManagerService sequenceService =
                 mock(IOrderSequenceManagerService.class);
@@ -1013,6 +1058,7 @@ class OrderConcurrencyMySqlTest {
                         linkMapper,
                         bonusMapper,
                         goodsMapper,
+                        extraCommissionMapper,
                         policyService,
                         sequenceService,
                         transactionService));
@@ -1027,6 +1073,7 @@ class OrderConcurrencyMySqlTest {
                 linkMapper,
                 bonusMapper,
                 goodsMapper,
+                extraCommissionMapper,
                 policyService,
                 sequenceService,
                 transactionService,
@@ -1132,6 +1179,7 @@ class OrderConcurrencyMySqlTest {
         private final OrderLinkMapper linkMapper;
         private final OrderBonusTableMapper bonusMapper;
         private final GoodsMapper goodsMapper;
+        private final GoodsExtraCommissionSettingMapper extraCommissionMapper;
         private final OrderTradePolicyService policyService;
         private final IOrderSequenceManagerService sequenceService;
         private final ITransactionService transactionService;
@@ -1146,6 +1194,7 @@ class OrderConcurrencyMySqlTest {
                 OrderLinkMapper linkMapper,
                 OrderBonusTableMapper bonusMapper,
                 GoodsMapper goodsMapper,
+                GoodsExtraCommissionSettingMapper extraCommissionMapper,
                 OrderTradePolicyService policyService,
                 IOrderSequenceManagerService sequenceService,
                 ITransactionService transactionService,
@@ -1158,6 +1207,7 @@ class OrderConcurrencyMySqlTest {
             this.linkMapper = linkMapper;
             this.bonusMapper = bonusMapper;
             this.goodsMapper = goodsMapper;
+            this.extraCommissionMapper = extraCommissionMapper;
             this.policyService = policyService;
             this.sequenceService = sequenceService;
             this.transactionService = transactionService;

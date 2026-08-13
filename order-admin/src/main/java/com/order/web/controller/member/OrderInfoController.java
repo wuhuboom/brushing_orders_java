@@ -94,6 +94,17 @@ public class OrderInfoController extends BaseController
     }
 
     /**
+     * 取消待提交订单
+     */
+    @PreAuthorize("@ss.hasPermi('member:orderinfo:edit')")
+    @Log(title = "订单取消", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/cancel")
+    public AjaxResult cancel(@PathVariable Long id)
+    {
+        return toAjax(orderInfoService.cancelPendingOrder(id));
+    }
+
+    /**
      * 删除订单
      */
     @PreAuthorize("@ss.hasPermi('member:orderinfo:remove')")

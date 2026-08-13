@@ -21,6 +21,7 @@ import com.order.member.service.IGoodsTransactionFlowService;
 import com.order.member.service.IOrderSequenceManagerService;
 import com.order.member.service.IOrderUserService;
 import com.order.member.service.ITransactionService;
+import com.order.member.service.SiteMessageNotificationService;
 
 /**
  * 交易处理实现
@@ -39,6 +40,9 @@ public class TransactionServiceImpl implements ITransactionService {
 
     @Autowired
     private IOrderSequenceManagerService orderSequenceManagerService;
+
+    @Autowired
+    private SiteMessageNotificationService siteMessageNotificationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -141,6 +145,8 @@ public class TransactionServiceImpl implements ITransactionService {
                 user.getBalance() == null ? BigDecimal.ZERO : user.getBalance());
         BigDecimal afterBalance = beforeBalance.add(amount);
         afterBalance = afterBalance.add(giftAmount);
+        String normalizedTransactionType =
+                transactionType == null || transactionType.isBlank() ? "ck" : transactionType;
 
         // 1) 插入充值记录
         GoodsRechargeRecord recharge = new GoodsRechargeRecord();
@@ -148,9 +154,10 @@ public class TransactionServiceImpl implements ITransactionService {
         recharge.setAmount(amount);
         recharge.setGiftAmount(giftAmount);
         recharge.setReceivedAmount(amount.add(giftAmount));
-        recharge.setStatus("0");
+        recharge.setStatus("2");
         recharge.setCreateTime(now);
-        recharge.setTransactionType(transactionType);
+        recharge.setTransactionType(normalizedTransactionType);
+        recharge.setRemark(remark);
         String orderNo = orderSequenceManagerService.generateCode("TRADE_NO");
         recharge.setOrderNumber(orderNo);
         if (goodsRechargeRecordService.insertGoodsRechargeRecord(recharge) != 1) {
@@ -158,7 +165,9 @@ public class TransactionServiceImpl implements ITransactionService {
         }
 
         // 2) 插入交易流水：记录充值金额（使用通用方法）
-        TransactionFlowResult flowRes = recordFlow(user.getId(), transactionType, amount, beforeBalance, remark);
+        TransactionFlowResult flowRes = recordFlow(
+                user.getId(), normalizedTransactionType, amount, beforeBalance,
+                orderNo, remark, false);
         String flowSerial1 = flowRes.getFlowSerial();
         String tradeCode1 = flowRes.getTradeCode();
         BigDecimal midBalance = flowRes.getBalanceAfter();
@@ -167,7 +176,9 @@ public class TransactionServiceImpl implements ITransactionService {
         String flowSerialGift = null;
         String tradeCodeGift = null;
         if (giftAmount.compareTo(BigDecimal.ZERO) > 0) {
-            TransactionFlowResult giftRes = recordFlow(user.getId(), "zs", giftAmount, midBalance, remark);
+            TransactionFlowResult giftRes = recordFlow(
+                    user.getId(), "zs", giftAmount, midBalance,
+                    orderNo, remark, false);
             flowSerialGift = giftRes.getFlowSerial();
             tradeCodeGift = giftRes.getTradeCode();
             // midBalance 更新为包含赠送后的余额
@@ -178,6 +189,12 @@ public class TransactionServiceImpl implements ITransactionService {
         // 4) 更新用户余额
         if (orderUserMapper.creditBalance(user.getId(), amount.add(giftAmount)) != 1) {
             throw new IllegalStateException("Unable to update user balance");
+        }
+        siteMessageNotificationService.createForTransaction(
+                user.getId(), "ck", amount, beforeBalance, afterBalance);
+        if (giftAmount.compareTo(BigDecimal.ZERO) > 0) {
+            siteMessageNotificationService.createForTransaction(
+                    user.getId(), "bonus", giftAmount, beforeBalance.add(amount), afterBalance);
         }
 
         // 5) 返回结果
@@ -192,6 +209,54 @@ public class TransactionServiceImpl implements ITransactionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TransactionFlowResult recordFlow(Long userId, String transactionType, BigDecimal amount, BigDecimal balanceBefore, String remark) {
+        return recordFlow(userId, transactionType, amount, balanceBefore, null, remark, true);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TransactionFlowResult recordFlowWithoutNotification(
+            Long userId,
+            String transactionType,
+            BigDecimal amount,
+            BigDecimal balanceBefore,
+            String remark) {
+        return recordFlow(userId, transactionType, amount, balanceBefore, null, remark, false);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TransactionFlowResult recordFlowWithTransactionCode(
+            Long userId,
+            String transactionType,
+            BigDecimal amount,
+            BigDecimal balanceBefore,
+            String transactionCode,
+            String remark) {
+        return recordFlow(
+                userId, transactionType, amount, balanceBefore, transactionCode, remark, true);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TransactionFlowResult recordFlowWithTransactionCodeWithoutNotification(
+            Long userId,
+            String transactionType,
+            BigDecimal amount,
+            BigDecimal balanceBefore,
+            String transactionCode,
+            String remark) {
+        return recordFlow(
+                userId, transactionType, amount, balanceBefore, transactionCode, remark, false);
+    }
+
+    private TransactionFlowResult recordFlow(
+            Long userId,
+            String transactionType,
+            BigDecimal amount,
+            BigDecimal balanceBefore,
+            String transactionCode,
+            String remark,
+            boolean notify) {
         if (userId == null) throw new IllegalArgumentException("userId 不能为空");
         if (balanceBefore == null) balanceBefore = BigDecimal.ZERO;
         if (amount == null) throw new IllegalArgumentException("amount 不能为空");
@@ -209,12 +274,18 @@ public class TransactionServiceImpl implements ITransactionService {
         flow.setBalanceAfter(balanceAfter);
         flow.setCreatedTime(DateUtils.getNowDate());
         String flowSerial = orderSequenceManagerService.generateCode("TRADE_NO");
-        String tradeCode = orderSequenceManagerService.generateCode("TRADE_NO");
+        String tradeCode = transactionCode == null || transactionCode.isBlank()
+                ? orderSequenceManagerService.generateCode("TRADE_NO")
+                : transactionCode;
         flow.setSerialCode(flowSerial);
         flow.setTransactionCode(tradeCode);
         flow.setRemark(remark);
         if (goodsTransactionFlowService.insertGoodsTransactionFlow(flow) != 1) {
             throw new IllegalStateException("Unable to persist transaction flow");
+        }
+        if (notify) {
+            siteMessageNotificationService.createForTransaction(
+                    userId, transactionType, amount, balanceBefore, balanceAfter);
         }
 
         TransactionFlowResult res = new TransactionFlowResult();

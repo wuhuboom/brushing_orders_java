@@ -36,6 +36,68 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id}
     </select>
 
+    <select id="selectAvailableForUpdate" resultMap="GoodsExtraCommissionSettingResult">
+        <include refid="selectGoodsExtraCommissionSettingVo"/>
+        where user_id = #{userId}
+          and order_count = #{orderCount}
+          and product_price = #{productPrice}
+          and status = '1'
+          and is_locked = '1'
+        order by id asc
+        limit 1
+        for update
+    </select>
+
+    <update id="reserveForOrder">
+        update goods_extra_commission_setting
+        set is_locked = '0'
+        where id = #{id}
+          and user_id = #{userId}
+          and order_count = #{orderCount}
+          and product_price = #{productPrice}
+          and status = '1'
+          and is_locked = '1'
+    </update>
+
+    <select id="selectReservedForUpdate" resultMap="GoodsExtraCommissionSettingResult">
+        <include refid="selectGoodsExtraCommissionSettingVo"/>
+        where id = #{id}
+          and user_id = #{userId}
+          and order_count = #{orderCount}
+          and product_price = #{productPrice}
+          and status = '1'
+          and is_locked = '0'
+        for update
+    </select>
+
+    <update id="completeReserved">
+        update goods_extra_commission_setting
+        set status = '0'
+        where id = #{id}
+          and user_id = #{userId}
+          and order_count = #{orderCount}
+          and product_price = #{productPrice}
+          and status = '1'
+          and is_locked = '0'
+    </update>
+
+    <update id="releaseReserved">
+        update goods_extra_commission_setting
+        set is_locked = '1'
+        where id = #{id}
+          and user_id = #{userId}
+          and order_count = #{orderCount}
+          and product_price = #{productPrice}
+          and status = '1'
+          and is_locked = '0'
+    </update>
+
+    <select id="selectByIdForUpdate" resultMap="GoodsExtraCommissionSettingResult">
+        <include refid="selectGoodsExtraCommissionSettingVo"/>
+        where id = #{id}
+        for update
+    </select>
+
     <insert id="insertGoodsExtraCommissionSetting" parameterType="GoodsExtraCommissionSetting" useGeneratedKeys="true" keyProperty="id">
         insert into goods_extra_commission_setting
         <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -60,20 +122,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <update id="updateGoodsExtraCommissionSetting" parameterType="GoodsExtraCommissionSetting">
         update goods_extra_commission_setting
-        <trim prefix="SET" suffixOverrides=",">
-            <if test="userId != null">user_id = #{userId},</if>
-            <if test="orderCount != null">order_count = #{orderCount},</if>
-            <if test="productPrice != null">product_price = #{productPrice},</if>
-            <if test="amount != null">amount = #{amount},</if>
-            <if test="isLocked != null and isLocked != ''">is_locked = #{isLocked},</if>
-            <if test="status != null and status != ''">status = #{status},</if>
-            <if test="createTime != null">create_time = #{createTime},</if>
-        </trim>
+        set user_id = coalesce(#{userId}, user_id),
+            order_count = coalesce(#{orderCount}, order_count),
+            product_price = coalesce(#{productPrice}, product_price),
+            amount = coalesce(#{amount}, amount)
         where id = #{id}
+          and status = '1'
+          and is_locked = '1'
     </update>
 
     <delete id="deleteGoodsExtraCommissionSettingById" parameterType="Long">
-        delete from goods_extra_commission_setting where id = #{id}
+        delete from goods_extra_commission_setting
+        where id = #{id}
+          and status = '1'
+          and is_locked = '1'
     </delete>
 
     <delete id="deleteGoodsExtraCommissionSettingByIds" parameterType="String">
@@ -81,5 +143,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <foreach item="id" collection="array" open="(" separator="," close=")">
             #{id}
         </foreach>
+          and status = '1'
+          and is_locked = '1'
     </delete>
 </mapper>

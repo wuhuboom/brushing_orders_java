@@ -31,7 +31,8 @@ public final class AccountApiDtos {
             @Size(max = 100) String accountHolder,
             @Size(max = 100) String accountName,
             @Size(max = 100) String walletName,
-            @Size(max = 255) String walletAddress) {
+            @Size(max = 255) String walletAddress,
+            @Size(max = 1000) String attachment) {
     }
 
     public record WithdrawalAccountResponse(
@@ -49,6 +50,7 @@ public final class AccountApiDtos {
             String accountName,
             String walletName,
             String walletAddress,
+            String attachment,
             Date createTime,
             Date updateTime) {
     }
@@ -126,6 +128,20 @@ public final class AccountApiDtos {
             String accountHolder,
             String accountName,
             String walletName,
-            String walletAddress) {
+            String walletAddress,
+            String attachment) {
+    }
+
+    public record SensitiveWithdrawalAccountUpdateRequest(
+            @Size(max = 100) String bankName,
+            @Size(max = 50) String depositType,
+            @Size(max = 50) String branchCode,
+            @Size(max = 100) String branchName,
+            @Size(max = 100) String bankAccount,
+            @Size(max = 100) String accountHolder,
+            @Size(max = 100) String accountName,
+            @Size(max = 100) String walletName,
+            @Size(max = 255) String walletAddress,
+            @Size(max = 1000) String attachment) {
     }
 }

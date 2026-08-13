@@ -44,6 +44,14 @@ public interface IOrderInfoService
     public int updateOrderInfo(OrderInfo orderInfo);
 
     /**
+     * 取消待提交订单，并归还冻结本金。
+     *
+     * @param id 订单主键
+     * @return 结果
+     */
+    int cancelPendingOrder(Long id);
+
+    /**
      * 批量删除订单
      * 
      * @param ids 需要删除的订单主键集合

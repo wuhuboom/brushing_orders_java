@@ -86,6 +86,7 @@ public class GoodsWithdrawalAccountController extends BaseController
         return toAjax(goodsWithdrawalAccountService.insertGoodsWithdrawalAccount(goodsWithdrawalAccount));
     }
 
+    @PreAuthorize("@ss.hasAnyPermi('member:withdrawalAcc:list,member:withdrawalAcc:add,member:withdrawalAcc:edit')")
     @GetMapping("/getType")
     public AjaxResult getType(OrderWithdrawalType orderWithdrawalType){
         List<OrderWithdrawalType> orderWithdrawalTypes = orderWithdrawalTypeService.selectOrderWithdrawalTypeList(orderWithdrawalType);

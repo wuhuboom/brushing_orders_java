@@ -1,10 +1,12 @@
 package com.order.api.controller;
 
-import com.order.api.service.LocalizedApiMessageService;
+import com.order.api.service.PublicApiMessageCatalog;
 import com.order.common.core.domain.AjaxResult;
 import com.order.common.core.page.TableDataInfo;
 import com.order.common.i18n.SupportedLocale;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -18,16 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Applies the configured API message catalog to every front-end API envelope.
+ * Enforces stable English messages on every public H5 API response envelope.
  */
-@RestControllerAdvice(basePackages = "com.order.api.controller")
+@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class ApiResponseLocalizationAdvice implements ResponseBodyAdvice<Object> {
-    private final LocalizedApiMessageService messageService;
-
-    public ApiResponseLocalizationAdvice(LocalizedApiMessageService messageService) {
-        this.messageService = messageService;
-    }
-
     @Override
     public boolean supports(
             MethodParameter returnType,
@@ -43,25 +40,21 @@ public class ApiResponseLocalizationAdvice implements ResponseBodyAdvice<Object>
             Class<? extends HttpMessageConverter<?>> selectedConverterType,
             ServerHttpRequest request,
             ServerHttpResponse response) {
+        if (!request.getURI().getPath().startsWith("/api/")) {
+            return body;
+        }
         SupportedLocale locale = resolveLocale(request);
         applyLanguageHeaders(response.getHeaders(), locale);
 
         if (body instanceof AjaxResult result) {
             Object codeValue = result.get(AjaxResult.CODE_TAG);
             if (codeValue instanceof Number code) {
-                Object currentMessage = result.get(AjaxResult.MSG_TAG);
                 result.put(
                         AjaxResult.MSG_TAG,
-                        messageService.message(
-                                code.intValue(),
-                                locale,
-                                currentMessage instanceof String message ? message : defaultMessage(code.intValue())));
+                        PublicApiMessageCatalog.message(code.intValue()));
             }
         } else if (body instanceof TableDataInfo table) {
-            table.setMsg(messageService.message(
-                    Math.toIntExact(table.getCode()),
-                    locale,
-                    table.getMsg() == null ? defaultMessage(Math.toIntExact(table.getCode())) : table.getMsg()));
+            table.setMsg(PublicApiMessageCatalog.message(Math.toIntExact(table.getCode())));
         }
         return body;
     }
@@ -83,9 +76,5 @@ public class ApiResponseLocalizationAdvice implements ResponseBodyAdvice<Object>
             vary.add(HttpHeaders.ACCEPT_LANGUAGE);
             headers.setVary(vary);
         }
-    }
-
-    private String defaultMessage(int code) {
-        return code == 200 ? "Success" : "Please try again later";
     }
 }

@@ -8,28 +8,65 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="id"    column="id"    />
         <result property="title"    column="title"    />
         <result property="memberList"    column="member_list"    />
+        <result property="memberNames" column="member_names" />
         <result property="isEnabled"    column="is_enabled"    />
         <result property="createTime"    column="create_time"    />
         <result property="content"    column="content"    />
+        <result property="translationsId" column="translations_id" />
     </resultMap>
 
     <sql id="selectOrderSiteMessageVo">
-        select id, title, member_list, is_enabled, create_time, content from order_site_message
+        select osm.id,
+               osm.title,
+               osm.member_list,
+               (
+                   select group_concat(ou.username order by find_in_set(cast(ou.id as char), replace(osm.member_list, ' ', '')) separator ',')
+                   from order_user ou
+                   where find_in_set(cast(ou.id as char), replace(osm.member_list, ' ', '')) > 0
+               ) as member_names,
+               osm.is_enabled,
+               osm.create_time,
+               osm.content,
+               osm.translations_id
+        from order_site_message osm
     </sql>
 
     <select id="selectOrderSiteMessageList" parameterType="OrderSiteMessage" resultMap="OrderSiteMessageResult">
         <include refid="selectOrderSiteMessageVo"/>
         <where>  
-            <if test="title != null  and title != ''"> and title = #{title}</if>
-            <if test="memberList != null  and memberList != ''"> and member_list = #{memberList}</if>
-            <if test="isEnabled != null "> and is_enabled = #{isEnabled}</if>
-            <if test="content != null  and content != ''"> and content = #{content}</if>
+            <if test="title != null  and title != ''"> and osm.title like concat('%', #{title}, '%')</if>
+            <if test="memberList != null  and memberList != ''">
+                and find_in_set(#{memberList}, replace(osm.member_list, ' ', '')) > 0
+            </if>
+            <if test="isEnabled != null "> and osm.is_enabled = #{isEnabled}</if>
+            <if test="content != null  and content != ''"> and osm.content = #{content}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and osm.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and osm.create_time &lt;= concat(#{params.endTime}, ' 23:59:59')
+            </if>
         </where>
+        order by osm.create_time desc, osm.id desc
     </select>
     
     <select id="selectOrderSiteMessageById" parameterType="Long" resultMap="OrderSiteMessageResult">
         <include refid="selectOrderSiteMessageVo"/>
-        where id = #{id}
+        where osm.id = #{id}
+    </select>
+
+    <select id="selectEnabledByMemberId" resultMap="OrderSiteMessageResult">
+        <include refid="selectOrderSiteMessageVo"/>
+        where osm.is_enabled = 1
+          and find_in_set(cast(#{memberId} as char), replace(osm.member_list, ' ', '')) > 0
+        order by osm.create_time desc, osm.id desc
+    </select>
+
+    <select id="selectEnabledByIdAndMemberId" resultMap="OrderSiteMessageResult">
+        <include refid="selectOrderSiteMessageVo"/>
+        where osm.id = #{id}
+          and osm.is_enabled = 1
+          and find_in_set(cast(#{memberId} as char), replace(osm.member_list, ' ', '')) > 0
     </select>
 
     <insert id="insertOrderSiteMessage" parameterType="OrderSiteMessage" useGeneratedKeys="true" keyProperty="id">
@@ -40,6 +77,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isEnabled != null">is_enabled,</if>
             <if test="createTime != null">create_time,</if>
             <if test="content != null and content != ''">content,</if>
+            <if test="translationsId != null">translations_id,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="title != null and title != ''">#{title},</if>
@@ -47,6 +85,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isEnabled != null">#{isEnabled},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="content != null and content != ''">#{content},</if>
+            <if test="translationsId != null">#{translationsId},</if>
          </trim>
     </insert>
 
@@ -58,6 +97,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isEnabled != null">is_enabled = #{isEnabled},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="content != null and content != ''">content = #{content},</if>
+            <if test="translationsId != null">translations_id = #{translationsId},</if>
         </trim>
         where id = #{id}
     </update>

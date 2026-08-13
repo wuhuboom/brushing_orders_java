@@ -1,7 +1,6 @@
 package com.order.api.controller;
 
 import com.order.common.core.domain.AjaxResult;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -10,19 +9,6 @@ import java.util.Set;
 
 final class ApiControllerSupport {
     private ApiControllerSupport() {
-    }
-
-    static boolean isLegacy(
-            HttpServletRequest request,
-            String prefix,
-            Set<String> legacyPaths) {
-        String path = request.getRequestURI();
-        int prefixIndex = path.indexOf(prefix);
-        String relativePath = prefixIndex >= 0
-                ? path.substring(prefixIndex + prefix.length())
-                : path;
-        return legacyPaths.stream().anyMatch(marker -> relativePath.equals(marker)
-                || marker.endsWith("/") && relativePath.startsWith(marker));
     }
 
     static boolean hasKnownConstraint(Throwable throwable, Set<String> constraints) {

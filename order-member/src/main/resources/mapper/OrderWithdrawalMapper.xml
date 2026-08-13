@@ -24,10 +24,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="accountSnapshotEncrypted" column="account_snapshot_enc" />
         <result property="accountMask" column="account_mask" />
         <result property="businessDate" column="business_date" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
         <!-- 来自 order_user -->
         <result property="username" column="username" />
         <result property="phoneNumber" column="phone_number" />
         <result property="parentUsername" column="parent_username" />
+        <result property="isFake" column="is_fake" />
+        <result property="userBalance" column="user_balance" />
+        <result property="userFrozenBalance" column="user_frozen_balance" />
         <!-- 提现账户（来自 goods_withdrawal_account），映射到 OrderWithdrawal.withdrawalAccountInfo -->
         <!-- 使用完全限定的 resultMap 名称指向另一个 mapper 的 resultMap，并使用完全限定的 javaType -->
         <association property="withdrawalAccountInfo" javaType="com.order.member.domain.GoodsWithdrawalAccount" resultMap="com.order.member.mapper.GoodsWithdrawalAccountMapper.GoodsWithdrawalAccountResult" columnPrefix="gwa_"/>
@@ -38,8 +43,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 ow.create_time, ow.remarks, ow.transaction_type, ow.order_number, ow.is_hidden, ow.fee,
                 ow.withdrawal_account_id, ow.request_id, ow.net_amount,
                 ow.account_snapshot_enc, ow.account_mask, ow.business_date,
+                ow.update_by, ow.update_time,
                 ou.username as username, ou.phone_number as phone_number,
-                pu.username as parent_username,
+                ou.balance as user_balance, ou.frozen_balance as user_frozen_balance,
+                pu.username as parent_username, ou.is_fake as is_fake,
                -- withdrawal account fields with gwa_ prefix for nested mapping
                gwa.id as gwa_id, gwa.user_id as gwa_user_id, gwa.type as gwa_type, gwa.withdrawal_type_id as gwa_withdrawal_type_id,
                gwa.is_default as gwa_is_default, gwa.bank_name as gwa_bank_name, gwa.deposit_type as gwa_deposit_type,
@@ -67,6 +74,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                gwa.account_holder_mask as gwa_account_holder_mask,
                gwa.account_name_mask as gwa_account_name_mask,
                gwa.wallet_address_mask as gwa_wallet_address_mask,
+               gwa.attachment as gwa_attachment,
                owt.name as gwa_withdrawal_type, gwa.create_time as gwa_create_time
         from order_withdrawal ow
         left join order_user ou on ow.user_id = ou.id
@@ -79,9 +87,32 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectOrderWithdrawalVo"/>
         <where>  
             <if test="userId != null "> and ow.user_id = #{userId}</if>
-            <if test="phoneNumber != null "> and ou.phone_number = #{phoneNumber}</if>
-            <if test="username != null "> and ou.username = #{username}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="phoneNumber != null and phoneNumber != ''"> and ou.phone_number = #{phoneNumber}</if>
+            <if test="username != null and username != ''"> and ou.username = #{username}</if>
+            <if test="parentUsername != null and parentUsername != ''"> and pu.username = #{parentUsername}</if>
+            <if test="accountAddress != null and accountAddress != ''">
+                and (
+                    gwa.wallet_address like concat('%', #{accountAddress}, '%')
+                    or gwa.wallet_address_mask like concat('%', #{accountAddress}, '%')
+                )
+            </if>
+            <if test="withdrawalType != null and withdrawalType != ''"> and gwa.type = #{withdrawalType}</if>
+            <if test="status != null and status != ''"> and ow.status = #{status}</if>
+            <if test="isFake != null and isFake != ''"> and ou.is_fake = #{isFake}</if>
+            <if test="transactionType != null and transactionType != ''"> and ow.transaction_type = #{transactionType}</if>
+            <if test="isHidden != null and isHidden != ''"> and ow.is_hidden = #{isHidden}</if>
+            <if test="params.amountMin != null and params.amountMin != ''">
+                and ow.amount &gt;= #{params.amountMin}
+            </if>
+            <if test="params.amountMax != null and params.amountMax != ''">
+                and ow.amount &lt;= #{params.amountMax}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and ow.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and ow.create_time &lt;= #{params.endTime}
+            </if>
         </where>
         order by ow.create_time desc
     </select>
@@ -115,6 +146,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountSnapshotEncrypted != null">account_snapshot_enc,</if>
             <if test="accountMask != null">account_mask,</if>
             <if test="businessDate != null">business_date,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
@@ -133,6 +166,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="accountSnapshotEncrypted != null">#{accountSnapshotEncrypted},</if>
             <if test="accountMask != null">#{accountMask},</if>
             <if test="businessDate != null">#{businessDate},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
          </trim>
     </insert>
 
@@ -150,7 +185,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isHidden != null and isHidden != ''">is_hidden = #{isHidden},</if>
             <if test="fee != null">fee = #{fee},</if>
             <if test="withdrawalAccountId != null">withdrawal_account_id = #{withdrawalAccountId},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = now(3),
         </trim>
+        where id = #{id}
+    </update>
+
+    <update id="updateAccountSnapshot">
+        update order_withdrawal
+        set account_snapshot_enc = #{accountSnapshotEncrypted},
+            account_mask = #{accountMask},
+            update_by = #{updateBy},
+            update_time = now(3)
         where id = #{id}
     </update>
 
@@ -192,13 +238,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select count(1) as withdrawalCount,
                COALESCE(sum(amount), 0) as withdrawalAmount
         from order_withdrawal
-        where user_id = #{userId} and status in ('0', '1')
+        where user_id = #{userId} and status in ('1', '2')
           and create_time &gt;= #{start} and create_time &lt; #{end}
     </select>
 
     <update id="transitionStatus">
         update order_withdrawal
-        set status = #{toStatus}, remarks = #{remarks}
+        set status = #{toStatus},
+            remarks = #{remarks},
+            update_by = COALESCE(NULLIF(#{updateBy}, ''), 'system'),
+            update_time = now(3)
         where id = #{id} and status = #{fromStatus}
     </update>
 
@@ -209,7 +258,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             (
                 select COALESCE(sum(amount), 0)
                 from order_withdrawal
-                where status in ('0', '1')
+                where status in ('1', '2')
                   and (business_date = #{businessDate}
                     or (business_date is null
                         and create_time &gt;= #{legacyStart}

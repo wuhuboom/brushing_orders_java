@@ -20,6 +20,11 @@ import com.order.member.domain.GoodsRechargeRecord;
 import com.order.member.service.IGoodsRechargeRecordService;
 import com.order.common.utils.poi.ExcelUtil;
 import com.order.common.core.page.TableDataInfo;
+import com.order.api.controller.dto.AccountApiDtos.ReviewStatusRequest;
+import com.order.api.service.RechargeApplicationService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 /**
  * 充值记录Controller
@@ -33,6 +38,9 @@ public class GoodsRechargeRecordController extends BaseController
 {
     @Autowired
     private IGoodsRechargeRecordService goodsRechargeRecordService;
+
+    @Autowired
+    private RechargeApplicationService rechargeApplicationService;
 
     /**
      * 查询充值记录列表
@@ -75,9 +83,20 @@ public class GoodsRechargeRecordController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:recharge:add')")
     @Log(title = "充值记录", businessType = BusinessType.INSERT)
     @PostMapping
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public AjaxResult add(@RequestBody GoodsRechargeRecord goodsRechargeRecord)
     {
-        return toAjax(goodsRechargeRecordService.insertGoodsRechargeRecord(goodsRechargeRecord));
+        return AjaxResult.error(405, "充值记录只能由充值流程创建");
+    }
+
+    @PreAuthorize("@ss.hasPermi('member:recharge:edit')")
+    @Log(title = "充值审核", businessType = BusinessType.UPDATE)
+    @PutMapping("/{id}/status")
+    public AjaxResult review(
+            @PathVariable Long id,
+            @Valid @RequestBody ReviewStatusRequest request) {
+        rechargeApplicationService.review(id, request.status(), request.remarks(), getUsername());
+        return success();
     }
 
     /**
@@ -88,7 +107,12 @@ public class GoodsRechargeRecordController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody GoodsRechargeRecord goodsRechargeRecord)
     {
-        return toAjax(goodsRechargeRecordService.updateGoodsRechargeRecord(goodsRechargeRecord));
+        GoodsRechargeRecord update = new GoodsRechargeRecord();
+        update.setId(goodsRechargeRecord.getId());
+        update.setRemark(goodsRechargeRecord.getRemark());
+        update.setIsHidden(goodsRechargeRecord.getIsHidden());
+        update.setUpdateBy(getUsername());
+        return toAjax(goodsRechargeRecordService.updateGoodsRechargeRecord(update));
     }
 
     /**
@@ -97,8 +121,9 @@ public class GoodsRechargeRecordController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:recharge:remove')")
     @Log(title = "充值记录", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public AjaxResult remove(@PathVariable Long[] ids)
     {
-        return toAjax(goodsRechargeRecordService.deleteGoodsRechargeRecordByIds(ids));
+        return AjaxResult.error(405, "充值记录属于资金审计数据，禁止删除");
     }
 }

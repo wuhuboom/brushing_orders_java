@@ -70,6 +70,16 @@ public class OrderWithdrawal extends BaseEntity
     /** 上级用户名（来自 order_user 的 parent） */
     private String parentUsername;
 
+    /** 钱包地址筛选条件（来自提现账户） */
+    private String accountAddress;
+
+    /** 是否假人（来自 order_user） */
+    private String isFake;
+
+    /** 当前余额信息（来自 order_user，用于后台审核视图） */
+    private BigDecimal userBalance;
+    private BigDecimal userFrozenBalance;
+
     /** 提现账户详情（来自 goods_withdrawal_account） */
     private GoodsWithdrawalAccount withdrawalAccountInfo;
 
@@ -222,6 +232,26 @@ public class OrderWithdrawal extends BaseEntity
         this.parentUsername = parentUsername;
     }
 
+    public String getAccountAddress()
+    {
+        return accountAddress;
+    }
+
+    public void setAccountAddress(String accountAddress)
+    {
+        this.accountAddress = accountAddress;
+    }
+
+    public String getIsFake()
+    {
+        return isFake;
+    }
+
+    public void setIsFake(String isFake)
+    {
+        this.isFake = isFake;
+    }
+
     public GoodsWithdrawalAccount getWithdrawalAccountInfo()
     {
         return withdrawalAccountInfo;
@@ -230,6 +260,22 @@ public class OrderWithdrawal extends BaseEntity
     public void setWithdrawalAccountInfo(GoodsWithdrawalAccount withdrawalAccountInfo)
     {
         this.withdrawalAccountInfo = withdrawalAccountInfo;
+    }
+
+    public BigDecimal getUserBalance() {
+        return userBalance;
+    }
+
+    public void setUserBalance(BigDecimal userBalance) {
+        this.userBalance = userBalance;
+    }
+
+    public BigDecimal getUserFrozenBalance() {
+        return userFrozenBalance;
+    }
+
+    public void setUserFrozenBalance(BigDecimal userFrozenBalance) {
+        this.userFrozenBalance = userFrozenBalance;
     }
 
     public String getRequestId() {
@@ -293,6 +339,10 @@ public class OrderWithdrawal extends BaseEntity
             .append("username", getUsername())
             .append("phoneNumber", getPhoneNumber())
             .append("parentUsername", getParentUsername())
+            .append("accountAddress", getAccountAddress())
+            .append("isFake", getIsFake())
+            .append("userBalance", getUserBalance())
+            .append("userFrozenBalance", getUserFrozenBalance())
             .append("withdrawalAccountInfo", getWithdrawalAccountInfo())
             .toString();
     }

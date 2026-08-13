@@ -30,6 +30,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="isEnabled != null  and isEnabled != ''"> and is_enabled = #{isEnabled}</if>
             <if test="link != null  and link != ''"> and link = #{link}</if>
             <if test="remarks != null  and remarks != ''"> and remarks = #{remarks}</if>
+            <if test="params.beginTime != null and params.beginTime != ''"> and date(create_time) &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''"> and date(create_time) &lt;= #{params.endTime}</if>
         </where>
         order by sort_order asc, id asc
     </select>

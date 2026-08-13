@@ -2,6 +2,7 @@ package com.order.api.service;
 
 import com.order.api.controller.dto.OrderApiDtos.ResultType;
 import com.order.member.domain.Goods;
+import com.order.member.domain.GoodsExtraCommissionSetting;
 import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderApiRequest;
 import com.order.member.domain.OrderBonusTable;
@@ -9,6 +10,7 @@ import com.order.member.domain.OrderInfo;
 import com.order.member.domain.OrderLink;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.GoodsMapper;
+import com.order.member.mapper.GoodsExtraCommissionSettingMapper;
 import com.order.member.mapper.OrderApiRequestMapper;
 import com.order.member.mapper.OrderBonusTableMapper;
 import com.order.member.mapper.OrderInfoMapper;
@@ -19,11 +21,14 @@ import com.order.member.service.ITransactionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 
+import static com.order.api.service.OrderErrorCodes.BONUS_UNAVAILABLE;
 import static com.order.api.service.OrderErrorCodes.INVALID_BONUS;
 import static com.order.api.service.OrderErrorCodes.INVALID_ORDER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,6 +49,7 @@ class OrderApplicationServiceTest {
     @Mock OrderLinkMapper linkMapper;
     @Mock OrderBonusTableMapper bonusMapper;
     @Mock GoodsMapper goodsMapper;
+    @Mock GoodsExtraCommissionSettingMapper extraCommissionMapper;
     @Mock OrderTradePolicyService policyService;
     @Mock IOrderSequenceManagerService sequenceService;
     @Mock ITransactionService transactionService;
@@ -72,6 +78,9 @@ class OrderApplicationServiceTest {
         verify(transactionService).recordFlow(
                 7L, "rw", new BigDecimal("-50.01"), new BigDecimal("100.00"),
                 "order-reserve:O-100");
+        verify(extraCommissionMapper).selectAvailableForUpdate(
+                7L, 2L, new BigDecimal("50.01"));
+        verify(extraCommissionMapper, never()).reserveForOrder(any(), any(), any(), any());
     }
 
     @Test
@@ -157,13 +166,13 @@ class OrderApplicationServiceTest {
 
         assertEquals(ResultType.BONUS, result.resultType());
         assertEquals(88L, result.bonus().id());
-        verify(bonusMapper, never()).selectNextCompletionBonus(any());
         verify(orderMapper, never()).insertOrderInfo(any());
     }
 
     @Test
     void linkedOrderMayReserveMoreThanCurrentBalance() {
         OrderUser user = user(new BigDecimal("20.00"), 1L);
+        user.getMemberLevel().setMinContinuousCommissionRate(new BigDecimal("10.00"));
         OrderLink link = new OrderLink();
         link.setId(9L);
         link.setProductId(31L);
@@ -172,7 +181,7 @@ class OrderApplicationServiceTest {
         link.setCommissionMultiple(2);
         Goods goods = goods(31L, new BigDecimal("10.00"));
         arrangeCreate(user);
-        when(linkMapper.selectNextOrderLink(7L, 1L)).thenReturn(link);
+        when(linkMapper.selectNextOrderLink(7L, 2L)).thenReturn(link);
         when(goodsMapper.selectOrderGoodsById(31L)).thenReturn(goods);
         when(sequenceService.generateCode("TRADE_NO")).thenReturn("O-LINK");
         when(orderMapper.insertOrderInfo(any())).thenReturn(1);
@@ -181,8 +190,201 @@ class OrderApplicationServiceTest {
         var result = service().create(7L);
 
         assertEquals(new BigDecimal("120.00"), result.order().amount());
-        assertEquals(new BigDecimal("2.02"), result.order().rebate());
+        assertEquals(new BigDecimal("24.00"), result.order().rebate());
+        assertEquals(2L, result.order().orderCount());
         verify(userMapper).reserveOrderFunds(7L, new BigDecimal("120.00"), 0L, true);
+    }
+
+    @Test
+    void linkedOrderBindsMatchedExtraCommissionInsteadOfLinkId() {
+        OrderUser user = user(new BigDecimal("20.00"), 1L);
+        user.getMemberLevel().setMinContinuousCommissionRate(new BigDecimal("10.00"));
+        OrderLink link = new OrderLink();
+        link.setId(9L);
+        link.setProductId(31L);
+        link.setPrice(new BigDecimal("2.00"));
+        link.setPriceType("0");
+        link.setCommissionMultiple(2);
+        GoodsExtraCommissionSetting setting = extraCommission(77L, new BigDecimal("0.50"));
+        arrangeCreate(user);
+        when(linkMapper.selectNextOrderLink(7L, 2L)).thenReturn(link);
+        when(goodsMapper.selectOrderGoodsById(31L)).thenReturn(goods(31L, new BigDecimal("2.00")));
+        when(extraCommissionMapper.selectAvailableForUpdate(
+                7L, 2L, new BigDecimal("2.00"))).thenReturn(setting);
+        when(extraCommissionMapper.reserveForOrder(
+                77L, 7L, 2L, new BigDecimal("2.00"))).thenReturn(1);
+        when(sequenceService.generateCode("TRADE_NO")).thenReturn("O-LINK-EXTRA");
+        when(orderMapper.insertOrderInfo(any())).thenReturn(1);
+        when(userMapper.reserveOrderFunds(7L, new BigDecimal("2.00"), 0L, true)).thenReturn(1);
+        ArgumentCaptor<OrderInfo> inserted = ArgumentCaptor.forClass(OrderInfo.class);
+
+        service().create(7L);
+
+        verify(orderMapper).insertOrderInfo(inserted.capture());
+        assertEquals(9L, inserted.getValue().getLinkId());
+        assertEquals(77L, inserted.getValue().getExtraCommissionId());
+        assertEquals(new BigDecimal("0.50"), inserted.getValue().getExtraCommissionAmount());
+    }
+
+    @Test
+    void fundsReservationFailurePropagatesAfterExtraCommissionReservationForRollback() {
+        OrderUser user = user(new BigDecimal("100.00"), 1L);
+        Goods goods = goods(31L, new BigDecimal("50.00"));
+        GoodsExtraCommissionSetting setting = extraCommission(77L, new BigDecimal("0.50"));
+        arrangeCreate(user);
+        when(goodsMapper.selectNearestPriceGoods(new BigDecimal("50.00"))).thenReturn(goods);
+        when(extraCommissionMapper.selectAvailableForUpdate(
+                7L, 2L, new BigDecimal("50.00"))).thenReturn(setting);
+        when(extraCommissionMapper.reserveForOrder(
+                77L, 7L, 2L, new BigDecimal("50.00"))).thenReturn(1);
+        when(sequenceService.generateCode("TRADE_NO")).thenReturn("O-ROLLBACK");
+        when(orderMapper.insertOrderInfo(any())).thenReturn(1);
+
+        assertThrows(OrderApiException.class, () -> service().create(7L));
+
+        verify(extraCommissionMapper).reserveForOrder(
+                77L, 7L, 2L, new BigDecimal("50.00"));
+        verify(orderMapper).insertOrderInfo(any());
+        verify(userMapper).reserveOrderFunds(
+                7L, new BigDecimal("50.00"), 1L, false);
+        verify(extraCommissionMapper, never()).completeReserved(any(), any(), any(), any());
+        verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void orderInsertFailurePropagatesAfterExtraCommissionReservationForRollback() {
+        OrderUser user = user(new BigDecimal("100.00"), 1L);
+        Goods goods = goods(31L, new BigDecimal("50.00"));
+        GoodsExtraCommissionSetting setting = extraCommission(77L, new BigDecimal("0.50"));
+        arrangeCreate(user);
+        when(goodsMapper.selectNearestPriceGoods(new BigDecimal("50.00"))).thenReturn(goods);
+        when(extraCommissionMapper.selectAvailableForUpdate(
+                7L, 2L, new BigDecimal("50.00"))).thenReturn(setting);
+        when(extraCommissionMapper.reserveForOrder(
+                77L, 7L, 2L, new BigDecimal("50.00"))).thenReturn(1);
+        when(sequenceService.generateCode("TRADE_NO")).thenReturn("O-INSERT-ROLLBACK");
+
+        assertThrows(IllegalStateException.class, () -> service().create(7L));
+
+        verify(extraCommissionMapper).reserveForOrder(
+                77L, 7L, 2L, new BigDecimal("50.00"));
+        verify(userMapper, never()).reserveOrderFunds(
+                any(), any(), any(Long.class), any(Boolean.class));
+        verify(extraCommissionMapper, never()).completeReserved(any(), any(), any(), any());
+        verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void intermediateLinkedOrderStaysFrozenUntilTheLastItem() {
+        OrderInfo order = order(20L, "1");
+        order.setType("1");
+        order.setOrderCount(3L);
+        order.setLinkId(9L);
+        OrderUser balance = user(BigDecimal.ZERO, 2L);
+        balance.setFrozenBalance(new BigDecimal("120.00"));
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(order);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
+        when(linkMapper.countRemainingOrderLinks(7L, 3L, 9L)).thenReturn(1);
+        when(orderMapper.transitionStatus(20L, 7L, "1", "2")).thenReturn(1);
+        when(linkMapper.freezeOrderLink(9L, 7L)).thenReturn(1);
+
+        var result = service().submit(7L, 20L);
+
+        assertEquals("2", result.status());
+        verify(userMapper, never()).settleOrderFunds(any(), any(), any());
+        verify(userMapper, never()).settleLinkedOrderGroup(any(), any(), any());
+        verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void lastLinkedOrderSettlesTheWholeGroupAndAdvancesOnce() {
+        OrderInfo frozen = order(19L, "2");
+        frozen.setType("1");
+        frozen.setOrderCount(3L);
+        frozen.setLinkId(9L);
+        frozen.setExtraCommissionId(9L);
+        frozen.setAmount(new BigDecimal("120.00"));
+        frozen.setRebate(new BigDecimal("12.00"));
+
+        OrderInfo current = order(20L, "1");
+        current.setType("1");
+        current.setOrderCount(3L);
+        current.setLinkId(10L);
+        current.setExtraCommissionId(10L);
+        current.setAmount(new BigDecimal("200.00"));
+        current.setRebate(new BigDecimal("20.00"));
+
+        OrderUser balance = user(new BigDecimal("10.00"), 2L);
+        balance.setFrozenBalance(new BigDecimal("320.00"));
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(current);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
+        when(linkMapper.countRemainingOrderLinks(7L, 3L, 10L)).thenReturn(0);
+        when(orderMapper.selectLinkedGroupOrdersForUpdate(7L, 3L))
+                .thenReturn(List.of(frozen, current));
+        when(orderMapper.completeLinkedOrderGroup(7L, 3L)).thenReturn(2);
+        when(linkMapper.completeOrderLinkGroup(7L, 3L)).thenReturn(2);
+        when(userMapper.settleLinkedOrderGroup(
+                7L, new BigDecimal("320.00"), new BigDecimal("32.00")))
+                .thenReturn(1);
+
+        var result = service().submit(7L, 20L);
+
+        assertEquals("0", result.status());
+        verify(userMapper).settleLinkedOrderGroup(
+                7L, new BigDecimal("320.00"), new BigDecimal("32.00"));
+        verify(transactionService).recordFlow(
+                7L, "bjfh", new BigDecimal("120.00"), new BigDecimal("10.00"),
+                "order-principal:O-19");
+        verify(transactionService).recordFlow(
+                7L, "fy", new BigDecimal("20.00"), new BigDecimal("342.00"),
+                "order-rebate:O-20");
+        verify(extraCommissionMapper, never()).completeReserved(any(), any(), any(), any());
+        verify(userMapper, never()).creditBalance(any(), any());
+    }
+
+    @Test
+    void lastLinkedOrderSettlesReservedExtraCommissionAfterOrdinaryFlows() {
+        OrderInfo frozen = order(19L, "2");
+        frozen.setType("1");
+        frozen.setOrderCount(3L);
+        frozen.setLinkId(9L);
+        frozen.setAmount(new BigDecimal("120.00"));
+        frozen.setRebate(new BigDecimal("12.00"));
+
+        OrderInfo current = order(20L, "1");
+        current.setType("1");
+        current.setOrderCount(3L);
+        current.setLinkId(10L);
+        current.setExtraCommissionId(77L);
+        current.setAmount(new BigDecimal("200.00"));
+        current.setRebate(new BigDecimal("20.00"));
+
+        GoodsExtraCommissionSetting setting = extraCommission(77L, new BigDecimal("0.50"));
+        OrderUser balance = user(new BigDecimal("10.00"), 2L);
+        balance.setFrozenBalance(new BigDecimal("320.00"));
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(current);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
+        when(linkMapper.countRemainingOrderLinks(7L, 3L, 10L)).thenReturn(0);
+        when(orderMapper.selectLinkedGroupOrdersForUpdate(7L, 3L))
+                .thenReturn(List.of(frozen, current));
+        when(extraCommissionMapper.selectReservedForUpdate(
+                77L, 7L, 3L, new BigDecimal("200.00"))).thenReturn(setting);
+        when(orderMapper.completeLinkedOrderGroup(7L, 3L)).thenReturn(2);
+        when(linkMapper.completeOrderLinkGroup(7L, 3L)).thenReturn(2);
+        when(userMapper.settleLinkedOrderGroup(
+                7L, new BigDecimal("320.00"), new BigDecimal("32.00"))).thenReturn(1);
+        when(extraCommissionMapper.completeReserved(
+                77L, 7L, 3L, new BigDecimal("200.00"))).thenReturn(1);
+        when(userMapper.creditBalance(7L, new BigDecimal("0.50"))).thenReturn(1);
+
+        service().submit(7L, 20L);
+
+        verify(transactionService).recordFlow(
+                7L, "jj", new BigDecimal("0.50"), new BigDecimal("362.00"),
+                "extra-commission:77:O-20");
     }
 
     @Test
@@ -207,6 +409,8 @@ class OrderApplicationServiceTest {
 
         assertTrue(result.alreadyCompleted());
         verify(userMapper, never()).settleOrderFunds(any(), any(), any());
+        verify(extraCommissionMapper, never()).selectReservedForUpdate(any(), any(), any(), any());
+        verify(userMapper, never()).creditBalance(any(), any());
     }
 
     @Test
@@ -229,6 +433,60 @@ class OrderApplicationServiceTest {
         verify(transactionService).recordFlow(
                 7L, "fy", new BigDecimal("0.30"), new BigDecimal("80.00"),
                 "order-rebate:O-20");
+    }
+
+    @Test
+    void successfulSubmitCreditsReservedExtraCommissionExactlyOnce() {
+        OrderInfo order = order(20L, "1");
+        order.setType("0");
+        order.setOrderCount(2L);
+        order.setExtraCommissionId(77L);
+        GoodsExtraCommissionSetting setting = extraCommission(77L, new BigDecimal("0.50"));
+        OrderUser balance = user(new BigDecimal("50.00"), 1L);
+        balance.setFrozenBalance(new BigDecimal("30.00"));
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(order);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
+        when(extraCommissionMapper.selectReservedForUpdate(
+                77L, 7L, 2L, new BigDecimal("30.00"))).thenReturn(setting);
+        when(orderMapper.transitionStatus(20L, 7L, "1", "0")).thenReturn(1);
+        when(userMapper.settleOrderFunds(
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"))).thenReturn(1);
+        when(extraCommissionMapper.completeReserved(
+                77L, 7L, 2L, new BigDecimal("30.00"))).thenReturn(1);
+        when(userMapper.creditBalance(7L, new BigDecimal("0.50"))).thenReturn(1);
+
+        service().submit(7L, 20L);
+
+        verify(extraCommissionMapper).completeReserved(
+                77L, 7L, 2L, new BigDecimal("30.00"));
+        verify(userMapper).creditBalance(7L, new BigDecimal("0.50"));
+        verify(transactionService).recordFlow(
+                7L, "jj", new BigDecimal("0.50"), new BigDecimal("80.30"),
+                "extra-commission:77:O-20");
+    }
+
+    @Test
+    void finalTaskDoesNotAutomaticallyDistributeCompletionBonus() {
+        OrderInfo order = order(20L, "1");
+        order.setOrderCount(40L);
+        OrderUser before = user(new BigDecimal("50.00"), 39L);
+        before.setFrozenBalance(new BigDecimal("30.00"));
+
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(order);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(before);
+        when(orderMapper.transitionStatus(20L, 7L, "1", "0")).thenReturn(1);
+        when(userMapper.settleOrderFunds(
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"))).thenReturn(1);
+
+        service().submit(7L, 20L);
+
+        verify(bonusMapper, never()).distributeBonus(any());
+        verify(userMapper, never()).creditBalance(7L, new BigDecimal("28.88"));
+        verify(transactionService, never()).recordFlow(
+                7L, "bonus", new BigDecimal("28.88"), new BigDecimal("80.30"),
+                "completion-bonus:88");
     }
 
     @Test
@@ -298,37 +556,17 @@ class OrderApplicationServiceTest {
     }
 
     @Test
-    void bonusClaimIsIdempotentAndDoesNotCreditTwice() {
-        OrderBonusTable claimed = bonus(88L, "0");
-        OrderUser balance = user(new BigDecimal("128.88"), 1L);
-        when(bonusMapper.selectOwnedBonusForUpdate(88L, 7L)).thenReturn(claimed);
-        when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
+    void memberCannotReceiveOrDistributeBonus() {
+        OrderBonusTable available = bonus(88L, "1");
+        when(bonusMapper.selectOwnedBonusForUpdate(88L, 7L)).thenReturn(available);
 
-        var result = service().claimBonus(7L, 88L);
+        OrderApiException error = assertThrows(
+                OrderApiException.class, () -> service().claimBonus(7L, 88L));
 
-        assertTrue(result.alreadyClaimed());
-        assertEquals(new BigDecimal("128.88"), result.balance());
+        assertEquals(BONUS_UNAVAILABLE, error.getBusinessCode());
+        verify(bonusMapper, never()).distributeBonus(any());
         verify(userMapper, never()).creditBalance(any(), any());
         verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
-    }
-
-    @Test
-    void bonusClaimCreditsRoundedAmountAndWritesBonusFlow() {
-        OrderBonusTable available = bonus(88L, "1");
-        available.setAmount(new BigDecimal("28.885"));
-        OrderUser balance = user(new BigDecimal("100.00"), 1L);
-        when(bonusMapper.selectOwnedBonusForUpdate(88L, 7L)).thenReturn(available);
-        when(userMapper.lockUserById(7L)).thenReturn(7L);
-        when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
-        when(bonusMapper.claimBonus(88L, 7L)).thenReturn(1);
-        when(userMapper.creditBalance(7L, new BigDecimal("28.89"))).thenReturn(1);
-
-        var result = service().claimBonus(7L, 88L);
-
-        assertEquals(new BigDecimal("128.89"), result.balance());
-        verify(transactionService).recordFlow(
-                7L, "bonus", new BigDecimal("28.89"), new BigDecimal("100.00"),
-                "order-bonus:88");
     }
 
     private void arrangeCreate(OrderUser user) {
@@ -383,14 +621,27 @@ class OrderApplicationServiceTest {
         bonus.setUserId(7L);
         bonus.setOrderNum(2L);
         bonus.setAmount(new BigDecimal("28.88"));
+        bonus.setDistributionType("1");
         bonus.setIsDistributed("1");
         bonus.setIsReceived(isReceived);
         return bonus;
     }
 
+    private GoodsExtraCommissionSetting extraCommission(Long id, BigDecimal amount) {
+        GoodsExtraCommissionSetting setting = new GoodsExtraCommissionSetting();
+        setting.setId(id);
+        setting.setUserId(7L);
+        setting.setOrderCount(2);
+        setting.setProductPrice(new BigDecimal("30.00"));
+        setting.setAmount(amount);
+        setting.setIsLocked("0");
+        setting.setStatus("1");
+        return setting;
+    }
+
     private OrderApplicationService service() {
         return new OrderApplicationService(
                 userMapper, orderMapper, requestMapper, linkMapper, bonusMapper, goodsMapper,
-                policyService, sequenceService, transactionService);
+                extraCommissionMapper, policyService, sequenceService, transactionService);
     }
 }

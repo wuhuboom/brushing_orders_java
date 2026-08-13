@@ -44,11 +44,17 @@ public class GlobalExceptionHandler
      * 请求方式不支持
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public AjaxResult handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException e,
+    public Object handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException e,
             HttpServletRequest request)
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',不支持'{}'请求", requestURI, e.getMethod());
+        if (requestURI != null && requestURI.startsWith("/api/"))
+        {
+            return org.springframework.http.ResponseEntity
+                    .status(org.springframework.http.HttpStatus.METHOD_NOT_ALLOWED)
+                    .body(AjaxResult.error(HttpStatus.BAD_METHOD, "Method not allowed"));
+        }
         return AjaxResult.error(e.getMessage());
     }
 

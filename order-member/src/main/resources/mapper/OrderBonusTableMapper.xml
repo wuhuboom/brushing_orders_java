@@ -35,6 +35,8 @@
             <if test="orderNum != null "> and order_num = #{orderNum}</if>
             <if test="userId != null "> and user_id = #{userId}</if>
             <if test="amount != null "> and amount = #{amount}</if>
+            <if test="minAmount != null "> and amount &gt;= #{minAmount}</if>
+            <if test="maxAmount != null "> and amount &lt;= #{maxAmount}</if>
             <if test="animationDuration != null "> and animation_duration = #{animationDuration}</if>
             <if test="displayDuration != null "> and display_duration = #{displayDuration}</if>
             <if test="distributionType != null  and distributionType != ''"> and distribution_type = #{distributionType}</if>
@@ -46,6 +48,7 @@
             <if test="distributionTime != null "> and distribution_time = #{distributionTime}</if>
             <if test="toUsers != null  and toUsers != ''"> and to_users = #{toUsers}</if>
         </where>
+        order by id desc
     </select>
 
     <select id="selectActiveDistributedReceivedByUserAndOrder"  resultMap="OrderBonusTableResult">
@@ -53,7 +56,6 @@
         <where>
             and is_received = '1'
             and is_distributed = '1'
-            and distribution_type = '0'
             and user_id = #{userId}
             and order_num = #{orderNum}
             and (expiry_time IS NULL OR expiry_time &gt; NOW())
@@ -74,20 +76,15 @@
         order by expiry_time asc, create_time asc, id asc
     </select>
 
-    <select id="selectNextCompletionBonus" parameterType="Long" resultMap="OrderBonusTableResult">
-        <include refid="selectOrderBonusTableVo"/>
-        WHERE is_received = '1'
-          AND is_distributed = '1'
-          AND distribution_type = '1'
-          AND user_id = #{userId}
-          AND (expiry_time IS NULL OR expiry_time &gt; NOW())
-        ORDER BY expiry_time ASC, create_time ASC, id ASC
-        LIMIT 1
-    </select>
-
     <select id="selectOwnedBonusForUpdate" resultMap="OrderBonusTableResult">
         <include refid="selectOrderBonusTableVo"/>
         WHERE id = #{id} AND user_id = #{userId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectBonusForUpdate" parameterType="Long" resultMap="OrderBonusTableResult">
+        <include refid="selectOrderBonusTableVo"/>
+        WHERE id = #{id}
         FOR UPDATE
     </select>
 
@@ -149,7 +146,7 @@
             <if test="animationDuration != null">animation_duration = #{animationDuration},</if>
             <if test="displayDuration != null">display_duration = #{displayDuration},</if>
             <if test="distributionType != null and distributionType != ''">distribution_type = #{distributionType},</if>
-            <if test="expiryTime != null">expiry_time = #{expiryTime},</if>
+            expiry_time = #{expiryTime},
             <if test="pushType != null and pushType != ''">push_type = #{pushType},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="isDistributed != null">is_distributed = #{isDistributed},</if>
@@ -160,15 +157,23 @@
           and is_received = '1'
     </update>
 
-    <update id="claimBonus">
+    <update id="receiveBonus" parameterType="Long">
         UPDATE order_bonus_table
         SET is_received = '0',
             received_time = NOW(3)
         WHERE id = #{id}
-          AND user_id = #{userId}
           AND is_received = '1'
           AND is_distributed = '1'
           AND (expiry_time IS NULL OR expiry_time &gt; NOW())
+    </update>
+
+    <update id="distributeBonus" parameterType="Long">
+        UPDATE order_bonus_table
+        SET is_distributed = '0',
+            distribution_time = NOW(3)
+        WHERE id = #{id}
+          AND is_received = '0'
+          AND is_distributed = '1'
     </update>
 
     <delete id="deleteOrderBonusTableById" parameterType="Long">
