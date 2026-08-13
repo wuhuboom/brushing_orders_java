@@ -54,6 +54,10 @@ public class OrderSiteConfig extends BaseEntity
     @Excel(name = "浏览器图标URL")
     private String favicon;
 
+    /** 前端开屏广告图片URL */
+    @Excel(name = "前端开屏广告图片URL")
+    private String splashAdImage;
+
     /** 货币类型，如CNY/USD/JPY */
     @Excel(name = "货币类型，如CNY/USD/JPY")
     private String currencyType;
@@ -85,6 +89,14 @@ public class OrderSiteConfig extends BaseEntity
     private String minBalance;
     private String vipAutoShop;
     private String enableFullOrder;
+
+    // 新增字段：商品表类型，1:order_goods, 2:order_goods_hotel
+    private String goodsTableType;
+
+    private String newUserCanTask;
+
+    /** 是否需要手机号 0不需要 1需要 */
+    private String needPhone;
 
     public String getEnableFullOrder() {
         return enableFullOrder;
@@ -155,6 +167,14 @@ public class OrderSiteConfig extends BaseEntity
 
     public void setTotpEnabled(String totpEnabled) {
         this.totpEnabled = totpEnabled;
+    }
+
+    public String getGoodsTableType() {
+        return goodsTableType;
+    }
+
+    public void setGoodsTableType(String goodsTableType) {
+        this.goodsTableType = goodsTableType;
     }
 
     public void setId(Long id)
@@ -247,6 +267,16 @@ public class OrderSiteConfig extends BaseEntity
         return favicon;
     }
 
+    public String getSplashAdImage()
+    {
+        return splashAdImage;
+    }
+
+    public void setSplashAdImage(String splashAdImage)
+    {
+        this.splashAdImage = splashAdImage;
+    }
+
     public void setCurrencyType(String currencyType) 
     {
         this.currencyType = currencyType;
@@ -297,6 +327,22 @@ public class OrderSiteConfig extends BaseEntity
         return emailVerificationEnabled;
     }
 
+    public String getNewUserCanTask() {
+        return newUserCanTask;
+    }
+
+    public void setNewUserCanTask(String newUserCanTask) {
+        this.newUserCanTask = newUserCanTask;
+    }
+
+    public String getNeedPhone() {
+        return needPhone;
+    }
+
+    public void setNeedPhone(String needPhone) {
+        this.needPhone = needPhone;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -309,6 +355,7 @@ public class OrderSiteConfig extends BaseEntity
             .append("maintenanceImage", getMaintenanceImage())
             .append("siteLogo", getSiteLogo())
             .append("favicon", getFavicon())
+            .append("splashAdImage", getSplashAdImage())
             .append("currencyType", getCurrencyType())
             .append("maxRegisterPerIp", getMaxRegisterPerIp())
             .append("ipBlacklist", getIpBlacklist())
@@ -316,6 +363,8 @@ public class OrderSiteConfig extends BaseEntity
             .append("emailVerificationEnabled", getEmailVerificationEnabled())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
+            .append("newUserCanTask", getNewUserCanTask())
+            .append("needPhone", getNeedPhone())
             .toString();
     }
 }

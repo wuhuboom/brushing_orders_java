@@ -1,9 +1,6 @@
 package com.brushing.api.controller;
 
-import com.brushing.api.controller.vo.PageDto;
-import com.brushing.api.controller.vo.WalletDto;
-import com.brushing.api.controller.vo.WithdrawalDto;
-import com.brushing.api.controller.vo.WithrawalPage;
+import com.brushing.api.controller.vo.*;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.page.TableDataInfo;
@@ -12,11 +9,15 @@ import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.OrderNoGenerator;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.common.utils.CreditScoreUtils;
 import com.brushing.member.domain.*;
+import com.brushing.member.domain.vo.MemberLevelAmountVo;
+import com.brushing.member.domain.vo.RebateStatVo;
 import com.brushing.member.service.*;
 import com.brushing.set.domain.OrderTradeControlConfig;
 import com.brushing.system.domain.SysTimeZone;
 import com.brushing.system.service.ISysTimeZoneService;
+import com.brushing.framework.init.GeoIpQueryQueryService;
 import com.github.pagehelper.PageHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +28,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
+import com.brushing.common.utils.ip.IpUtils;
 
 import java.time.ZoneId;
 import java.util.Map;
@@ -60,7 +64,8 @@ import java.util.List;
                         "515:  表单验证未通过" +
                         "516:  请勿重复添加" +
                         "517:  提现金额达到当日最大额度" +
-                        "518:  提现次数达到当日最大"
+                        "518:  提现次数达到当日最大\n" +
+                        "519:  信誉分低于提现最低要求"
 )
 @RestController
 @RequestMapping("/api/account")
@@ -91,6 +96,11 @@ public class AccountController extends BaseController {
     @Autowired
     private IOrderShopService shopService;
 
+    @Autowired
+    private IOrderTopupService orderTopupService;
+
+    @Autowired
+    private GeoIpQueryQueryService queryService;
 
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
@@ -107,6 +117,8 @@ public class AccountController extends BaseController {
     private static final String ERR_USER_LEVEL_NOT_FOUND = "User level information is missing";
     private static final String ERR_RETRY_LATER = "Please try again later";
     private static final String ERR_WITHDRAWAL_STATUS = "Withdrawal is not open";
+    private static final String ERR_BELOW_MIN_CREDIT_SCORE =
+            "Credit score is below the minimum withdrawal requirement";
 
     @GetMapping("/getDeposit")
     @Operation(summary = "获取用户充值记录", description = "amout:金额，username：名称 ，code：编号，createTime:创建时间")
@@ -123,7 +135,7 @@ public class AccountController extends BaseController {
     @PostMapping("/withdrawal")
     @Operation(summary = "发起提现", description = "amount:金额，tradePassword：交易密码,walletId银行或者钱包id")
     @Transactional
-    public AjaxResult withdrawal(@RequestBody WithdrawalDto dto, @RequestAttribute("username") String username) {
+    public AjaxResult withdrawal(@RequestBody WithdrawalDto dto, @RequestAttribute("username") String username, HttpServletRequest request) {
         log.info("用户 {} 发起提现请求，金额: {}", username, dto.getAmount());
 
         OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
@@ -146,9 +158,9 @@ public class AccountController extends BaseController {
         if (controlConfig.getWithdrawEnabled().equals("1")) {
             return AjaxResult.error(512, ERR_WITHDRAWAL_STATUS);
         }
-        BigDecimal minWithdrawCreditScore = controlConfig.getMinWithdrawCreditScore();
-        if (new BigDecimal(user.getCreditScore()).compareTo(minWithdrawCreditScore) < 0) {
-            return AjaxResult.error(519, ERR_WITHDRAWAL_STATUS);
+        if (!CreditScoreUtils.meetsMinimum(
+                user.getCreditScore(), controlConfig.getMinWithdrawCreditScore())) {
+            return AjaxResult.error(519, ERR_BELOW_MIN_CREDIT_SCORE);
         }
         SysTimeZone active = sysTimeZoneService.getActive();
         String tzName = active.getTzName();
@@ -232,10 +244,14 @@ public class AccountController extends BaseController {
         if (StringUtils.isNotNull(dto.getWalletId())){
             withdrawal.setWalletId(dto.getWalletId());
         }
-        user.setTodayWithdrawCount(user.getTotalWithdrawCount() + 1);
-        user.setTodayWithdrawCount(user.getTodayWithdrawCount() + 1);
-//        user.setTodayResetCount(user.getTotalResetCount() + 1);
-//        user.setTotalResetCount(user.getTotalResetCount() + 1);
+
+        String ipAddr = IpUtils.getIpAddress(request);
+        String address = queryService.queryByIp(ipAddr);
+        withdrawal.setIp(ipAddr);
+        withdrawal.setIpAddress(address);
+
+        user.setTotalWithdrawCount((user.getTotalWithdrawCount()==null ? 0 : user.getTotalWithdrawCount()) + 1);
+        user.setTodayWithdrawCount((user.getTodayWithdrawCount()==null ? 0 : user.getTodayWithdrawCount()) + 1);
 
         int i = memberUserService.updateOrderMemberUser(user);
         if (i  == 0) {
@@ -332,12 +348,71 @@ public class AccountController extends BaseController {
             return AjaxResult.error(509, ERR_USER_NOT_FOUND);
         }OrderBankWallet orderBankWallet = new OrderBankWallet();
         orderBankWallet.setUserId(user.getId());
-        orderBankWallet.setType("2");
         List<OrderBankWallet> list = bankWalletService.selectOrderBankWalletList(orderBankWallet);
         AjaxResult ajaxResult= new AjaxResult();
         ajaxResult.put("data",list);
         ajaxResult.put("code",200);
         return ajaxResult;
+    }
+
+    @PostMapping("/addWallet")
+    @Operation(summary = "新增或修改用户钱包", description = "参数：wallet（钱包）、address（地址）、network（网络）")
+    @Transactional
+    public AjaxResult addWallet(@RequestBody UserWalletDto dto,
+                                @RequestAttribute("username") String username) {
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        if (dto == null || StringUtils.isEmpty(dto.getWallet())
+                || StringUtils.isEmpty(dto.getAddress()) || StringUtils.isEmpty(dto.getNetwork())) {
+            return AjaxResult.error(515, "Form validation failed");
+        }
+
+        OrderBankWallet query = new OrderBankWallet();
+        query.setUserId(user.getId());
+        query.setType("2");
+        List<OrderBankWallet> wallets = bankWalletService.selectOrderBankWalletList(query);
+
+        OrderBankWallet wallet = new OrderBankWallet();
+        wallet.setUserId(user.getId());
+        wallet.setType("2");
+        wallet.setWalletType(dto.getWallet());
+        wallet.setWalletAddress(dto.getAddress());
+        wallet.setBankType(dto.getNetwork());
+
+        if (StringUtils.isNotEmpty(wallets)) {
+            wallet.setId(wallets.get(0).getId());
+            return toAjax(bankWalletService.updateOrderBankWallet(wallet));
+        }
+        return toAjax(bankWalletService.insertOrderBankWallet(wallet));
+    }
+
+    @GetMapping("/getWallet")
+    @Operation(summary = "获取用户钱包", description = "有多个钱包时返回第一个，没有钱包时 data 返回 null")
+    public AjaxResult getWallet(@RequestAttribute("username") String username) {
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+
+        OrderBankWallet query = new OrderBankWallet();
+        query.setUserId(user.getId());
+        query.setType("2");
+        List<OrderBankWallet> wallets = bankWalletService.selectOrderBankWalletList(query);
+
+        UserWalletDto data = null;
+        if (StringUtils.isNotEmpty(wallets)) {
+            OrderBankWallet wallet = wallets.get(0);
+            data = new UserWalletDto();
+            data.setId(wallet.getId());
+            data.setWallet(wallet.getWalletType());
+            data.setAddress(wallet.getWalletAddress());
+            data.setNetwork(wallet.getBankType());
+        }
+
+        // AjaxResult.success(null) omits the data key, so add it explicitly.
+        return success().put(AjaxResult.DATA_TAG, data);
     }
 
     @Operation(summary = "通过id删除银行卡/钱包")
@@ -389,6 +464,41 @@ public class AccountController extends BaseController {
         }
         return success(false);
 
+    }
+
+    @GetMapping("/getTeamInfo")
+    @Operation(summary = "获取用户团队信息", description = "返回字段说明：\n" +
+            "- rebateStats: 用户信息，包含字段：userId(用户ID)、username(用户名)、inviteCode(邀请码)、rebateToday(今日返利)、rebateYesterday(昨日返利)、rebateTotal(累计返利)、subordinatesCount(下级总人数)、totalTradingUsers(下级累计交易人数)、todayTradingUsers(今日下级交易人数)、totalSubordinateBalance（下级账号的总账户金额汇总）。\n" +
+            "- levelUsers: 下级用户数组，返回指定用户前3层下级明细（按层级升序），每项包含：userId(用户ID)、username(用户名)、level(层级 1/2/3)、rechargeAmount(累计充值金额)、withdrawAmount(累计提现金额)。\n" )
+    public AjaxResult getTeamInfo(@RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        RebateStatVo rebateStats = memberUserService.getRebateStats(username);
+        List<MemberLevelAmountVo> firstThreeLevelsByUsername = memberUserService.getFirstThreeLevelsByUsername(username);
+        AjaxResult ajaxResult = new AjaxResult();
+        ajaxResult.put("rebateStats",rebateStats);
+        ajaxResult.put("levelUsers",firstThreeLevelsByUsername);
+        return success(ajaxResult);
+    }
+
+    @PostMapping("/topUp")
+    @Operation(summary = "用户发起充值申请", description = "amount:金额，payMethod：充值方式，address：充值地址")
+    public AjaxResult topUp(@Validated @RequestBody TopUpVo vo, @RequestAttribute("username") String username){
+        OrderMemberUser user = memberUserService.findByUsername(username);
+        if (user == null) {
+            return AjaxResult.error(509, ERR_USER_NOT_FOUND);
+        }
+        OrderTopup orderTopup = new OrderTopup();
+        orderTopup.setUserId(user.getId());
+        orderTopup.setIsReal(user.getIsReal());
+        orderTopup.setAmout(vo.getAmout());
+        orderTopup.setPayMethod(vo.getPayMethod());
+        orderTopup.setAddress(vo.getAddress());
+        orderTopup.setType("1");
+        orderTopup.setStatus("1");
+        return toAjax(orderTopupService.insertOrderTopup(orderTopup));
     }
 
 
@@ -449,4 +559,6 @@ public class AccountController extends BaseController {
         }
         return null;
     }
+
+
 }

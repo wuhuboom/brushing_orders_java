@@ -2,9 +2,9 @@ package com.brushing.api.controller.vo;
 
 public class PageDto {
 
-    private Integer pageNum;
+    private Integer pageNum = 1;
 
-    private Integer pageSize;
+    private Integer pageSize = 10;
 
     public Integer getPageNum() {
         return pageNum;

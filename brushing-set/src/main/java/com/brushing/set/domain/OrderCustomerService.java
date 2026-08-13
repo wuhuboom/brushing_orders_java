@@ -57,6 +57,9 @@ public class OrderCustomerService extends BaseEntity
     @Excel(name = "葡萄牙")
     private String namePor;
 
+    @Excel(name = "西班牙语名称")
+    private String nameEs;
+
     /** 中文繁体名称 */
     @Excel(name = "中文繁体名称")
     private String nameZhTw;
@@ -67,6 +70,14 @@ public class OrderCustomerService extends BaseEntity
 
     public void setNamePor(String namePor) {
         this.namePor = namePor;
+    }
+
+    public String getNameEs() {
+        return nameEs;
+    }
+
+    public void setNameEs(String nameEs) {
+        this.nameEs = nameEs;
     }
 
     public void setId(Long id)

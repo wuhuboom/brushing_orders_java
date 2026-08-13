@@ -23,6 +23,10 @@ import com.brushing.member.domain.OrderGoods;
 import com.brushing.member.service.IOrderGoodsService;
 import com.brushing.common.utils.poi.ExcelUtil;
 import com.brushing.common.core.page.TableDataInfo;
+import com.brushing.common.utils.DateUtils;
+import com.brushing.set.service.IOrderSiteConfigService;
+import com.brushing.set.domain.OrderSiteConfig;
+import com.brushing.member.mapper.OrderGoodsHotelMapper;
 
 /**
  * 商品列表Controller
@@ -40,6 +44,12 @@ public class OrderGoodsController extends BaseController
     @Autowired
     private IOrderGoodsTypeService orderGoodsTypeService;
 
+    @Autowired
+    private IOrderSiteConfigService siteConfigService;
+
+    @Autowired
+    private OrderGoodsHotelMapper orderGoodsHotelMapper;
+
     /**
      * 查询商品列表列表
      */
@@ -47,9 +57,16 @@ public class OrderGoodsController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(OrderGoods orderGoods)
     {
-        startPage();
-        List<OrderGoods> list = orderGoodsService.selectOrderGoodsList(orderGoods);
-        return getDataTable(list);
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            startPage();
+            List<OrderGoods> list = orderGoodsHotelMapper.selectOrderGoodsList(orderGoods);
+            return getDataTable(list);
+        }else{
+            startPage();
+            List<OrderGoods> list = orderGoodsService.selectOrderGoodsList(orderGoods);
+            return getDataTable(list);
+        }
     }
 
     @GetMapping("/getTypeList")
@@ -66,7 +83,13 @@ public class OrderGoodsController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, OrderGoods orderGoods)
     {
-        List<OrderGoods> list = orderGoodsService.selectOrderGoodsList(orderGoods);
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        List<OrderGoods> list;
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            list = orderGoodsHotelMapper.selectOrderGoodsList(orderGoods);
+        }else{
+            list = orderGoodsService.selectOrderGoodsList(orderGoods);
+        }
         ExcelUtil<OrderGoods> util = new ExcelUtil<OrderGoods>(OrderGoods.class);
         util.exportExcel(response, list, "商品列表数据");
     }
@@ -78,6 +101,10 @@ public class OrderGoodsController extends BaseController
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            return success(orderGoodsHotelMapper.selectOrderGoodsById(id));
+        }
         return success(orderGoodsService.selectOrderGoodsById(id));
     }
 
@@ -89,6 +116,12 @@ public class OrderGoodsController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody OrderGoods orderGoods)
     {
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            orderGoods.setCreateTime(DateUtils.getNowDate());
+            int r = orderGoodsHotelMapper.insertOrderGoods(orderGoods);
+            return toAjax(r);
+        }
         return toAjax(orderGoodsService.insertOrderGoods(orderGoods));
     }
 
@@ -100,6 +133,12 @@ public class OrderGoodsController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderGoods orderGoods)
     {
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            orderGoods.setUpdateTime(DateUtils.getNowDate());
+            orderGoodsHotelMapper.updateOrderGoods(orderGoods);
+            return toAjax(1);
+        }
         return toAjax(orderGoodsService.updateOrderGoods(orderGoods));
     }
 
@@ -111,6 +150,11 @@ public class OrderGoodsController extends BaseController
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable String[] ids)
     {
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            orderGoodsHotelMapper.deleteOrderGoodsByIds(ids);
+            return toAjax(1);
+        }
         return toAjax(orderGoodsService.deleteOrderGoodsByIds(ids));
     }
 }

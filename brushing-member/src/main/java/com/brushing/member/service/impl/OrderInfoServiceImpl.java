@@ -7,6 +7,10 @@ import org.springframework.stereotype.Service;
 import com.brushing.member.mapper.OrderInfoMapper;
 import com.brushing.member.domain.OrderInfo;
 import com.brushing.member.service.IOrderInfoService;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import com.brushing.member.mapper.OrderGoodsHotelMapper;
 
 /**
  * 订单列表Service业务层处理
@@ -19,6 +23,17 @@ public class OrderInfoServiceImpl implements IOrderInfoService
 {
     @Autowired
     private OrderInfoMapper orderInfoMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private OrderGoodsHotelMapper orderGoodsHotelMapper;
+
+    // local TTL cache to avoid repeated information_schema queries but still detect newly created tables
+    private static final long TABLE_CACHE_TTL_MS = 5_000L; // 5 seconds
+    private static class TableStatus { boolean exists; long checkedAt; }
+    private final Map<String, TableStatus> tableExistenceCache = new ConcurrentHashMap<>();
 
     /**
      * 查询订单列表
@@ -46,11 +61,37 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     @Override
     public List<OrderInfo> selectOrderInfoList(OrderInfo orderInfo)
     {
-        return orderInfoMapper.selectOrderInfoList(orderInfo);
+        // set flag for mapper to decide whether to join order_goods_hotel
+        if (orderInfo != null) {
+            orderInfo.setHasOrderGoodsHotel(hasTable("order_goods_hotel"));
+        }
+        List<OrderInfo> list = orderInfoMapper.selectOrderInfoList(orderInfo);
+        // If some orders lack product info (not found in order_goods), try fallback to order_goods_hotel if table exists
+        if (list != null && !list.isEmpty()){
+            boolean hasHotel = hasTable("order_goods_hotel");
+            if (hasHotel) {
+                for (OrderInfo oi : list){
+                    if (oi.getProduct() == null || oi.getProduct().getId() == null){
+                        try {
+                            Long pid = oi.getProductId();
+                            if (pid != null){
+                                oi.setProduct(orderGoodsHotelMapper.selectOrderGoodsById(pid));
+                            }
+                        } catch (Exception ignore) {
+                            // ignore fallback errors
+                        }
+                    }
+                }
+            }
+        }
+        return list;
     }
 
     @Override
     public List<OrderInfo> selectOrderInfosByUser(OrderInfo orderInfo) {
+        if (orderInfo != null) {
+            orderInfo.setHasOrderGoodsHotel(hasTable("order_goods_hotel"));
+        }
         return orderInfoMapper.selectOrderInfosByUser(orderInfo);
     }
 
@@ -109,6 +150,11 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     }
 
     @Override
+    public OrderInfo selectLatestUnfinishedOrder(Long userId) {
+        return orderInfoMapper.selectLatestUnfinishedOrder(userId);
+    }
+
+    @Override
     public List<OrderInfo> selectOrderInfoBySeries(Long userId) {
         return orderInfoMapper.selectOrderInfoBySeries(userId);
     }
@@ -116,5 +162,26 @@ public class OrderInfoServiceImpl implements IOrderInfoService
     @Override
     public int countStatusOneInOrderInfo() {
         return orderInfoMapper.countStatusOneInOrderInfo();
+    }
+
+    private boolean hasTable(String tableName){
+        long now = System.currentTimeMillis();
+        TableStatus status = tableExistenceCache.get(tableName);
+        if (status != null && (now - status.checkedAt) < TABLE_CACHE_TTL_MS) {
+            return status.exists;
+        }
+        // refresh check
+        boolean exists = false;
+        try{
+            Integer cnt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+                    Integer.class, tableName);
+            exists = cnt != null && cnt > 0;
+        }catch(Exception ex){
+            exists = false;
+        }
+        TableStatus ns = new TableStatus(); ns.exists = exists; ns.checkedAt = now;
+        tableExistenceCache.put(tableName, ns);
+        return exists;
     }
 }

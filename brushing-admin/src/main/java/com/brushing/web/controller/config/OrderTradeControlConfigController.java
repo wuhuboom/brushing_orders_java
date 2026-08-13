@@ -3,6 +3,7 @@ package com.brushing.web.controller.config;
 import java.util.List;
 
 import com.brushing.common.core.redis.RedisCache;
+import com.brushing.common.utils.CreditScoreUtils;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,7 +83,14 @@ public class OrderTradeControlConfigController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody OrderTradeControlConfig orderTradeControlConfig)
     {
-        return toAjax(orderTradeControlConfigService.insertOrderTradeControlConfig(orderTradeControlConfig));
+        if (!CreditScoreUtils.isValidMinimum(orderTradeControlConfig.getMinWithdrawCreditScore())) {
+            return error("Minimum withdrawal credit score must be an integer between 1 and 100");
+        }
+        int rows = orderTradeControlConfigService.insertOrderTradeControlConfig(orderTradeControlConfig);
+        if (rows > 0) {
+            refreshTradeConfigCache(orderTradeControlConfig.getId());
+        }
+        return toAjax(rows);
     }
 
     /**
@@ -93,8 +101,23 @@ public class OrderTradeControlConfigController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderTradeControlConfig orderTradeControlConfig)
     {
-         redisCache.setCacheObject("trade_config",orderTradeControlConfig);
-        return toAjax(orderTradeControlConfigService.updateOrderTradeControlConfig(orderTradeControlConfig));
+        if (!CreditScoreUtils.isValidMinimum(orderTradeControlConfig.getMinWithdrawCreditScore())) {
+            return error("Minimum withdrawal credit score must be an integer between 1 and 100");
+        }
+        int rows = orderTradeControlConfigService.updateOrderTradeControlConfig(orderTradeControlConfig);
+        if (rows > 0) {
+            refreshTradeConfigCache(orderTradeControlConfig.getId());
+        }
+        return toAjax(rows);
+    }
+
+    private void refreshTradeConfigCache(Long configId)
+    {
+        OrderTradeControlConfig savedConfig =
+                orderTradeControlConfigService.selectOrderTradeControlConfigById(configId);
+        if (savedConfig != null) {
+            redisCache.setCacheObject("trade_config", savedConfig);
+        }
     }
 
     /**

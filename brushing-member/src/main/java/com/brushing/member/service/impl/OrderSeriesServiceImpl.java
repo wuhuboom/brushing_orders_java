@@ -7,17 +7,12 @@ import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.StringUtils;
-import com.brushing.member.domain.OrderGoods;
-import com.brushing.member.domain.OrderMemberLevel;
-import com.brushing.member.domain.OrderMemberUser;
-import com.brushing.member.mapper.OrderGoodsMapper;
-import com.brushing.member.mapper.OrderMemberLevelMapper;
-import com.brushing.member.mapper.OrderMemberUserMapper;
+import com.brushing.member.domain.*;
+import com.brushing.member.mapper.*;
 import com.brushing.member.service.IOrderMemberUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.brushing.member.mapper.OrderSeriesMapper;
-import com.brushing.member.domain.OrderSeries;
+
 import java.math.RoundingMode;
 import com.brushing.member.service.IOrderSeriesService;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +37,9 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
 
     @Autowired
     private OrderMemberLevelMapper memberLevelMapper;
+
+    @Autowired
+    private OrderTaksTemplateInfoMapper orderTaksTemplateInfoMapper;
 
     /**
      * 查询连单
@@ -256,6 +254,28 @@ public class OrderSeriesServiceImpl implements IOrderSeriesService
             if (!orderSeries1.isEmpty()) {
                 throw new ServiceException(MessageUtils.message("series.already_set"));
             }
+            orderSeriesMapper.insertOrderSeries(series);
+        }
+        return 1;
+    }
+
+    @Override
+    public int insertOrderSeriesByTemplate(Long userId,Long templateId,String createBy) {
+        List<OrderTaksTemplateInfo> orderTaksTemplateInfos = orderTaksTemplateInfoMapper.selectOrderTaksTemplateInfoByTemplateId(templateId);
+        for (OrderTaksTemplateInfo info: orderTaksTemplateInfos){
+            List<OrderSeries> orderSeries1 = orderSeriesMapper.selectByUserIdAndOrderIndexes(userId, Collections.singletonList(info.getOrderIndex()));
+            if (!orderSeries1.isEmpty()) {
+                throw new ServiceException(MessageUtils.message("series.already_set"));
+            }
+            OrderSeries series = new OrderSeries();
+            series.setUserId(userId);
+            series.setProductId(info.getProductId());
+            series.setOrderIndex(info.getOrderIndex());
+            series.setPrice(info.getPrice());
+            series.setType(info.getType());
+            series.setCommissionRatio(info.getCommissionRatio());
+            series.setCreateBy(createBy);
+            series.setCreateTime(DateUtils.getNowDate());
             orderSeriesMapper.insertOrderSeries(series);
         }
         return 1;

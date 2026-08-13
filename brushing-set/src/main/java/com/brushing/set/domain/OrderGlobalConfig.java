@@ -207,6 +207,83 @@ public class OrderGlobalConfig extends BaseEntity
     @Excel(name = "收入指南 - 葡萄牙")
     private String incomeGuidePor;
 
+    @Excel(name = "注册协议 - 西班牙语")
+    private String registrationAgreementEs;
+
+    @Excel(name = "关于我们 - 西班牙语")
+    private String aboutUsEs;
+
+    @Excel(name = "证书 - 西班牙语")
+    private String certificateEs;
+
+    @Excel(name = "常见问题 - 西班牙语")
+    private String faqEs;
+
+    @Excel(name = "最新事件 - 西班牙语")
+    private String latestEventsEs;
+
+    @Excel(name = "条款条规 - 西班牙语")
+    private String termsConditionsEs;
+
+    @Excel(name = "收入指南 - 西班牙语")
+    private String incomeGuideEs;
+
+
+    public String getRegistrationAgreementEs() {
+        return registrationAgreementEs;
+    }
+
+    public void setRegistrationAgreementEs(String registrationAgreementEs) {
+        this.registrationAgreementEs = registrationAgreementEs;
+    }
+
+    public String getAboutUsEs() {
+        return aboutUsEs;
+    }
+
+    public void setAboutUsEs(String aboutUsEs) {
+        this.aboutUsEs = aboutUsEs;
+    }
+
+    public String getCertificateEs() {
+        return certificateEs;
+    }
+
+    public void setCertificateEs(String certificateEs) {
+        this.certificateEs = certificateEs;
+    }
+
+    public String getFaqEs() {
+        return faqEs;
+    }
+
+    public void setFaqEs(String faqEs) {
+        this.faqEs = faqEs;
+    }
+
+    public String getLatestEventsEs() {
+        return latestEventsEs;
+    }
+
+    public void setLatestEventsEs(String latestEventsEs) {
+        this.latestEventsEs = latestEventsEs;
+    }
+
+    public String getTermsConditionsEs() {
+        return termsConditionsEs;
+    }
+
+    public void setTermsConditionsEs(String termsConditionsEs) {
+        this.termsConditionsEs = termsConditionsEs;
+    }
+
+    public String getIncomeGuideEs() {
+        return incomeGuideEs;
+    }
+
+    public void setIncomeGuideEs(String incomeGuideEs) {
+        this.incomeGuideEs = incomeGuideEs;
+    }
 
     public String getRegistrationAgreementPor() {
         return registrationAgreementPor;

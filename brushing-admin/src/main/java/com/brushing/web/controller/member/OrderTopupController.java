@@ -3,6 +3,7 @@ package com.brushing.web.controller.member;
 import java.util.List;
 
 import com.brushing.common.core.domain.entity.SysUser;
+import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.member.domain.OrderMemberUser;
 import com.brushing.member.service.IOrderMemberUserService;
@@ -120,6 +121,20 @@ public class OrderTopupController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody OrderTopup orderTopup)
     {
+        OrderTopup orderTopup1 = orderTopupService.selectOrderTopupById(orderTopup.getId());
+        if (!orderTopup1.getStatus().equals("1")){
+            return AjaxResult.error("不能重复审核！");
+        }
+        if (orderTopup.getStatus().equals("0") &&(orderTopup.getRealMoney()==null || orderTopup.getRealMoney().doubleValue()<=0)){
+            return AjaxResult.error("请输入实际金额");
+        }
+        orderTopup.setAuditTime(DateUtils.getNowDate());
+        orderTopup.setAuditor(getUsername());
+        if(orderTopup.getStatus().equals("0")){
+            orderTopup.setRealMoney(orderTopup.getRealMoney());
+        }else if(orderTopup.getStatus().equals("2")){
+            orderTopup.setRealMoney(null);
+        }
         return toAjax(orderTopupService.updateOrderTopup(orderTopup));
     }
 

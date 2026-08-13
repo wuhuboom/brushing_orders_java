@@ -22,3 +22,19 @@ logs/
 # 临时文件
 *.tmp
 *.temp
+
+# Cross-machine safety
+# Local secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/application-local.yml
+**/application-*.local.yml
+**/settings.xml
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore

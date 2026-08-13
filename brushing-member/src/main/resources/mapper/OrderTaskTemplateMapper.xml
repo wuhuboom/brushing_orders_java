@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderTaskTemplateMapper">
+
+    <resultMap type="OrderTaskTemplate" id="OrderTaskTemplateResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="description"    column="description"    />
+        <result property="taskCount"    column="task_count"    />
+        <result property="status"    column="status"    />
+        <result property="sort"    column="sort"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="createBy"    column="create_by"    />
+    </resultMap>
+
+    <sql id="selectOrderTaskTemplateVo">
+        select t.id,
+               t.name,
+               t.description,
+               (
+                 select count(1)
+                 from order_taks_template_info i
+                 where i.template_id = t.id
+               ) as task_count,
+               t.status,
+               t.sort,
+               t.create_time,
+               t.create_by
+        from order_task_template t
+    </sql>
+
+    <select id="selectOrderTaskTemplateList" parameterType="OrderTaskTemplate" resultMap="OrderTaskTemplateResult">
+        <include refid="selectOrderTaskTemplateVo"/>
+        <where>
+            <if test="name != null  and name != ''"> and t.name like concat('%', #{name}, '%')</if>
+            <if test="description != null  and description != ''"> and t.description = #{description}</if>
+            <if test="taskCount != null "> and task_count = #{taskCount}</if>
+            <if test="status != null "> and t.status = #{status}</if>
+            <if test="sort != null "> and t.sort = #{sort}</if>
+        </where>
+    </select>
+
+    <select id="selectOrderTaskTemplateById" parameterType="Long" resultMap="OrderTaskTemplateResult">
+        <include refid="selectOrderTaskTemplateVo"/>
+        where t.id = #{id}
+    </select>
+
+    <insert id="insertOrderTaskTemplate" parameterType="OrderTaskTemplate" useGeneratedKeys="true" keyProperty="id">
+        insert into order_task_template
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="description != null">description,</if>
+            <if test="taskCount != null">task_count,</if>
+            <if test="status != null">status,</if>
+            <if test="sort != null">sort,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="createBy != null">create_by,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="description != null">#{description},</if>
+            <if test="taskCount != null">#{taskCount},</if>
+            <if test="status != null">#{status},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderTaskTemplate" parameterType="OrderTaskTemplate">
+        update order_task_template
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="taskCount != null">task_count = #{taskCount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderTaskTemplateById" parameterType="Long">
+        delete from order_task_template where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderTaskTemplateByIds" parameterType="String">
+        delete from order_task_template where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

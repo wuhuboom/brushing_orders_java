@@ -20,6 +20,7 @@ import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.core.redis.RedisCache;
 import com.brushing.common.enums.BusinessType;
 import com.brushing.common.utils.StringUtils;
+import com.brushing.framework.web.service.TokenService;
 import com.brushing.system.domain.SysUserOnline;
 import com.brushing.system.service.ISysUserOnlineService;
 
@@ -37,6 +38,9 @@ public class SysUserOnlineController extends BaseController
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private TokenService tokenService;
 
     @PreAuthorize("@ss.hasPermi('monitor:online:list')")
     @GetMapping("/list")
@@ -77,7 +81,7 @@ public class SysUserOnlineController extends BaseController
     @DeleteMapping("/{tokenId}")
     public AjaxResult forceLogout(@PathVariable String tokenId)
     {
-        redisCache.deleteObject(CacheConstants.LOGIN_TOKEN_KEY + tokenId);
+        tokenService.delLoginUser(tokenId);
         return success();
     }
 }

@@ -18,6 +18,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="creditScore"    column="credit_score"    />
         <result property="balance"    column="balance"    />
         <result property="frozenBalance"    column="frozen_balance"    />
+        <result property="withdrawFrozenAmount"    column="withdraw_frozen_amount"    />
         <result property="totalBalance"    column="total_balance"    />
         <result property="inviteCode"    column="invite_code"    />
         <result property="registerIp"    column="register_ip"    />
@@ -47,12 +48,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="todayResetCount"    column="today_reset_count"    />
         <result property="totalResetCount"    column="total_reset_count"    />
         <result property="withdrawTip"    column="withdraw_tip"    />
+        <result property="taskStatus"    column="task_status"    />
         <result property="parentUsername"    column="parent_username"    />
         <result property="parentPhone"    column="parent_phone"    />
         <result property="cardNumber"    column="card_number"    />
         <result property="cardAmount"    column="card_amount"    />
         <result property="version" column="version" />
         <result property="rechargeNeededForNextLevel"    column="recharge_needed_for_next_level"    />
+        <result property="totalRecharge"    column="total_recharge"    />
+        <result property="totalWithdraw"    column="total_withdraw"    />
+        <result property="diffAmount"       column="diff_amount"    />
         <association property="userLevel"     javaType="UserLevel"  resultMap="userLevelResult" />
     </resultMap>
 
@@ -79,6 +84,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime"    column="levelTime"    />
     </resultMap>
 
+    <resultMap type="OrderMemberUser" id="MemberListFinancialAggregateResult">
+        <id property="id" column="user_id" />
+        <result property="totalRecharge" column="total_recharge" />
+        <result property="totalWithdraw" column="total_withdraw" />
+        <result property="withdrawFrozenAmount" column="withdraw_frozen_amount" />
+        <result property="todayWithdrawCount" column="today_withdraw_count" />
+    </resultMap>
+
+    <resultMap type="OrderMemberUser" id="MemberListSubordinateAggregateResult">
+        <id property="id" column="user_id" />
+        <result property="directSubCount" column="direct_sub_count" />
+        <result property="allSubCount" column="all_sub_count" />
+    </resultMap>
+
     <sql id="selectOrderMemberUserVo">
         SELECT
         u.id,
@@ -94,6 +113,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.credit_score,
         u.balance,
         u.frozen_balance,
+        IFNULL((
+            SELECT SUM(pending_withdrawal.amount)
+            FROM order_withdrawal pending_withdrawal
+            WHERE pending_withdrawal.user_id = u.id
+              AND pending_withdrawal.status = '1'
+        ), 0) AS withdraw_frozen_amount,
         (u.balance + u.frozen_balance) AS total_balance,
         u.invite_code,
         u.register_ip,
@@ -118,6 +143,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.deal_count,
         u.card_number,
         u.card_amount,
+        u.task_status,
         u.version,
 
         (
@@ -166,8 +192,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         l.create_time AS levelTime,
 
         -- 使用当前余额作为累计充值金额
-        u.balance AS total_recharge,
-
+        IFNULL((SELECT SUM(CASE WHEN t.type = '0' THEN IFNULL(t.amout, 0) ELSE IFNULL(t.real_money, 0) END) FROM order_topup t WHERE t.user_id = u.id AND t.status = '0'), 0) AS total_recharge,
+        IFNULL((SELECT SUM(w.credited_amount) FROM order_withdrawal w WHERE w.user_id = u.id AND w.status = '0'), 0) AS total_withdraw,
+                                                  (
+        IFNULL((SELECT SUM(CASE WHEN t.type = '0' THEN IFNULL(t.amout, 0) ELSE IFNULL(t.real_money, 0) END) FROM order_topup t WHERE t.user_id = u.id AND t.status = '0'), 0)
+        - IFNULL((SELECT SUM(w.credited_amount) FROM order_withdrawal w WHERE w.user_id = u.id  AND w.status = '0'), 0)
+        ) AS diff_amount,
         -- 最大可达等级价格（小于等于当前余额）
         (SELECT MAX(l2.price)
         FROM order_member_level l2
@@ -211,8 +241,98 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
 
 
-    <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
-        <include refid="selectOrderMemberUserVo"/>
+    <!--
+      The list has its own projection.  Detail/scope lookups continue using the
+      legacy full projection above, while PageHelper can count this query without
+      evaluating any transaction or hierarchy projections.
+    -->
+    <sql id="selectOrderMemberUserListVo">
+        SELECT
+            u.id,
+            u.username,
+            u.phone,
+            u.password,
+            u.trade_password,
+            u.parent_id,
+            u.avatar,
+            u.ancestors,
+            u.sex,
+            u.email,
+            u.credit_score,
+            u.balance,
+            u.frozen_balance,
+            (u.balance + u.frozen_balance) AS total_balance,
+            u.invite_code,
+            u.register_ip,
+            u.last_login_time,
+            u.account_status,
+            u.trade_status,
+            u.withdraw_status,
+            u.real_name_status,
+            u.real_name,
+            u.id_card_number,
+            u.id_card_front,
+            u.id_card_back,
+            u.withdraw_name,
+            u.withdraw_address,
+            u.withdraw_type,
+            u.create_time,
+            u.remark,
+            u.is_real,
+            u.level_id,
+            u.commission,
+            u.all_commission,
+            u.deal_count,
+            u.card_number,
+            u.card_amount,
+            u.task_status,
+            u.version,
+            u.total_withdraw_count,
+            u.today_reset_count,
+            u.total_reset_count,
+            u.withdraw_tip,
+            parent_user.username AS parent_username,
+            parent_user.phone AS parent_phone,
+            l.id AS levelId,
+            l.icon,
+            l.name_zh,
+            l.name_en,
+            l.price,
+            l.auto_upgrade_invite_count,
+            l.commission_ratio,
+            l.streak_commission_ratio,
+            l.min_balance,
+            l.order_count,
+            l.withdraw_count,
+            l.withdraw_limit,
+            l.min_withdraw_amount,
+            l.max_withdraw_amount,
+            l.withdraw_fee,
+            l.withdraw_order_per_day,
+            l.description_zh,
+            l.description_en,
+            l.create_time AS levelTime,
+            COALESCE(
+                (
+                    SELECT MIN(next_level.price)
+                    FROM order_member_level next_level
+                    WHERE next_level.price &gt; COALESCE(
+                        (
+                            SELECT MAX(current_level.price)
+                            FROM order_member_level current_level
+                            WHERE current_level.price &lt;= u.balance
+                        ),
+                        -1
+                    )
+                ) - u.balance,
+                0
+            ) AS recharge_needed_for_next_level
+        FROM order_member_user u
+        LEFT JOIN order_member_level l ON u.level_id = l.id
+        LEFT JOIN order_member_user parent_user ON u.parent_id = parent_user.id
+    </sql>
+
+    <sql id="orderMemberUserListWhere">
         <where>
             <if test="username != null  and username != ''"> and u.username = #{username}</if>
             <if test="inviteCode != null  and inviteCode != ''"> and u.invite_code = #{inviteCode}</if>
@@ -225,6 +345,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 </if>
             </if>
             <if test="isReal != null  and isReal != ''"> and u.is_real = #{isReal}</if>
+            <if test="levelId != null  and levelId != ''"> and u.level_id = #{levelId}</if>
             <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
                 AND date_format(u.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
             </if>
@@ -238,7 +359,321 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 AND 1 = 0
             </if>
         </where>
+    </sql>
+
+    <select id="selectOrderMemberUserList" parameterType="OrderMemberUser" resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserListVo"/>
+        <include refid="orderMemberUserListWhere"/>
         order by u.create_time desc
+    </select>
+
+    <!-- PageHelper 6.x resolves this mapped statement before auto-generating COUNT SQL. -->
+    <select id="selectOrderMemberUserList_COUNT" parameterType="OrderMemberUser" resultType="long">
+        SELECT COUNT(*)
+        FROM order_member_user u
+        <include refid="orderMemberUserListWhere"/>
+    </select>
+
+    <select id="selectOrderMemberUserListByIds" resultMap="OrderMemberUserResult">
+        <include refid="selectOrderMemberUserListVo"/>
+        WHERE u.id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+
+    <sql id="memberListAggregateSortDirection">
+        <choose>
+            <when test="params.memberListSortDirection == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        , candidate.id DESC
+    </sql>
+
+    <!--
+      Aggregate aliases must be ordered over the complete filtered candidate
+      set before PageHelper appends LIMIT.  Each branch computes only the
+      aggregate family required by the requested, service-validated sort key.
+      No request text is substituted into SQL.
+    -->
+    <select id="selectOrderMemberUserAggregateSortedIds"
+            parameterType="OrderMemberUser"
+            resultType="long">
+        WITH candidate AS (
+            SELECT u.id
+            FROM order_member_user u
+            <include refid="orderMemberUserListWhere"/>
+        )
+        <choose>
+            <when test="params.memberListSortKey == 'total_recharge'">
+                SELECT candidate.id
+                FROM candidate
+                LEFT JOIN (
+                    SELECT
+                        topup.user_id,
+                        SUM(
+                            CASE
+                                WHEN topup.type = '0' THEN IFNULL(topup.amout, 0)
+                                ELSE IFNULL(topup.real_money, 0)
+                            END
+                        ) AS total_recharge
+                    FROM order_topup topup
+                    INNER JOIN candidate matched_candidate
+                            ON matched_candidate.id = topup.user_id
+                    WHERE topup.status = '0'
+                    GROUP BY topup.user_id
+                ) aggregate_sort ON aggregate_sort.user_id = candidate.id
+                ORDER BY COALESCE(aggregate_sort.total_recharge, 0)
+                <include refid="memberListAggregateSortDirection"/>
+            </when>
+
+            <when test="params.memberListSortKey == 'total_withdraw'
+                     or params.memberListSortKey == 'withdraw_frozen_amount'
+                     or params.memberListSortKey == 'today_withdraw_count'">
+                SELECT candidate.id
+                FROM candidate
+                LEFT JOIN (
+                    SELECT
+                        withdrawal.user_id,
+                        SUM(
+                            CASE
+                                WHEN withdrawal.status = '0'
+                                    THEN IFNULL(withdrawal.credited_amount, 0)
+                                ELSE 0
+                            END
+                        ) AS total_withdraw,
+                        SUM(
+                            CASE
+                                WHEN withdrawal.status = '1'
+                                    THEN IFNULL(withdrawal.amount, 0)
+                                ELSE 0
+                            END
+                        ) AS withdraw_frozen_amount,
+                        SUM(
+                            CASE
+                                WHEN withdrawal.application_time <![CDATA[ >= ]]> CURDATE()
+                                 AND withdrawal.application_time <![CDATA[ < ]]> CURDATE() + INTERVAL 1 DAY
+                                    THEN 1
+                                ELSE 0
+                            END
+                        ) AS today_withdraw_count
+                    FROM order_withdrawal withdrawal
+                    INNER JOIN candidate matched_candidate
+                            ON matched_candidate.id = withdrawal.user_id
+                    GROUP BY withdrawal.user_id
+                ) aggregate_sort ON aggregate_sort.user_id = candidate.id
+                ORDER BY
+                <choose>
+                    <when test="params.memberListSortKey == 'total_withdraw'">
+                        COALESCE(aggregate_sort.total_withdraw, 0)
+                    </when>
+                    <when test="params.memberListSortKey == 'withdraw_frozen_amount'">
+                        COALESCE(aggregate_sort.withdraw_frozen_amount, 0)
+                    </when>
+                    <otherwise>
+                        COALESCE(aggregate_sort.today_withdraw_count, 0)
+                    </otherwise>
+                </choose>
+                <include refid="memberListAggregateSortDirection"/>
+            </when>
+
+            <when test="params.memberListSortKey == 'diff_amount'">
+                SELECT candidate.id
+                FROM candidate
+                LEFT JOIN (
+                    SELECT
+                        topup.user_id,
+                        SUM(
+                            CASE
+                                WHEN topup.type = '0' THEN IFNULL(topup.amout, 0)
+                                ELSE IFNULL(topup.real_money, 0)
+                            END
+                        ) AS total_recharge
+                    FROM order_topup topup
+                    INNER JOIN candidate matched_candidate
+                            ON matched_candidate.id = topup.user_id
+                    WHERE topup.status = '0'
+                    GROUP BY topup.user_id
+                ) topup_sort ON topup_sort.user_id = candidate.id
+                LEFT JOIN (
+                    SELECT
+                        withdrawal.user_id,
+                        SUM(IFNULL(withdrawal.credited_amount, 0)) AS total_withdraw
+                    FROM order_withdrawal withdrawal
+                    INNER JOIN candidate matched_candidate
+                            ON matched_candidate.id = withdrawal.user_id
+                    WHERE withdrawal.status = '0'
+                    GROUP BY withdrawal.user_id
+                ) withdrawal_sort ON withdrawal_sort.user_id = candidate.id
+                ORDER BY
+                    COALESCE(topup_sort.total_recharge, 0)
+                    - COALESCE(withdrawal_sort.total_withdraw, 0)
+                <include refid="memberListAggregateSortDirection"/>
+            </when>
+
+            <when test="params.memberListSortKey == 'direct_sub_count'">
+                SELECT candidate.id
+                FROM candidate
+                LEFT JOIN (
+                    SELECT
+                        direct_user.parent_id AS user_id,
+                        COUNT(*) AS direct_sub_count
+                    FROM order_member_user direct_user
+                    INNER JOIN candidate matched_candidate
+                            ON matched_candidate.id = direct_user.parent_id
+                    GROUP BY direct_user.parent_id
+                ) aggregate_sort ON aggregate_sort.user_id = candidate.id
+                ORDER BY COALESCE(aggregate_sort.direct_sub_count, 0)
+                <include refid="memberListAggregateSortDirection"/>
+            </when>
+
+            <otherwise>
+                SELECT candidate.id
+                FROM candidate
+                LEFT JOIN (
+                    SELECT
+                        ancestor_token.ancestor_id,
+                        COUNT(DISTINCT descendant.id) AS all_sub_count
+                    FROM order_member_user descendant
+                    INNER JOIN JSON_TABLE(
+                        CONCAT(
+                            '[',
+                            REPLACE(
+                                JSON_QUOTE(IFNULL(descendant.ancestors, '')),
+                                ',',
+                                '&quot;,&quot;'
+                            ),
+                            ']'
+                        ),
+                        '$[*]' COLUMNS (ancestor_id VARCHAR(32) PATH '$')
+                    ) ancestor_token
+                    GROUP BY ancestor_token.ancestor_id
+                ) aggregate_sort
+                        ON aggregate_sort.ancestor_id = CAST(candidate.id AS CHAR)
+                ORDER BY COALESCE(aggregate_sort.all_sub_count, 0)
+                <include refid="memberListAggregateSortDirection"/>
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- PageHelper count for the aggregate-sort ID query remains projection-free. -->
+    <select id="selectOrderMemberUserAggregateSortedIds_COUNT"
+            parameterType="OrderMemberUser"
+            resultType="long">
+        SELECT COUNT(*)
+        FROM order_member_user u
+        <include refid="orderMemberUserListWhere"/>
+    </select>
+
+    <select id="selectMemberListFinancialAggregates"
+            resultMap="MemberListFinancialAggregateResult">
+        SELECT
+            financial.user_id,
+            SUM(financial.total_recharge) AS total_recharge,
+            SUM(financial.total_withdraw) AS total_withdraw,
+            SUM(financial.withdraw_frozen_amount) AS withdraw_frozen_amount,
+            SUM(financial.today_withdraw_count) AS today_withdraw_count
+        FROM (
+            SELECT
+                topup.user_id,
+                SUM(
+                    CASE
+                        WHEN topup.type = '0' THEN IFNULL(topup.amout, 0)
+                        ELSE IFNULL(topup.real_money, 0)
+                    END
+                ) AS total_recharge,
+                0 AS total_withdraw,
+                0 AS withdraw_frozen_amount,
+                0 AS today_withdraw_count
+            FROM order_topup topup
+            WHERE topup.status = '0'
+              AND topup.user_id IN
+              <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                  #{userId}
+              </foreach>
+            GROUP BY topup.user_id
+
+            UNION ALL
+
+            SELECT
+                withdrawal.user_id,
+                0 AS total_recharge,
+                SUM(
+                    CASE
+                        WHEN withdrawal.status = '0'
+                            THEN IFNULL(withdrawal.credited_amount, 0)
+                        ELSE 0
+                    END
+                ) AS total_withdraw,
+                SUM(
+                    CASE
+                        WHEN withdrawal.status = '1'
+                            THEN IFNULL(withdrawal.amount, 0)
+                        ELSE 0
+                    END
+                ) AS withdraw_frozen_amount,
+                SUM(
+                    CASE
+                        WHEN withdrawal.application_time <![CDATA[ >= ]]> CURDATE()
+                         AND withdrawal.application_time <![CDATA[ < ]]> CURDATE() + INTERVAL 1 DAY
+                            THEN 1
+                        ELSE 0
+                    END
+                ) AS today_withdraw_count
+            FROM order_withdrawal withdrawal
+            WHERE withdrawal.user_id IN
+              <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                  #{userId}
+              </foreach>
+            GROUP BY withdrawal.user_id
+        ) financial
+        GROUP BY financial.user_id
+    </select>
+
+    <select id="selectMemberListSubordinateAggregates"
+            resultMap="MemberListSubordinateAggregateResult">
+        SELECT
+            subordinate.user_id,
+            SUM(subordinate.direct_sub_count) AS direct_sub_count,
+            SUM(subordinate.all_sub_count) AS all_sub_count
+        FROM (
+            SELECT
+                direct_user.parent_id AS user_id,
+                COUNT(*) AS direct_sub_count,
+                0 AS all_sub_count
+            FROM order_member_user direct_user
+            WHERE direct_user.parent_id IN
+              <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                  #{userId}
+              </foreach>
+            GROUP BY direct_user.parent_id
+
+            UNION ALL
+
+            SELECT
+                CAST(ancestor_token.ancestor_id AS UNSIGNED) AS user_id,
+                0 AS direct_sub_count,
+                COUNT(DISTINCT descendant.id) AS all_sub_count
+            FROM order_member_user descendant
+            INNER JOIN JSON_TABLE(
+                CONCAT(
+                    '[',
+                    REPLACE(
+                        JSON_QUOTE(IFNULL(descendant.ancestors, '')),
+                        ',',
+                        '&quot;,&quot;'
+                    ),
+                    ']'
+                ),
+                '$[*]' COLUMNS (ancestor_id VARCHAR(32) PATH '$')
+            ) ancestor_token
+            WHERE ancestor_token.ancestor_id IN
+              <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                  CAST(#{userId} AS CHAR)
+              </foreach>
+            GROUP BY ancestor_token.ancestor_id
+        ) subordinate
+        GROUP BY subordinate.user_id
     </select>
 
     <select id="selectMembersByScope"  resultMap="OrderMemberUserResult">
@@ -253,11 +688,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 <when test="scope == 'all'">
                     CONCAT(',', IFNULL(u.ancestors, ''), ',') LIKE CONCAT('%,', #{userId}, ',%')
                 </when>
-                <!-- 默认：当 scope 为空时按直属下级处理 -->
+                <!-- 默认���当 scope 为空时按直属下级处理 -->
                 <otherwise>
                     u.parent_id = #{userId}
                 </otherwise>
             </choose>
+
+            <!-- 可选：按下级用户名模糊查询 -->
+            <if test="subUsername != null and subUsername != ''">
+                AND u.username LIKE CONCAT('%', #{subUsername}, '%')
+            </if>
+
+            <if test="subPhone != null and subPhone != ''">
+                    AND u.invite_code = #{subPhone}
+            </if>
         </where>
         order by u.create_time desc
     </select>
@@ -306,6 +750,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         u.deal_count,
         u.card_number,
         u.version,
+        u.task_status,
         u.card_amount
         FROM
         order_member_user u
@@ -321,6 +766,71 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectOrderMemberUserVo"/>
         where u.username = #{username}
     </select>
+
+    <!-- Hierarchy-only reads deliberately avoid the expensive member detail projection. -->
+    <select id="selectMemberHierarchyById" resultMap="OrderMemberUserResult">
+        SELECT id, parent_id, ancestors, version, invite_code
+        FROM order_member_user
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectMemberHierarchyByInviteCode" resultMap="OrderMemberUserResult">
+        SELECT id, parent_id, ancestors, version, invite_code
+        FROM order_member_user
+        WHERE invite_code = #{inviteCode}
+    </select>
+
+    <select id="selectMemberHierarchiesForUpdate" resultMap="OrderMemberUserResult">
+        SELECT id, parent_id, ancestors, version, invite_code
+        FROM order_member_user
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY id
+        FOR UPDATE
+    </select>
+
+    <update id="changeMemberParent">
+        UPDATE order_member_user
+        SET parent_id = #{parentId},
+            ancestors = #{ancestors},
+            version = version + 1
+        WHERE id = #{memberId}
+          AND version = #{version}
+    </update>
+
+    <!--
+      This is deliberately a top-level locking read against the base table.
+      The service invokes it for bounded parent frontiers until no children
+      remain, so every discovered row is locked before the next level is read.
+    -->
+    <select id="selectMemberChildrenForUpdate" resultMap="OrderMemberUserResult">
+        SELECT id, parent_id, ancestors, version, invite_code
+        FROM order_member_user
+        WHERE parent_id IN
+        <foreach collection="parentIds" item="parentId" open="(" separator="," close=")">
+            #{parentId}
+        </foreach>
+        ORDER BY id
+        FOR UPDATE
+    </select>
+
+    <!-- Exact-ID writes avoid broad prefix replacement and cannot touch sibling branches. -->
+    <update id="updateMemberAncestorsBatch">
+        UPDATE order_member_user
+        SET ancestors = CASE id
+            <foreach collection="members" item="member">
+                WHEN #{member.id} THEN #{member.ancestors}
+            </foreach>
+            ELSE ancestors
+        END,
+            version = COALESCE(version, 0) + 1
+        WHERE id IN
+        <foreach collection="members" item="member" open="(" separator="," close=")">
+            #{member.id}
+        </foreach>
+    </update>
 
     <select id="selectSubUsers" parameterType="map" resultMap="OrderMemberUserResult">
         SELECT *
@@ -432,6 +942,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="todayResetCount != null">today_reset_count,</if>
             <if test="totalResetCount != null">total_reset_count,</if>
             <if test="withdrawTip != null">withdraw_tip,</if>
+            <if test="taskStatus != null">task_status,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="username != null and username != ''">#{username},</if>
@@ -473,6 +984,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="todayResetCount != null">#{todayResetCount},</if>
             <if test="totalResetCount != null">#{totalResetCount},</if>
             <if test="withdrawTip != null">#{withdrawTip},</if>
+            <if test="taskStatus != null">#{taskStatus},</if>
          </trim>
     </insert>
 
@@ -483,9 +995,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="phone != null and phone != ''">phone = #{phone},</if>
             <if test="password != null and password != ''">password = #{password},</if>
             <if test="tradePassword != null and tradePassword != ''">trade_password = #{tradePassword},</if>
-            <if test="parentId != null">parent_id = #{parentId},</if>
             <if test="avatar != null">avatar = #{avatar},</if>
-            <if test="ancestors != null">ancestors = #{ancestors},</if>
             <if test="email != null">email = #{email},</if>
             <if test="sex != null">sex = #{sex},</if>
             <if test="creditScore != null">credit_score = #{creditScore},</if>
@@ -520,6 +1030,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="withdrawTip != null">withdraw_tip = #{withdrawTip},</if>
             <if test="cardNumber != null">card_number = #{cardNumber},</if>
             <if test="cardAmount != null">card_amount = #{cardAmount},</if>
+            <if test="taskStatus != null">task_status = #{taskStatus},</if>
             <if test="version != null">version = version + 1,</if>
         </trim>
         where id = #{id} AND version = #{version}
@@ -543,13 +1054,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE id = #{id}
     </update>
 
-    <update id="updateChildrenAncestors">
-        UPDATE order_member_user
-        SET ancestors = REPLACE(ancestors, #{oldAncestors}, #{newAncestors})
-        WHERE ancestors LIKE CONCAT(#{oldAncestors}, ',%')
-    </update>
-
-
     <delete id="deleteOrderMemberUserById" parameterType="Long">
         delete from order_member_user where id = #{id}
     </delete>
@@ -560,5 +1064,346 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{id}
         </foreach>
     </delete>
+
+    <resultMap type="com.brushing.member.domain.vo.MemberHierarchyStatVo" id="MemberHierarchyStatMap">
+        <result property="level" column="level_depth" />
+        <result property="totalMembers" column="total_members" />
+        <result property="newRegisterCount" column="new_register_count" />
+        <result property="orderUserCount" column="order_user_count" />
+        <result property="orderAmount" column="order_amount" />
+        <result property="totalBalance" column="total_balance" />
+        <result property="firstDepositCount" column="first_deposit_count" />
+        <result property="rechargeAmount" column="recharge_amount" />
+        <result property="withdrawAmount" column="withdraw_amount" />
+        <result property="withdrawUserCount" column="withdraw_user_count" />
+    </resultMap>
+
+    <select id="selectHierarchyStats" resultMap="MemberHierarchyStatMap">
+        WITH RECURSIVE descendants AS (
+            SELECT u.id,
+                   u.parent_id,
+                   0 AS depth
+            FROM order_member_user u
+            WHERE u.username = #{username}
+            UNION ALL
+            SELECT child.id,
+                   child.parent_id,
+                   parent.depth + 1 AS depth
+            FROM order_member_user child
+                     INNER JOIN descendants parent ON child.parent_id = parent.id
+        ),
+        hierarchy AS (
+            SELECT d.depth,
+                   u.id       AS user_id,
+                   u.create_time,
+                   IFNULL(u.balance, 0)        AS balance,
+                   IFNULL(u.frozen_balance, 0) AS frozen_balance
+            FROM descendants d
+                     JOIN order_member_user u ON u.id = d.id
+            WHERE d.depth > 0
+        ),
+        order_stats AS (
+            SELECT user_id,
+                   COUNT(*)                         AS order_count,
+                   IFNULL(SUM(price), 0)            AS order_amount
+            FROM order_info
+            WHERE order_time BETWEEN #{startTime} AND #{endTime}
+            GROUP BY user_id
+        ),
+        topup_stats AS (
+            SELECT user_id,
+                   IFNULL(SUM(CASE WHEN type = '0' THEN IFNULL(amout, 0) ELSE IFNULL(real_money, 0) END), 0) AS recharge_amount
+            FROM order_topup
+            WHERE status = '0'
+              AND create_time BETWEEN #{startTime} AND #{endTime}
+            GROUP BY user_id
+        ),
+        first_topup AS (
+            SELECT user_id,
+                   MIN(create_time)                 AS first_time
+            FROM order_topup
+            WHERE status = '0'
+            GROUP BY user_id
+        ),
+        withdraw_stats AS (
+            SELECT user_id,
+                   IFNULL(SUM(credited_amount), 0)          AS withdraw_amount,
+                   COUNT(*)                        AS withdraw_times
+            FROM order_withdrawal
+            WHERE status = '0'
+              AND application_time BETWEEN #{startTime} AND #{endTime}
+            GROUP BY user_id
+        )
+        SELECT h.depth AS level_depth,
+               COUNT(*) AS total_members,
+               SUM(CASE WHEN h.create_time BETWEEN #{startTime} AND #{endTime} THEN 1 ELSE 0 END) AS new_register_count,
+               SUM(CASE WHEN os.order_count IS NOT NULL THEN 1 ELSE 0 END) AS order_user_count,
+               IFNULL(SUM(os.order_amount), 0) AS order_amount,
+               IFNULL(SUM(h.balance + h.frozen_balance), 0) AS total_balance,
+               SUM(CASE WHEN ft.first_time BETWEEN #{startTime} AND #{endTime} THEN 1 ELSE 0 END) AS first_deposit_count,
+               IFNULL(SUM(ts.recharge_amount), 0) AS recharge_amount,
+               IFNULL(SUM(ws.withdraw_amount), 0) AS withdraw_amount,
+               SUM(CASE WHEN ws.withdraw_times IS NOT NULL THEN 1 ELSE 0 END) AS withdraw_user_count
+        FROM hierarchy h
+                 LEFT JOIN order_stats os ON os.user_id = h.user_id
+                 LEFT JOIN topup_stats ts ON ts.user_id = h.user_id
+                 LEFT JOIN first_topup ft ON ft.user_id = h.user_id
+                 LEFT JOIN withdraw_stats ws ON ws.user_id = h.user_id
+        GROUP BY h.depth
+        ORDER BY h.depth
+    </select>
+
+    <select id="selectSubStatsByUserId" resultMap="TopLevelUserStatMap" parameterType="map">
+        WITH RECURSIVE descendants AS (
+        SELECT u.id, u.parent_id, 1 AS depth
+        FROM order_member_user u
+        WHERE u.parent_id = #{userId}
+        UNION ALL
+        SELECT c.id, c.parent_id, p.depth + 1
+        FROM order_member_user c
+        INNER JOIN descendants p ON c.parent_id = p.id
+        ),
+        roots AS (
+        SELECT u.id AS root_id, u.username AS username
+        FROM order_member_user u
+        WHERE u.parent_id = #{userId}
+        ),
+        all_desc AS (
+        SELECT r.root_id, u.id AS user_id, u.parent_id
+        FROM roots r
+        JOIN order_member_user u ON u.id = r.root_id
+        UNION ALL
+        SELECT ad.root_id, c.id, c.parent_id
+        FROM all_desc ad
+        JOIN order_member_user c ON c.parent_id = ad.user_id
+        ),
+        topup_stats AS (
+        SELECT user_id, IFNULL(SUM(CASE WHEN type = '0' THEN IFNULL(amout, 0) ELSE IFNULL(real_money, 0) END), 0) AS recharge_amount
+        FROM order_topup
+        WHERE status = '0'
+        <if test="startTime != null and endTime != null">
+            AND create_time BETWEEN #{startTime} AND #{endTime}
+        </if>
+        GROUP BY user_id
+        ),
+        withdraw_stats AS (
+        SELECT user_id, IFNULL(SUM(credited_amount),0) AS withdraw_amount
+        FROM order_withdrawal
+        WHERE status = '0'
+        <if test="startTime != null and endTime != null">
+            AND application_time BETWEEN #{startTime} AND #{endTime}
+        </if>
+        GROUP BY user_id
+        ),
+        commission_stats AS (
+        SELECT user_id, IFNULL(SUM(change_amount),0) AS commission_amount
+        FROM order_account_change
+        WHERE 1=1
+        AND `type` = '6'
+        <if test="startTime != null and endTime != null">
+            AND create_time BETWEEN #{startTime} AND #{endTime}
+        </if>
+        GROUP BY user_id
+        )
+        SELECT
+        r.root_id AS user_id,
+        r.username,
+        COUNT(DISTINCT CASE WHEN ad.user_id IS NOT NULL AND ad.user_id != r.root_id THEN ad.user_id END) AS total_sub_count,
+        (SELECT COUNT(1) FROM order_member_user d WHERE d.parent_id = r.root_id) AS direct_invite_count,
+        (SELECT IFNULL(SUM(COALESCE(u2.balance,0)+COALESCE(u2.frozen_balance,0)),0) FROM all_desc ad2 JOIN order_member_user u2 ON u2.id = ad2.user_id WHERE ad2.root_id = r.root_id) AS total_balance,
+        (SELECT IFNULL(SUM(ts.recharge_amount),0) FROM all_desc ad2 JOIN topup_stats ts ON ts.user_id = ad2.user_id WHERE ad2.root_id = r.root_id) AS recharge_amount,
+        (SELECT IFNULL(SUM(cs.commission_amount),0) FROM all_desc ad2 JOIN commission_stats cs ON cs.user_id = ad2.user_id WHERE ad2.root_id = r.root_id) AS total_commission,
+        (SELECT IFNULL(SUM(ws.withdraw_amount),0) FROM all_desc ad2 JOIN withdraw_stats ws ON ws.user_id = ad2.user_id WHERE ad2.root_id = r.root_id) AS withdraw_amount,
+        (SELECT IFNULL(SUM(ts.recharge_amount),0) FROM all_desc ad2 JOIN topup_stats ts ON ts.user_id = ad2.user_id WHERE ad2.root_id = r.root_id) -
+        (SELECT IFNULL(SUM(ws.withdraw_amount),0) FROM all_desc ad2 JOIN withdraw_stats ws ON ws.user_id = ad2.user_id WHERE ad2.root_id = r.root_id) AS deposit_withdraw_diff
+        FROM roots r
+        LEFT JOIN all_desc ad ON ad.root_id = r.root_id
+        GROUP BY r.root_id, r.username
+        ORDER BY r.root_id
+    </select>
+
+    <resultMap type="com.brushing.member.domain.vo.TopLevelUserStatVo" id="TopLevelUserStatMap">
+        <result property="userId" column="user_id" />
+        <result property="username" column="username" />
+        <result property="totalSubCount" column="total_sub_count" />
+        <result property="directInviteCount" column="direct_invite_count" />
+        <result property="totalBalance" column="total_balance" />
+        <result property="rechargeAmount" column="recharge_amount" />
+        <result property="totalCommission" column="total_commission" />
+        <result property="withdrawAmount" column="withdraw_amount" />
+        <result property="depositWithdrawDiff" column="deposit_withdraw_diff" />
+    </resultMap>
+
+    <select id="selectTopLevelStats" resultMap="TopLevelUserStatMap" parameterType="map">
+        -- 返回所有 parent_id = 0 的顶级用户，并按 username(可选) 和时间范围聚合其下级数据
+        WITH RECURSIVE descendants AS (
+            SELECT u.id, u.parent_id, 0 AS depth
+            FROM order_member_user u
+            WHERE u.parent_id = 0
+            <if test="username != null and username != ''">
+                AND u.username = #{username}
+            </if>
+            UNION ALL
+            SELECT c.id, c.parent_id, p.depth + 1
+            FROM order_member_user c
+            INNER JOIN descendants p ON c.parent_id = p.id
+        ),
+        subtree AS (
+            SELECT d.id AS user_id, p.id AS root_id
+            FROM descendants d
+            JOIN descendants p ON (CASE WHEN d.depth = 0 THEN d.id = p.id ELSE p.depth = 0 END)
+        ),
+        roots AS (
+            SELECT u.id AS root_id, u.username AS username
+            FROM order_member_user u
+            WHERE u.parent_id = 0
+            <if test="username != null and username != ''">
+                AND u.username = #{username}
+            </if>
+        ),
+        all_desc AS (
+            SELECT r.root_id, u.id AS user_id, u.parent_id
+            FROM roots r
+            JOIN order_member_user u ON u.id = r.root_id
+            UNION ALL
+            SELECT ad.root_id, c.id, c.parent_id
+            FROM all_desc ad
+            JOIN order_member_user c ON c.parent_id = ad.user_id
+        ),
+        topup_stats AS (
+            SELECT user_id, IFNULL(SUM(CASE WHEN type = '0' THEN IFNULL(amout, 0) ELSE IFNULL(real_money, 0) END), 0) AS recharge_amount
+            FROM order_topup
+            WHERE status = '0'
+            <if test="startTime != null and endTime != null">
+                AND create_time BETWEEN #{startTime} AND #{endTime}
+            </if>
+            GROUP BY user_id
+        ),
+        withdraw_stats AS (
+            SELECT user_id, IFNULL(SUM(credited_amount),0) AS withdraw_amount
+            FROM order_withdrawal
+            WHERE status = '0'
+            <if test="startTime != null and endTime != null">
+                AND application_time BETWEEN #{startTime} AND #{endTime}
+            </if>
+            GROUP BY user_id
+        ),
+        commission_stats AS (
+            SELECT user_id, IFNULL(SUM(change_amount),0) AS commission_amount
+            FROM order_account_change
+            WHERE 1=1
+            AND `type` = '6'
+            <if test="startTime != null and endTime != null">
+                AND create_time BETWEEN #{startTime} AND #{endTime}
+            </if>
+            GROUP BY user_id
+        )
+        SELECT
+            r.root_id AS user_id,
+            r.username,
+            COUNT(DISTINCT CASE WHEN ad.user_id IS NOT NULL AND ad.user_id != r.root_id THEN ad.user_id END) AS total_sub_count,
+            (SELECT COUNT(1) FROM order_member_user d WHERE d.parent_id = r.root_id) AS direct_invite_count,
+            IFNULL(SUM(COALESCE(u.balance,0)+COALESCE(u.frozen_balance,0)),0) AS total_balance,
+            IFNULL(SUM(ts.recharge_amount),0) AS recharge_amount,
+            IFNULL(SUM(cs.commission_amount),0) AS total_commission,
+            IFNULL(SUM(ws.withdraw_amount),0) AS withdraw_amount,
+            IFNULL(SUM(ts.recharge_amount),0) - IFNULL(SUM(ws.withdraw_amount),0) AS deposit_withdraw_diff
+        FROM roots r
+        LEFT JOIN all_desc ad ON ad.root_id = r.root_id
+        LEFT JOIN order_member_user u ON u.id = ad.user_id
+        LEFT JOIN topup_stats ts ON ts.user_id = u.id
+        LEFT JOIN withdraw_stats ws ON ws.user_id = u.id
+        LEFT JOIN commission_stats cs ON cs.user_id = u.id
+        GROUP BY r.root_id, r.username
+        ORDER BY r.root_id
+    </select>
+
+    <resultMap type="com.brushing.member.domain.vo.RebateStatVo" id="RebateStatMap">
+        <result property="userId" column="user_id" />
+        <result property="username" column="username" />
+        <result property="inviteCode" column="invite_code" />
+        <result property="rebateToday" column="rebate_today" />
+        <result property="rebateYesterday" column="rebate_yesterday" />
+        <result property="rebateTotal" column="rebate_total" />
+        <result property="subordinatesCount" column="subordinates_count" />
+        <result property="totalTradingUsers" column="total_trading_users" />
+        <result property="todayTradingUsers" column="today_trading_users" />
+        <result property="totalSubordinateBalance" column="total_subordinate_balance" />
+    </resultMap>
+
+    <select id="selectRebateStats" resultMap="RebateStatMap">
+        WITH RECURSIVE descendants AS (
+            SELECT u.id, u.parent_id, 0 AS depth
+            FROM order_member_user u
+            WHERE u.username = #{username}
+            UNION ALL
+            SELECT c.id, c.parent_id, p.depth + 1
+            FROM order_member_user c
+            JOIN descendants p ON c.parent_id = p.id
+        )
+        SELECT
+            root.id AS user_id,
+            root.username AS username,
+            root.invite_code AS invite_code,
+            IFNULL(SUM(CASE WHEN ac.create_time >= CURDATE() AND ac.create_time &lt; CURDATE() + INTERVAL 1 DAY THEN ac.change_amount ELSE 0 END), 0) AS rebate_today,
+            IFNULL(SUM(CASE WHEN ac.create_time >= CURDATE() - INTERVAL 1 DAY AND ac.create_time &lt; CURDATE() THEN ac.change_amount ELSE 0 END), 0) AS rebate_yesterday,
+            IFNULL(SUM(ac.change_amount), 0) AS rebate_total,
+            (COUNT(DISTINCT d.id) - 1) AS subordinates_count,
+            COUNT(DISTINCT oi_all.user_id) AS total_trading_users,
+            COUNT(DISTINCT CASE WHEN oi_today.user_id IS NOT NULL THEN oi_today.user_id END) AS today_trading_users,
+            IFNULL((SELECT SUM(balance + frozen_balance) FROM order_member_user WHERE FIND_IN_SET(root.id, ancestors)), 0) AS total_subordinate_balance
+        FROM descendants d
+        JOIN order_member_user root ON root.username = #{username}
+        LEFT JOIN order_account_change ac ON ac.user_id = d.id AND ac.`type` = '6'
+        LEFT JOIN order_info oi_all ON oi_all.user_id = d.id
+        LEFT JOIN order_info oi_today ON oi_today.user_id = d.id AND oi_today.order_time >= CURDATE() AND oi_today.order_time &lt; CURDATE() + INTERVAL 1 DAY
+        GROUP BY root.id, root.username, root.invite_code
+    </select>
+
+    <resultMap type="com.brushing.member.domain.vo.MemberLevelAmountVo" id="MemberLevelAmountMap">
+        <result property="userId" column="user_id" />
+        <result property="username" column="username" />
+        <result property="level" column="level" />
+        <result property="createTime" column="create_time" />
+        <result property="rechargeAmount" column="recharge_amount" />
+        <result property="withdrawAmount" column="withdraw_amount" />
+    </resultMap>
+
+    <select id="selectFirstThreeLevelsByUsername" resultMap="MemberLevelAmountMap" parameterType="String">
+        -- 返回指定用户名的第1、2、3层下级用户，每个用户包含用户名、层级、充值总额和提现总额
+        WITH RECURSIVE descendants AS (
+            SELECT u.id, u.parent_id, 0 AS depth
+            FROM order_member_user u
+            WHERE u.username = #{username}
+            UNION ALL
+            SELECT c.id, c.parent_id, p.depth + 1
+            FROM order_member_user c
+            JOIN descendants p ON c.parent_id = p.id
+            WHERE p.depth &lt; 3
+        )
+        SELECT
+            u.id AS user_id,
+            u.username,
+            d.depth AS level,
+            u.create_time AS create_time,
+            IFNULL(t.recharge_amount, 0) AS recharge_amount,
+            IFNULL(w.withdraw_amount, 0) AS withdraw_amount
+         FROM descendants d
+         JOIN order_member_user u ON u.id = d.id
+         LEFT JOIN (
+            SELECT user_id, SUM(CASE WHEN type = '0' THEN IFNULL(amout, 0) ELSE IFNULL(real_money, 0) END) AS recharge_amount
+            FROM order_topup
+            WHERE status = '0'
+            GROUP BY user_id
+        ) t ON t.user_id = u.id
+        LEFT JOIN (
+            SELECT user_id, SUM(credited_amount) AS withdraw_amount
+            FROM order_withdrawal
+            WHERE status = '0'
+            GROUP BY user_id
+        ) w ON w.user_id = u.id
+        WHERE d.depth BETWEEN 1 AND 3
+        ORDER BY d.depth ASC, u.username ASC
+    </select>
 
 </mapper>

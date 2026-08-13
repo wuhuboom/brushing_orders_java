@@ -19,6 +19,12 @@ public class OrderInfoVo {
 
     private BigDecimal commission;
 
+    /** 当前订单下单后的用户可用余额快照 */
+    private BigDecimal balance;
+
+    /** 当前订单下单后的用户冻结余额快照 */
+    private BigDecimal frozenBalance;
+
     @JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.NUMBER)
     private Date createTime;
 
@@ -70,6 +76,22 @@ public class OrderInfoVo {
 
     public void setCommission(BigDecimal commission) {
         this.commission = commission;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
+    public BigDecimal getFrozenBalance() {
+        return frozenBalance;
+    }
+
+    public void setFrozenBalance(BigDecimal frozenBalance) {
+        this.frozenBalance = frozenBalance;
     }
 
     public Date getCreateTime() {

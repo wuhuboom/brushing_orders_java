@@ -11,7 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 @Configuration  // 作为配置类，不依赖 DailyTask
-public class TimezoneConfig {
+public class
+TimezoneConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(TimezoneConfig.class);
 

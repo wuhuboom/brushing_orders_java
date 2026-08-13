@@ -71,6 +71,12 @@ public class OrderInfo extends BaseEntity
      */
     private BigDecimal price;
 
+    /** 当前订单下单后的用户可用余额快照 */
+    private BigDecimal balance;
+
+    /** 当前订单下单后的用户冻结余额快照 */
+    private BigDecimal frozenBalance;
+
     private String username;
     private String phone;
     private Integer dealCount;
@@ -104,6 +110,22 @@ public class OrderInfo extends BaseEntity
         this.price = price;
     }
 
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
+    public BigDecimal getFrozenBalance() {
+        return frozenBalance;
+    }
+
+    public void setFrozenBalance(BigDecimal frozenBalance) {
+        this.frozenBalance = frozenBalance;
+    }
+
     public String getUsername() {
         return username;
     }
@@ -130,12 +152,23 @@ public class OrderInfo extends BaseEntity
 
     private OrderGoods product;
 
+    // 标记是否存在 order_goods_hotel 表，供 mapper 条件性 JOIN 使用
+    private Boolean hasOrderGoodsHotel;
+
     public OrderGoods getProduct() {
         return product;
     }
 
     public void setProduct(OrderGoods product) {
         this.product = product;
+    }
+
+    public Boolean getHasOrderGoodsHotel() {
+        return hasOrderGoodsHotel;
+    }
+
+    public void setHasOrderGoodsHotel(Boolean hasOrderGoodsHotel) {
+        this.hasOrderGoodsHotel = hasOrderGoodsHotel;
     }
 
     public Long getId() {
@@ -269,8 +302,11 @@ public class OrderInfo extends BaseEntity
             .append("submitTime", getSubmitTime())
             .append("orderType", getOrderType())
             .append("status", getStatus())
+            .append("balance", getBalance())
+            .append("frozenBalance", getFrozenBalance())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
+            .append("hasOrderGoodsHotel", getHasOrderGoodsHotel())
             .toString();
     }
 }

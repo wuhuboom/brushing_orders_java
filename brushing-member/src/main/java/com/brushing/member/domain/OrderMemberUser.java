@@ -43,6 +43,12 @@ public class OrderMemberUser extends BaseEntity
     @Excel(name = "上级用户ID")
     private Long parentId;
 
+    /**
+     * 上级用户标识，仅用于管理端新增会员或修改上级时接收用户ID/邀请码。
+     * 实际入库前会解析为 parentId。
+     */
+    private String parentIdentifier;
+
     /** 祖级 */
     @Excel(name = "祖级")
     private String ancestors;
@@ -65,6 +71,10 @@ public class OrderMemberUser extends BaseEntity
     /** 冻结余额 */
     @Excel(name = "冻结余额")
     private BigDecimal frozenBalance;
+
+    /** 提现冻结金额（待审核提现申请金额） */
+    @Excel(name = "提现冻结金额")
+    private BigDecimal withdrawFrozenAmount;
 
     /** 总余额 */
     @Excel(name = "总余额")
@@ -199,9 +209,20 @@ public class OrderMemberUser extends BaseEntity
 
     private String forceNoResult;
 
+    //任务状态
+    private String taskStatus;
+
     private Long version;
 
     private Long agentUserId;
+
+    public String getTaskStatus() {
+        return taskStatus;
+    }
+
+    public void setTaskStatus(String taskStatus) {
+        this.taskStatus = taskStatus;
+    }
 
     public String getForceNoResult() {
         return forceNoResult;
@@ -247,6 +268,45 @@ public class OrderMemberUser extends BaseEntity
     public void setParentUsername(String parentUsername) {
         this.parentUsername = parentUsername;
     }
+
+    public String getParentIdentifier() {
+        return parentIdentifier;
+    }
+
+    public void setParentIdentifier(String parentIdentifier) {
+        this.parentIdentifier = parentIdentifier;
+    }
+
+    private BigDecimal totalRecharge;
+
+    private BigDecimal totalWithdraw;
+
+    private BigDecimal diffAmount;
+
+    public BigDecimal getTotalRecharge() {
+        return totalRecharge;
+    }
+
+    public void setTotalRecharge(BigDecimal totalRecharge) {
+        this.totalRecharge = totalRecharge;
+    }
+
+    public BigDecimal getTotalWithdraw() {
+        return totalWithdraw;
+    }
+
+    public void setTotalWithdraw(BigDecimal totalWithdraw) {
+        this.totalWithdraw = totalWithdraw;
+    }
+
+    public BigDecimal getDiffAmount() {
+        return diffAmount;
+    }
+
+    public void setDiffAmount(BigDecimal diffAmount) {
+        this.diffAmount = diffAmount;
+    }
+
 
     public String getParentPhone() {
         return parentPhone;
@@ -478,6 +538,16 @@ public class OrderMemberUser extends BaseEntity
         return frozenBalance;
     }
 
+    public void setWithdrawFrozenAmount(BigDecimal withdrawFrozenAmount)
+    {
+        this.withdrawFrozenAmount = withdrawFrozenAmount;
+    }
+
+    public BigDecimal getWithdrawFrozenAmount()
+    {
+        return withdrawFrozenAmount;
+    }
+
     public void setTotalBalance(BigDecimal totalBalance) 
     {
         this.totalBalance = totalBalance;
@@ -647,11 +717,13 @@ public class OrderMemberUser extends BaseEntity
             .append("password", getPassword())
             .append("tradePassword", getTradePassword())
             .append("parentId", getParentId())
+            .append("parentIdentifier", getParentIdentifier())
             .append("ancestors", getAncestors())
             .append("email", getEmail())
             .append("creditScore", getCreditScore())
             .append("balance", getBalance())
             .append("frozenBalance", getFrozenBalance())
+            .append("withdrawFrozenAmount", getWithdrawFrozenAmount())
             .append("totalBalance", getTotalBalance())
             .append("inviteCode", getInviteCode())
             .append("registerIp", getRegisterIp())

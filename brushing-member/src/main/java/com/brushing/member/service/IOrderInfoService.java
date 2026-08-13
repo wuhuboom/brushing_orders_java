@@ -70,6 +70,14 @@ public interface IOrderInfoService
 
     public int countUnfinishedOrders(Long userId);
 
+    /**
+     * Query the user's latest unfinished order.
+     *
+     * @param userId user ID
+     * @return latest unfinished order, or null when none exists
+     */
+    public OrderInfo selectLatestUnfinishedOrder(Long userId);
+
     public List<OrderInfo> selectOrderInfoBySeries(Long userId);
 
     public int  countStatusOneInOrderInfo();

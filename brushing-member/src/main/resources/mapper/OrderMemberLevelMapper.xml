@@ -27,6 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="descriptionTh"    column="description_th"    />
         <result property="descriptionKo"    column="description_ko"    />
         <result property="descriptionPor"    column="description_por"    />
+        <result property="descriptionEs"    column="description_es"    />
         <result property="descriptionZhTw"    column="description_zh_tw"    />
         <result property="createTime"    column="create_time"    />
     </resultMap>
@@ -37,7 +38,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         streak_commission_ratio, min_balance, order_count,
         withdraw_count, withdraw_limit, min_withdraw_amount,
         max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
-        description_zh, description_en,description_ja,description_th,description_ko,description_zh_tw,description_por,
+        description_zh, description_en,description_ja,description_th,description_ko,description_zh_tw,description_por,description_es,
         create_time from order_member_level
     </sql>
 
@@ -123,7 +124,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                withdraw_count, withdraw_limit, min_withdraw_amount,
                max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
                description_zh, description_en, description_ja, description_th,
-               description_ko, description_zh_tw, description_por,
+               description_ko, description_zh_tw, description_por, description_es,
                create_time
         FROM (
                  SELECT id, icon, name_zh, name_en, price,
@@ -132,7 +133,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                         withdraw_count, withdraw_limit, min_withdraw_amount,
                         max_withdraw_amount, withdraw_fee, withdraw_order_per_day,
                         description_zh, description_en, description_ja, description_th,
-                        description_ko, description_zh_tw, description_por,
+                        description_ko, description_zh_tw, description_por, description_es,
                         create_time,
                         ROW_NUMBER() OVER (ORDER BY price ASC) AS level_rank
                  FROM order_member_level
@@ -167,6 +168,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionKo != null and descriptionKo != ''">description_ko,</if>
             <if test="descriptionZhTw != null and descriptionZhTw != ''">description_zh_tw,</if>
             <if test="descriptionPor != null and descriptionPor != ''">description_por,</if>
+            <if test="descriptionEs != null and descriptionEs != ''">description_es,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="icon != null and icon != ''">#{icon},</if>
@@ -192,6 +194,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionKo != null and descriptionKo != ''">#{descriptionKo},</if>
             <if test="descriptionZhTw != null and descriptionZhTw != ''">#{descriptionZhTw},</if>
             <if test="descriptionPor != null and descriptionPor != ''">#{descriptionPor},</if>
+            <if test="descriptionEs != null and descriptionEs != ''">#{descriptionEs},</if>
         </trim>
     </insert>
 
@@ -221,6 +224,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="descriptionKo != null and descriptionKo != ''">description_ko = #{descriptionKo},</if>
             <if test="descriptionZhTw != null and descriptionZhTw != ''">description_zh_tw = #{descriptionZhTw},</if>
             <if test="descriptionPor != null and descriptionPor != ''">description_por = #{descriptionPor},</if>
+            <if test="descriptionEs != null and descriptionEs != ''">description_es = #{descriptionEs},</if>
         </trim>
         where id = #{id}
     </update>

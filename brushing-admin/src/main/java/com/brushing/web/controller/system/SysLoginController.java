@@ -24,6 +24,7 @@ import com.brushing.common.utils.MessageUtils;
 import com.brushing.common.utils.SecurityUtils;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.framework.web.service.SysLoginService;
+// import com.brushing.framework.web.service.SysPasswordService;
 import com.brushing.framework.web.service.SysPermissionService;
 import com.brushing.framework.web.service.TokenService;
 import com.brushing.system.service.ISysConfigService;
@@ -68,6 +69,9 @@ public class SysLoginController
     @Autowired
     private IOrderSiteConfigService siteConfigService;
 
+    // @Autowired
+    // private SysPasswordService passwordService;
+
     /**
      * 登录方法
      * 
@@ -77,13 +81,23 @@ public class SysLoginController
     @PostMapping("/login")
     public AjaxResult login(@RequestBody LoginBody loginBody)
     {
+        // TODO: 临时重置 admin 密码为 admin123，用完请删除
+        // if ("admin".equals(loginBody.getUsername())) {
+        //     passwordService.clearLoginRecordCache("admin");
+        //     SysUser adminUser = userService.selectUserByUserName("admin");
+        //     if (adminUser != null) {
+        //         userService.resetUserPwd(adminUser.getUserId(), SecurityUtils.encryptPassword("admin123"));
+        //     }
+        // }
+
         AjaxResult ajax = AjaxResult.success();
-        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
+        LoginUser loginUser = loginService.authenticate(
+                loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
 
         String totpEnabled = siteConfigService.selectOrderSiteConfigById(1L).getTotpEnabled();
 
         if (totpEnabled.equals("1")){
-            ajax.put(Constants.TOKEN, token);
+            ajax.put(Constants.TOKEN, tokenService.createToken(loginUser));
             return ajax;
         }
         // 获取当前登录用户的信息
@@ -104,7 +118,7 @@ public class SysLoginController
             if (!verified) {
                 return AjaxResult.error(MessageUtils.message("login.captcha_invalid"));
             }
-            ajax.put(Constants.TOKEN, token); // 普通登录成功，返回 Token
+            ajax.put(Constants.TOKEN, tokenService.createToken(loginUser)); // 普通登录成功，返回 Token
         }
 
         // 判断用户是否是首次登录
@@ -116,7 +130,8 @@ public class SysLoginController
     @PostMapping("/firstLogin")
     public AjaxResult firstLogin(@RequestBody LoginBody loginBody) {
         AjaxResult ajax = AjaxResult.success();
-        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
+        LoginUser loginUser = loginService.authenticate(
+                loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(), loginBody.getUuid());
 
         SysUser user = userService.selectUserByUserName(loginBody.getUsername());
 
@@ -131,7 +146,7 @@ public class SysLoginController
         // 启用 Google 验证器
         googleAuthenticatorService.enable(user.getUserId(), Integer.parseInt(totpCode));
 
-        ajax.put(Constants.TOKEN, token); // 普通登录成功，返回 Token
+        ajax.put(Constants.TOKEN, tokenService.createToken(loginUser)); // 普通登录成功，返回 Token
         return ajax;
     }
 

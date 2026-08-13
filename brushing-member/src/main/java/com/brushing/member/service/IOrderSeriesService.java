@@ -66,4 +66,7 @@ public interface IOrderSeriesService
     public List<OrderSeries> selectSeriesListByUserId(Long userId);
 
     public List<OrderSeries> selectOrderSeriesByFrozen(Long userId);
+
+
+    public int insertOrderSeriesByTemplate(Long userId,Long templateId,String createBy);
 }

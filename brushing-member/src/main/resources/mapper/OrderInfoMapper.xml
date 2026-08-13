@@ -12,6 +12,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="productId"    column="product_id"    />
         <result property="quantity"    column="quantity"    />
         <result property="price"    column="price"    />
+        <result property="balance"    column="balance_after_order"    />
+        <result property="frozenBalance"    column="frozen_balance_after_order"    />
         <result property="commission"    column="commission"    />
         <result property="commissionRate"    column="commission_rate"    />
         <result property="commissionStatus"    column="commission_status"    />
@@ -44,6 +46,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="coverUrl" column="cover_url"/>
         <result property="price"    column="price"    />
         <result property="commission"    column="commission"    />
+        <result property="balance"    column="balance_after_order"    />
+        <result property="frozenBalance"    column="frozen_balance_after_order"    />
         <result property="createTime"    column="create_time"    />
         <result property="status"    column="status"    />
     </resultMap>
@@ -54,16 +58,61 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         o.commission, o.commission_rate, o.commission_status,
         o.order_time, o.submit_time, o.order_type, o.status,
         o.create_time, o.update_time, o.price, o.series_id,
+        o.balance_after_order, o.frozen_balance_after_order,
 
-        g.id AS goods_id, g.name, g.cover_url,  g.description,
-        g.status AS goods_status,
-        g.create_time AS goods_create_time, g.update_time AS goods_update_time,
+        <!-- 商品字段：根据 hasOrderGoodsHotel 参数选择列及 JOIN -->
+        <if test="hasOrderGoodsHotel != null and hasOrderGoodsHotel">
+            COALESCE(g.id, h.id) AS goods_id,
+            COALESCE(g.name, h.name) AS name,
+            COALESCE(g.cover_url, h.cover_url) AS cover_url,
+            COALESCE(g.description, h.description) AS description,
+            COALESCE(g.status, h.status) AS goods_status,
+            COALESCE(g.create_time, h.create_time) AS goods_create_time,
+            COALESCE(g.update_time, h.update_time) AS goods_update_time,
+        </if>
+        <if test="hasOrderGoodsHotel == null or !hasOrderGoodsHotel">
+            g.id AS goods_id,
+            g.name AS name,
+            g.cover_url AS cover_url,
+            g.description AS description,
+            g.status AS goods_status,
+            g.create_time AS goods_create_time,
+            g.update_time AS goods_update_time,
+        </if>
 
         u.username,u.phone,u.deal_count
 
         FROM order_info o
         LEFT JOIN order_goods g ON o.product_id = g.id
-        left join order_member_user u on u.id = o.user_id
+        <if test="hasOrderGoodsHotel != null and hasOrderGoodsHotel">
+            LEFT JOIN order_goods_hotel h ON o.product_id = h.id
+        </if>
+        LEFT JOIN order_member_user u on u.id = o.user_id
+    </sql>
+
+    <sql id="selectOrderInfoVoBasic">
+        SELECT
+        o.id, o.order_no, o.user_id, o.product_id, o.quantity,
+        o.commission, o.commission_rate, o.commission_status,
+        o.order_time, o.submit_time, o.order_type, o.status,
+        o.create_time, o.update_time, o.price, o.series_id,
+        o.balance_after_order, o.frozen_balance_after_order,
+
+        -- 默认只取 order_goods 的商品列
+            g.id AS goods_id,
+            g.name AS name,
+            g.cover_url AS cover_url,
+            g.description AS description,
+            g.status AS goods_status,
+            g.create_time AS goods_create_time,
+            g.update_time AS goods_update_time,
+
+        u.username,u.phone,u.deal_count
+
+        FROM order_info o
+        LEFT JOIN order_goods g ON o.product_id = g.id
+        LEFT JOIN order_goods_hotel h ON o.product_id = h.id
+        LEFT JOIN order_member_user u on u.id = o.user_id
     </sql>
 
     <select id="selectOrderInfoList" parameterType="OrderInfo" resultMap="OrderInfoResult">
@@ -86,12 +135,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
     
     <select id="selectOrderInfoById" parameterType="Long" resultMap="OrderInfoResult">
-        <include refid="selectOrderInfoVo"/>
+        <include refid="selectOrderInfoVoBasic"/>
         where o.id = #{id}
     </select>
 
     <select id="selectOrderInfoByCode" parameterType="String" resultMap="OrderInfoResult">
-        <include refid="selectOrderInfoVo"/>
+        <include refid="selectOrderInfoVoBasic"/>
         where o.order_no = #{orderNo}
     </select>
 
@@ -101,19 +150,47 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE status != 0  and user_id = #{userId}
     </select>
 
+    <select id="selectLatestUnfinishedOrder" resultMap="OrderInfoResult">
+        SELECT o.*
+        FROM order_info o
+        WHERE o.status != 0 AND o.user_id = #{userId}
+        ORDER BY o.create_time DESC, o.id DESC
+        LIMIT 1
+    </select>
+
     <select id="selectOrderInfoBySeries" parameterType="Long" resultMap="OrderInfoResult">
-        <include refid="selectOrderInfoVo"/>
+        <include refid="selectOrderInfoVoBasic"/>
             WHERE o.status = 1 AND o.order_type = 1 AND  o.user_id = #{userId}
     </select>
 
     <select id="selectOrderInfosByUser" parameterType="OrderInfo" resultMap="OrderInfoVoRes">
         SELECT
-        o.id, o.order_no, o.commission, o.order_type, o.status,o.create_time, o.price ,
-        g.name, g.cover_url
+        o.id, o.order_no, o.commission, o.order_type, o.status, o.create_time, o.price,
+        o.balance_after_order, o.frozen_balance_after_order,
+
+        <if test="hasOrderGoodsHotel != null and hasOrderGoodsHotel">
+            COALESCE(g.name, h.name) AS name,
+            COALESCE(g.cover_url, h.cover_url) AS cover_url
+        </if>
+        <if test="hasOrderGoodsHotel == null or !hasOrderGoodsHotel">
+            g.name AS name,
+            g.cover_url AS cover_url
+        </if>
+
         FROM order_info o
         LEFT JOIN order_goods g ON o.product_id = g.id
-        where o.user_id = #{userId}
-        <if test="status != null  and status != ''"> and o.status = #{status}</if>
+        <if test="hasOrderGoodsHotel != null and hasOrderGoodsHotel">
+            LEFT JOIN order_goods_hotel h ON o.product_id = h.id
+        </if>
+        WHERE o.user_id = #{userId}
+        <choose>
+            <when test='status == "1" or status == "2"'>
+                AND o.status IN (1, 2)
+            </when>
+            <when test="status != null and status != ''">
+                AND o.status = #{status}
+            </when>
+        </choose>
         order by o.create_time desc
     </select>
 
@@ -134,6 +211,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productId != null">product_id,</if>
             <if test="quantity != null">quantity,</if>
             <if test="price != null">price,</if>
+            <if test="balance != null">balance_after_order,</if>
+            <if test="frozenBalance != null">frozen_balance_after_order,</if>
             <if test="commission != null">commission,</if>
             <if test="commissionRate != null">commission_rate,</if>
             <if test="commissionStatus != null">commission_status,</if>
@@ -151,6 +230,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productId != null">#{productId},</if>
             <if test="quantity != null">#{quantity},</if>
             <if test="price != null">#{price},</if>
+            <if test="balance != null">#{balance},</if>
+            <if test="frozenBalance != null">#{frozenBalance},</if>
             <if test="commission != null">#{commission},</if>
             <if test="commissionRate != null">#{commissionRate},</if>
             <if test="commissionStatus != null">#{commissionStatus},</if>
@@ -169,6 +250,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="userId != null">user_id = #{userId},</if>
             <if test="productId != null">product_id = #{productId},</if>
             <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="balance != null">balance_after_order = #{balance},</if>
+            <if test="frozenBalance != null">frozen_balance_after_order = #{frozenBalance},</if>
             <if test="commission != null">commission = #{commission},</if>
             <if test="commissionRate != null">commission_rate = #{commissionRate},</if>
             <if test="commissionStatus != null">commission_status = #{commissionStatus},</if>

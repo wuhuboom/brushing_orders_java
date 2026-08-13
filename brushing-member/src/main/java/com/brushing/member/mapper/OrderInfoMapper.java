@@ -77,6 +77,13 @@ public interface OrderInfoMapper
      */
     public int countUnfinishedOrders(@Param("userId") Long userId);
 
+    /**
+     * Query the user's latest unfinished order.
+     *
+     * @param userId user ID
+     * @return latest unfinished order, or null when none exists
+     */
+    public OrderInfo selectLatestUnfinishedOrder(@Param("userId") Long userId);
 
     public int  countStatusOneInOrderInfo();
 

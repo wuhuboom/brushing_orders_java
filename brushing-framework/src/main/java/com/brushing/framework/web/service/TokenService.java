@@ -1,5 +1,6 @@
 package com.brushing.framework.web.service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -8,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 import com.brushing.common.constant.CacheConstants;
 import com.brushing.common.constant.Constants;
@@ -51,8 +54,38 @@ public class TokenService
 
     private static final Long MILLIS_MINUTE_TWENTY = 20 * 60 * 1000L;
 
+    /**
+     * 原子切换用户当前会话，并返回之前的 token UUID。
+     */
+    private static final DefaultRedisScript<String> SWITCH_LOGIN_SESSION_SCRIPT = new DefaultRedisScript<>(
+            "local oldToken = redis.call('get', KEYS[1]); "
+                    + "redis.call('set', KEYS[1], ARGV[1], 'PX', ARGV[2]); "
+                    + "return oldToken;",
+            String.class);
+
+    /**
+     * 仅当映射仍指向指定 token 时才删除，避免旧设备退出时误删新设备会话。
+     */
+    private static final DefaultRedisScript<Long> DELETE_LOGIN_SESSION_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                    + "return redis.call('del', KEYS[1]); "
+                    + "end; return 0;",
+            Long.class);
+
+    /**
+     * 仅刷新当前会话映射的有效期，旧设备不能延长自己的会话。
+     */
+    private static final DefaultRedisScript<Long> REFRESH_LOGIN_SESSION_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                    + "return redis.call('pexpire', KEYS[1], ARGV[2]); "
+                    + "end; return 0;",
+            Long.class);
+
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 获取用户身份信息
@@ -72,6 +105,12 @@ public class TokenService
                 String uuid = (String) claims.get(Constants.LOGIN_USER_KEY);
                 String userKey = getTokenKey(uuid);
                 LoginUser user = redisCache.getCacheObject(userKey);
+                if (StringUtils.isNotNull(user) && !isCurrentSession(user))
+                {
+                    // 已被后登录设备替换的旧会话立即失效，同时清理残留缓存。
+                    redisCache.deleteObject(userKey);
+                    return null;
+                }
                 return user;
             }
             catch (Exception e)
@@ -101,7 +140,12 @@ public class TokenService
         if (StringUtils.isNotEmpty(token))
         {
             String userKey = getTokenKey(token);
+            LoginUser loginUser = redisCache.getCacheObject(userKey);
             redisCache.deleteObject(userKey);
+            if (StringUtils.isNotNull(loginUser) && StringUtils.isNotNull(loginUser.getUserId()))
+            {
+                deleteCurrentSession(loginUser.getUserId(), token);
+            }
         }
     }
 
@@ -116,12 +160,39 @@ public class TokenService
         String token = IdUtils.fastUUID();
         loginUser.setToken(token);
         setUserAgent(loginUser);
-        refreshToken(loginUser);
 
         Map<String, Object> claims = new HashMap<>();
         claims.put(Constants.LOGIN_USER_KEY, token);
         claims.put(Constants.JWT_USERNAME, loginUser.getUsername());
-        return createToken(claims);
+        String jwt = createToken(claims);
+
+        // 先准备新会话，再原子替换当前会话映射；映射切换后旧 token 即刻失效。
+        storeLoginUser(loginUser);
+        String oldToken;
+        try
+        {
+            oldToken = switchCurrentSession(loginUser.getUserId(), token);
+        }
+        catch (RuntimeException e)
+        {
+            redisCache.deleteObject(getTokenKey(token));
+            throw e;
+        }
+
+        if (StringUtils.isNotEmpty(oldToken) && !token.equals(oldToken))
+        {
+            try
+            {
+                redisCache.deleteObject(getTokenKey(oldToken));
+                log.info("用户'{}'在新设备登录，旧会话已失效", loginUser.getUsername());
+            }
+            catch (Exception e)
+            {
+                // 当前会话映射已经切换，旧 token 即使暂未清理也无法通过鉴权。
+                log.warn("清理用户'{}'的旧会话缓存失败: {}", loginUser.getUsername(), e.getMessage());
+            }
+        }
+        return jwt;
     }
 
     /**
@@ -147,11 +218,62 @@ public class TokenService
      */
     public void refreshToken(LoginUser loginUser)
     {
+        if (!isCurrentSession(loginUser))
+        {
+            return;
+        }
+        storeLoginUser(loginUser);
+        refreshCurrentSession(loginUser.getUserId(), loginUser.getToken());
+    }
+
+    private void storeLoginUser(LoginUser loginUser)
+    {
         loginUser.setLoginTime(System.currentTimeMillis());
         loginUser.setExpireTime(loginUser.getLoginTime() + expireTime * MILLIS_MINUTE);
-        // 根据uuid将loginUser缓存
         String userKey = getTokenKey(loginUser.getToken());
         redisCache.setCacheObject(userKey, loginUser, expireTime, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 校验 token 是否仍是该用户的当前会话。
+     */
+    private boolean isCurrentSession(LoginUser loginUser)
+    {
+        if (StringUtils.isNull(loginUser) || StringUtils.isNull(loginUser.getUserId())
+                || StringUtils.isEmpty(loginUser.getToken()))
+        {
+            return false;
+        }
+
+        String sessionKey = getUserSessionKey(loginUser.getUserId());
+        String currentToken = stringRedisTemplate.opsForValue().get(sessionKey);
+        return loginUser.getToken().equals(currentToken);
+    }
+
+    private String switchCurrentSession(Long userId, String token)
+    {
+        return stringRedisTemplate.execute(
+                SWITCH_LOGIN_SESSION_SCRIPT,
+                Collections.singletonList(getUserSessionKey(userId)),
+                token,
+                String.valueOf(TimeUnit.MINUTES.toMillis(expireTime)));
+    }
+
+    private void deleteCurrentSession(Long userId, String token)
+    {
+        stringRedisTemplate.execute(
+                DELETE_LOGIN_SESSION_SCRIPT,
+                Collections.singletonList(getUserSessionKey(userId)),
+                token);
+    }
+
+    private void refreshCurrentSession(Long userId, String token)
+    {
+        stringRedisTemplate.execute(
+                REFRESH_LOGIN_SESSION_SCRIPT,
+                Collections.singletonList(getUserSessionKey(userId)),
+                token,
+                String.valueOf(TimeUnit.MINUTES.toMillis(expireTime)));
     }
 
     /**
@@ -228,5 +350,10 @@ public class TokenService
     private String getTokenKey(String uuid)
     {
         return CacheConstants.LOGIN_TOKEN_KEY + uuid;
+    }
+
+    private String getUserSessionKey(Long userId)
+    {
+        return CacheConstants.LOGIN_USER_SESSION_KEY + userId;
     }
 }

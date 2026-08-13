@@ -7,12 +7,17 @@ import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.core.page.TableDataInfo;
 import com.brushing.common.core.redis.RedisCache;
+import com.brushing.common.exception.ServiceException;
 import com.brushing.common.utils.StringUtils;
 import com.brushing.common.utils.file.FileUploadUtils;
 import com.brushing.framework.config.ServerConfig;
 import com.brushing.framework.init.GeoIpQueryQueryService;
 import com.brushing.member.domain.OrderMemberLevel;
+import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.OrderRechargeAddress;
 import com.brushing.member.service.IOrderMemberLevelService;
+import com.brushing.member.service.IOrderMemberUserService;
+import com.brushing.member.service.IOrderRechargeAddressService;
 import com.brushing.set.domain.*;
 import com.brushing.set.service.*;
 import com.brushing.system.domain.SysNotice;
@@ -32,8 +37,10 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Tag(
         name = "配置管理",
@@ -66,6 +73,9 @@ public class ConfigController extends BaseController {
     private IOrderMemberLevelService levelService;
 
     @Autowired
+    private IOrderMemberUserService memberUserService;
+
+    @Autowired
     private ISysNoticeService noticeService;
 
     @Autowired
@@ -81,6 +91,27 @@ public class ConfigController extends BaseController {
     private RedisCache redisCache;
 
 
+    @Autowired
+    private IOrderRechargeAddressService orderRechargeAddressService;
+
+
+    @GetMapping("/needPhone")
+    @Operation(
+            summary = "注册是否需要手机号，0表示需要 1表示不需要")
+    public AjaxResult needPhone(){
+        OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        return AjaxResult.success("success",orderSiteConfig.getNeedPhone());
+    }
+
+    @GetMapping("/getSplashAdImage")
+    @Operation(summary = "获取前端开屏广告图片地址")
+    public AjaxResult getSplashAdImage() {
+        OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        if (StringUtils.isNull(orderSiteConfig)) {
+            return AjaxResult.error(701, "No data");
+        }
+        return AjaxResult.success("The operation was successful",orderSiteConfig.getSplashAdImage());
+    }
 
     /**
      * 获取客服地址
@@ -162,12 +193,13 @@ public class ConfigController extends BaseController {
         return success(orderGlobalConfig);
     }
 
+
     @GetMapping("/getCustomerServiceByLang")
     @Operation(
             summary = "根据语言获取客服地址",
             description =
                     "**请求参数：**\n" +
-                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）。\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）、pt（葡萄牙）、es（西班牙语）。\n" +
                             "\n" +
                     "**返回字段：**\n" +
                     "'name': '客服名称',\n" +
@@ -176,10 +208,10 @@ public class ConfigController extends BaseController {
                     "'sort': '排序',\n" +
                     "'status': '状态 0正常 1停用'"
     )
-    public AjaxResult getCustomerServiceByLang(@RequestParam(value = "lang", defaultValue = "en") @Parameter(description = "语言代码: en, zh, zh_tw, ja, th, ko ,pt") String lang) {
+    public AjaxResult getCustomerServiceByLang(@RequestParam(value = "lang", defaultValue = "en") @Parameter(description = "语言代码: en, zh, zh_tw, ja, th, ko, pt, es") String lang) {
         if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
-                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang)&& !"pt".equals(lang)) {
-            return AjaxResult.error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 或 ko ,pt");
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang) && !"es".equals(lang)) {
+            return AjaxResult.error("only en、zh、zh_tw、ja、th、ko、pt、es");
         }
 
         OrderTradeControlConfig controlConfig = redisCache.getCacheObject("trade_config");
@@ -225,6 +257,8 @@ public class ConfigController extends BaseController {
                 return service.getNameKo() != null ? service.getNameKo() : service.getName();
             case "pt":
                 return service.getNamePor() != null ? service.getNamePor() : service.getName();
+            case "es":
+                return service.getNameEs() != null ? service.getNameEs() : service.getName();
             default:  // "en"
                 return service.getName();
         }
@@ -237,7 +271,7 @@ public class ConfigController extends BaseController {
                     "接口描述：根据传入的语言参数返回对应的全局配置内容（仅返回7个核心配置项）。如果未提供 lang 参数，默认返回英文内容。\n" +
                             "\n" +
                             "**请求参数：**\n" +
-                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文） pt（葡萄牙）,。\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）、pt（葡萄牙）、es（西班牙语）。\n" +
                             "\n" +
                             "**返回字段：**\n" +
                             "- `registerProtocol` (string): 注册协议内容\n" +
@@ -254,8 +288,8 @@ public class ConfigController extends BaseController {
 
         // 验证语言参数
         if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
-                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang)) {
-            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 、 ko、pt");
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang) && !"es".equals(lang)) {
+            return error("only en、zh、zh_tw、ja、th 、 ko、pt、es");
         }
 
         // 查询所有全局配置（假设服务层有获取所有或单条的方法，根据实际调整）
@@ -323,7 +357,6 @@ public class ConfigController extends BaseController {
             result.put("terms", config.getTermsConditionsKo());
             result.put("incomeGuide", config.getIncomeGuideKo());
         }else if ("pt".equals(lang)) {
-            // 返回韩文（Ko）字段
             result.put("registerProtocol", config.getRegistrationAgreementPor());
             result.put("aboutUs", config.getAboutUsPor());
             result.put("certificate", config.getCertificatePor());
@@ -331,6 +364,14 @@ public class ConfigController extends BaseController {
             result.put("latestEvent", config.getLatestEventsPor());
             result.put("terms", config.getTermsConditionsPor());
             result.put("incomeGuide", config.getIncomeGuidePor());
+        } else if ("es".equals(lang)) {
+            result.put("registerProtocol", config.getRegistrationAgreementEs());
+            result.put("aboutUs", config.getAboutUsEs());
+            result.put("certificate", config.getCertificateEs());
+            result.put("faq", config.getFaqEs());
+            result.put("latestEvent", config.getLatestEventsEs());
+            result.put("terms", config.getTermsConditionsEs());
+            result.put("incomeGuide", config.getIncomeGuideEs());
         }
 
         return success(result);
@@ -343,7 +384,7 @@ public class ConfigController extends BaseController {
                     "接口描述：根据传入的语言参数返回VIP等级列表（仅返回核心字段：会员图标、名称、价格及对应语言描述）。如果未提供 lang 参数，默认返回英文内容。\n" +
                             "\n" +
                             "**请求参数：**\n" +
-                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）、pt（葡萄牙）。\n" +
+                            "- `lang` (可选, string, 默认: en): 语言代码，支持 en（英文）、zh（简体中文）、zh_tw（繁体中文）、ja（日文）、th（泰文）、ko（韩文）、pt（葡萄牙）、es（西班牙语）。\n" +
                             "\n" +
                             "**返回字段（每个等级对象）：**\n" +
                             "- `icon` (string): 会员图标\n" +
@@ -354,8 +395,8 @@ public class ConfigController extends BaseController {
     public AjaxResult getLevelByLang(@RequestParam(value = "lang", defaultValue = "en") String lang) {
         // 验证语言参数
         if (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) &&
-                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang)) {
-            return error("不支持的语言参数，仅支持 en、zh、zh_tw、ja、th 、 ko、pt");
+                !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang) && !"es".equals(lang)) {
+            return error("only en、zh、zh_tw、ja、th 、 ko、pt、es");
         }
 
         List<OrderMemberLevel> orderMemberLevels = levelService.selectOrderMemberLevelList(null);
@@ -383,6 +424,7 @@ public class ConfigController extends BaseController {
                 case "th" -> level.getDescriptionTh();
                 case "ko" -> level.getDescriptionKo();
                 case "pt" -> level.getDescriptionPor();
+                case "es" -> level.getDescriptionEs();
                 default -> level.getDescriptionEn();
             };
             levelMap.put("description", description);
@@ -523,5 +565,209 @@ public class ConfigController extends BaseController {
         ajaxResult.put("code",200);
         ajaxResult.put("data",emailAddress);
         return ajaxResult;
+    }
+
+    @GetMapping("/getNoticeListByLang")
+    @Operation(summary = "根据语言获取公告列表", description = "根据 lang 返回对应语言的标题与内容，若对应语言为空则回退到默认字段")
+    public TableDataInfo getNoticeListByLang(PageDto dto,
+                                             @RequestParam(value = "lang", defaultValue = "en") String lang,
+                                             @RequestAttribute("username") String username) {
+        OrderMemberUser memberUser = getFrontMember(username);
+        PageHelper.startPage(dto.getPageNum(), dto.getPageSize());
+        SysNotice query = new SysNotice();
+        query.setStatus("0");
+        List<SysNotice> list = noticeService.selectNoticeList(query);
+
+        List<Long> noticeIds = new ArrayList<>();
+        for (SysNotice notice : list) {
+            noticeIds.add(notice.getNoticeId());
+        }
+        Set<Long> readNoticeIds = new HashSet<>(
+                noticeService.selectReadNoticeIds(memberUser.getId(), noticeIds));
+
+        if (lang == null || (!"en".equals(lang) && !"zh".equals(lang) && !"zh_tw".equals(lang) && !"ja".equals(lang) && !"th".equals(lang) && !"ko".equals(lang) && !"pt".equals(lang) && !"es".equals(lang))) {
+            lang = "en";
+        }
+
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (SysNotice notice : list) {
+            String localizedTitle;
+            String localizedContent;
+            switch (lang) {
+                case "zh":
+                    localizedTitle = notice.getTitleZh();
+                    localizedContent = notice.getContentZh();
+                    break;
+                case "zh_tw":
+                    localizedTitle = notice.getTitleZhTw();
+                    localizedContent = notice.getContentZhTw();
+                    break;
+                case "ja":
+                    localizedTitle = notice.getTitleJa();
+                    localizedContent = notice.getContentJa();
+                    break;
+                case "th":
+                    localizedTitle = notice.getTitleTh();
+                    localizedContent = notice.getContentTh();
+                    break;
+                case "ko":
+                    localizedTitle = notice.getTitleKo();
+                    localizedContent = notice.getContentKo();
+                    break;
+                case "pt":
+                    localizedTitle = notice.getTitlePor();
+                    localizedContent = notice.getContentPor();
+                    break;
+                case "es":
+                    localizedTitle = notice.getTitleEs();
+                    localizedContent = notice.getContentEs();
+                    break;
+                default:
+                    localizedTitle = notice.getTitleEn();
+                    localizedContent = notice.getContentEn();
+            }
+
+            if (localizedTitle == null || localizedTitle.trim().isEmpty()) {
+                localizedTitle = notice.getNoticeTitle();
+            }
+            if (localizedContent == null || localizedContent.trim().isEmpty()) {
+                localizedContent = notice.getNoticeContent();
+            }
+
+            Map<String, Object> map = new HashMap<>();
+            map.put("noticeId", notice.getNoticeId());
+            map.put("noticeTitle", localizedTitle);
+            map.put("noticeType", notice.getNoticeType());
+            map.put("noticeContent", localizedContent);
+            map.put("status", notice.getStatus());
+            map.put("createTime", notice.getCreateTime());
+            map.put("updateTime", notice.getUpdateTime());
+            map.put("remark", notice.getRemark());
+            map.put("isRead", readNoticeIds.contains(notice.getNoticeId()));
+            resultList.add(map);
+        }
+
+        TableDataInfo rspData = getDataTable(list);
+        rspData.setRows(resultList);
+        return rspData;
+    }
+
+    @GetMapping("/getUnreadNoticeCount")
+    @Operation(summary = "获取当前用户未读通知数量")
+    public AjaxResult getUnreadNoticeCount(@RequestAttribute("username") String username) {
+        OrderMemberUser memberUser = getFrontMember(username);
+        Map<String, Object> data = new HashMap<>();
+        data.put("unreadCount", noticeService.selectUnreadNoticeCount(memberUser.getId()));
+        return AjaxResult.success(data);
+    }
+
+    @PostMapping("/markNoticeRead/{noticeId}")
+    @Operation(summary = "将当前用户的指定通知标记为已读")
+    public AjaxResult markNoticeRead(@PathVariable("noticeId") Long noticeId,
+                                     @RequestAttribute("username") String username) {
+        OrderMemberUser memberUser = getFrontMember(username);
+        SysNotice notice = noticeService.selectNoticeById(noticeId);
+        if (notice == null || !"0".equals(notice.getStatus())) {
+            return AjaxResult.error(701, "No data");
+        }
+
+        noticeService.markNoticeRead(memberUser.getId(), noticeId);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("noticeId", noticeId);
+        data.put("isRead", true);
+        data.put("unreadCount", noticeService.selectUnreadNoticeCount(memberUser.getId()));
+        return AjaxResult.success(data);
+    }
+
+    @GetMapping("/getNoticeByLang/{id}")
+    @Operation(summary = "根据语言获取公告详情", description = "根据 lang 返回对应语言的标题与内容，若对应语言为空则回退到默认字段")
+    public AjaxResult getNoticeByLang(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "lang", defaultValue = "en") String lang) {
+        SysNotice notice = noticeService.selectNoticeById(id);
+        if (notice == null) {
+            return AjaxResult.error(701, "No data");
+        }
+
+        String localizedTitle;
+        String localizedContent;
+        switch (lang) {
+            case "zh":
+                localizedTitle = notice.getTitleZh();
+                localizedContent = notice.getContentZh();
+                break;
+            case "zh_tw":
+                localizedTitle = notice.getTitleZhTw();
+                localizedContent = notice.getContentZhTw();
+                break;
+            case "ja":
+                localizedTitle = notice.getTitleJa();
+                localizedContent = notice.getContentJa();
+                break;
+            case "th":
+                localizedTitle = notice.getTitleTh();
+                localizedContent = notice.getContentTh();
+                break;
+            case "ko":
+                localizedTitle = notice.getTitleKo();
+                localizedContent = notice.getContentKo();
+                break;
+            case "pt":
+                localizedTitle = notice.getTitlePor();
+                localizedContent = notice.getContentPor();
+                break;
+            case "es":
+                localizedTitle = notice.getTitleEs();
+                localizedContent = notice.getContentEs();
+                break;
+            case "en":
+                localizedTitle = notice.getTitleEn();
+                localizedContent = notice.getContentEn();
+                break;
+            default:
+                localizedTitle = notice.getNoticeTitle();
+                localizedContent = notice.getNoticeContent();
+        }
+
+        if (localizedTitle == null || localizedTitle.trim().isEmpty()) {
+            localizedTitle = notice.getNoticeTitle();
+        }
+        if (localizedContent == null || localizedContent.trim().isEmpty()) {
+            localizedContent = notice.getNoticeContent();
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("noticeId", notice.getNoticeId());
+        map.put("noticeTitle", localizedTitle);
+        map.put("noticeType", notice.getNoticeType());
+        map.put("noticeContent", localizedContent);
+        map.put("status", notice.getStatus());
+        map.put("createTime", notice.getCreateTime());
+        map.put("updateTime", notice.getUpdateTime());
+        map.put("remark", notice.getRemark());
+
+        return AjaxResult.success(map);
+    }
+
+    @GetMapping("/getRechargeAddress")
+    @Operation(summary = "获取充值地址", description = "name ：名称，qr_code：二维码，url：充值地址，sort：排序")
+    public AjaxResult getRechargeAddress() {
+        // 过滤掉 status 为 "1" 的记录（仅返回 status = "0" 的正常地址）
+        OrderRechargeAddress filter = new OrderRechargeAddress();
+        filter.setStatus("0");
+        List<OrderRechargeAddress> addresses = orderRechargeAddressService.selectOrderRechargeAddressList(filter);
+        if (StringUtils.isNull(addresses) || addresses.isEmpty()) {
+            return AjaxResult.error(701, "No data");
+        }
+        return success(addresses);
+    }
+
+    private OrderMemberUser getFrontMember(String username) {
+        OrderMemberUser memberUser = memberUserService.findByUsername(username);
+        if (memberUser == null) {
+            throw new ServiceException("The user does not exist", 509);
+        }
+        return memberUser;
     }
 }

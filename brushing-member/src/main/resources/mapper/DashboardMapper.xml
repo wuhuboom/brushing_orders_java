@@ -6,8 +6,8 @@
         SELECT
         (SELECT COUNT(*) FROM order_member_user) AS totalUsers,
         (SELECT COUNT(*) FROM order_member_user WHERE DATE(create_time) = CURDATE()) AS todayUsers,
-        (SELECT COALESCE(SUM(amout), 0) FROM order_topup WHERE DATE(create_time) = CURDATE()) AS todayRecharge,
-        (SELECT COALESCE(SUM(amout), 0) FROM order_topup) AS totalRecharge,
+        (SELECT COALESCE(SUM(CASE WHEN type = '0' THEN IFNULL(amout, 0) ELSE IFNULL(real_money, 0) END), 0) FROM order_topup WHERE DATE(create_time) = CURDATE()) AS todayRecharge,
+        (SELECT COALESCE(SUM(CASE WHEN type = '0' THEN IFNULL(amout, 0) ELSE IFNULL(real_money, 0) END), 0) FROM order_topup) AS totalRecharge,
         (SELECT COALESCE(SUM(amount), 0) FROM order_withdrawal WHERE DATE(application_time) = CURDATE() AND status = 0) AS todayWithdrawal,
         (SELECT COALESCE(SUM(amount), 0) FROM order_withdrawal WHERE status = 0) AS totalWithdrawal,
         (SELECT COUNT(*) FROM order_info WHERE DATE(create_time) = CURDATE()) AS todayOrders

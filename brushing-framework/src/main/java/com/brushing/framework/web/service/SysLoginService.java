@@ -37,9 +37,6 @@ import com.brushing.system.service.ISysUserService;
 @Component
 public class SysLoginService
 {
-    @Autowired
-    private TokenService tokenService;
-
     @Resource
     private AuthenticationManager authenticationManager;
 
@@ -62,7 +59,7 @@ public class SysLoginService
      * @param uuid 唯一标识
      * @return 结果
      */
-    public String login(String username, String password, String code, String uuid)
+    public LoginUser authenticate(String username, String password, String code, String uuid)
     {
         // 验证码校验
         validateCaptcha(username, code, uuid);
@@ -97,8 +94,7 @@ public class SysLoginService
         AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
         LoginUser loginUser = (LoginUser) authentication.getPrincipal();
         recordLoginInfo(loginUser.getUserId());
-        // 生成token
-        return tokenService.createToken(loginUser);
+        return loginUser;
     }
 
     /**

@@ -89,4 +89,26 @@ public class SysNoticeServiceImpl implements ISysNoticeService
     {
         return noticeMapper.deleteNoticeByIds(noticeIds);
     }
+
+    @Override
+    public List<Long> selectReadNoticeIds(Long userId, List<Long> noticeIds)
+    {
+        if (noticeIds == null || noticeIds.isEmpty())
+        {
+            return java.util.Collections.emptyList();
+        }
+        return noticeMapper.selectReadNoticeIds(userId, noticeIds);
+    }
+
+    @Override
+    public int selectUnreadNoticeCount(Long userId)
+    {
+        return noticeMapper.selectUnreadNoticeCount(userId);
+    }
+
+    @Override
+    public int markNoticeRead(Long userId, Long noticeId)
+    {
+        return noticeMapper.insertNoticeRead(userId, noticeId);
+    }
 }

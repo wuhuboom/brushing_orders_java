@@ -2,6 +2,7 @@ package com.brushing.system.mapper;
 
 import java.util.List;
 import com.brushing.system.domain.SysNotice;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 通知公告表 数据层
@@ -57,4 +58,32 @@ public interface SysNoticeMapper
      * @return 结果
      */
     public int deleteNoticeByIds(Long[] noticeIds);
+
+    /**
+     * 查询用户在指定公告中的已读公告ID。
+     *
+     * @param userId 会员用户ID
+     * @param noticeIds 公告ID列表
+     * @return 已读公告ID列表
+     */
+    public List<Long> selectReadNoticeIds(@Param("userId") Long userId,
+                                          @Param("noticeIds") List<Long> noticeIds);
+
+    /**
+     * 查询用户未读的有效公告数量。
+     *
+     * @param userId 会员用户ID
+     * @return 未读数量
+     */
+    public int selectUnreadNoticeCount(Long userId);
+
+    /**
+     * 记录用户已读公告，重复调用不会新增重复记录。
+     *
+     * @param userId 会员用户ID
+     * @param noticeId 公告ID
+     * @return 影响行数
+     */
+    public int insertNoticeRead(@Param("userId") Long userId,
+                                @Param("noticeId") Long noticeId);
 }

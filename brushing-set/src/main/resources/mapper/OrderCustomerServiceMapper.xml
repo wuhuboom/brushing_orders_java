@@ -18,11 +18,12 @@
         <result property="nameKo"    column="name_ko"    />
         <result property="nameTh"    column="name_th"    />
         <result property="namePor"    column="name_por"    />
+        <result property="nameEs"    column="name_es"    />
         <result property="nameZhTw"    column="name_zh_tw"    />
     </resultMap>
 
     <sql id="selectOrderCustomerServiceVo">
-        select id, name, link_url, icon_url, sort, status, create_time, update_time, name_por,
+        select id, name, link_url, icon_url, sort, status, create_time, update_time, name_por, name_es,
                name_zh, name_jp, name_ko, name_th, name_zh_tw from order_customer_service
     </sql>
 
@@ -40,6 +41,7 @@
             <if test="nameTh != null  and nameTh != ''"> and name_th = #{nameTh}</if>
             <if test="nameZhTw != null  and nameZhTw != ''"> and name_zh_tw = #{nameZhTw}</if>
         </where>
+        order by sort asc, id asc
     </select>
 
     <select id="selectOrderCustomerServiceById" parameterType="Long" resultMap="OrderCustomerServiceResult">
@@ -63,6 +65,7 @@
             <if test="nameTh != null">name_th,</if>
             <if test="nameZhTw != null">name_zh_tw,</if>
             <if test="namePor != null">name_por,</if>
+            <if test="nameEs != null">name_es,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -78,6 +81,7 @@
             <if test="nameTh != null">#{nameTh},</if>
             <if test="nameZhTw != null">#{nameZhTw},</if>
             <if test="namePor != null">#{namePor},</if>
+            <if test="nameEs != null">#{nameEs},</if>
         </trim>
     </insert>
 
@@ -97,6 +101,7 @@
             <if test="nameTh != null">name_th = #{nameTh},</if>
             <if test="nameZhTw != null">name_zh_tw = #{nameZhTw},</if>
             <if test="namePor != null">name_por = #{namePor},</if>
+            <if test="nameEs != null">name_es = #{nameEs},</if>
         </trim>
         where id = #{id}
     </update>

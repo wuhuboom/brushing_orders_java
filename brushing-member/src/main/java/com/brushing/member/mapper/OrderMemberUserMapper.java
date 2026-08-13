@@ -2,6 +2,12 @@ package com.brushing.member.mapper;
 
 import java.util.List;
 import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.vo.MemberHierarchyStatVo;
+import com.brushing.member.domain.vo.RebateStatVo;
+import java.time.LocalDateTime;
+
+import com.brushing.member.domain.vo.TopLevelUserStatVo;
+import com.brushing.member.domain.vo.MemberLevelAmountVo;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -52,6 +58,18 @@ public interface OrderMemberUserMapper
      */
     public List<OrderMemberUser> selectOrderMemberUserList(OrderMemberUser orderMemberUser);
 
+    /** Return one globally aggregate-sorted Page of member IDs. */
+    List<Long> selectOrderMemberUserAggregateSortedIds(OrderMemberUser orderMemberUser);
+
+    /** Load the lightweight list projection for one bounded ID batch. */
+    List<OrderMemberUser> selectOrderMemberUserListByIds(@Param("userIds") List<Long> userIds);
+
+    /** Aggregate transaction-derived member-list fields for one bounded ID batch. */
+    List<OrderMemberUser> selectMemberListFinancialAggregates(@Param("userIds") List<Long> userIds);
+
+    /** Aggregate direct and all-descendant counts for one bounded ID batch. */
+    List<OrderMemberUser> selectMemberListSubordinateAggregates(@Param("userIds") List<Long> userIds);
+
     public List<OrderMemberUser> selectAllUser();
 
     /**
@@ -69,6 +87,27 @@ public interface OrderMemberUserMapper
      * @return 结果
      */
     public int updateOrderMemberUser(OrderMemberUser orderMemberUser);
+
+    /** Lightweight hierarchy reads used by parent changes. */
+    OrderMemberUser selectMemberHierarchyById(@Param("id") Long id);
+
+    OrderMemberUser selectMemberHierarchyByInviteCode(@Param("inviteCode") String inviteCode);
+
+    List<OrderMemberUser> selectMemberHierarchiesForUpdate(@Param("ids") List<Long> ids);
+
+    int changeMemberParent(@Param("memberId") Long memberId,
+                           @Param("parentId") Long parentId,
+                           @Param("ancestors") String ancestors,
+                           @Param("version") Long version);
+
+    /**
+     * Lock direct children of one bounded parent frontier. Callers repeat this
+     * query level by level to lock a complete branch without relying on locks
+     * taken against a materialized recursive CTE.
+     */
+    List<OrderMemberUser> selectMemberChildrenForUpdate(@Param("parentIds") List<Long> parentIds);
+
+    int updateMemberAncestorsBatch(@Param("members") List<OrderMemberUser> members);
 
 
     public int updateUserAddress(OrderMemberUser orderMemberUser);
@@ -104,9 +143,6 @@ public interface OrderMemberUserMapper
     List<OrderMemberUser> selectSubUsers(@Param("userId") Long userId,
                                          @Param("isDirect") boolean isDirect);
 
-    int updateChildrenAncestors(@Param("oldAncestors") String oldAncestors,
-                                @Param("newAncestors") String newAncestors);
-
     /**
      * 查选对应用户的直属下级或者所有下级
      * @param userId
@@ -114,11 +150,55 @@ public interface OrderMemberUserMapper
      * @return
      */
     List<OrderMemberUser> selectMembersByScope(@Param("userId") Long userId,
-                                         @Param("scope") String scope);
+                                         @Param("scope") String scope,
+                                         @Param("subUsername") String subUsername,
+                                         @Param("subPhone") String subPhone);
 
 
    public int updateUserLevel(@Param("id") Long id, @Param("levelId") Long levelId);
 
+    /**
+     * 查询层级统计
+     * @param username 用户名
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @return
+     */
+    List<MemberHierarchyStatVo> selectHierarchyStats(@Param("username") String username,
+                                                    @Param("startTime") LocalDateTime startTime,
+                                                    @Param("endTime") LocalDateTime endTime);
 
+    /**
+     * 通过用户名查询该用户及其所有下级的返利与交易统计（只需要 username，SQL 在 mapper XML 中自动计算今日/昨日区间）
+     * @param username 用户名
+     * @return RebateStatVo 包含 inviteCode、今日/昨日/累计返利、下级人数、交易人数等
+     */
+    RebateStatVo selectRebateStats(@Param("username") String username);
+
+    /**
+     * 查询所有顶级用户（parent_id = 0）及其下线统计信息
+     * @param username 可选，按用户名过滤
+     * @param startTime 开始时间（可选）
+     * @param endTime 结束时间（可选）
+     * @return
+     */
+    List<TopLevelUserStatVo> selectTopLevelStats(@Param("username") String username,
+                                                 @Param("startTime") java.time.LocalDateTime startTime,
+                                                 @Param("endTime") java.time.LocalDateTime endTime);
+
+    /**
+     * 查询指定用户的下级用户的统计信息
+     *
+     * @param userId 用户的ID
+     * @param startTime 开始时间（可选）
+     * @param endTime 结束时间（可选）
+     * @return 查询结果
+     */
+    List<TopLevelUserStatVo> selectSubStatsByUserId(@Param("userId") Long userId,
+                                                 @Param("startTime") java.time.LocalDateTime startTime,
+                                                 @Param("endTime") java.time.LocalDateTime endTime);
+
+    // 新增：查询指定用户名的前3层下级（每个用户返回层级1/2/3，及充值/提现总额）
+    List<MemberLevelAmountVo> selectFirstThreeLevelsByUsername(@Param("username") String username);
 
 }

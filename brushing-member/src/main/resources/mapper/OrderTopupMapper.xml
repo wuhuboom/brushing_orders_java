@@ -7,15 +7,27 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="OrderTopup" id="OrderTopupResult">
         <result property="id"    column="id"    />
         <result property="userId"    column="user_id"    />
+        <result property="isReal"    column="is_real"    />
         <result property="code"    column="code"    />
         <result property="amout"    column="amout"    />
         <result property="username"    column="username"    />
         <result property="phone"    column="phone"    />
+        <result property="type"    column="type"    />
+        <result property="payMethod"    column="pay_method"    />
+        <result property="address"    column="address"    />
+        <result property="status"    column="status"    />
+        <result property="auditTime"    column="audit_time"    />
+        <result property="auditor"    column="auditor"    />
         <result property="createTime"    column="create_time"    />
+        <result property="remark"    column="remark"    />
+        <result property="realMoney"    column="real_money"    />
     </resultMap>
 
     <sql id="selectOrderTopupVo">
-        select t.id, t.user_id, t.code , t.amout, t.create_time ,u.username ,u.phone from order_topup   t
+        select t.id, t.user_id, t.code , t.amout, t.create_time ,u.username ,u.phone,
+        t.type, t.pay_method, t.address, t.status, t.audit_time, t.auditor, t.remark,
+        t.is_real,t.real_money
+        from order_topup   t
         left join order_member_user u on u.id = t.user_id
     </sql>
 
@@ -24,11 +36,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             <if test="code != null  and code != ''"> and t.code = #{code}</if>
             <if test="username != null  and username != ''"> and u.username = #{username}</if>
-            <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+            <if test="isReal != null  and isReal != ''"> and t.is_real = #{isReal}</if>
+            <if test="type != null  and type != ''"> and t.type = #{type}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
                 AND date_format(t.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
             </if>
-            <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+            <if test="params.endTime != null and params.endTime != ''">
                 AND date_format(t.create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+            </if>
+            <!-- 新增：审核时间区间查询 -->
+            <if test="params.auditBeginTime != null and params.auditBeginTime != ''">
+                AND date_format(t.audit_time,'%Y%m%d') &gt;= date_format(#{params.auditBeginTime},'%Y%m%d')
+            </if>
+            <if test="params.auditEndTime != null and params.auditEndTime != ''">
+                AND date_format(t.audit_time,'%Y%m%d') &lt;= date_format(#{params.auditEndTime},'%Y%m%d')
+            </if>
+            <!-- 新增：代理用户名转用户ID后查询 -->
+            <if test="agentUsername != null and agentUsername != ''">
+                AND (
+                  EXISTS (SELECT 1 FROM order_member_user ou WHERE ou.username = #{agentUsername} AND (FIND_IN_SET(ou.id, u.ancestors) > 0 OR t.user_id = ou.id))
+                )
             </if>
             <if test="agentUserId != null and agentUserId != ''">
                 AND (FIND_IN_SET(#{agentUserId}, u.ancestors) > 0 OR t.user_id = #{agentUserId})
@@ -43,7 +70,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by t.create_time desc
     </select>
 
-    <select id="selectOrderTopupById" parameterType="String" resultMap="OrderTopupResult">
+    <select id="selectOrderTopupById" parameterType="Long" resultMap="OrderTopupResult">
         <include refid="selectOrderTopupVo"/>
         where t.id = #{id}
     </select>
@@ -57,14 +84,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         insert into order_topup
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
+            <if test="isReal != null">is_real,</if>
             <if test="amout != null">amout,</if>
             <if test="code != null">code,</if>
+            <if test="type != null">type,</if>
+            <if test="payMethod != null">pay_method,</if>
+            <if test="address != null">address,</if>
+            <if test="status != null">status,</if>
+            <if test="auditTime != null">audit_time,</if>
+            <if test="auditor != null">auditor,</if>
             <if test="createTime != null">create_time,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
+            <if test="isReal != null">#{isReal},</if>
             <if test="amout != null">#{amout},</if>
             <if test="code != null">#{code},</if>
+            <if test="type != null">#{type},</if>
+            <if test="payMethod != null">#{payMethod},</if>
+            <if test="address != null">#{address},</if>
+            <if test="status != null">#{status},</if>
+            <if test="auditTime != null">#{auditTime},</if>
+            <if test="auditor != null">#{auditor},</if>
             <if test="createTime != null">#{createTime},</if>
          </trim>
     </insert>
@@ -74,6 +115,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <trim prefix="SET" suffixOverrides=",">
             <if test="userId != null">user_id = #{userId},</if>
             <if test="amout != null">amout = #{amout},</if>
+            <if test="realMoney != null">real_money = #{realMoney},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="payMethod != null">pay_method = #{payMethod},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="auditTime != null">audit_time = #{auditTime},</if>
+            <if test="auditor != null">auditor = #{auditor},</if>
+            <if test="remark != null">remark = #{remark},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
         </trim>
         where id = #{id}

@@ -2,13 +2,7 @@ package com.brushing.web.controller.system;
 
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.brushing.common.annotation.Log;
 import com.brushing.common.config.BrushingConfig;
@@ -41,6 +35,23 @@ public class SysProfileController extends BaseController
 
     @Autowired
     private TokenService tokenService;
+
+    /**
+     * 验证当前用户密码是否正确
+     *
+     * @param password 密码
+     * @return 结果
+     */
+    @GetMapping("/checkPassword/{password}")
+    public AjaxResult checkPassword(@PathVariable("password") String password)
+    {
+        LoginUser loginUser = getLoginUser();
+        if (SecurityUtils.matchesPassword(password, loginUser.getPassword()))
+        {
+            return success();
+        }
+        return error("密码不正确");
+    }
 
     /**
      * 个人信息
@@ -117,6 +128,8 @@ public class SysProfileController extends BaseController
         }
         return error(MessageUtils.message("profile.updatepwd.update_failed"));
     }
+
+
 
     /**
      * 头像上传

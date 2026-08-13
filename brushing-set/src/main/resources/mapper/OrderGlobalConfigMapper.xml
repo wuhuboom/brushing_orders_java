@@ -57,6 +57,13 @@
         <result property="latestEventsPor"    column="latest_events_por"    />
         <result property="termsConditionsPor"    column="terms_conditions_por"    />
         <result property="incomeGuidePor"    column="income_guide_por"    />
+        <result property="registrationAgreementEs"    column="registration_agreement_es"    />
+        <result property="aboutUsEs"    column="about_us_es"    />
+        <result property="certificateEs"    column="certificate_es"    />
+        <result property="faqEs"    column="faq_es"    />
+        <result property="latestEventsEs"    column="latest_events_es"    />
+        <result property="termsConditionsEs"    column="terms_conditions_es"    />
+        <result property="incomeGuideEs"    column="income_guide_es"    />
     </resultMap>
 
     <sql id="selectOrderGlobalConfigVo">
@@ -69,6 +76,7 @@
                faq_th, latest_events_ko, registration_agreement_ja, terms_conditions_ko, registration_agreement_th,
                faq_zh_tw, latest_events_zh_tw, about_us_th, about_us_ja, income_guide_ko, certificate_zh_tw, faq_ko,
                registration_agreement_por,about_us_por,certificate_por,faq_por,latest_events_por,terms_conditions_por,income_guide_por,
+               registration_agreement_es,about_us_es,certificate_es,faq_es,latest_events_es,terms_conditions_es,income_guide_es,
                income_guide_zh_tw from order_global_config
     </sql>
 
@@ -275,6 +283,13 @@
             <if test="latestEventsPor != null and latestEventsPor != ''">latest_events_por = #{latestEventsPor},</if>
             <if test="termsConditionsPor != null and termsConditionsPor != ''">terms_conditions_por = #{termsConditionsPor},</if>
             <if test="incomeGuidePor != null and incomeGuidePor != ''">income_guide_por = #{incomeGuidePor},</if>
+            <if test="registrationAgreementEs != null and registrationAgreementEs != ''">registration_agreement_es = #{registrationAgreementEs},</if>
+            <if test="aboutUsEs != null and aboutUsEs != ''">about_us_es = #{aboutUsEs},</if>
+            <if test="certificateEs != null and certificateEs != ''">certificate_es = #{certificateEs},</if>
+            <if test="faqEs != null and faqEs != ''">faq_es = #{faqEs},</if>
+            <if test="latestEventsEs != null and latestEventsEs != ''">latest_events_es = #{latestEventsEs},</if>
+            <if test="termsConditionsEs != null and termsConditionsEs != ''">terms_conditions_es = #{termsConditionsEs},</if>
+            <if test="incomeGuideEs != null and incomeGuideEs != ''">income_guide_es = #{incomeGuideEs},</if>
         </trim>
         where id = #{id}
     </update>

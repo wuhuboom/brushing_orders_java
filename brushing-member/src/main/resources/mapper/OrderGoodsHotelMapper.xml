@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderGoodsHotelMapper">
+
+    <resultMap type="OrderGoods" id="OrderGoodsResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="coverUrl"    column="cover_url"    />
+        <result property="price"    column="price"    />
+        <result property="description"    column="description"    />
+        <result property="status"    column="status"    />
+        <result property="typeId"    column="type_id"    />
+        <result property="typeName"    column="typeName"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectOrderGoodsVo">
+        SELECT
+        g.id,
+        g.name,
+        g.cover_url,
+        g.price,
+        g.description,
+        g.status,
+        g.type_id,
+        g.create_time,
+        g.update_time,
+        t.name AS typeName
+        FROM
+        order_goods_hotel g
+        LEFT JOIN
+        order_goods_type t ON t.id = g.type_id
+    </sql>
+
+    <select id="selectOrderGoodsList" parameterType="OrderGoods" resultMap="OrderGoodsResult">
+        <include refid="selectOrderGoodsVo"/>
+        <where>
+            <if test="name != null  and name != ''"> and g.name like concat('%', #{name}, '%')</if>
+            <if test="minPrice != null and maxPrice == null">
+                AND g.price &gt;= #{minPrice}
+            </if>
+
+            <if test="maxPrice != null and minPrice == null">
+                AND g.price &lt;= #{maxPrice}
+            </if>
+            <if test="minPrice != null and maxPrice != null">
+                AND g.price BETWEEN #{minPrice} AND #{maxPrice}
+            </if>
+        </where>
+        order by g.price desc, g.create_time desc
+    </select>
+
+    <select id="selectOrderGoodsById" parameterType="Long" resultMap="OrderGoodsResult">
+        <include refid="selectOrderGoodsVo"/>
+        where g.id = #{id}
+    </select>
+
+    <select id="selectNearestPriceGoods" resultMap="OrderGoodsResult" parameterType="java.math.BigDecimal">
+        SELECT
+        g.id,
+        g.name,
+        g.cover_url,
+        g.price,
+        g.description,
+        g.status,
+        g.type_id,
+        g.create_time,
+        g.update_time,
+        t.name AS typeName
+        FROM
+        order_goods_hotel g
+        LEFT JOIN
+        order_goods_type t ON t.id = g.type_id
+        WHERE
+        g.price &lt;= #{price}
+        ORDER BY
+        g.price DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectRandomOrderGoods" resultMap="OrderGoodsResult">
+        SELECT
+        id,
+        name,
+        cover_url,
+        price,
+        description,
+        status,
+        create_time,
+        update_time
+        FROM order_goods_hotel
+        WHERE id >= (
+        SELECT FLOOR(RAND() * (SELECT MAX(id) FROM order_goods_hotel))
+        )
+        LIMIT 8
+    </select>
+
+    <select id="selectRandomOrderGoodsTwo" resultMap="OrderGoodsResult">
+        SELECT
+        id,
+        name,
+        cover_url,
+        price,
+        description,
+        status,
+        create_time,
+        update_time
+        FROM order_goods_hotel
+        WHERE id >= (
+        SELECT FLOOR(RAND() * (SELECT MAX(id) FROM order_goods_hotel))
+        )
+        LIMIT 9
+    </select>
+
+    <insert id="insertOrderGoods" parameterType="OrderGoods" useGeneratedKeys="true" keyProperty="id">
+        insert into order_goods_hotel
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="coverUrl != null">cover_url,</if>
+            <if test="price != null">price,</if>
+            <if test="description != null">description,</if>
+            <if test="status != null">status,</if>
+            <if test="typeId != null">type_id,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="coverUrl != null">#{coverUrl},</if>
+            <if test="price != null">#{price},</if>
+            <if test="description != null">#{description},</if>
+            <if test="status != null">#{status},</if>
+            <if test="typeId != null">#{typeId},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderGoods" parameterType="OrderGoods">
+        update order_goods_hotel
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="typeId != null">type_id = #{typeId},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOrderGoodsById" parameterType="String">
+        delete from order_goods_hotel where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderGoodsByIds" parameterType="String">
+        delete from order_goods_hotel where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

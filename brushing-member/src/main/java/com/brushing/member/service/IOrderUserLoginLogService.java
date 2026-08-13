@@ -1,0 +1,69 @@
+package com.brushing.member.service;
+
+import java.util.List;
+import com.brushing.member.domain.OrderUserLoginLog;
+
+/**
+ * 会员登录日志Service接口
+ *
+ * @author brushing
+ * @date 2026-01-11
+ */
+public interface IOrderUserLoginLogService
+{
+    /**
+     * 查询会员登录日志
+     *
+     * @param id 会员登录日志主键
+     * @return 会员登录日志
+     */
+    public OrderUserLoginLog selectOrderUserLoginLogById(Long id);
+
+    /**
+     * 查询会员登录日志列表
+     *
+     * @param orderUserLoginLog 会员登录日志
+     * @return 会员登录日志集合
+     */
+    public List<OrderUserLoginLog> selectOrderUserLoginLogList(OrderUserLoginLog orderUserLoginLog);
+
+    /**
+     * 新增会员登录日志
+     *
+     * @param orderUserLoginLog 会员登录日志
+     * @return 结果
+     */
+    public int insertOrderUserLoginLog(OrderUserLoginLog orderUserLoginLog);
+
+    /**
+     * 新增会员登录日志（独立事务，确保写库不被外部事务回滚）
+     *
+     * @param orderUserLoginLog 会员登录日志
+     * @return 结果
+     */
+    public int insertOrderUserLoginLogNewTx(OrderUserLoginLog orderUserLoginLog);
+
+    /**
+     * 修改会员登录日志
+     *
+     * @param orderUserLoginLog 会员登录日志
+     * @return 结果
+     */
+    public int updateOrderUserLoginLog(OrderUserLoginLog orderUserLoginLog);
+
+    /**
+     * 批量删除会员登录日志
+     *
+     * @param ids 需要删除的会员登录日志主键集合
+     * @return 结果
+     */
+    public int deleteOrderUserLoginLogByIds(Long[] ids);
+
+    /**
+     * 删除会员登录日志信息
+     *
+     * @param id 会员登录日志主键
+     * @return 结果
+     */
+    public int deleteOrderUserLoginLogById(Long id);
+}

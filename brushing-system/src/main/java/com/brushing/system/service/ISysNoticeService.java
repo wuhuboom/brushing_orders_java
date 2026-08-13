@@ -57,4 +57,19 @@ public interface ISysNoticeService
      * @return 结果
      */
     public int deleteNoticeByIds(Long[] noticeIds);
+
+    /**
+     * 查询用户在指定公告中的已读公告ID。
+     */
+    public List<Long> selectReadNoticeIds(Long userId, List<Long> noticeIds);
+
+    /**
+     * 查询用户未读的有效公告数量。
+     */
+    public int selectUnreadNoticeCount(Long userId);
+
+    /**
+     * 将指定公告标记为已读，操作是幂等的。
+     */
+    public int markNoticeRead(Long userId, Long noticeId);
 }

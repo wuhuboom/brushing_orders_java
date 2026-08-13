@@ -1,6 +1,8 @@
 package com.brushing.web.controller.member;
 
 import java.util.List;
+
+import com.brushing.web.controller.member.dto.TemplateVo;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -89,6 +91,13 @@ public class OrderSeriesController extends BaseController
     public AjaxResult addSeries(@RequestBody List<OrderSeries> orderSeries){
 
         return toAjax(orderSeriesService.insertOrderSeries(orderSeries));
+    }
+
+
+    @PostMapping("/addTemplateSeries")
+    public AjaxResult addTemplateSeries(@RequestBody TemplateVo vo){
+        String username = getUsername();
+        return toAjax(orderSeriesService.insertOrderSeriesByTemplate(vo.getUserId(), vo.getTemplateId(),username));
     }
 
     /**

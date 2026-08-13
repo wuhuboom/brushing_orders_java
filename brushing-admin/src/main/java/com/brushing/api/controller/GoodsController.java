@@ -4,6 +4,9 @@ import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.member.domain.OrderGoods;
 import com.brushing.member.service.IOrderGoodsService;
+import com.brushing.set.service.IOrderSiteConfigService;
+import com.brushing.set.domain.OrderSiteConfig;
+import com.brushing.member.mapper.OrderGoodsHotelMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +26,12 @@ public class GoodsController extends BaseController {
     @Autowired
     private IOrderGoodsService orderGoodsService;
 
+    @Autowired
+    private IOrderSiteConfigService siteConfigService;
+
+    @Autowired
+    private OrderGoodsHotelMapper orderGoodsHotelMapper;
+
     @GetMapping("/getGoodsList")
     @Operation(summary = "获取商品信息8张图片",
             description =
@@ -33,7 +42,13 @@ public class GoodsController extends BaseController {
 
     )
     public AjaxResult getGoodsList(){
-        List<OrderGoods> orderGoods = orderGoodsService.selectRandomOrderGoods();
+        OrderSiteConfig siteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+        List<OrderGoods> orderGoods;
+        if (siteConfig != null && "2".equals(siteConfig.getGoodsTableType())){
+            orderGoods = orderGoodsHotelMapper.selectRandomOrderGoods();
+        }else{
+            orderGoods = orderGoodsService.selectRandomOrderGoods();
+        }
         if (orderGoods == null || orderGoods.isEmpty()){
             return AjaxResult.error(701, "No data yet");
         }
@@ -51,11 +66,17 @@ public class GoodsController extends BaseController {
 
     )
     public AjaxResult getGoodsListTwo(){
-        List<OrderGoods> orderGoods = orderGoodsService.selectRandomOrderGoodsTwo();
-        if (orderGoods == null || orderGoods.isEmpty()){
+        OrderSiteConfig siteConfig2 = siteConfigService.selectOrderSiteConfigById(1L);
+        List<OrderGoods> orderGoods2;
+        if (siteConfig2 != null && "2".equals(siteConfig2.getGoodsTableType())){
+            orderGoods2 = orderGoodsHotelMapper.selectRandomOrderGoodsTwo();
+        }else{
+            orderGoods2 = orderGoodsService.selectRandomOrderGoodsTwo();
+        }
+        if (orderGoods2 == null || orderGoods2.isEmpty()){
             return AjaxResult.error(701, "No data yet");
         }
-        return success(orderGoods);
+        return success(orderGoods2);
 
     }
 }

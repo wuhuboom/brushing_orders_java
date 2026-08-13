@@ -34,7 +34,7 @@ public interface OrderTopupMapper
 
     /**
      * 新增充值记录
-     * 
+     *
      * @param orderTopup 充值记录
      * @return 结果
      */
@@ -42,7 +42,7 @@ public interface OrderTopupMapper
 
     /**
      * 修改充值记录
-     * 
+     *
      * @param orderTopup 充值记录
      * @return 结果
      */

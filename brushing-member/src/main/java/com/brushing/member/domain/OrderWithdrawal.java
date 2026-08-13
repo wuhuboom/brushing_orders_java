@@ -72,6 +72,10 @@ public class OrderWithdrawal extends BaseEntity
     private String phone;    // 当前用户电话号码
     private String userRemark; // 当前用户备注
     private String isReal;   // 当前用户实名认证状态
+
+    private String ip; // ip
+    private String ipAddress; // 提现时的IP地址
+
     // 上级用户字段
     private String parentUsername; // 上级用户名
     private String parentPhone;   // 上级电话号码
@@ -80,6 +84,22 @@ public class OrderWithdrawal extends BaseEntity
     private Integer dailyWithdrawalCount; //
 
     private OrderBankWallet bankWallet;
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
 
     public Long getWalletId() {
         return walletId;
@@ -297,6 +317,8 @@ public class OrderWithdrawal extends BaseEntity
             .append("amount", getAmount())
             .append("creditedAmount", getCreditedAmount())
             .append("fee", getFee())
+            .append("ip", getIp())
+            .append("ipAddress", getIpAddress())
             .append("applicationTime", getApplicationTime())
             .append("auditTime", getAuditTime())
             .append("remark", getRemark())

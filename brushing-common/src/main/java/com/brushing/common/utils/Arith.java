@@ -110,4 +110,12 @@ public class Arith
         BigDecimal b = new BigDecimal(Double.toString(v));
         return b.divide(BigDecimal.ONE, scale, RoundingMode.HALF_UP).doubleValue();
     }
+
+    public static int toInt(String str, int defaultValue) {
+        try {
+            return Integer.parseInt(str);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
 }

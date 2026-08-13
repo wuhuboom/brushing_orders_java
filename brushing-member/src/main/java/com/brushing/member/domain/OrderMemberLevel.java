@@ -102,6 +102,9 @@ public class OrderMemberLevel extends BaseEntity
     @Excel(name = "描述 - 葡萄牙")
     private String descriptionPor;
 
+    @Excel(name = "描述 - 西班牙语")
+    private String descriptionEs;
+
     /** 描述 - 中文繁体 */
     @Excel(name = "描述 - 中文繁体")
     private String descriptionZhTw;
@@ -112,6 +115,14 @@ public class OrderMemberLevel extends BaseEntity
 
     public void setDescriptionPor(String descriptionPor) {
         this.descriptionPor = descriptionPor;
+    }
+
+    public String getDescriptionEs() {
+        return descriptionEs;
+    }
+
+    public void setDescriptionEs(String descriptionEs) {
+        this.descriptionEs = descriptionEs;
     }
 
     public String getDescriptionJa() {

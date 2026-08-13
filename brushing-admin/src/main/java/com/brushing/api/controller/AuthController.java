@@ -1,30 +1,30 @@
 package com.brushing.api.controller;
 
-import com.brushing.api.controller.vo.*;
-import com.brushing.api.dto.FrontLoginResponse;
 import com.brushing.api.dto.LoginUserDto;
 import com.brushing.api.dto.RegisterDto;
 import com.brushing.common.core.controller.BaseController;
 import com.brushing.common.core.domain.AjaxResult;
 import com.brushing.common.utils.DateUtils;
 import com.brushing.common.utils.StringUtils;
-import com.brushing.common.utils.bean.BeanUtils;
-import com.brushing.common.utils.ip.AddressUtils;
 import com.brushing.common.utils.ip.IpUtils;
 import com.brushing.framework.front.FrontJwtUtil;
 import com.brushing.framework.init.GeoIpQueryQueryService;
 import com.brushing.member.domain.OrderMemberUser;
+import com.brushing.member.domain.OrderUserLoginLog;
 import com.brushing.member.service.IOrderMemberUserService;
+import com.brushing.member.service.IOrderUserLoginLogService;
+import com.brushing.api.controller.vo.*;
+import com.brushing.set.domain.OrderSiteConfig;
+import com.brushing.set.service.IOrderSiteConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Date;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Tag(
         name = "用户管理",
@@ -47,12 +47,15 @@ import java.util.Date;
                         "615: Invalid authorization header \n (请求头无效)" +
                         "616: Logout failed \n (退出登录失败)" +
                         "617: Unknown error \n (登录失败，未知错误)"+
+                        "618: The account disabled \n (账户禁用)"+
                         "621: 电话号码已经存在"+
                         "401: (token失效，或者未登录) \n "
 )
 @RestController
 @RequestMapping("/api/user")
 public class AuthController extends BaseController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     private IOrderMemberUserService userService;
@@ -63,6 +66,11 @@ public class AuthController extends BaseController {
     @Autowired
     private GeoIpQueryQueryService queryService;
 
+    @Autowired
+    private IOrderUserLoginLogService userLoginLogService;
+
+    @Autowired
+    private IOrderSiteConfigService siteConfigService;
 
 
 
@@ -71,29 +79,131 @@ public class AuthController extends BaseController {
 
     @PostMapping("/login")
     @Operation(summary = "登录操作")
-    public AjaxResult login(@RequestBody LoginUserDto loginRequest){
-        OrderMemberUser user = userService.findByUsername(loginRequest.getUsername());
-        if (StringUtils.isNull(user)){
-            return AjaxResult.error(601, "The account or password is incorrect");
-        }
+    public AjaxResult login(@RequestBody LoginUserDto loginRequest, HttpServletRequest request){
+        String username = loginRequest.getUsername();
+        OrderMemberUser user = userService.findByUsername(username);
+
+        // prepare log object (will set more fields as we go)
+        OrderUserLoginLog loginLog = new OrderUserLoginLog();
+        // set creation time early so mapper includes create_time
+        loginLog.setCreateTime(DateUtils.getNowDate());
+        // set userId now if user exists (null otherwise)
+        loginLog.setUserId(user != null ? user.getId() : null);
+        try {
+            String ipAddr = IpUtils.getIpAddress(request);
+             String address = queryService.queryByIp(ipAddr);
+             loginLog.setIp(ipAddr);
+             loginLog.setLocation(address);
+             // loginDomain from Host header or server name
+             String host = request.getHeader("Host");
+             if (host == null) host = request.getServerName();
+             loginLog.setLoginDomain(host);
+             // User-Agent parsing: put raw UA into browser field and parse OS
+             String ua = request.getHeader("User-Agent");
+             if (ua != null) {
+                 loginLog.setBrowser(ua);
+                 String os = "Unknown";
+                 if (ua.contains("Windows")) os = "Windows";
+                 else if (ua.contains("Mac")) os = "Mac";
+                 else if (ua.contains("Android")) os = "Android";
+                 else if (ua.contains("iPhone") || ua.contains("iPad")) os = "iOS";
+                 loginLog.setOs(os);
+             }
+         } catch (Exception ex) {
+             log.warn("Failed to resolve client IP/location or user-agent for login log", ex);
+         }
+
+         if (StringUtils.isNull(user)){
+             loginLog.setStatus("1");
+             loginLog.setUserId(null);
+             try {
+                 log.debug("Prepared loginLog for unknown user: {}", loginLog);
+                 int rows = userLoginLogService.insertOrderUserLoginLogNewTx(loginLog);
+                 if (rows <= 0) {
+                     log.warn("insertOrderUserLoginLog returned {} when logging failed login for unknown user {}", rows, username);
+                 } else {
+                     log.info("login log inserted for unknown user {}", username);
+                 }
+             } catch (Exception e) {
+                 log.error("Failed to insert login log for unknown user: {}", username, e);
+             }
+             return AjaxResult.error(601, "The account or password is incorrect");
+         }
         boolean matches = passwordEncoder.matches(loginRequest.getPassword(), user.getPassword());
         if (!matches) {
-            return AjaxResult.error(602, "The account or password is incorrect");
+            loginLog.setStatus("1");
+            loginLog.setUserId(user.getId());
+            try {
+                log.debug("Prepared loginLog for failed password: {}", loginLog);
+                 int rows = userLoginLogService.insertOrderUserLoginLogNewTx(loginLog);
+                 if (rows <= 0) {
+                     log.warn("insertOrderUserLoginLog returned {} when logging failed login for user id {}", rows, user.getId());
+                 } else {
+                     log.info("login log inserted for failed login user id {}", user.getId());
+                 }
+              } catch (Exception e) {
+                  log.error("Failed to insert login log for user id {}: {}", user.getId(), e.getMessage(), e);
+              }
+             return AjaxResult.error(602, "The account or password is incorrect");
+         }
+        if (user.getAccountStatus().equals("1")){
+            loginLog.setStatus("1");
+            loginLog.setUserId(user.getId());
+            try {
+                log.debug("Prepared loginLog for disabled account: {}", loginLog);
+                 int rows = userLoginLogService.insertOrderUserLoginLogNewTx(loginLog);
+                 if (rows <= 0) log.warn("insertOrderUserLoginLog returned {} when logging disabled account for user {}", rows, user.getId());
+             } catch (Exception e) {
+                 log.error("Failed to insert login log for disabled account user {}", user.getId(), e);
+             }
+            return  AjaxResult.error(618, "The account disabled");
         }
         try {
             String token = frontJwtUtil.generateToken(user.getUsername());
-            String ipAddr = IpUtils.getIpAddr();
+            String ipAddr = loginLog.getIp();
+            if (ipAddr == null) {
+                ipAddr = IpUtils.getIpAddr();
+            }
             String address = queryService.queryByIp(ipAddr);
             user.setLastLoginTime(DateUtils.getNowDate());
             user.setRegisterIp(ipAddr + "," + address);
             userService.updateOrderMemberUser(user);
+
+            // record success login
+            loginLog.setStatus("0");
+            loginLog.setUserId(user.getId());
+            try {
+                log.debug("Prepared loginLog for success: {}", loginLog);
+                 int rows = userLoginLogService.insertOrderUserLoginLogNewTx(loginLog);
+                 if (rows <= 0) {
+                     log.warn("insertOrderUserLoginLog returned {} when inserting success login for user id {}", rows, user.getId());
+                 } else {
+                     log.info("login log inserted for successful login user id {}", user.getId());
+                 }
+              } catch (Exception e) {
+                  log.error("Failed to insert login log after successful login for user id {}", user.getId(), e);
+              }
 
             AjaxResult result = new AjaxResult();
             result.put("token", token);
             result.put("user", user);
             return success(result);
         }catch (Exception e){
-            return AjaxResult.error(617,"Unknown error");
+            // record failed login due to exception
+            loginLog.setStatus("1");
+            loginLog.setUserId(user != null ? user.getId() : null);
+            try {
+                log.debug("Prepared loginLog for exception handler: {}", loginLog);
+                 int rows = userLoginLogService.insertOrderUserLoginLogNewTx(loginLog);
+                 if (rows <= 0) {
+                     log.warn("insertOrderUserLoginLog returned {} when logging exception for user {}", rows, user != null ? user.getId() : username);
+                 } else {
+                     log.info("login log inserted in exception handler for user {}", user != null ? user.getId() : username);
+                 }
+              } catch (Exception ex) {
+                  log.error("Failed to insert login log in exception handler for user {}", user != null ? user.getId() : username, ex);
+              }
+             return AjaxResult.error(617,"Unknown error");
         }
     }
 
@@ -109,12 +219,20 @@ public class AuthController extends BaseController {
         if (StringUtils.isEmpty(registerDto.getPassword())){
             return AjaxResult.error(604, "Password must not be blank");
         }
+       OrderSiteConfig orderSiteConfig = siteConfigService.selectOrderSiteConfigById(1L);
+
+        if(orderSiteConfig.getNeedPhone().equals("0") ){
+            if (StringUtils.isEmpty(registerDto.getPhone())){
+                return AjaxResult.error(606, "Phone number must not be blank");
+            }
+        }
+
 //        if (StringUtils.isEmpty(registerDto.getTradePassword())){
 //            return AjaxResult.error(605, "Trade password must not be blank");
 //        }
-        if (StringUtils.isEmpty(registerDto.getPhone())){
+        /*if (StringUtils.isEmpty(registerDto.getPhone())){
             return AjaxResult.error(606, "Phone number must not be blank");
-        }
+        }*/
         if (userService.existsPhone(registerDto.getPhone())){
             return AjaxResult.error(621, "Phone number already exists");
         }
@@ -131,6 +249,11 @@ public class AuthController extends BaseController {
         OrderMemberUser orderMemberUser = setUser(registerDto);
         orderMemberUser.setPassword(encoder.encode(registerDto.getPassword()));
         orderMemberUser.setSex(registerDto.getSex());
+        if (orderSiteConfig == null||orderSiteConfig.getNewUserCanTask().equals("0")) {
+            orderMemberUser.setTaskStatus("0");
+        } else {
+            orderMemberUser.setTaskStatus("1");
+        }
         if (StringUtils.isNotEmpty(registerDto.getTradePassword())){
             orderMemberUser.setTradePassword(encoder.encode(registerDto.getTradePassword()));
         }
@@ -272,6 +395,7 @@ public class AuthController extends BaseController {
         user.setPhone(registerDto.getPhone());
         user.setSex(registerDto.getSex());
         user.setInviteCode(registerDto.getInviteCode());
+        user.setEmail(registerDto.getEmail());
         return user;
     }
 }

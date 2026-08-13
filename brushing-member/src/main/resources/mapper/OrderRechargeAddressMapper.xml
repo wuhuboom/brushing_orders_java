@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.brushing.member.mapper.OrderRechargeAddressMapper">
+
+    <resultMap type="OrderRechargeAddress" id="OrderRechargeAddressResult">
+        <result property="id"    column="id"    />
+        <result property="name"    column="name"    />
+        <result property="qrCode"    column="qr_code"    />
+        <result property="url"    column="url"    />
+        <result property="status"    column="status"    />
+        <result property="sort"    column="sort"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectOrderRechargeAddressVo">
+        select id, name, qr_code, url, status, sort, create_time from order_recharge_address
+    </sql>
+
+    <select id="selectOrderRechargeAddressList" parameterType="OrderRechargeAddress" resultMap="OrderRechargeAddressResult">
+        <include refid="selectOrderRechargeAddressVo"/>
+        <where>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="qrCode != null  and qrCode != ''"> and qr_code = #{qrCode}</if>
+            <if test="url != null  and url != ''"> and url = #{url}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+            <if test="sort != null "> and sort = #{sort}</if>
+        </where>
+        order by sort asc
+    </select>
+
+    <select id="selectOrderRechargeAddressById" parameterType="Long" resultMap="OrderRechargeAddressResult">
+        <include refid="selectOrderRechargeAddressVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertOrderRechargeAddress" parameterType="OrderRechargeAddress" useGeneratedKeys="true" keyProperty="id">
+        insert into order_recharge_address
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="qrCode != null and qrCode != ''">qr_code,</if>
+            <if test="url != null and url != ''">url,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="sort != null">sort,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="qrCode != null and qrCode != ''">#{qrCode},</if>
+            <if test="url != null and url != ''">#{url},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateOrderRechargeAddress" parameterType="OrderRechargeAddress">
+        update order_recharge_address
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="qrCode != null and qrCode != ''">qr_code = #{qrCode},</if>
+            <if test="url != null and url != ''">url = #{url},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <!-- 新增：当插入或更新某条为 status='0' 时，需要把其他记录的 status 置为 '1' -->
+    <update id="resetAllStatusToOne" parameterType="java.lang.Void">
+        update order_recharge_address set status = '1' where status = '0'
+    </update>
+
+    <update id="resetOtherStatusToOne" parameterType="java.lang.Long">
+        update order_recharge_address set status = '1' where status = '0' and id != #{id}
+    </update>
+
+    <delete id="deleteOrderRechargeAddressById" parameterType="Long">
+        delete from order_recharge_address where id = #{id}
+    </delete>
+
+    <delete id="deleteOrderRechargeAddressByIds" parameterType="String">
+        delete from order_recharge_address where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

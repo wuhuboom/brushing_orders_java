@@ -18,6 +18,8 @@ public class FrontWebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/api/user/login",
                         "/api/user/register",
                         "/api/config/getCustomerService",
+                        "/api/config/needPhone",
+                        "/api/config/getSplashAdImage",
                         "/api/config/getGlobalConfig",
                         "/api/creategoodes/create",
                         "/api/config/getZoneActive",
