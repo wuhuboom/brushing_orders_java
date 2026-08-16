@@ -19,7 +19,12 @@ const antdThemeConfig = computed(() => ({
     borderRadius: 6,
     controlHeight: 32,
     controlHeightLG: 40,
-    controlHeightSM: 24
+    controlHeightSM: 24,
+    fontFamily: 'var(--app-font-family)',
+    fontSize: 14,
+    fontSizeLG: 14,
+    lineHeight: 1.5714285714,
+    lineHeightLG: 1.5714285714
   }
 }))
 

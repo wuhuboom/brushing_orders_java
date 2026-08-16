@@ -8,16 +8,20 @@
       :class="{ active: item.path === activeMenu }"
       @click="handleMenuClick(item.path)"
     >
-      <svg-icon
-        v-if="item.meta && item.meta.icon && item.meta.icon !== '#'"
-        :icon-class="item.meta.icon"
-      />
+      <component :is="resolveTopNavIcon(item)" v-if="resolveTopNavIcon(item)" class="top-nav-icon" />
       <span>{{ item.meta.title }}</span>
     </button>
   </nav>
 </template>
 
 <script setup>
+import {
+  FireOutlined,
+  GlobalOutlined,
+  HomeOutlined,
+  SettingOutlined,
+  ShopOutlined,
+} from "@ant-design/icons-vue";
 import { isHttp } from "@/utils/validate";
 import { getNormalPath } from "@/utils/common";
 import useAppStore from "@/store/modules/app";
@@ -33,7 +37,17 @@ const router = useRouter();
 const activeMenu = ref("/index");
 const currentIndex = ref(null);
 const hiddenSidebarPaths = ["/index", "/user/profile"];
-const homeMenu = { path: "/index", meta: { title: "首页", icon: "dashboard" } };
+const homeMenu = { path: "/index", meta: { title: "首页", icon: "home" } };
+
+const topNavIcons = {
+  首页: HomeOutlined,
+  系统管理: SettingOutlined,
+  客户管理: FireOutlined,
+  营销管理: FireOutlined,
+  积分商城: ShopOutlined,
+  活动管理: FireOutlined,
+  官网管理: GlobalOutlined,
+};
 
 const routers = computed(() => permissionStore.topbarRouters || []);
 
@@ -93,6 +107,10 @@ function normalizeTopMenu(menu, basePath = "") {
     ...menu,
     path: resolvePath(basePath, menu.path),
   };
+}
+
+function resolveTopNavIcon(item) {
+  return topNavIcons[item.meta?.title] || null;
 }
 
 function resolvePath(basePath, routePath) {
@@ -203,15 +221,15 @@ function shouldHideSidebar(key) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   height: 44px;
   padding: 0 16px;
   border: 0;
-  border-radius: 0;
+  border-radius: 4px;
   background: transparent;
   color: var(--navbar-muted-text, var(--text-secondary));
   cursor: pointer;
-  font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-family: var(--app-font-family);
   font-size: 14px;
   font-weight: 400;
   letter-spacing: 0;
@@ -224,13 +242,14 @@ function shouldHideSidebar(key) {
   }
 
   &.active {
-    color: var(--navbar-text, var(--text-primary));
+    color: var(--navbar-active-text, var(--navbar-text, var(--text-primary)));
     background: transparent;
   }
 
-  .svg-icon {
+  .top-nav-icon {
     flex: 0 0 auto;
     font-size: 14px;
+    line-height: 1;
   }
 }
 </style>

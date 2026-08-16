@@ -12,7 +12,7 @@ export default {
   /**
    * 主题色
    */
-  theme: '#1890ff',
+  theme: '#1677ff',
 
   /**
    * 侧边栏主题 深色主题theme-dark，浅色主题theme-light
@@ -104,4 +104,3 @@ export default {
    */
   footerContent: 'Copyright © 2026 DataCenter. All Rights Reserved.'
 }
-

@@ -14,12 +14,9 @@
             }"
             @click="handleNodeClick(node)"
           >
-            <svg-icon
-              v-if="node.icon && node.icon !== '#'"
-              :icon-class="node.icon"
-            />
+            <component :is="resolveMenuIcon(node)" v-if="resolveMenuIcon(node)" class="side-menu-icon" />
             <span v-if="!isCollapse" class="side-title">{{ node.title }}</span>
-            <span v-if="node.children.length && !isCollapse" class="side-arrow"></span>
+            <right-outlined v-if="node.children.length && !isCollapse" class="side-arrow" />
           </button>
 
           <div
@@ -38,12 +35,9 @@
                 }"
                 @click="handleNodeClick(child)"
               >
-                <svg-icon
-                  v-if="child.icon && child.icon !== '#'"
-                  :icon-class="child.icon"
-                />
+                <component :is="resolveMenuIcon(child)" v-if="resolveMenuIcon(child)" class="side-menu-icon" />
                 <span class="side-title">{{ child.title }}</span>
-                <span v-if="child.children.length" class="side-arrow"></span>
+                <right-outlined v-if="child.children.length" class="side-arrow" />
               </button>
 
               <div
@@ -59,10 +53,6 @@
                   :class="{ active: isNodeActive(grandchild) }"
                   @click="handleNodeClick(grandchild)"
                 >
-                  <svg-icon
-                    v-if="grandchild.icon && grandchild.icon !== '#'"
-                    :icon-class="grandchild.icon"
-                  />
                   <span class="side-title">{{ grandchild.title }}</span>
                 </button>
               </div>
@@ -75,6 +65,20 @@
 </template>
 
 <script setup>
+import {
+  AccountBookOutlined,
+  FireOutlined,
+  FolderOutlined,
+  GiftOutlined,
+  GlobalOutlined,
+  IdcardOutlined,
+  MoneyCollectOutlined,
+  OrderedListOutlined,
+  RightOutlined,
+  ShopOutlined,
+  UnorderedListOutlined,
+  UserOutlined,
+} from "@ant-design/icons-vue";
 import Logo from "./Logo";
 import variables from "@/assets/styles/variables.module.scss";
 import { isExternal } from "@/utils/validate";
@@ -95,6 +99,36 @@ const sideTheme = computed(() => settingsStore.sideTheme);
 const theme = computed(() => settingsStore.theme);
 const isCollapse = computed(() => !appStore.sidebar.opened);
 const openKeys = ref([]);
+
+const menuIcons = {
+  用户管理: UserOutlined,
+  权限管理: IdcardOutlined,
+  文件管理: FolderOutlined,
+  操作日志: UnorderedListOutlined,
+  商品管理: ShopOutlined,
+  会员管理: UserOutlined,
+  订单管理: OrderedListOutlined,
+  资金管理: MoneyCollectOutlined,
+  余额管理: AccountBookOutlined,
+  官网管理: GlobalOutlined,
+  礼品管理: GiftOutlined,
+  活动管理: FireOutlined,
+};
+
+const menuIconNames = {
+  user: UserOutlined,
+  validCode: IdcardOutlined,
+  folder: FolderOutlined,
+  log: UnorderedListOutlined,
+  goods: ShopOutlined,
+  shopping: ShopOutlined,
+  order: OrderedListOutlined,
+  money: MoneyCollectOutlined,
+  account: AccountBookOutlined,
+  international: GlobalOutlined,
+  gift: GiftOutlined,
+  fire: FireOutlined,
+};
 
 const getMenuBackground = computed(() => {
   if (settingsStore.isDark) {
@@ -121,7 +155,7 @@ const getMenuHoverBackground = computed(() => {
   if (settingsStore.isDark || sideTheme.value === "theme-dark") {
     return "rgba(255, 255, 255, 0.08)";
   }
-  return "rgba(0, 0, 0, 0.04)";
+  return "rgba(0, 0, 0, 0.03)";
 });
 
 const getMenuActiveBackground = computed(() => {
@@ -211,6 +245,13 @@ function buildMenuNode(item, basePath, parentKeys, map) {
   return node;
 }
 
+function resolveMenuIcon(node) {
+  if (node.parentKeys.length) {
+    return null;
+  }
+  return menuIcons[node.title] || menuIconNames[node.icon] || null;
+}
+
 function resolvePath(basePath, routePath) {
   if (isExternal(routePath)) {
     return routePath;
@@ -298,38 +339,47 @@ function navigateNode(node) {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
   background-color: v-bind(getMenuBackground);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .legacy-side-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
   min-height: 100%;
-  padding: 8px 0;
+  padding: 4px 0;
   background: v-bind(getMenuBackground);
   color: v-bind(getMenuTextColor);
-  font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-family: var(--app-font-family);
 
   &.collapsed {
     .side-menu-item {
       justify-content: center;
       padding: 0;
-      margin: 4px 8px;
+      margin: 0 8px;
       width: calc(100% - 16px);
     }
 
-    .svg-icon {
+    .side-menu-icon {
       margin-right: 0;
     }
   }
 }
 
 .side-menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   width: calc(100% - 24px);
   height: 40px;
-  margin: 4px 12px;
-  padding: 0 14px;
+  margin: 0 12px;
+  padding: 0 34px 0 16px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -352,15 +402,20 @@ function navigateNode(node) {
     background: v-bind(getMenuActiveBackground);
   }
 
-  &.opened .side-arrow {
-    transform: rotate(-135deg);
+  &.parent.active {
+    background: transparent;
   }
 
-  .svg-icon {
+  &.opened .side-arrow {
+    transform: rotate(-90deg);
+  }
+
+  .side-menu-icon {
     flex: 0 0 auto;
-    margin-right: 10px;
-    font-size: 15px;
+    margin-right: 8px;
+    font-size: 14px;
     color: inherit;
+    line-height: 1;
   }
 }
 
@@ -373,22 +428,31 @@ function navigateNode(node) {
 }
 
 .side-arrow {
+  position: absolute;
+  top: 15px;
+  right: 16px;
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-right: 1px solid currentColor;
-  border-bottom: 1px solid currentColor;
+  width: 10px;
+  height: 10px;
   color: inherit;
-  transform: rotate(45deg);
+  font-size: 10px;
+  line-height: 1;
+  transform: rotate(0deg);
   transition: transform 0.2s ease;
 }
 
 .side-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   background: transparent;
 }
 
 .side-menu-child {
-  padding-left: 34px;
+  width: calc(100% - 34px);
+  margin-right: 12px;
+  margin-left: 22px;
+  padding: 0 16px 0 32px;
 }
 
 .side-menu-grandchild {

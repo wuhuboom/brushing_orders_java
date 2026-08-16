@@ -49,3 +49,13 @@ export function typeList() {
     method: "get",
   });
 }
+
+// 批量导入商品
+export function importGoods(data) {
+  return request({
+    url: "/member/goods/importData",
+    method: "post",
+    data,
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}

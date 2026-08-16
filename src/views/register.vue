@@ -225,15 +225,18 @@ getCode()
 }
 
 .register-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 40px;
-  line-height: 40px;
+  line-height: 22px;
   position: fixed;
   bottom: 0;
   width: 100%;
   text-align: center;
   color: rgba(255, 255, 255, 0.92);
-  font-family: Arial, sans-serif;
-  font-size: 12px;
-  letter-spacing: 1px;
+  font-family: var(--app-font-family);
+  font-size: 14px;
+  letter-spacing: normal;
 }
 </style>

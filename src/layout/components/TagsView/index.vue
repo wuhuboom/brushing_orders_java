@@ -20,34 +20,41 @@
           aria-label="关闭"
           @click.prevent.stop="closeSelectedTag(tag)"
         >
-          ×
+          <close-outlined />
         </span>
       </router-link>
     </scroll-pane>
     <ul v-show="visible" :style="{ left: left + 'px', top: top + 'px' }" class="contextmenu">
       <li @click="refreshSelectedTag(selectedTag)">
-        <span class="context-icon" aria-hidden="true">↻</span> 刷新页面
+        <reload-outlined class="context-icon" /> 刷新页面
       </li>
       <li v-if="!isAffix(selectedTag)" @click="closeSelectedTag(selectedTag)">
-        <span class="context-icon" aria-hidden="true">×</span> 关闭当前
+        <close-outlined class="context-icon" /> 关闭当前
       </li>
       <li @click="closeOthersTags">
-        <span class="context-icon" aria-hidden="true">⊗</span> 关闭其他
+        <stop-outlined class="context-icon" /> 关闭其他
       </li>
       <li v-if="!isFirstView()" @click="closeLeftTags">
-        <span class="context-icon" aria-hidden="true">←</span> 关闭左侧
+        <arrow-left-outlined class="context-icon" /> 关闭左侧
       </li>
       <li v-if="!isLastView()" @click="closeRightTags">
-        <span class="context-icon" aria-hidden="true">→</span> 关闭右侧
+        <arrow-right-outlined class="context-icon" /> 关闭右侧
       </li>
       <li @click="closeAllTags(selectedTag)">
-        <span class="context-icon" aria-hidden="true">⊗</span> 全部关闭
+        <stop-outlined class="context-icon" /> 全部关闭
       </li>
     </ul>
   </div>
 </template>
 
 <script setup>
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  CloseOutlined,
+  ReloadOutlined,
+  StopOutlined,
+} from '@ant-design/icons-vue'
 import ScrollPane from './ScrollPane'
 import { getNormalPath } from '@/utils/common'
 import useTagsViewStore from '@/store/modules/tagsView'
@@ -262,7 +269,7 @@ function handleScroll() {
 
 <style lang="scss" scoped>
 .tags-view-container {
-  height: 38px;
+  height: 40px;
   width: 100%;
   background: var(--tags-bg, #fff);
   border-bottom: 1px solid var(--border-color);
@@ -273,36 +280,38 @@ function handleScroll() {
       display: inline-block;
       position: relative;
       cursor: pointer;
-      height: 38px;
-      line-height: 38px;
+      height: 40px;
+      line-height: 22px;
       border: 1px solid transparent;
       border-bottom: 0;
       color: var(--tags-item-text, var(--text-primary));
       background: var(--tags-item-bg, #fff);
-      padding: 0 15px;
+      padding: 8px 16px;
       font-size: 14px;
       font-weight: 400;
       margin-left: 0;
       margin-top: 0;
-      border-radius: 6px 6px 0 0;
+      border-radius: 8px 8px 0 0;
       vertical-align: top;
 
       &:first-of-type {
         margin-left: 0;
       }
 
-      &:last-of-type {
-        margin-right: 15px;
-      }
-
       &.active {
-        color: var(--primary-color);
+        color: var(--tags-item-active-text, var(--primary-color));
         background: var(--card-bg);
         border-color: var(--border-color);
-        font-weight: 600;
+        font-weight: 400;
 
-        &::before {
-          content: none;
+        &::after {
+          content: "";
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          height: 2px;
+          background: #1890ff;
         }
       }
     }
@@ -346,6 +355,7 @@ function handleScroll() {
 .tags-view-wrapper {
   .tags-view-item {
     .tags-view-close {
+      display: none;
       width: 14px;
       height: 14px;
       margin-left: 8px;

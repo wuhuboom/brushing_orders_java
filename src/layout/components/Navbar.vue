@@ -21,7 +21,7 @@
     <div class="right-menu">
       <div v-if="appStore.device !== 'mobile'" class="quick-actions">
         <span class="quick-badge">
-          <a class="quick-brand">MOIDA</a>
+          <a class="quick-brand">F4EEA</a>
         </span>
         <span class="quick-spacer" aria-hidden="true"></span>
         <span class="quick-badge">
@@ -65,15 +65,15 @@
           </button>
           <div v-show="userMenuOpen" class="account-dropdown">
             <button class="account-dropdown-item" type="button" @click="openGoogleAuth">
-              <span class="account-symbol google-symbol">G</span>
+              <setting-outlined class="account-menu-icon" />
               <span>谷歌验证器</span>
             </button>
             <button class="account-dropdown-item" type="button" @click="openResetPwd">
-              <svg-icon icon-class="password" />
+              <lock-outlined class="account-menu-icon" />
               <span>修改密码</span>
             </button>
             <button class="account-dropdown-item" type="button" @click="logout">
-              <span class="account-symbol logout-symbol"></span>
+              <logout-outlined class="account-menu-icon" />
               <span>退出登录</span>
             </button>
           </div>
@@ -88,12 +88,7 @@
             aria-label="语言"
             @click="toggleLanguageMenu"
           >
-            <svg class="language-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M0 0h24v24H0z" fill="none" />
-              <path
-                d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"
-              />
-            </svg>
+            <translation-outlined class="language-icon" />
           </button>
           <div v-show="languageMenuOpen" class="language-dropdown">
             <button class="language-item active" type="button" @click="selectLanguage('zh-CN')">
@@ -110,6 +105,12 @@
 </template>
 
 <script setup>
+import {
+  LockOutlined,
+  LogoutOutlined,
+  SettingOutlined,
+  TranslationOutlined,
+} from "@ant-design/icons-vue";
 import { Modal } from "ant-design-vue";
 import Breadcrumb from "@/components/Breadcrumb";
 import TopNav from "@/components/TopNav";
@@ -241,8 +242,8 @@ onBeforeUnmount(() => {
 
   .topmenu-container {
     position: absolute;
-    left: 140px;
-    top: 6px;
+    left: 171.390625px;
+    top: 5.5px;
     right: 360px;
   }
 
@@ -253,7 +254,7 @@ onBeforeUnmount(() => {
     align-items: center;
     padding-right: 0;
     color: rgba(0, 0, 0, 0.88);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: var(--app-font-family);
     font-size: 14px;
     line-height: 56px;
 
@@ -455,7 +456,7 @@ onBeforeUnmount(() => {
   background: transparent;
   color: rgba(0, 0, 0, 0.45);
   cursor: pointer;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-family: var(--app-font-family);
   font-size: 14px;
   line-height: 44px;
   box-shadow: none;
@@ -545,45 +546,12 @@ onBeforeUnmount(() => {
     background: var(--menu-hover);
   }
 
-  .svg-icon {
+  .account-menu-icon {
     flex: 0 0 auto;
     margin-right: 0;
     color: var(--text-secondary);
     font-size: 14px;
-  }
-}
-
-.account-symbol {
-  position: relative;
-  flex: 0 0 14px;
-  width: 14px;
-  height: 14px;
-  color: var(--text-primary);
-}
-
-.google-symbol {
-  font-family: Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
-}
-
-.logout-symbol {
-  border: 1.5px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-
-  &::after {
-    content: "";
-    position: absolute;
-    right: -1px;
-    top: 0;
-    width: 5px;
-    height: 5px;
-    border-top: 1.5px solid currentColor;
-    border-right: 1.5px solid currentColor;
-    transform: rotate(45deg);
+    line-height: 1;
   }
 }
 </style>

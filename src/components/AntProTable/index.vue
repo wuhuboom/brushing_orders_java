@@ -368,7 +368,7 @@ onBeforeUnmount(() => {
 .ant-pro-tool-action:hover { color: #1890ff; background: rgba(0, 0, 0, 0.025); }
 .ant-pro-tool-action.disabled { color: rgba(0, 0, 0, 0.25); cursor: not-allowed; }
 .ant-pro-table :deep(.ant-table) { border-radius: 8px 8px 0 0; }
-.ant-pro-table :deep(.ant-table-thead > tr > th) { padding: 12px 8px; background: var(--table-header-bg); color: var(--text-primary); font-size: 15px; font-weight: 600; line-height: 23.5714px; }
+.ant-pro-table :deep(.ant-table-thead > tr > th) { padding: 12px 8px; background: var(--table-header-bg); color: var(--text-primary); font-size: 14px; font-weight: 600; line-height: 22px; }
 .ant-pro-table :deep(.ant-table-tbody > tr > td) { padding: 12px 8px; color: var(--text-primary); font-size: 14px; line-height: 22px; vertical-align: middle; }
 .ant-pro-table :deep(.ant-btn-link) { padding: 0; }
 .ant-pro-table :deep(.ant-btn-sm) { height: 24px; padding: 0 7px; border-radius: 4px; font-size: 14px; line-height: 22px; }

@@ -8,7 +8,8 @@
       type="button"
       @click="toggleSideBar"
     >
-      {{ sidebar.opened ? '<' : '>' }}
+      <left-outlined v-if="sidebar.opened" />
+      <right-outlined v-else />
     </button>
     <div
       :class="{
@@ -38,6 +39,7 @@
 </template>
 
 <script setup>
+import { LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
 import Sidebar from './components/Sidebar/index.vue'
 import { AppMain, Navbar, Settings, TagsView } from './components'
 import useAppStore from '@/store/modules/app'
@@ -82,6 +84,9 @@ watch(width, () => {
     useAppStore().closeSideBar({ withoutAnimation: true })
   } else {
     useAppStore().toggleDevice('desktop')
+    if (settingsStore.topNav && settingsStore.menuVisible && !sidebar.value.hide) {
+      useAppStore().openSideBar(true)
+    }
   }
 }, { immediate: true })
 
@@ -139,20 +144,20 @@ function setLayout() {
 
 .sider-trigger {
   position: fixed;
-  top: 76px;
-  left: #{vars.$base-sidebar-width - 12px};
+  top: 74px;
+  left: #{vars.$base-sidebar-width - 11px};
   z-index: 830;
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid #f0f0f0;
-  border-radius: 50%;
+  border: 0;
+  border-radius: 40px;
   background: #fff;
-  color: rgba(0, 0, 0, 0.35);
+  color: rgba(0, 0, 0, 0.25);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
-  line-height: 20px;
-  font-size: 18px;
+  line-height: 16.1px;
+  font-size: 14px;
 }
 
 .layout-setting-trigger {

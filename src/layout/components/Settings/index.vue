@@ -365,7 +365,7 @@ defineExpose({
 <style lang="scss" scoped>
 .setting-panel {
   color: var(--text-primary);
-  font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  font-family: var(--app-font-family);
   font-size: 14px;
   letter-spacing: 0;
 }

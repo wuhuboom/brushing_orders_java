@@ -89,7 +89,7 @@ const getLogoTextColor = computed(() => {
       font-weight: 600;
       line-height: 56px;
       font-size: 14px;
-      font-family: Avenir, Helvetica Neue, Arial, Helvetica, sans-serif;
+      font-family: var(--app-font-family);
       vertical-align: middle;
     }
   }

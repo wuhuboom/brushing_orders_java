@@ -1,5 +1,5 @@
-$blue: #1890ff;
-$light-blue: #40a9ff;
+$blue: #1677ff;
+$light-blue: #4096ff;
 $red: #C03639;
 $pink: #E65D6E;
 $green: #30B08F;
@@ -13,9 +13,9 @@ $menuBg: #001529;
 $menuHover: rgba(255, 255, 255, 0.08);
 
 $menuLightBg: #ffffff;
-$menuLightHover: #f5f5f5;
+$menuLightHover: rgba(0, 0, 0, 0.03);
 $menuLightText: rgba(0, 0, 0, 0.65);
-$menuLightActiveText: #1890ff;
+$menuLightActiveText: rgba(0, 0, 0, 0.95);
 
 $base-sidebar-width: 256px;
 $sideBarWidth: 256px;
@@ -26,7 +26,7 @@ $base-menu-background: #304156;
 $base-sub-menu-background: #1f2d3d;
 $base-sub-menu-hover: #001528;
 
-$color-primary: #1890ff;
+$color-primary: #1677ff;
 $color-success: #67C23A;
 $color-warning: #E6A23C;
 $color-danger: #F56C6C;
@@ -60,24 +60,32 @@ $color-info: #909399;
 :root {
   --sidebar-bg: #ffffff;
   --sidebar-text: rgba(0, 0, 0, 0.65);
-  --sidebar-active-bg: #e6f4ff;
-  --sidebar-active-text: #1677ff;
-  --menu-active-text: #1677ff;
-  --menu-hover: #f5f5f5;
+  --sidebar-active-bg: rgba(0, 0, 0, 0.04);
+  --sidebar-active-text: rgba(0, 0, 0, 0.95);
+  --menu-active-text: rgba(0, 0, 0, 0.95);
+  --menu-hover: rgba(0, 0, 0, 0.03);
 
   --navbar-bg: #ffffff;
   --navbar-text: rgba(0, 0, 0, 0.88);
+  --navbar-active-text: rgba(0, 0, 0, 0.95);
   --navbar-muted-text: rgba(0, 0, 0, 0.65);
   --page-bg: #f5f5f5;
   --card-bg: #ffffff;
   --table-header-bg: #fafafa;
   --control-alt-bg: #fafafa;
   --border-color: #f0f0f0;
-  --primary-color: #1890ff;
-  --primary-hover: #40a9ff;
-  --primary-active: #096dd9;
+  --primary-color: #1677ff;
+  --primary-hover: #4096ff;
+  --primary-active: #0958d9;
   --text-primary: rgba(0, 0, 0, 0.88);
   --text-secondary: rgba(0, 0, 0, 0.65);
+  --tags-bg: #ffffff;
+  --tags-item-bg: #ffffff;
+  --tags-item-border: #f0f0f0;
+  --tags-item-text: rgba(0, 0, 0, 0.65);
+  --tags-item-active-text: #1890ff;
+  --tags-item-hover: #f5f5f5;
+  --tags-close-hover: #f0f0f0;
   --splitpanes-default-bg: #ffffff;
 }
 

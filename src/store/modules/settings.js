@@ -57,7 +57,7 @@ const useSettingsStore = defineStore(
     state: () => ({
       title: '',
       layoutVersion,
-      theme: storageSetting.theme || theme,
+      theme: storageSetting.theme && storageSetting.theme !== '#1890ff' ? storageSetting.theme : theme,
       sideTheme: storageSetting.sideTheme || sideTheme,
       showSettings: showSettings,
       layoutMode: storageSetting.layoutMode || layoutMode,

@@ -95,12 +95,12 @@ defineExpose({
   position: relative;
   overflow: hidden;
   width: 100%;
-  height: 39px;
+  height: 40px;
 }
 
 .scroll-wrapper {
   width: 100%;
-  height: 39px;
+  height: 40px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
