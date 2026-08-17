@@ -41,3 +41,13 @@ test("goods import entry follows the existing goods creation permission", () => 
 
   assert.match(goods, /<a-button type="primary" v-hasPermi="\['member:goods:add'\]">[\s\S]*?<UploadOutlined/);
 });
+
+test("level management only exposes fields and sorting supported by the backend", () => {
+  const level = source("src/views/member/level/index.vue");
+  const settings = source("src/views/member/orderconfig/index.vue");
+
+  assert.doesNotMatch(level, /queryParams\.title|createdDateRange/);
+  assert.doesNotMatch(level, /signInBonus|numberOfCompletedTaskGroups|taskGroupsBonus/);
+  assert.doesNotMatch(level, /title: "产品匹配"[^\n]*sorter: true/);
+  assert.match(settings, /@click="openSettingsDrawer\(record, true\)"/);
+});

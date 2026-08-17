@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container ant-pro-member-page level-page" :class="{ 'query-expanded': queryExpanded }">
+  <div class="app-container ant-pro-member-page level-page">
     <ant-pro-table
       title="等级列表"
       :columns="levelColumns"
@@ -8,7 +8,7 @@
       row-key="id"
       :row-selection="rowSelection"
       :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
-      :scroll="{ x: 4200, y: queryExpanded ? 'calc(100vh - 496px)' : 'calc(100vh - 440px)' }"
+      :scroll="{ x: 3600, y: 'calc(100vh - 440px)' }"
       @page-change="handleAntPageChange"
       @refresh="getList"
       @change="handleTableChange"
@@ -36,29 +36,10 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col v-if="queryExpanded" :xs="24" :sm="12" :lg="6">
-              <a-form-item label="标题">
-                <a-input v-model:value="queryParams.title" allow-clear placeholder="请输入" @pressEnter="handleQuery" />
-              </a-form-item>
-            </a-col>
-            <a-col v-if="queryExpanded" :xs="24" :sm="12" :lg="6">
-              <a-form-item label="创建时间">
-                <a-range-picker
-                  v-model:value="createdDateRange"
-                  value-format="YYYY-MM-DD"
-                  :placeholder="['请选择', '请选择']"
-                  class="full-width"
-                />
-              </a-form-item>
-            </a-col>
             <a-col flex="auto" class="ant-pro-query-actions">
               <a-space>
                 <a-button @click="resetQuery">重 置</a-button>
                 <a-button type="primary" @click="handleQuery">查 询</a-button>
-                <a-button type="link" class="query-expand-button" @click="queryExpanded = !queryExpanded">
-                  {{ queryExpanded ? "收起" : "展开" }}
-                  <DownOutlined :class="{ expanded: queryExpanded }" />
-                </a-button>
               </a-space>
             </a-col>
           </a-row>
@@ -225,7 +206,7 @@ import {
   addLevel,
   updateLevel,
 } from "@/api/member/level";
-import { CopyOutlined, DeleteOutlined, DownOutlined, PlusOutlined } from "@ant-design/icons-vue";
+import { CopyOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons-vue";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
 import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
 
@@ -240,8 +221,6 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
-const queryExpanded = ref(false);
-const createdDateRange = ref([]);
 
 const productMatchDialogVisible = ref(false);
 const productMatchTitle = ref("");
@@ -263,7 +242,6 @@ const data = reactive({
     name: null,
     level: null,
     productMatchEnabled: null,
-    title: null,
     orderByColumn: null,
     isAsc: null,
   },
@@ -328,15 +306,6 @@ const data = reactive({
     maxWithdraw: [
       { required: true, message: "最高提现金额不能为空", trigger: "blur" },
     ],
-    signInBonus: [
-      { required: true, message: "签到奖金不能为空", trigger: "blur" },
-    ],
-    numberOfCompletedTaskGroups: [
-      { required: true, message: "完成的任务组数不能为空", trigger: "blur" },
-    ],
-    taskGroupsBonus: [
-      { required: true, message: "完成的任务组数奖金不能为空", trigger: "blur" },
-    ],
     description: [{ required: true, message: "描述不能为空", trigger: "blur" }],
     createTime: [
       { required: true, message: "创建时间不能为空", trigger: "blur" },
@@ -352,7 +321,7 @@ const levelColumns = [
   { title: "级别", dataIndex: "level", key: "level", width: 100, sorter: true },
   { title: "图标", dataIndex: "icon", key: "icon", width: 100 },
   { title: "价格", dataIndex: "price", key: "price", width: 120, sorter: true },
-  { title: "产品匹配", key: "productMatch", width: 160, sorter: true },
+  { title: "产品匹配", key: "productMatch", width: 160 },
   { title: "最低余额", dataIndex: "minBalance", key: "minBalance", width: 140, sorter: true },
   { title: "自动升级需邀请人数", dataIndex: "inviteCount", key: "inviteCount", width: 190, sorter: true },
   { title: "最低返佣百分比", dataIndex: "minCommissionRate", key: "minCommissionRate", width: 180, sorter: true },
@@ -367,10 +336,6 @@ const levelColumns = [
   { title: "最高提现金额", dataIndex: "maxWithdraw", key: "maxWithdraw", width: 140, sorter: true },
   { title: "提现手续费率", dataIndex: "withdrawFeeRate", key: "withdrawFeeRate", width: 140, sorter: true },
   { title: "提现最低单数", dataIndex: "minWithdrawAmount", key: "minWithdrawAmount", width: 140, sorter: true },
-  { title: "签到奖金", dataIndex: "signInBonus", key: "signInBonus", width: 120, sorter: true },
-  { title: "完成的任务组数", dataIndex: "numberOfCompletedTaskGroups", key: "numberOfCompletedTaskGroups", width: 160, sorter: true },
-  { title: "完成的任务组数奖金", dataIndex: "taskGroupsBonus", key: "taskGroupsBonus", width: 190, sorter: true },
-  { title: "标题", dataIndex: "remark", key: "remark", width: 160 },
   { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180, sorter: true },
   { title: "操作", key: "operation", width: 220, fixed: "right" },
 ];
@@ -393,9 +358,6 @@ const numberColumnKeys = new Set([
   "minWithdraw",
   "maxWithdraw",
   "minWithdrawAmount",
-  "signInBonus",
-  "numberOfCompletedTaskGroups",
-  "taskGroupsBonus",
 ]);
 
 const rowSelection = computed(() => ({
@@ -422,12 +384,7 @@ const levelFormItems = [
   { prop: "withdrawLimitPerDay", label: "提现限额/天", type: "number", placeholder: "提现限额/天" },
   { prop: "minWithdraw", label: "最低提现金额", type: "number", placeholder: "最低提现金额" },
   { prop: "maxWithdraw", label: "最高提现金额", type: "number", placeholder: "最高提现金额" },
-  { prop: "signInBonus", label: "签到奖金", type: "number", placeholder: "签到奖金" },
-  { prop: "numberOfCompletedTaskGroups", label: "完成的任务组数", type: "number", placeholder: "完成的任务组数" },
-  { prop: "taskGroupsBonus", label: "完成的任务组数奖金", type: "number", placeholder: "完成的任务组数奖金" },
-  { prop: "remark", label: "标题", type: "input", placeholder: "标题", span: 12 },
   { prop: "description", label: "描述", type: "editor", span: 24 },
-  { prop: "version", label: "版本号", type: "number", placeholder: "版本号" },
 ];
 
 function handleAntPageChange({ page, pageSize }) {
@@ -546,11 +503,8 @@ function getList() {
     name: queryParams.value.name || undefined,
     level: queryParams.value.level || undefined,
     productMatchEnabled: queryParams.value.productMatchEnabled ?? undefined,
-    title: queryParams.value.title || undefined,
     orderByColumn: queryParams.value.orderByColumn || undefined,
     isAsc: queryParams.value.isAsc || undefined,
-    beginCreateTime: createdDateRange.value?.[0] || undefined,
-    endCreateTime: createdDateRange.value?.[1] || undefined,
   };
   listLevel(params).then((response) => {
     levelList.value = response.rows;
@@ -587,12 +541,7 @@ function reset() {
     withdrawLimitPerDay: null,
     minWithdraw: null,
     maxWithdraw: null,
-    signInBonus: null,
-    numberOfCompletedTaskGroups: null,
-    taskGroupsBonus: null,
-    remark: null,
     description: null,
-    version: null,
     createTime: null,
   };
   proxy.resetForm("levelRef");
@@ -619,10 +568,8 @@ function resetQuery() {
   queryParams.value.name = null;
   queryParams.value.level = null;
   queryParams.value.productMatchEnabled = null;
-  queryParams.value.title = null;
   queryParams.value.orderByColumn = null;
   queryParams.value.isAsc = null;
-  createdDateRange.value = [];
   handleQuery();
 }
 
@@ -727,19 +674,6 @@ getList();
 
 .full-width {
   width: 100%;
-}
-
-.query-expand-button {
-  padding-right: 0;
-  padding-left: 0;
-}
-
-.query-expand-button :deep(.anticon) {
-  transition: transform 0.2s ease;
-}
-
-.query-expand-button :deep(.anticon.expanded) {
-  transform: rotate(180deg);
 }
 
 .cell-copy-button {

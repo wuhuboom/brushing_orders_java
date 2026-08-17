@@ -54,7 +54,7 @@
 
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'name'">
-          <a class="settings-kind-link" @click="handleUpdate(record)">
+          <a class="settings-kind-link" @click="openSettingsDrawer(record, true)">
             <a-badge status="processing" :text="displayName(record)" />
           </a>
         </template>
