@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container ant-pro-member-page">
+  <div class="app-container ant-pro-member-page customer-service-page">
     <ant-pro-table
       title="客服列表"
       :columns="columns"
@@ -8,7 +8,7 @@
       row-key="id"
       :row-selection="rowSelection"
       :pagination="pagination"
-      :scroll="{ x: 1450 }"
+      :scroll="{ x: 1400 }"
       @page-change="handlePageChange"
       @refresh="getList"
     >
@@ -67,21 +67,25 @@
       </template>
 
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'image'">
-          <image-preview :src="record.image" :width="52" :height="52" />
+        <template v-if="column.dataIndex === 'name'">
+          <span class="customer-service-name">{{ record.name || "-" }}</span>
         </template>
-        <template v-else-if="column.key === 'enabled'">{{ enabledText(record.isEnabled) }}</template>
+        <template v-else-if="column.key === 'image'">
+          <image-preview v-if="record.image" :src="record.image" :width="32" :height="32" />
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'enabled'">
+          <a-badge :status="String(record.isEnabled) === '1' ? 'success' : 'default'" :text="enabledText(record.isEnabled)" />
+        </template>
         <template v-else-if="column.key === 'link'">
-          <a-space :size="4">
-            <a-typography-text :ellipsis="{ tooltip: record.link }" style="max-width: 210px">
-              {{ record.link || "-" }}
-            </a-typography-text>
+          <div class="customer-service-link-cell">
+            <span class="customer-service-link">{{ record.link || "-" }}</span>
             <a-tooltip title="复制">
               <a-button v-if="record.link" type="text" size="small" aria-label="复制链接" @click="copyLink(record.link)">
                 <CopyOutlined />
               </a-button>
             </a-tooltip>
-          </a-space>
+          </div>
         </template>
         <template v-else-if="column.key === 'createTime'">{{ formatDateTime(record.createTime) }}</template>
         <template v-else-if="column.key === 'operation'">
@@ -93,42 +97,62 @@
       </template>
     </ant-pro-table>
 
-    <a-modal
+    <a-drawer
       v-model:open="open"
       :title="title"
-      width="680px"
-      ok-text="确定"
-      cancel-text="取消"
-      :confirm-loading="submitting"
+      width="60%"
+      size="large"
       :destroy-on-close="true"
-      @ok="submitForm"
-      @cancel="cancel"
+      class="customer-service-drawer"
+      @close="cancel"
     >
-      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-form-item label="名称" name="name">
-          <a-input v-model:value="form.name" placeholder="名称" />
-        </a-form-item>
-        <a-form-item label="序号" name="sortOrder">
-          <a-input-number v-model:value="form.sortOrder" :precision="0" style="width: 100%" />
-        </a-form-item>
-        <a-form-item label="图片" name="image">
-          <image-upload v-model="form.image" :limit="1" />
-        </a-form-item>
-        <a-form-item label="是否启用" name="isEnabled">
-          <a-radio-group v-model:value="form.isEnabled">
-            <a-radio v-for="item in enabledOptions" :key="item.value" :value="item.value">
-              {{ item.label }}
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item label="链接" name="link">
-          <a-input v-model:value="form.link" placeholder="请输入" />
-        </a-form-item>
-        <a-form-item label="备注" name="remarks">
-          <a-textarea v-model:value="form.remarks" :rows="3" placeholder="请输入" />
-        </a-form-item>
+      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large" class="customer-service-form">
+        <a-row :gutter="[24, 0]">
+          <a-col :span="12">
+            <a-form-item label="名称" name="name">
+              <a-input v-model:value="form.name" placeholder="名称" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="序号" name="sortOrder">
+              <a-input-number v-model:value="form.sortOrder" :precision="0" placeholder="序号" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="图片" name="image">
+              <image-upload v-model="form.image" :limit="1" :is-show-tip="false" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="是否启用" name="isEnabled">
+              <a-radio-group v-model:value="form.isEnabled">
+                <a-radio v-for="item in enabledOptions" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </a-radio>
+              </a-radio-group>
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item label="链接" name="link">
+              <a-input v-model:value="form.link" placeholder="链接" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="24">
+            <a-form-item label="备注" name="remarks">
+              <a-textarea v-model:value="form.remarks" :rows="3" placeholder="备注" />
+            </a-form-item>
+          </a-col>
+        </a-row>
       </a-form>
-    </a-modal>
+      <template #footer>
+        <div class="customer-service-drawer-footer">
+          <a-space>
+            <a-button size="large" @click="cancel">取消</a-button>
+            <a-button type="primary" size="large" :loading="submitting" @click="submitForm">确定</a-button>
+          </a-space>
+        </div>
+      </template>
+    </a-drawer>
   </div>
 </template>
 
@@ -140,8 +164,8 @@ import ImageUpload from "@/components/ImageUpload/index.vue";
 
 const { proxy } = getCurrentInstance();
 const enabledOptions = [
-  { label: "禁用", value: "1" },
-  { label: "启用", value: "0" },
+  { label: "禁用", value: "0" },
+  { label: "启用", value: "1" },
 ];
 
 const rows = ref([]);
@@ -187,7 +211,7 @@ const rules = {
 };
 
 function emptyForm() {
-  return { id: undefined, name: undefined, sortOrder: undefined, image: undefined, isEnabled: "0", link: undefined, remarks: undefined };
+  return { id: undefined, name: undefined, sortOrder: undefined, image: undefined, isEnabled: "1", link: undefined, remarks: undefined };
 }
 function queryPayload() {
   const payload = { ...query };
@@ -304,3 +328,72 @@ async function handleDelete() {
 
 getList();
 </script>
+
+<style scoped lang="scss">
+.customer-service-page {
+  margin-top: 44px;
+}
+
+.customer-service-page :deep(.ant-table-body) {
+  height: calc(100vh - 440px);
+}
+
+.customer-service-page :deep(.ant-pagination-item),
+.customer-service-page :deep(.ant-pagination-prev),
+.customer-service-page :deep(.ant-pagination-next) {
+  min-width: 24px;
+  height: 24px;
+  line-height: 22px;
+}
+
+.customer-service-name {
+  color: #1677ff;
+}
+
+.customer-service-link-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.customer-service-link {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.customer-service-link-cell :deep(.ant-btn) {
+  flex: none;
+}
+
+.customer-service-form :deep(.ant-input-number) {
+  width: 100%;
+}
+
+.customer-service-form :deep(.ant-upload-list-picture-card .ant-upload-list-item-container),
+.customer-service-form :deep(.ant-upload.ant-upload-select-picture-card) {
+  width: 102px;
+  height: 102px;
+}
+
+.customer-service-drawer-footer {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .customer-service-page {
+    margin-top: 12px;
+  }
+
+  .customer-service-page :deep(.ant-table-body) {
+    height: auto;
+  }
+
+  :global(.customer-service-drawer .ant-drawer-content-wrapper) {
+    width: 100% !important;
+  }
+}
+</style>
