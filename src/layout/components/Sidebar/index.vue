@@ -36,8 +36,6 @@
                 }"
                 @click="handleNodeClick(child)"
               >
-                <component :is="resolveMenuIcon(child)" v-if="resolveMenuIcon(child)" class="side-menu-icon" />
-                <svg-icon v-else-if="child.icon && child.icon !== '#'" :icon-class="child.icon" class="side-menu-icon" />
                 <span class="side-title">{{ child.title }}</span>
                 <right-outlined v-if="child.children.length" class="side-arrow" />
               </button>
@@ -55,7 +53,6 @@
                   :class="{ active: isNodeActive(grandchild) }"
                   @click="handleNodeClick(grandchild)"
                 >
-                  <svg-icon v-if="grandchild.icon && grandchild.icon !== '#'" :icon-class="grandchild.icon" class="side-menu-icon" />
                   <span class="side-title">{{ grandchild.title }}</span>
                 </button>
               </div>
@@ -131,6 +128,20 @@ const menuIconNames = {
   international: GlobalOutlined,
   gift: GiftOutlined,
   fire: FireOutlined,
+};
+
+const submenuTitleOrder = {
+  会员管理: [
+    "会员管理",
+    "授权记录",
+    "等级管理",
+    "每日统计",
+    "会员统计",
+    "登录日志",
+    "业绩统计",
+    "站内信",
+    "IP重复会员",
+  ],
 };
 
 const getMenuBackground = computed(() => {
@@ -211,7 +222,10 @@ function buildMenuNodes(routes = [], basePath = "", parentKeys = [], map = new M
 }
 
 function buildMenuNode(item, basePath, parentKeys, map) {
-  const children = (item.children || []).filter((child) => !child.hidden);
+  const children = sortSubmenuChildren(
+    item.meta?.title,
+    (item.children || []).filter((child) => !child.hidden)
+  );
   const routePath = resolvePath(basePath, item.path);
   const onlyChild = children.length === 1 ? children[0] : null;
 
@@ -246,6 +260,19 @@ function buildMenuNode(item, basePath, parentKeys, map) {
 
   map.set(node.key, node);
   return node;
+}
+
+function sortSubmenuChildren(parentTitle, children) {
+  const order = submenuTitleOrder[parentTitle];
+  if (!order) {
+    return children;
+  }
+  const positions = new Map(order.map((title, index) => [title, index]));
+  return [...children].sort((left, right) => {
+    const leftIndex = positions.get(left.meta?.title) ?? Number.MAX_SAFE_INTEGER;
+    const rightIndex = positions.get(right.meta?.title) ?? Number.MAX_SAFE_INTEGER;
+    return leftIndex - rightIndex;
+  });
 }
 
 function resolveMenuIcon(node) {

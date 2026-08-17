@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container ant-pro-member-page">
+  <div class="app-container ant-pro-member-page level-page" :class="{ 'query-expanded': queryExpanded }">
     <ant-pro-table
       title="等级列表"
       :columns="levelColumns"
@@ -8,26 +8,57 @@
       row-key="id"
       :row-selection="rowSelection"
       :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      :scroll="{ x: 4200, y: queryExpanded ? 'calc(100vh - 496px)' : 'calc(100vh - 440px)' }"
       @page-change="handleAntPageChange"
       @refresh="getList"
+      @change="handleTableChange"
     >
       <template #search>
         <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
           <a-row :gutter="[24, 16]" align="middle">
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+            <a-col :xs="24" :sm="12" :lg="6">
               <a-form-item label="名称">
-                <a-input v-model:value="queryParams.name" allow-clear placeholder="请输入名称" @pressEnter="handleQuery" />
+                <a-input v-model:value="queryParams.name" allow-clear placeholder="请输入" @pressEnter="handleQuery" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+            <a-col :xs="24" :sm="12" :lg="6">
               <a-form-item label="级别">
-                <a-input v-model:value="queryParams.level" allow-clear placeholder="请输入级别" @pressEnter="handleQuery" />
+                <a-input v-model:value="queryParams.level" allow-clear placeholder="请输入" @pressEnter="handleQuery" />
+              </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :lg="6">
+              <a-form-item label="产品匹配">
+                <a-select
+                  v-model:value="queryParams.productMatchEnabled"
+                  allow-clear
+                  placeholder="请选择"
+                  :options="productMatchOptions"
+                />
+              </a-form-item>
+            </a-col>
+            <a-col v-if="queryExpanded" :xs="24" :sm="12" :lg="6">
+              <a-form-item label="标题">
+                <a-input v-model:value="queryParams.title" allow-clear placeholder="请输入" @pressEnter="handleQuery" />
+              </a-form-item>
+            </a-col>
+            <a-col v-if="queryExpanded" :xs="24" :sm="12" :lg="6">
+              <a-form-item label="创建时间">
+                <a-range-picker
+                  v-model:value="createdDateRange"
+                  value-format="YYYY-MM-DD"
+                  :placeholder="['请选择', '请选择']"
+                  class="full-width"
+                />
               </a-form-item>
             </a-col>
             <a-col flex="auto" class="ant-pro-query-actions">
               <a-space>
                 <a-button @click="resetQuery">重 置</a-button>
                 <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button type="link" class="query-expand-button" @click="queryExpanded = !queryExpanded">
+                  {{ queryExpanded ? "收起" : "展开" }}
+                  <DownOutlined :class="{ expanded: queryExpanded }" />
+                </a-button>
               </a-space>
             </a-col>
           </a-row>
@@ -46,8 +77,16 @@
       </template>
 
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'icon'">
-          <image-preview :src="record.icon" :width="50" :height="50" />
+        <template v-if="column.key === 'name'">
+          <span>{{ record.name || "-" }}</span>
+          <a-tooltip title="复制">
+            <a-button type="link" class="cell-copy-button" aria-label="复制" @click="copyLevelName(record.name)">
+              <CopyOutlined />
+            </a-button>
+          </a-tooltip>
+        </template>
+        <template v-else-if="column.key === 'icon'">
+          <image-preview :src="record.icon" :width="32" :height="32" />
         </template>
         <template v-else-if="column.key === 'productMatch'">
           <a
@@ -60,6 +99,15 @@
             启用 : {{ record.productMatchMin }}% - {{ record.productMatchMax }}%
           </a>
         </template>
+        <template v-else-if="percentageColumnKeys.has(column.key)">
+          {{ formatPercentage(record[column.dataIndex]) }}
+        </template>
+        <template v-else-if="numberColumnKeys.has(column.key)">
+          {{ formatNumber(record[column.dataIndex]) }}
+        </template>
+        <template v-else-if="column.key === 'createTime'">
+          {{ record.createTime ? proxy.parseTime(record.createTime) : "-" }}
+        </template>
         <template v-else-if="column.key === 'operation'">
           <a-space :size="8">
             <a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:level:edit']">修改</a-button>
@@ -70,10 +118,19 @@
       </template>
     </ant-pro-table>
 
-    <a-modal v-model:open="open" :title="title" width="860px" destroy-on-close @ok="submitForm" @cancel="cancel">
-      <a-form ref="levelRef" :model="form" :rules="rules" layout="vertical">
-        <a-row :gutter="[20, 0]">
-          <a-col v-for="item in levelFormItems" :key="item.prop" :span="item.span || 8">
+    <a-drawer
+      v-model:open="open"
+      :title="title"
+      width="70%"
+      size="large"
+      destroy-on-close
+      :body-style="{ paddingBottom: '24px' }"
+      class="level-form-drawer"
+      @close="cancel"
+    >
+      <a-form ref="levelRef" :model="form" :rules="rules" layout="vertical" size="large">
+        <a-row :gutter="[24, 0]">
+          <a-col v-for="item in levelFormItems" :key="item.prop" :span="item.span || 6">
             <a-form-item :label="item.label" :name="item.prop">
               <a-input
                 v-if="item.type === 'input'"
@@ -88,14 +145,31 @@
                 :max="item.max"
                 :placeholder="item.placeholder"
                 class="full-width"
+              >
+                <template v-if="item.suffix" #addonAfter>{{ item.suffix }}</template>
+              </a-input-number>
+              <image-upload
+                v-else-if="item.type === 'image'"
+                v-model="form[item.prop]"
+                :limit="1"
+                :file-size="5"
+                :is-show-tip="false"
               />
-              <image-upload v-else-if="item.type === 'image'" v-model="form[item.prop]" :limit="1" />
-              <editor v-else-if="item.type === 'editor'" v-model="form[item.prop]" :min-height="192" />
+              <editor v-else-if="item.type === 'editor'" v-model="form[item.prop]" :min-height="320" />
             </a-form-item>
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
+
+      <template #footer>
+        <div class="drawer-footer">
+          <a-space>
+            <a-button @click="cancel">取 消</a-button>
+            <a-button type="primary" @click="submitForm">确 定</a-button>
+          </a-space>
+        </div>
+      </template>
+    </a-drawer>
 
     <a-modal
       v-model:open="productMatchDialogVisible"
@@ -151,7 +225,7 @@ import {
   addLevel,
   updateLevel,
 } from "@/api/member/level";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons-vue";
+import { CopyOutlined, DeleteOutlined, DownOutlined, PlusOutlined } from "@ant-design/icons-vue";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
 import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
 
@@ -166,6 +240,8 @@ const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
 const title = ref("");
+const queryExpanded = ref(false);
+const createdDateRange = ref([]);
 
 const productMatchDialogVisible = ref(false);
 const productMatchTitle = ref("");
@@ -173,6 +249,10 @@ const translationOpen = ref(false);
 const translationTitle = ref("");
 const translationForm = ref(createEmptyTranslations());
 const currentTranslationRow = ref(null);
+const productMatchOptions = [
+  { label: "启用", value: "1" },
+  { label: "禁用", value: "0" },
+];
 
 const data = reactive({
   form: {},
@@ -182,6 +262,10 @@ const data = reactive({
     pageSize: 10,
     name: null,
     level: null,
+    productMatchEnabled: null,
+    title: null,
+    orderByColumn: null,
+    isAsc: null,
   },
   rules: {
     name: [{ required: true, message: "名称不能为空", trigger: "blur" }],
@@ -244,6 +328,15 @@ const data = reactive({
     maxWithdraw: [
       { required: true, message: "最高提现金额不能为空", trigger: "blur" },
     ],
+    signInBonus: [
+      { required: true, message: "签到奖金不能为空", trigger: "blur" },
+    ],
+    numberOfCompletedTaskGroups: [
+      { required: true, message: "完成的任务组数不能为空", trigger: "blur" },
+    ],
+    taskGroupsBonus: [
+      { required: true, message: "完成的任务组数奖金不能为空", trigger: "blur" },
+    ],
     description: [{ required: true, message: "描述不能为空", trigger: "blur" }],
     createTime: [
       { required: true, message: "创建时间不能为空", trigger: "blur" },
@@ -255,15 +348,55 @@ const { queryParams, form, rules, productMatchForm } = toRefs(data);
 
 const levelColumns = [
   { title: "ID", dataIndex: "id", key: "id", width: 80 },
-  { title: "名称", dataIndex: "name", key: "name" },
-  { title: "级别", dataIndex: "level", key: "level", width: 120 },
+  { title: "名称", dataIndex: "name", key: "name", width: 160, sorter: true },
+  { title: "级别", dataIndex: "level", key: "level", width: 100, sorter: true },
   { title: "图标", dataIndex: "icon", key: "icon", width: 100 },
-  { title: "价格", dataIndex: "price", key: "price", width: 120 },
-  { title: "产品匹配", key: "productMatch", width: 220 },
-  { title: "最低余额", dataIndex: "minBalance", key: "minBalance", width: 140 },
-  { title: "自动升级所需邀请人数", dataIndex: "inviteCount", key: "inviteCount", width: 210 },
-  { title: "操作", key: "operation", width: 220 },
+  { title: "价格", dataIndex: "price", key: "price", width: 120, sorter: true },
+  { title: "产品匹配", key: "productMatch", width: 160, sorter: true },
+  { title: "最低余额", dataIndex: "minBalance", key: "minBalance", width: 140, sorter: true },
+  { title: "自动升级需邀请人数", dataIndex: "inviteCount", key: "inviteCount", width: 190, sorter: true },
+  { title: "最低返佣百分比", dataIndex: "minCommissionRate", key: "minCommissionRate", width: 180, sorter: true },
+  { title: "最高返佣百分比", dataIndex: "maxCommissionRate", key: "maxCommissionRate", width: 180, sorter: true },
+  { title: "最低连单返佣百分比", dataIndex: "minContinuousCommissionRate", key: "minContinuousCommissionRate", width: 200, sorter: true },
+  { title: "最高连单返佣百分比", dataIndex: "maxContinuousCommissionRate", key: "maxContinuousCommissionRate", width: 200, sorter: true },
+  { title: "接单次数/天", dataIndex: "orderCountPerDay", key: "orderCountPerDay", width: 140, sorter: true },
+  { title: "任务完成组数/天", dataIndex: "taskCountPerDay", key: "taskCountPerDay", width: 160, sorter: true },
+  { title: "提现次数/天", dataIndex: "withdrawCountPerDay", key: "withdrawCountPerDay", width: 140, sorter: true },
+  { title: "提现限额/天", dataIndex: "withdrawLimitPerDay", key: "withdrawLimitPerDay", width: 140, sorter: true },
+  { title: "最低提现金额", dataIndex: "minWithdraw", key: "minWithdraw", width: 140, sorter: true },
+  { title: "最高提现金额", dataIndex: "maxWithdraw", key: "maxWithdraw", width: 140, sorter: true },
+  { title: "提现手续费率", dataIndex: "withdrawFeeRate", key: "withdrawFeeRate", width: 140, sorter: true },
+  { title: "提现最低单数", dataIndex: "minWithdrawAmount", key: "minWithdrawAmount", width: 140, sorter: true },
+  { title: "签到奖金", dataIndex: "signInBonus", key: "signInBonus", width: 120, sorter: true },
+  { title: "完成的任务组数", dataIndex: "numberOfCompletedTaskGroups", key: "numberOfCompletedTaskGroups", width: 160, sorter: true },
+  { title: "完成的任务组数奖金", dataIndex: "taskGroupsBonus", key: "taskGroupsBonus", width: 190, sorter: true },
+  { title: "标题", dataIndex: "remark", key: "remark", width: 160 },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180, sorter: true },
+  { title: "操作", key: "operation", width: 220, fixed: "right" },
 ];
+
+const percentageColumnKeys = new Set([
+  "minCommissionRate",
+  "maxCommissionRate",
+  "minContinuousCommissionRate",
+  "maxContinuousCommissionRate",
+  "withdrawFeeRate",
+]);
+const numberColumnKeys = new Set([
+  "price",
+  "minBalance",
+  "inviteCount",
+  "orderCountPerDay",
+  "taskCountPerDay",
+  "withdrawCountPerDay",
+  "withdrawLimitPerDay",
+  "minWithdraw",
+  "maxWithdraw",
+  "minWithdrawAmount",
+  "signInBonus",
+  "numberOfCompletedTaskGroups",
+  "taskGroupsBonus",
+]);
 
 const rowSelection = computed(() => ({
   selectedRowKeys: ids.value,
@@ -271,31 +404,70 @@ const rowSelection = computed(() => ({
 }));
 
 const levelFormItems = [
-  { prop: "name", label: "名称", type: "input", placeholder: "请输入名称" },
-  { prop: "level", label: "级别", type: "number", min: 1, placeholder: "请输入级别" },
-  { prop: "icon", label: "图标", type: "image" },
-  { prop: "price", label: "会员等级价格", type: "number", placeholder: "请输入会员等级价格" },
-  { prop: "minBalance", label: "最低余额", type: "number", placeholder: "请输入最低余额" },
-  { prop: "inviteCount", label: "自动升级所需邀请人数", type: "number", placeholder: "请输入自动升级所需邀请人数" },
-  { prop: "orderCountPerDay", label: "接单次数/天", type: "number", placeholder: "请输入接单次数/天" },
-  { prop: "minCommissionRate", label: "最低返佣百分比", type: "number", max: 100, placeholder: "请输入最低返佣百分比" },
-  { prop: "maxCommissionRate", label: "最高返佣百分比", type: "number", max: 100, placeholder: "请输入最高返佣百分比" },
-  { prop: "minContinuousCommissionRate", label: "最低连单返佣百分比", type: "number", max: 100, placeholder: "请输入最低连单返佣百分比" },
-  { prop: "maxContinuousCommissionRate", label: "最高连单返佣百分比", type: "number", max: 100, placeholder: "请输入最高连单返佣百分比" },
-  { prop: "taskCountPerDay", label: "任务完成组数/天", type: "number", placeholder: "请输入任务完成组数/天" },
-  { prop: "withdrawCountPerDay", label: "提现次数/天", type: "number", placeholder: "请输入提现次数/天" },
-  { prop: "withdrawFeeRate", label: "提现手续费率", type: "number", max: 100, placeholder: "请输入提现手续费率" },
-  { prop: "minWithdrawAmount", label: "提现所需完成单数", type: "number", placeholder: "请输入提现所需完成单数" },
-  { prop: "withdrawLimitPerDay", label: "提现限额/天", type: "number", placeholder: "请输入提现限额/天" },
-  { prop: "minWithdraw", label: "最低提现金额", type: "number", placeholder: "请输入最低提现金额" },
-  { prop: "maxWithdraw", label: "最高提现金额", type: "number", placeholder: "请输入最高提现金额" },
-  { prop: "description", label: "描述", type: "editor", span: 24 }
+  { prop: "name", label: "名称", type: "input", placeholder: "名称" },
+  { prop: "level", label: "级别", type: "number", min: 1, placeholder: "级别" },
+  { prop: "icon", label: "图标", type: "image", span: 12 },
+  { prop: "price", label: "价格", type: "number", placeholder: "价格" },
+  { prop: "minBalance", label: "最低余额", type: "number", placeholder: "最低余额" },
+  { prop: "inviteCount", label: "自动升级需邀请人数", type: "number", placeholder: "自动升级需邀请人数" },
+  { prop: "orderCountPerDay", label: "接单次数/天", type: "number", placeholder: "接单次数/天" },
+  { prop: "minCommissionRate", label: "最低返佣百分比", type: "number", max: 100, suffix: "%", placeholder: "最低返佣百分比" },
+  { prop: "maxCommissionRate", label: "最高返佣百分比", type: "number", max: 100, suffix: "%", placeholder: "最高返佣百分比" },
+  { prop: "minContinuousCommissionRate", label: "最低连单返佣百分比", type: "number", max: 100, suffix: "%", placeholder: "最低连单返佣百分比" },
+  { prop: "maxContinuousCommissionRate", label: "最高连单返佣百分比", type: "number", max: 100, suffix: "%", placeholder: "最高连单返佣百分比" },
+  { prop: "taskCountPerDay", label: "任务完成组数/天", type: "number", placeholder: "任务完成组数/天" },
+  { prop: "withdrawCountPerDay", label: "提现次数/天", type: "number", placeholder: "提现次数/天" },
+  { prop: "withdrawFeeRate", label: "提现手续费率", type: "number", max: 100, suffix: "%", placeholder: "提现手续费率" },
+  { prop: "minWithdrawAmount", label: "提现最低单数", type: "number", placeholder: "提现最低单数" },
+  { prop: "withdrawLimitPerDay", label: "提现限额/天", type: "number", placeholder: "提现限额/天" },
+  { prop: "minWithdraw", label: "最低提现金额", type: "number", placeholder: "最低提现金额" },
+  { prop: "maxWithdraw", label: "最高提现金额", type: "number", placeholder: "最高提现金额" },
+  { prop: "signInBonus", label: "签到奖金", type: "number", placeholder: "签到奖金" },
+  { prop: "numberOfCompletedTaskGroups", label: "完成的任务组数", type: "number", placeholder: "完成的任务组数" },
+  { prop: "taskGroupsBonus", label: "完成的任务组数奖金", type: "number", placeholder: "完成的任务组数奖金" },
+  { prop: "remark", label: "标题", type: "input", placeholder: "标题", span: 12 },
+  { prop: "description", label: "描述", type: "editor", span: 24 },
+  { prop: "version", label: "版本号", type: "number", placeholder: "版本号" },
 ];
 
 function handleAntPageChange({ page, pageSize }) {
   queryParams.value.pageNum = page;
   queryParams.value.pageSize = pageSize;
   getList();
+}
+
+function handleTableChange(_pagination, _filters, sorter) {
+  queryParams.value.orderByColumn = sorter?.order ? sorter.columnKey || null : null;
+  queryParams.value.isAsc = sorter?.order === "ascend"
+    ? "asc"
+    : sorter?.order === "descend"
+      ? "desc"
+      : null;
+  getList();
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toLocaleString("en-US") : value;
+}
+
+function formatPercentage(value) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const number = Number(value);
+  return Number.isFinite(number) ? `${number.toFixed(2)}%` : `${value}%`;
+}
+
+async function copyLevelName(name) {
+  if (!name) {
+    return;
+  }
+  await navigator.clipboard?.writeText?.(String(name));
+  proxy.$modal.msgSuccess("复制成功");
 }
 
 function openProductMatchDialog(row) {
@@ -368,7 +540,19 @@ async function submitTranslations(translations) {
 /** 查询等级列表 */
 function getList() {
   loading.value = true;
-  listLevel(queryParams.value).then((response) => {
+  const params = {
+    pageNum: queryParams.value.pageNum,
+    pageSize: queryParams.value.pageSize,
+    name: queryParams.value.name || undefined,
+    level: queryParams.value.level || undefined,
+    productMatchEnabled: queryParams.value.productMatchEnabled ?? undefined,
+    title: queryParams.value.title || undefined,
+    orderByColumn: queryParams.value.orderByColumn || undefined,
+    isAsc: queryParams.value.isAsc || undefined,
+    beginCreateTime: createdDateRange.value?.[0] || undefined,
+    endCreateTime: createdDateRange.value?.[1] || undefined,
+  };
+  listLevel(params).then((response) => {
     levelList.value = response.rows;
     total.value = response.total;
     loading.value = false;
@@ -403,7 +587,12 @@ function reset() {
     withdrawLimitPerDay: null,
     minWithdraw: null,
     maxWithdraw: null,
+    signInBonus: null,
+    numberOfCompletedTaskGroups: null,
+    taskGroupsBonus: null,
+    remark: null,
     description: null,
+    version: null,
     createTime: null,
   };
   proxy.resetForm("levelRef");
@@ -429,6 +618,11 @@ function handleQuery() {
 function resetQuery() {
   queryParams.value.name = null;
   queryParams.value.level = null;
+  queryParams.value.productMatchEnabled = null;
+  queryParams.value.title = null;
+  queryParams.value.orderByColumn = null;
+  queryParams.value.isAsc = null;
+  createdDateRange.value = [];
   handleQuery();
 }
 
@@ -527,8 +721,54 @@ getList();
 </script>
 
 <style scoped>
+.level-page {
+  margin-top: 44px;
+}
+
 .full-width {
   width: 100%;
+}
+
+.query-expand-button {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.query-expand-button :deep(.anticon) {
+  transition: transform 0.2s ease;
+}
+
+.query-expand-button :deep(.anticon.expanded) {
+  transform: rotate(180deg);
+}
+
+.cell-copy-button {
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  padding: 0;
+}
+
+.level-page :deep(.ant-table-tbody > tr > td) {
+  font-size: 15px;
+}
+
+.level-page :deep(.ant-pagination-item),
+.level-page :deep(.ant-pagination-prev),
+.level-page :deep(.ant-pagination-next) {
+  min-width: 24px;
+  height: 24px;
+  line-height: 22px;
+}
+
+.level-form-drawer :deep(.component-upload-image .ant-upload-list-picture-card .ant-upload-list-item-container),
+.level-form-drawer :deep(.component-upload-image .ant-upload.ant-upload-select-picture-card) {
+  width: 104px;
+  height: 104px;
+}
+
+.drawer-footer {
+  text-align: right;
 }
 
 .level-match-link {
@@ -539,5 +779,15 @@ getList();
 
 .level-match-link-danger {
   color: #ff4d4f;
+}
+
+@media (max-width: 992px) {
+  .level-page {
+    margin-top: 12px;
+  }
+
+  .level-page :deep(.ant-table-body) {
+    height: auto !important;
+  }
 }
 </style>

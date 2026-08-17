@@ -115,6 +115,19 @@ test('continuous order settings preserve the legacy list and editor workflow', (
   assert.doesNotMatch(drawer, /onDblclick/)
 })
 
+test('website settings mirror the reference list and large drawer layout', () => {
+  const settings = source('src/views/member/orderconfig/index.vue')
+  const website = source('src/views/member/orderconfig/components/website-config.vue')
+
+  assert.match(settings, /<a-badge status="processing" :text="displayName\(record\)"/)
+  assert.match(settings, /<a-radio-group v-model:value="form\.type" disabled/)
+  assert.match(settings, /size="large"[\s\S]*?class="settings-base-form"/)
+  assert.match(settings, /\.settings-page\s*\{[\s\S]*?margin-top:\s*44px/)
+  assert.match(settings, /\.ant-table-tbody > tr > td[\s\S]*?font-size:\s*15px/)
+  assert.match(website, /size="large"[\s\S]*?class="config-form website-config-form"/)
+  assert.equal((website.match(/:is-show-tip="false"/g) || []).length, 4)
+})
+
 test('bonus member search never serializes focus events as username parameters', () => {
   const drawer = source('src/views/member/orderuser/components/OrderuserBonusDrawer.vue')
 
@@ -353,4 +366,19 @@ test('member sensitive drawers and mutations are hidden behind matching permissi
   assert.match(extraCommission, /@click="handleAdd" v-hasPermi="\['member:extracommission:add'\]"/)
   assert.match(extraCommission, /@click="handleEdit\(record\)" v-hasPermi="\['member:extracommission:edit'\]"/)
   assert.match(extraCommission, /@click="handleDelete\(record\)" v-hasPermi="\['member:extracommission:remove'\]"/)
+})
+
+test('level management mirrors the reference search, table and drawer structure', () => {
+  const level = source('src/views/member/level/index.vue')
+
+  assert.match(level, /class="app-container ant-pro-member-page level-page"/)
+  assert.match(level, /v-model:value="queryParams\.productMatchEnabled"/)
+  assert.match(level, /v-model:value="createdDateRange"/)
+  assert.match(level, /title:\s*"自动升级需邀请人数"/)
+  assert.match(level, /title:\s*"完成的任务组数奖金"/)
+  assert.match(level, /:scroll="\{ x: 4200/)
+  assert.match(level, /width="70%"/)
+  assert.match(level, /size="large"/)
+  assert.match(level, /prop:\s*"signInBonus", label:\s*"签到奖金"/)
+  assert.match(level, /prop:\s*"version", label:\s*"版本号"/)
 })

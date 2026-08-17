@@ -9,6 +9,7 @@ import { useDict } from "@/utils/dict";
 import { getConfigKey } from "@/api/system/config";
 import { addDateRange, handleTree, parseTime, resetForm, selectDictLabel, selectDictLabels } from "@/utils/common";
 import SvgIcon from "@/components/SvgIcon";
+import "@fontsource-variable/inter";
 import "virtual:svg-icons-register";
 import "@/assets/styles/index.scss";
 import "ant-design-vue/dist/reset.css";

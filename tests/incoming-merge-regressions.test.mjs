@@ -19,7 +19,7 @@ test("merged goods pages preserve the active timezone and backend query contract
   assert.match(goods, /enabled:\s*"g\.isEnabled"/);
 });
 
-test("merged navigation keeps dark-mode visibility, closable tabs and icon fallbacks", () => {
+test("merged navigation keeps dark-mode visibility, closable tabs and top-level icon fallbacks", () => {
   const variables = source("src/assets/styles/variables.module.scss");
   const tags = source("src/layout/components/TagsView/index.vue");
   const layout = source("src/layout/index.vue");
@@ -32,7 +32,8 @@ test("merged navigation keeps dark-mode visibility, closable tabs and icon fallb
   assert.doesNotMatch(layout, /openSideBar\(true\)/);
   assert.match(topNav, /v-else-if="item\.meta && item\.meta\.icon/);
   assert.match(sidebar, /v-else-if="node\.icon && node\.icon !== '#'"/);
-  assert.match(sidebar, /v-else-if="child\.icon && child\.icon !== '#'"/);
+  assert.doesNotMatch(sidebar, /child\.icon && child\.icon !== '#'/);
+  assert.match(sidebar, /会员管理:\s*\[[\s\S]*?"会员管理",[\s\S]*?"授权记录",[\s\S]*?"等级管理"/);
 });
 
 test("goods import entry follows the existing goods creation permission", () => {

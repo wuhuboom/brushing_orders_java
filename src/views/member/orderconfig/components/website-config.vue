@@ -4,6 +4,7 @@
     :model="localForm"
     :rules="localRules"
     layout="vertical"
+    size="large"
     class="config-form website-config-form"
   >
     <a-row :gutter="24">
@@ -24,7 +25,12 @@
       </a-col>
       <a-col v-bind="quarterCol">
         <a-form-item label="网站logo" name="logo">
-          <image-upload v-model="localForm.logo" :limit="1" :file-size="2" />
+          <image-upload
+            v-model="localForm.logo"
+            :limit="1"
+            :file-size="2"
+            :is-show-tip="false"
+          />
         </a-form-item>
       </a-col>
     </a-row>
@@ -43,7 +49,12 @@
       </a-col>
       <a-col v-bind="quarterCol">
         <a-form-item label="前端开屏广告图片" name="popUpImage">
-          <image-upload v-model="localForm.popUpImage" :limit="1" :file-size="2" />
+          <image-upload
+            v-model="localForm.popUpImage"
+            :limit="1"
+            :file-size="2"
+            :is-show-tip="false"
+          />
         </a-form-item>
       </a-col>
       <a-col v-bind="quarterCol">
@@ -53,6 +64,7 @@
             :limit="1"
             :file-size="50"
             :file-type="backgroundFileTypes"
+            :is-show-tip="false"
           />
         </a-form-item>
       </a-col>
@@ -63,6 +75,7 @@
             :limit="1"
             :file-size="50"
             :file-type="backgroundFileTypes"
+            :is-show-tip="false"
           />
         </a-form-item>
       </a-col>
@@ -524,5 +537,11 @@ defineExpose({ handleSubmit, handleCancel });
 
 .website-config-form :deep(.ant-form-item) {
   margin-bottom: 24px;
+}
+
+.website-config-form :deep(.component-upload-image .ant-upload-list-picture-card .ant-upload-list-item-container),
+.website-config-form :deep(.component-upload-image .ant-upload.ant-upload-select-picture-card) {
+  width: 104px;
+  height: 104px;
 }
 </style>

@@ -1,3 +1,3 @@
 window.APP_CONFIG = {
-  baseApiUrl: "",
+  baseApiUrl: "https://api.dasadmin.cc",
 };

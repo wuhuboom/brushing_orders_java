@@ -54,7 +54,9 @@
 
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'name'">
-          {{ displayName(record) }}
+          <a class="settings-kind-link" @click="handleUpdate(record)">
+            <a-badge status="processing" :text="displayName(record)" />
+          </a>
         </template>
         <template v-else-if="column.dataIndex === 'createTime'">
           {{ formatDateTime(record.createTime) }}
@@ -66,7 +68,6 @@
           <a-space :size="8">
             <a-button
               type="link"
-              size="small"
               class="operation-link"
               @click="handleUpdate(record)"
               v-hasPermi="['member:orderconfig:edit']"
@@ -75,7 +76,6 @@
             </a-button>
             <a-button
               type="link"
-              size="small"
               class="operation-link"
               :disabled="!isI18nType(record.type)"
               @click="openTranslationDialog(record)"
@@ -95,7 +95,7 @@
       size="large"
       destroy-on-close
       :mask-closable="drawerReadonly"
-      :body-style="{ paddingBottom: drawerReadonly ? '24px' : '72px' }"
+      :body-style="{ paddingBottom: '24px' }"
       class="settings-form-drawer"
       @close="cancel"
     >
@@ -104,17 +104,21 @@
         :model="form"
         :rules="baseRules"
         layout="vertical"
+        size="large"
         class="settings-base-form"
       >
         <a-row :gutter="24">
           <a-col :span="24">
             <a-form-item label="类型" name="type">
-              <a-select
-                v-model:value="form.type"
-                :options="typeOptions"
-                disabled
-                placeholder="类型"
-              />
+              <a-radio-group v-model:value="form.type" disabled class="settings-type-options">
+                <a-radio
+                  v-for="option in typeOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </a-radio>
+              </a-radio-group>
             </a-form-item>
           </a-col>
         </a-row>
@@ -296,28 +300,28 @@ const orderconfigColumns = [
   {
     title: "序号",
     dataIndex: "sort",
-    align: "center",
+    align: "left",
     width: 100,
     sorter: true,
   },
   {
     title: "创建时间",
     dataIndex: "createTime",
-    align: "center",
+    align: "left",
     width: 170,
     sorter: true,
   },
   {
     title: "最后修改时间",
     dataIndex: "updateTime",
-    align: "center",
+    align: "left",
     width: 170,
     sorter: true,
   },
   {
     title: "操作",
     key: "operation",
-    align: "center",
+    align: "left",
     fixed: "right",
     width: 100,
   },
@@ -536,6 +540,10 @@ getList();
 </script>
 
 <style scoped>
+.settings-page {
+  margin-top: 44px;
+}
+
 .full-width {
   width: 100%;
 }
@@ -560,8 +568,25 @@ getList();
 }
 
 .operation-link {
-  height: auto;
+  height: 32px;
   padding: 0;
+}
+
+.settings-type-options {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.settings-page :deep(.ant-table-tbody > tr > td) {
+  font-size: 15px;
+}
+
+.settings-page :deep(.ant-pagination-item),
+.settings-page :deep(.ant-pagination-prev),
+.settings-page :deep(.ant-pagination-next) {
+  min-width: 24px;
+  height: 24px;
+  line-height: 22px;
 }
 
 .drawer-footer {
@@ -582,5 +607,11 @@ getList();
 .settings-readonly-content :deep(.ql-toolbar),
 .settings-readonly-content :deep(.ql-container) {
   background: #f5f5f5;
+}
+
+@media (max-width: 992px) {
+  .settings-page {
+    margin-top: 12px;
+  }
 }
 </style>
