@@ -369,8 +369,12 @@ const visibleLanguages = computed(() => {
   if (!Array.isArray(props.languageFields) || !props.languageFields.length) {
     return translationLanguages;
   }
-  const fields = new Set(props.languageFields);
-  return translationLanguages.filter((language) => fields.has(language.field));
+  const languagesByField = new Map(
+    translationLanguages.map((language) => [language.field, language])
+  );
+  return props.languageFields
+    .map((field) => languagesByField.get(field))
+    .filter(Boolean);
 });
 const translationMode = computed(() => {
   if (props.type === "customerService") return "customerService";

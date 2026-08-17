@@ -212,6 +212,7 @@
       :title="translationTitle"
       :translations="translationForm"
       type="level"
+      :language-fields="levelTranslationLanguageFields"
       @submit="submitTranslations"
     />
   </div>
@@ -249,6 +250,17 @@ const translationOpen = ref(false);
 const translationTitle = ref("");
 const translationForm = ref(createEmptyTranslations());
 const currentTranslationRow = ref(null);
+const levelTranslationLanguageFields = [
+  "enUs",
+  "esEs",
+  "frFr",
+  "zhCn",
+  "deDe",
+  "itIt",
+  "koKr",
+  "jaJp",
+  "idId",
+];
 const productMatchOptions = [
   { label: "启用", value: "1" },
   { label: "禁用", value: "0" },

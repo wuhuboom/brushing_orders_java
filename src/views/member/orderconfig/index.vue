@@ -189,22 +189,14 @@ import { createEmptyTranslations } from "@/views/member/components/translationLa
 const { proxy } = getCurrentInstance();
 const websiteTranslationLanguageFields = [
   "enUs",
-  "jaJp",
-  "arSa",
   "esEs",
-  "svSe",
-  "itIt",
-  "deDe",
-  "noNo",
-  "ruRu",
-  "huHu",
-  "plPl",
-  "skSk",
   "frFr",
-  "csCz",
-  "ptBr",
-  "hiIn",
+  "zhCn",
+  "deDe",
+  "itIt",
   "koKr",
+  "jaJp",
+  "idId",
 ];
 
 const typeDefinitions = [
