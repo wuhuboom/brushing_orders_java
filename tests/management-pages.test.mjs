@@ -146,6 +146,21 @@ test('level translations only expose the requested nine languages', () => {
   assert.match(level, /const levelTranslationLanguageFields = \[[\s\S]*?"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp",[\s\S]*?"idId",?[\s\S]*?\]/)
 })
 
+test('customer service management mirrors the reference list and drawer fields', () => {
+  const customerService = source('src/views/member/cusservice/index.vue')
+
+  assert.match(customerService, /<a-drawer[\s\S]*?width="60%"/)
+  assert.match(customerService, /<a-row :gutter="\[24, 0\]">[\s\S]*?label="名称"[\s\S]*?label="序号"[\s\S]*?label="图片"[\s\S]*?label="是否启用"[\s\S]*?label="链接"[\s\S]*?label="备注"/)
+  assert.match(customerService, /\{ label: "禁用", value: "0" \}[\s\S]*?\{ label: "启用", value: "1" \}/)
+  assert.match(customerService, /:status="String\(record\.isEnabled\) === '1' \? 'success' : 'default'"/)
+  assert.match(customerService, /isEnabled:\s*"1"/)
+  assert.match(customerService, /:width="32" :height="32"/)
+  assert.match(customerService, /\.customer-service-link[\s\S]*?white-space:\s*normal[\s\S]*?overflow-wrap:\s*anywhere[\s\S]*?word-break:\s*break-all/)
+  assert.doesNotMatch(customerService, /:ellipsis="\{ tooltip: record\.link \}"/)
+  assert.match(customerService, /\.customer-service-page[\s\S]*?margin-top:\s*44px/)
+  assert.match(customerService, /\.customer-service-drawer-footer[\s\S]*?text-align:\s*right/)
+})
+
 test('bonus receipt and distribution remain explicit administrator actions', () => {
   const drawer = source('src/views/member/orderuser/components/OrderuserBonusDrawer.vue')
 
