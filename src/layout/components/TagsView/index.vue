@@ -355,7 +355,6 @@ function handleScroll() {
 .tags-view-wrapper {
   .tags-view-item {
     .tags-view-close {
-      display: none;
       width: 14px;
       height: 14px;
       margin-left: 8px;

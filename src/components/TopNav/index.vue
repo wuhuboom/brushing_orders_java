@@ -9,6 +9,11 @@
       @click="handleMenuClick(item.path)"
     >
       <component :is="resolveTopNavIcon(item)" v-if="resolveTopNavIcon(item)" class="top-nav-icon" />
+      <svg-icon
+        v-else-if="item.meta && item.meta.icon && item.meta.icon !== '#'"
+        :icon-class="item.meta.icon"
+        class="top-nav-icon"
+      />
       <span>{{ item.meta.title }}</span>
     </button>
   </nav>

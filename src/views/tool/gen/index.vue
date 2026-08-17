@@ -54,6 +54,9 @@
         <template v-if="column.dataIndex === 'index'">
           {{ (queryParams.pageNum - 1) * queryParams.pageSize + index + 1 }}
         </template>
+        <template v-else-if="['createTime', 'updateTime'].includes(column.dataIndex)">
+          {{ record[column.dataIndex] ? parseTime(record[column.dataIndex]) : "-" }}
+        </template>
         <template v-else-if="column.dataIndex === 'action'">
           <a-space>
             <a-button type="link" size="small" @click="handlePreview(record)" v-hasPermi="['tool:gen:preview']">预览</a-button>

@@ -1,5 +1,7 @@
 import compression from 'vite-plugin-compression'
 
+export const COMPRESSIBLE_ASSET_FILTER = /\.(js|mjs|json|css)$/i
+
 export default function createCompression(env) {
     const { VITE_BUILD_COMPRESS } = env
     const plugin = []
@@ -9,6 +11,7 @@ export default function createCompression(env) {
             plugin.push(
                 compression({
                     ext: '.gz',
+                    filter: COMPRESSIBLE_ASSET_FILTER,
                     deleteOriginFile: false
                 })
             )
@@ -18,6 +21,7 @@ export default function createCompression(env) {
                 compression({
                     ext: '.br',
                     algorithm: 'brotliCompress',
+                    filter: COMPRESSIBLE_ASSET_FILTER,
                     deleteOriginFile: false
                 })
             )

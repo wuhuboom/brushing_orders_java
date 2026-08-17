@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
+import { COMPRESSIBLE_ASSET_FILTER } from '../vite/plugins/compression.js'
 
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -15,8 +16,16 @@ test('startup configuration has an immediate environment fallback and no polling
   assert.match(main, /import\.meta\.env\.VITE_APP_BASE_API/)
 })
 
-test('runtime configuration is included in the public build input', () => {
-  assert.equal(existsSync(new URL('../public/config/config.js', import.meta.url)), true)
+test('runtime configuration stays external to the frontend build', () => {
+  assert.equal(existsSync(new URL('../public/config/', import.meta.url)), false)
+  assert.equal(existsSync(new URL('../public/config/config.js', import.meta.url)), false)
+  assert.equal(existsSync(new URL('../config/config.js', import.meta.url)), true)
+})
+
+test('build compression excludes HTML entry files', () => {
+  assert.equal(COMPRESSIBLE_ASSET_FILTER.test('static/js/app.js'), true)
+  assert.equal(COMPRESSIBLE_ASSET_FILTER.test('static/css/app.css'), true)
+  assert.equal(COMPRESSIBLE_ASSET_FILTER.test('index.html'), false)
 })
 
 test('protected timezone initialization only runs after authentication', () => {

@@ -27,6 +27,24 @@ test('management pages use Chinese Ant Design locale and explicit modal labels',
   assert.match(activities, /cancel-text="取\s*消"/)
 })
 
+test('timestamp-backed management list columns are formatted in the frontend', () => {
+  const generator = source('src/views/tool/gen/index.vue')
+  const generatorImport = source('src/views/tool/gen/importTable.vue')
+  const goodsTypes = source('src/views/member/goodstype/index.vue')
+  const extraCommission = source('src/views/member/orderuser/components/OrderuserExtracommissionDrawer.vue')
+  const withdrawalAccounts = source('src/views/member/orderuser/components/OrderuserWithdrawalDrawer.vue')
+
+  assert.match(generator, /\['createTime', 'updateTime'\]\.includes\(column\.dataIndex\)[\s\S]*?parseTime\(record\[column\.dataIndex\]\)/)
+  assert.match(generatorImport, /const renderDateTime = \(\{ text \}\) => \(text \? proxy\.parseTime\(text\) : "-"\)/)
+  assert.equal((generatorImport.match(/customRender: renderDateTime/g) || []).length, 2)
+  assert.match(goodsTypes, /column\.dataIndex === 'createTime'[\s\S]*?parseTime\(record\.createTime\)/)
+  assert.match(extraCommission, /column\.dataIndex === 'createTime'[\s\S]*?parseTime\(record\.createTime\)/)
+  assert.match(withdrawalAccounts, /column\.dataIndex === 'createTime'[\s\S]*?parseTime\(record\.createTime\)/)
+
+  const messages = source('src/views/member/message/index.vue')
+  assert.match(messages, /function formatDateTime\(value\)[\s\S]*?proxy\.parseTime\(value\)/)
+})
+
 test('member sign-in statistics are data-backed and editable', () => {
   const member = source('src/views/member/orderuser/index.vue')
 
@@ -34,6 +52,17 @@ test('member sign-in statistics are data-backed and editable', () => {
   assert.match(member, /record\.todaySignCount/)
   assert.match(member, /record\.totalSignDays/)
   assert.match(member, /submitModifySignDays/)
+})
+
+test('member list expands with its rows and status prompts describe the target state', () => {
+  const member = source('src/views/member/orderuser/index.vue')
+
+  assert.match(member, /:scroll="\{ x: 5600 \}"/)
+  assert.doesNotMatch(member, /:scroll="\{[^\"]*\by:/)
+  assert.equal(
+    (member.match(/const action = newValue === "0" \? "启用" : "禁用";/g) || []).length,
+    5
+  )
 })
 
 test('member management keeps root-member hierarchy and legacy actions aligned', () => {
@@ -134,6 +163,9 @@ test('shared rich text editor matches legacy pixel font sizes', () => {
   assert.match(editor, /content:\s*attr\(data-value\)/)
   assert.match(editor, /\.ql-toolbar\.ql-snow\)[\s\S]*?z-index:\s*2/)
   assert.match(editor, /max-height:\s*320px[\s\S]*?overflow-y:\s*auto/)
+  assert.match(editor, /resolveApiResourceUrl\([\s\S]*?res\.fileName,[\s\S]*?config\.baseApiUrl,[\s\S]*?window\.location\.origin[\s\S]*?\)/)
+  assert.match(editor, /insertEmbed\(length, "image", imageUrl\)/)
+  assert.doesNotMatch(editor, /insertEmbed\([^\n]*config\.baseApiUrl\s*\+\s*res\.fileName/)
 })
 
 test('incomplete legacy notification templates are normalized to disabled', () => {

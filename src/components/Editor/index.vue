@@ -30,6 +30,7 @@ import axios from "axios";
 import { Quill, QuillEditor } from "@vueup/vue-quill";
 import "@vueup/vue-quill/dist/vue-quill.snow.css";
 import { getToken } from "@/utils/auth";
+import { resolveApiResourceUrl } from "@/utils/apiResourceUrl";
 
 const FONT_SIZES = [
   "12px",
@@ -199,8 +200,13 @@ function handleUploadSuccess(res, file) {
     let quill = toRaw(quillEditorRef.value).getQuill();
     // 获取光标位置
     let length = quill.selection.savedRange.index;
-    // 插入图片，res.url为服务器返回的图片链接地址
-    quill.insertEmbed(length, "image", config.baseApiUrl + res.fileName);
+    // 使用运行时 config.js 的 API 地址生成绝对路径，避免把 /dev-api 之类的相对代理路径存入富文本
+    const imageUrl = resolveApiResourceUrl(
+      res.fileName,
+      config.baseApiUrl,
+      window.location.origin
+    );
+    quill.insertEmbed(length, "image", imageUrl);
     // 调整光标到最后
     quill.setSelection(length + 1);
   } else {

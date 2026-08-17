@@ -12,6 +12,10 @@ yarn dev
 
 # 前端访问地址 http://localhost:80
 
+# 运行时配置
+
+`config/config.js` 是部署时外置配置，不会复制到 `dist` 构建包中。部署新版前端时请保留服务器现有的 `/config/config.js`，首次部署则单独放置该文件并配置 `baseApiUrl`。
+
 ```
 
 

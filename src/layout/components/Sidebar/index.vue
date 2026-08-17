@@ -15,6 +15,7 @@
             @click="handleNodeClick(node)"
           >
             <component :is="resolveMenuIcon(node)" v-if="resolveMenuIcon(node)" class="side-menu-icon" />
+            <svg-icon v-else-if="node.icon && node.icon !== '#'" :icon-class="node.icon" class="side-menu-icon" />
             <span v-if="!isCollapse" class="side-title">{{ node.title }}</span>
             <right-outlined v-if="node.children.length && !isCollapse" class="side-arrow" />
           </button>
@@ -36,6 +37,7 @@
                 @click="handleNodeClick(child)"
               >
                 <component :is="resolveMenuIcon(child)" v-if="resolveMenuIcon(child)" class="side-menu-icon" />
+                <svg-icon v-else-if="child.icon && child.icon !== '#'" :icon-class="child.icon" class="side-menu-icon" />
                 <span class="side-title">{{ child.title }}</span>
                 <right-outlined v-if="child.children.length" class="side-arrow" />
               </button>
@@ -53,6 +55,7 @@
                   :class="{ active: isNodeActive(grandchild) }"
                   @click="handleNodeClick(grandchild)"
                 >
+                  <svg-icon v-if="grandchild.icon && grandchild.icon !== '#'" :icon-class="grandchild.icon" class="side-menu-icon" />
                   <span class="side-title">{{ grandchild.title }}</span>
                 </button>
               </div>

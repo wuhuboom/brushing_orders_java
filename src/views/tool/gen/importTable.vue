@@ -72,11 +72,13 @@ const queryParams = reactive({
   tableComment: undefined,
 });
 
+const renderDateTime = ({ text }) => (text ? proxy.parseTime(text) : "-");
+
 const columns = [
   { title: "表名称", dataIndex: "tableName", ellipsis: true },
   { title: "表描述", dataIndex: "tableComment", ellipsis: true },
-  { title: "创建时间", dataIndex: "createTime", width: 180 },
-  { title: "更新时间", dataIndex: "updateTime", width: 180 },
+  { title: "创建时间", dataIndex: "createTime", width: 180, customRender: renderDateTime },
+  { title: "更新时间", dataIndex: "updateTime", width: 180, customRender: renderDateTime },
 ];
 
 const emit = defineEmits(["ok"]);

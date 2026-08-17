@@ -35,6 +35,9 @@
           <template v-else-if="column.dataIndex === 'status'">
             <dict-tag :options="goods_status" :value="record.status" />
           </template>
+          <template v-else-if="column.dataIndex === 'createTime'">
+            {{ record.createTime ? parseTime(record.createTime) : "-" }}
+          </template>
           <template v-else-if="column.dataIndex === 'action'">
             <a-space>
               <a-button type="link" size="small" @click="handleEdit(record)" v-hasPermi="['member:extracommission:edit']">修改</a-button>

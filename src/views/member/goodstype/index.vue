@@ -55,7 +55,7 @@
         </template>
         <template v-else-if="column.key === 'enabled'"><a-badge :status="isCategoryEnabled(record.isEnabled) ? 'success' : 'default'" :text="enabledText(record.isEnabled)" /></template>
         <template v-else-if="column.key === 'image'"><image-preview v-if="record.image" :src="record.image" :width="50" :height="50" /><span v-else>-</span></template>
-        <template v-else-if="column.key === 'date'">{{ formatDateTime(record.createTime) }}</template>
+        <template v-else-if="column.dataIndex === 'createTime'">{{ record.createTime ? parseTime(record.createTime) : "-" }}</template>
         <template v-else-if="column.key === 'subTitle' || column.key === 'remarks'">{{ record[column.dataIndex] || '-' }}</template>
         <template v-else-if="column.key === 'operation'"><a-space><a-button type="link" @click="handleUpdate(record)" v-hasPermi="['member:goodstype:edit']">修改</a-button><a-button type="link" @click="handleCopy(record)" v-hasPermi="['member:goodstype:add']">复制</a-button></a-space></template>
       </template>
@@ -180,16 +180,6 @@ function enabledText(value) {
   const options = Array.isArray(goods_enabled.value) ? goods_enabled.value : goods_enabled;
   return options?.find((item) => String(item.value) === String(value))?.label
     ?? (isCategoryEnabled(value) ? "启用" : "禁用");
-}
-
-function formatDateTime(value) {
-  if (value === null || value === undefined || value === "") return "-";
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.replace("T", " ").slice(0, 19);
-  const raw = Number(value);
-  const date = new Date(Number.isFinite(raw) && raw < 1e12 ? raw * 1000 : value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  const pad = (number) => String(number).padStart(2, "0");
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 }
 
 async function copyTitle(value) {

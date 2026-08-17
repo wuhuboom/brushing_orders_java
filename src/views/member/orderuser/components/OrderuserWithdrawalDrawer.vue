@@ -80,6 +80,9 @@
           <template v-else-if="column.dataIndex === 'isDefault'">
             <dict-tag :options="user_yes_no" :value="record.isDefault" />
           </template>
+          <template v-else-if="column.dataIndex === 'createTime'">
+            {{ record.createTime ? parseTime(record.createTime) : "-" }}
+          </template>
           <template v-else-if="column.dataIndex === 'action'">
             <a-space>
               <a-button type="link" size="small" @click="handleUpdate(record)" v-hasPermi="['member:withdrawalAcc:edit']">修改</a-button>

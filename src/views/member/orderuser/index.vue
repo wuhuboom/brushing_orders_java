@@ -7,7 +7,7 @@
       :loading="loading"
       row-key="id"
       :row-selection="rowSelection"
-      :scroll="{ x: 5600, y: 460 }"
+      :scroll="{ x: 5600 }"
       :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
       @page-change="handleAntPageChange"
       @refresh="getList"
@@ -1623,7 +1623,7 @@ async function handleToggleFake(row) {
 
 async function handleToggleProductMatching(row) {
   const newValue = row.productMatching === "0" ? "1" : "0";
-  const action = row.productMatching === "0" ? "启用" : "禁用";
+  const action = newValue === "0" ? "启用" : "禁用";
   proxy.$modal
     .confirm(`是否确认${action}产品匹配？`)
     .then(async () => {
@@ -1640,7 +1640,7 @@ async function handleToggleProductMatching(row) {
 
 async function handleToggleAccountStatus(row) {
   const newValue = row.accountStatus === "0" ? "1" : "0";
-  const action = row.accountStatus === "0" ? "启用" : "禁用";
+  const action = newValue === "0" ? "启用" : "禁用";
   proxy.$modal
     .confirm(`是否确认${action}账户？`)
     .then(async () => {
@@ -1657,7 +1657,7 @@ async function handleToggleAccountStatus(row) {
 
 async function handleToggleTransactionStatus(row) {
   const newValue = row.transactionStatus === "0" ? "1" : "0";
-  const action = row.transactionStatus === "0" ? "启用" : "禁用";
+  const action = newValue === "0" ? "启用" : "禁用";
   proxy.$modal
     .confirm(`是否确认${action}交易？`)
     .then(async () => {
@@ -1674,7 +1674,7 @@ async function handleToggleTransactionStatus(row) {
 
 async function handleToggleWithdrawalStatus(row) {
   const newValue = row.withdrawalStatus === "0" ? "1" : "0";
-  const action = row.withdrawalStatus === "0" ? "启用" : "禁用";
+  const action = newValue === "0" ? "启用" : "禁用";
   proxy.$modal
     .confirm(`是否确认${action}提现？`)
     .then(async () => {
@@ -1691,7 +1691,7 @@ async function handleToggleWithdrawalStatus(row) {
 
 async function handleToggleAssistWithdrawalStatus(row) {
   const newValue = row.assistWithdrawalStatus === "0" ? "1" : "0";
-  const action = row.assistWithdrawalStatus === "0" ? "启用" : "禁用";
+  const action = newValue === "0" ? "启用" : "禁用";
   proxy.$modal
     .confirm(`是否确认${action}协助金提现？`)
     .then(async () => {

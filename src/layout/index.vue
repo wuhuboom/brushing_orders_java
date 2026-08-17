@@ -84,9 +84,6 @@ watch(width, () => {
     useAppStore().closeSideBar({ withoutAnimation: true })
   } else {
     useAppStore().toggleDevice('desktop')
-    if (settingsStore.topNav && settingsStore.menuVisible && !sidebar.value.hide) {
-      useAppStore().openSideBar(true)
-    }
   }
 }, { immediate: true })
 

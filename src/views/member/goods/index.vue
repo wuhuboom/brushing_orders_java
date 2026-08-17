@@ -64,7 +64,7 @@
 
       <template #toolbar>
         <a-upload :show-upload-list="false" :before-upload="handleImport" accept="text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-          <a-button type="primary"><template #icon><UploadOutlined /></template>上传</a-button>
+          <a-button type="primary" v-hasPermi="['member:goods:add']"><template #icon><UploadOutlined /></template>上传</a-button>
         </a-upload>
         <a-button type="primary" :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:goods:remove']"><template #icon><DeleteOutlined /></template>删除</a-button>
         <a-button type="primary" @click="handleAdd" v-hasPermi="['member:goods:add']"><template #icon><PlusOutlined /></template>创建</a-button>
@@ -82,7 +82,7 @@
           <image-preview :src="record.image" :width="50" :height="50" />
         </template>
         <template v-else-if="column.key === 'createTime'">
-          {{ formatDateTime(record.createTime) }}
+          {{ record.createTime ? parseTime(record.createTime) : "-" }}
         </template>
         <template v-else-if="column.key === 'operation'">
           <a-space :size="8">
@@ -266,16 +266,6 @@ function enabledText(value) {
   return options?.find((item) => String(item.value) === String(value))?.label ?? (isGoodsEnabled(value) ? "启用" : "禁用");
 }
 
-function formatDateTime(value) {
-  if (value === null || value === undefined || value === "") return "-";
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.replace("T", " ").slice(0, 19);
-  const raw = Number(value);
-  const date = new Date(Number.isFinite(raw) && raw < 1e12 ? raw * 1000 : value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  const pad = (number) => String(number).padStart(2, "0");
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
-}
-
 async function copyTitle(value) {
   if (!value) return;
   await navigator.clipboard.writeText(value);
@@ -289,11 +279,11 @@ function handleAntPageChange({ page, pageSize }) {
 }
 
 const sortColumnMap = {
-  typeTitle: "typeId",
-  enabled: "isEnabled",
-  price: "price",
-  serialNumber: "serialNumber",
-  createTime: "createTime",
+  typeTitle: "g.typeId",
+  enabled: "g.isEnabled",
+  price: "g.price",
+  serialNumber: "g.serialNumber",
+  createTime: "g.createTime",
 };
 
 function handleTableChange(_pagination, _filters, sorter) {
@@ -304,9 +294,19 @@ function handleTableChange(_pagination, _filters, sorter) {
 }
 
 /** 查询商品列表 */
+function buildGoodsQuery() {
+  const { minPrice, maxPrice, ...params } = queryParams.value;
+  params.params = {
+    ...(params.params || {}),
+    beginPrice: minPrice ?? undefined,
+    endPrice: maxPrice ?? undefined,
+  };
+  return proxy.addDateRange(params, dateRange.value);
+}
+
 function getList() {
   loading.value = true;
-  listGoods(proxy.addDateRange(queryParams.value, dateRange.value)).then((response) => {
+  listGoods(buildGoodsQuery()).then((response) => {
     goodsList.value = response.rows;
     total.value = response.total;
     loading.value = false;
