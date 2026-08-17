@@ -103,7 +103,7 @@
       width="60%"
       size="large"
       :destroy-on-close="true"
-      class="customer-service-drawer"
+      root-class-name="customer-service-drawer"
       @close="cancel"
     >
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large" class="customer-service-form">

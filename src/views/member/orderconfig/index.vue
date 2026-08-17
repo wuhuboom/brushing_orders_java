@@ -196,7 +196,6 @@ const websiteTranslationLanguageFields = [
   "itIt",
   "koKr",
   "jaJp",
-  "idId",
 ];
 
 const typeDefinitions = [

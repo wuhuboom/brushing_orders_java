@@ -238,7 +238,6 @@ const levelTranslationLanguageFields = [
   "itIt",
   "koKr",
   "jaJp",
-  "idId",
 ];
 const productMatchOptions = [
   { label: "启用", value: "1" },

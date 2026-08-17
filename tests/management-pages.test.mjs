@@ -124,8 +124,8 @@ test('website settings mirror the reference list and large drawer layout', () =>
   assert.match(settings, /size="large"[\s\S]*?class="settings-base-form"/)
   assert.match(settings, /\.settings-page\s*\{[\s\S]*?margin-top:\s*44px/)
   assert.match(settings, /\.ant-table-tbody > tr > td[\s\S]*?font-size:\s*15px/)
-  assert.match(settings, /"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp",[\s\S]*?"idId"/)
-  assert.match(source('src/views/member/components/translationLanguages.js'), /field:\s*"idId"[\s\S]*?column:\s*"id_ID"[\s\S]*?label:\s*"Bahasa Indonesia"/)
+  assert.match(settings, /"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp"/)
+  assert.doesNotMatch(source('src/views/member/components/translationLanguages.js'), /field:\s*"idId"|column:\s*"id_ID"/)
   assert.match(source('src/views/member/components/TranslationDrawer.vue'), /props\.languageFields[\s\S]*?\.map\(\(field\) => languagesByField\.get\(field\)\)/)
   assert.match(website, /size="large"[\s\S]*?class="config-form website-config-form"/)
   assert.equal((website.match(/:is-show-tip="false"/g) || []).length, 4)
@@ -139,17 +139,19 @@ test('bonus member search never serializes focus events as username parameters',
   assert.match(drawer, /username:\s*normalizedKeyword\s*\|\|\s*undefined/)
 })
 
-test('level translations only expose the requested nine languages', () => {
+test('level translations only expose languages supported by the backend', () => {
   const level = source('src/views/member/level/index.vue')
 
   assert.match(level, /:language-fields="levelTranslationLanguageFields"/)
-  assert.match(level, /const levelTranslationLanguageFields = \[[\s\S]*?"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp",[\s\S]*?"idId",?[\s\S]*?\]/)
+  assert.match(level, /const levelTranslationLanguageFields = \[[\s\S]*?"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp",?[\s\S]*?\]/)
+  assert.doesNotMatch(level, /"idId"/)
 })
 
 test('customer service management mirrors the reference list and drawer fields', () => {
   const customerService = source('src/views/member/cusservice/index.vue')
 
   assert.match(customerService, /<a-drawer[\s\S]*?width="60%"/)
+  assert.match(customerService, /root-class-name="customer-service-drawer"/)
   assert.match(customerService, /<a-row :gutter="\[24, 0\]">[\s\S]*?label="名称"[\s\S]*?label="序号"[\s\S]*?label="图片"[\s\S]*?label="是否启用"[\s\S]*?label="链接"[\s\S]*?label="备注"/)
   assert.match(customerService, /\{ label: "禁用", value: "0" \}[\s\S]*?\{ label: "启用", value: "1" \}/)
   assert.match(customerService, /:status="String\(record\.isEnabled\) === '1' \? 'success' : 'default'"/)

@@ -3,7 +3,6 @@ export const translationLanguages = [
   { field: "zhTw", column: "zh_TW", flag: "🇹🇼", label: "繁體中文" },
   { field: "enUs", column: "en_US", flag: "🇺🇸", label: "English" },
   { field: "jaJp", column: "ja_JP", flag: "🇯🇵", label: "日本語" },
-  { field: "idId", column: "id_ID", flag: "🇮🇩", label: "Bahasa Indonesia" },
   { field: "thTh", column: "th_TH", flag: "🇹🇭", label: "ไทย" },
   { field: "ptPt", column: "pt_PT", flag: "🇵🇹", label: "Português" },
   { field: "arSa", column: "ar_SA", flag: "🇸🇦", label: "العربية" },
