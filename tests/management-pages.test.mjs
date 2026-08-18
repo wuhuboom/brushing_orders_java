@@ -243,13 +243,14 @@ test('withdrawal type management mirrors the reference drawer and parameter fiel
   assert.match(withdrawalType, /function toApiType[\s\S]*?"1": "0"[\s\S]*?"2": "1"/)
 })
 
-test('bonus receipt and distribution remain explicit administrator actions', () => {
+test('bonus receipt enables explicit administrator distribution regardless of schedule type', () => {
   const drawer = source('src/views/member/orderuser/components/OrderuserBonusDrawer.vue')
 
   assert.match(drawer, /@click="handleReceive\(record\)"/)
   assert.match(drawer, /@click="handleGive\(record\)"/)
   assert.match(drawer, /:disabled="!canGive\(record\)"/)
-  assert.match(drawer, /row\.distributionType !== "2" \|\| taskGroupCompleted\.value/)
+  assert.match(drawer, /row\.isReceived === "0" && row\.isDistributed === "1"/)
+  assert.doesNotMatch(drawer, /taskGroupCompleted/)
   assert.match(drawer, /receiveBonus\(row\.id\)/)
   assert.match(drawer, /giveBonus\(row\.id\)/)
 })

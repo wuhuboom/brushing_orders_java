@@ -9,7 +9,7 @@ const BACKEND_GIFT_BY_AMOUNT = 1;
 export const transactionTypeOptions = Object.freeze([
   { value: "sxf", label: "手续费" },
   { value: "ck", label: "存款" },
-  { value: "bonus", label: "奖金" },
+  { value: "jj", label: "奖金" },
   { value: "dx", label: "底薪" },
   { value: "yzj", label: "援助金" },
   { value: "spfr", label: "商品分润" },

@@ -1052,6 +1052,7 @@ const signDaysRules = reactive({
 const signDaysSubmitting = ref(false);
 const pendingMemberActions = reactive(new Set());
 let memberFormRequestSequence = 0;
+let listRequestSequence = 0;
 
 const advancedSelectFields = computed(() => [
   { key: "gender", label: "性别", options: sys_user_sex.value || [] },
@@ -1288,6 +1289,7 @@ function completeGroupText(record) {
 
 /** 查询订单用户列表 */
 function getList() {
+  const requestSequence = ++listRequestSequence;
   loading.value = true;
   const requestParams = {
     ...queryParams.value,
@@ -1297,11 +1299,22 @@ function getList() {
     },
   };
   delete requestParams.createTimeRange;
-  listOrderuser(requestParams).then((response) => {
-    orderuserList.value = response.rows;
-    total.value = response.total;
-    loading.value = false;
-  });
+  listOrderuser(requestParams)
+    .then((response) => {
+      if (requestSequence !== listRequestSequence) return;
+      orderuserList.value = response.rows;
+      total.value = response.total;
+    })
+    .catch((error) => {
+      if (requestSequence === listRequestSequence) {
+        orderuserList.value = [];
+        total.value = 0;
+        proxy.$modal.msgError(error?.message || "查询会员列表失败");
+      }
+    })
+    .finally(() => {
+      if (requestSequence === listRequestSequence) loading.value = false;
+    });
   if (hasAnyPermission([
     "member:orderuser:query",
     "member:orderuser:add",

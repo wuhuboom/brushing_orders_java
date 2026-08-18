@@ -169,12 +169,21 @@ test("search selects expose the verified live option order without changing back
     { value: "xjfy", label: "下级返佣" },
   ];
 
-  for (const page of [recharge, flow, withdrawal]) {
+  for (const page of [recharge, withdrawal]) {
     assert.deepEqual(computedOptionDefinitions(page, "liveYesNoOptions"), expectedYesNo);
     assert.deepEqual(computedOptionDefinitions(page, "liveTransactionTypeOptions"), expectedTransactions);
     assert.match(page, /v-for="dict in liveYesNoOptions"/);
     assert.match(page, /v-for="dict in liveTransactionTypeOptions"/);
   }
+
+  assert.deepEqual(computedOptionDefinitions(flow, "liveYesNoOptions"), expectedYesNo);
+  assert.deepEqual(computedOptionDefinitions(flow, "liveTransactionTypeOptions"), [
+    ...expectedTransactions,
+    { value: "jj", label: "奖金" },
+    { value: "rwjl", label: "任务奖励" },
+  ]);
+  assert.match(flow, /v-for="dict in liveYesNoOptions"/);
+  assert.match(flow, /v-for="dict in liveTransactionTypeOptions"/);
 
   for (const page of [recharge, withdrawal]) {
     assert.match(page, /v-for="dict in order_zhlx"/);

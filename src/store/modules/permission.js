@@ -126,6 +126,12 @@ export const loadView = (view) => {
 }
 
 function withLegacyShellRoutes(routes) {
+  const siteManagementRoute = findRoute(routes, route => route.path === 'siteManage' || route.meta?.title === '网站管理')
+  let timeZoneRoute = siteManagementRoute?.children?.find(isTimeZoneRoute)
+  if (!timeZoneRoute) {
+    timeZoneRoute = detachRoute(routes, isTimeZoneRoute)
+  }
+
   const systemRoute = routes.find(route => route.path === '/system' || route.meta?.title === '系统管理')
   if (systemRoute) {
     const legacyGroups = [{
@@ -210,7 +216,62 @@ function withLegacyShellRoutes(routes) {
       { path: 'userLoginLogs', component: 'monitor/logininfor/index', name: 'LegacyDirectUserLoginLogs', meta: { title: '登录日志' } }
     ]
   })
+  restoreTimeZoneRoute(siteManagementRoute, timeZoneRoute)
   return routes
+}
+
+function isTimeZoneRoute(route) {
+  return route?.component === 'system/zone/index' || route?.meta?.title === '时区管理'
+}
+
+function findRoute(routes, predicate) {
+  for (const route of routes || []) {
+    if (predicate(route)) return route
+    const child = findRoute(route.children, predicate)
+    if (child) return child
+  }
+  return null
+}
+
+function detachRoute(routes, predicate) {
+  for (let index = 0; index < (routes || []).length; index += 1) {
+    const route = routes[index]
+    if (predicate(route)) {
+      return routes.splice(index, 1)[0]
+    }
+    const child = detachRoute(route.children, predicate)
+    if (child) return child
+  }
+  return null
+}
+
+function restoreTimeZoneRoute(siteManagementRoute, existingRoute) {
+  if (!siteManagementRoute) return
+
+  const timeZoneRoute = existingRoute || (auth.hasPermi('system:zone:list') ? {
+    path: 'zone',
+    component: 'system/zone/index',
+    name: 'Zone',
+    meta: { title: '时区管理', icon: 'time' }
+  } : null)
+  if (!timeZoneRoute) return
+
+  Object.assign(timeZoneRoute, {
+    path: 'zone',
+    component: 'system/zone/index',
+    name: 'Zone',
+    hidden: false,
+    meta: {
+      ...(timeZoneRoute.meta || {}),
+      title: '时区管理',
+      icon: timeZoneRoute.meta?.icon === '#' ? 'time' : (timeZoneRoute.meta?.icon || 'time')
+    }
+  })
+
+  siteManagementRoute.children ||= []
+  if (!siteManagementRoute.children.includes(timeZoneRoute)) {
+    siteManagementRoute.children.push(timeZoneRoute)
+  }
 }
 
 function mergeLegacyGroup(existing, expected) {

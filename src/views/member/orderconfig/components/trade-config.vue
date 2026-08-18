@@ -85,6 +85,10 @@
 <script setup>
 import { nextTick, reactive, ref, watch } from "vue"
 import { message } from "ant-design-vue"
+import {
+  normalizeRechargeBonusTradeType,
+  tradeTypeOptions
+} from "./tradeTransactionTypes"
 
 const props = defineProps({
   form: {
@@ -104,33 +108,6 @@ const yesNoOptions = [
 const enabledOptions = [
   { label: "禁用", value: "1" },
   { label: "启用", value: "0" }
-]
-
-const tradeTypeOptions = [
-  { label: "赠送", value: "bonus" },
-  { label: "扣款", value: "deduction" },
-  { label: "充值", value: "recharge" },
-  { label: "提现中", value: "withdrawing" },
-  { label: "提现解冻", value: "withdrawalUnfreeze" },
-  { label: "提现", value: "withdrawal" },
-  { label: "任务", value: "task" },
-  { label: "本金返还", value: "principalReturn" },
-  { label: "返佣", value: "rebate" },
-  { label: "下级返佣", value: "subRebate" },
-  { label: "签到", value: "signIn" },
-  { label: "手续费", value: "fee" },
-  { label: "存款", value: "deposit" },
-  { label: "奖金", value: "bonus" },
-  { label: "底薪", value: "baseSalary" },
-  { label: "援助金", value: "aid" },
-  { label: "注册赠送", value: "registerBonus" },
-  { label: "商品分润", value: "productShare" },
-  { label: "任务奖励", value: "taskReward" },
-  { label: "余额宝转出", value: "balanceOut" },
-  { label: "余额宝转入", value: "balanceIn" },
-  { label: "工作奖金", value: "workBonus" },
-  { label: "升级奖金", value: "upgradeBonus" },
-  { label: "其他", value: "other" }
 ]
 
 const formItems = [
@@ -208,15 +185,19 @@ watch(
       const parsed = JSON.parse(newContent)
       const tradeFields = formFieldKeys.reduce((fields, key) => {
         if (Object.prototype.hasOwnProperty.call(parsed, key)) {
-          fields[key] = parsed[key]
+          fields[key] = key === "rechargeBonusTradeType"
+            ? normalizeRechargeBonusTradeType(parsed[key])
+            : parsed[key]
         }
         return fields
       }, {})
       Object.assign(localForm, tradeFields)
       if (localForm.matchRangePercentage) {
-        const [min, max] = String(localForm.matchRangePercentage).split("-")
-        minRange.value = Number(min) || 1
-        maxRange.value = Number(max) || 100
+        const rangeParts = String(localForm.matchRangePercentage).split("-")
+        const minimum = Number(rangeParts[0])
+        const maximum = rangeParts.length > 1 ? Number(rangeParts[1]) : minimum
+        minRange.value = Number.isFinite(minimum) && minimum > 0 ? minimum : 1
+        maxRange.value = Number.isFinite(maximum) && maximum > 0 ? maximum : 100
       }
     } catch (e) {
       message.error("解析配置失败")

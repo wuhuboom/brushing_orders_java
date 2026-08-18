@@ -22,8 +22,10 @@ const transactionModalSource = readFileSync(
 );
 
 test("transaction types and defaults match the reference member adjustment form", () => {
-  assert.deepEqual(transactionTypeOptions.map(({ label }) => label), [
-    "手续费", "存款", "奖金", "底薪", "援助金", "商品分润", "补贴", "资金异常存款", "信誉分", "其他",
+  assert.deepEqual(transactionTypeOptions.map(({ value, label }) => [value, label]), [
+    ["sxf", "手续费"], ["ck", "存款"], ["jj", "奖金"], ["dx", "底薪"],
+    ["yzj", "援助金"], ["spfr", "商品分润"], ["bt", "补贴"],
+    ["zjyc", "资金异常存款"], ["xyd", "信誉分"], ["qt", "其他"],
   ]);
   assert.deepEqual(createTransactionForm(), {
     operationType: OPERATION_ADD,
@@ -40,6 +42,7 @@ test("gift controls only apply to deposits and preserve reference percentage mat
   assert.equal(isGiftTransaction({ operationType: OPERATION_ADD, transactionType: "ck" }), true);
   assert.equal(isGiftTransaction({ operationType: OPERATION_SUBTRACT, transactionType: "ck" }), false);
   assert.equal(isGiftTransaction({ operationType: OPERATION_ADD, transactionType: "bonus" }), false);
+  assert.equal(isGiftTransaction({ operationType: OPERATION_ADD, transactionType: "jj" }), false);
   assert.equal(calculateGiftAmount(100, 10), 10);
   assert.equal(calculateGiftAmount(12.345, 10), 1.23);
   assert.equal(calculateGiftAmount(null, 10), 0);

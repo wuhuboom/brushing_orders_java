@@ -175,6 +175,7 @@
 <script setup name="Flow">
 import { CopyOutlined, EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons-vue";
 import { listFlow, updateFlow } from "@/api/member/flow";
+import { flowTransactionTypeFallbackLabel } from "./transactionTypeLabels.js";
 
 const { proxy } = getCurrentInstance();
 const { user_yes_no, transaction_type } = proxy.useDict(
@@ -213,6 +214,8 @@ const liveTransactionTypeOptions = computed(() => [
   { value: "bjfh", label: "本金返回" },
   { value: "fy", label: "返佣" },
   { value: "xjfy", label: "下级返佣" },
+  { value: "jj", label: "奖金" },
+  { value: "rwjl", label: "任务奖励" },
 ].map((expected) => {
   const option = (transaction_type.value || []).find(
     (item) => String(item?.value) === expected.value
@@ -279,7 +282,9 @@ function transactionTypeText(value) {
   const option = liveTransactionTypeOptions.value.find(
     (item) => String(item.value) === String(value)
   );
-  return option?.label || dictText(transaction_type, value);
+  return option?.label
+    || flowTransactionTypeFallbackLabel(value)
+    || dictText(transaction_type, value);
 }
 
 function clearSelection() {

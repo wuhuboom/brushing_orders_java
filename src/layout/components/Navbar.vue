@@ -20,6 +20,23 @@
 
     <div class="right-menu">
       <div v-if="appStore.device !== 'mobile'" class="quick-actions">
+        <button
+          class="timezone-clock"
+          type="button"
+          :title="hasTimeZoneSettingsRoute
+            ? `当前时区：${activeTimeZone}，点击进入时区管理`
+            : `当前时区：${activeTimeZone}`"
+          :aria-label="hasTimeZoneSettingsRoute
+            ? `当前时区 ${activeTimeZone}，当前时间 ${currentZoneTime}，点击进入时区管理`
+            : `当前时区 ${activeTimeZone}，当前时间 ${currentZoneTime}`"
+          :disabled="!hasTimeZoneSettingsRoute"
+          @click="openTimeZoneSettings"
+        >
+          <clock-circle-outlined class="timezone-clock-icon" />
+          <span class="timezone-caption">当前时区</span>
+          <span class="timezone-name">{{ activeTimeZone }}</span>
+          <span class="timezone-time">{{ currentZoneTime }}</span>
+        </button>
         <span class="quick-badge">
           <a class="quick-brand">F4EEA</a>
         </span>
@@ -106,6 +123,7 @@
 
 <script setup>
 import {
+  ClockCircleOutlined,
   LockOutlined,
   LogoutOutlined,
   SettingOutlined,
@@ -119,6 +137,8 @@ import useAppStore from "@/store/modules/app";
 import useUserStore from "@/store/modules/user";
 import useSettingsStore from "@/store/modules/settings";
 import { getHeaderStats } from "@/api/index";
+import { parseTime } from "@/utils/common";
+import { getActiveTimeZone } from "@/utils/timezone-helper";
 
 const appStore = useAppStore();
 const userStore = useUserStore();
@@ -128,6 +148,10 @@ const route = useRoute();
 const userMenuOpen = ref(false);
 const languageMenuOpen = ref(false);
 const quickStats = reactive({ totalOrders: 0, totalWithdrawals: 0 });
+const activeTimeZone = ref(getActiveTimeZone());
+const currentZoneTime = ref("");
+const hasTimeZoneSettingsRoute = computed(() => router.hasRoute("Zone"));
+let timeZoneClockTimer = null;
 const headerAvatar = "data:image/png;base64,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";
 const accountName = computed(() => userStore.name || "-");
 
@@ -177,6 +201,20 @@ function isMultipleCount(value) {
   return formatCount(value).length > 2;
 }
 
+function refreshTimeZoneClock() {
+  activeTimeZone.value = getActiveTimeZone();
+  currentZoneTime.value = parseTime(
+    new Date(),
+    "{y}-{m}-{d} {h}:{i}:{s}",
+    activeTimeZone.value
+  );
+}
+
+function openTimeZoneSettings() {
+  if (!hasTimeZoneSettingsRoute.value) return;
+  router.push({ name: "Zone" });
+}
+
 async function refreshQuickStats() {
   try {
     const response = await getHeaderStats();
@@ -203,6 +241,8 @@ function logout() {
 onMounted(() => {
   document.addEventListener("click", handleBodyClick);
   window.addEventListener("focus", refreshQuickStats);
+  refreshTimeZoneClock();
+  timeZoneClockTimer = window.setInterval(refreshTimeZoneClock, 1000);
 });
 
 watch(() => route.fullPath, refreshQuickStats, { immediate: true });
@@ -210,6 +250,7 @@ watch(() => route.fullPath, refreshQuickStats, { immediate: true });
 onBeforeUnmount(() => {
   document.removeEventListener("click", handleBodyClick);
   window.removeEventListener("focus", refreshQuickStats);
+  window.clearInterval(timeZoneClockTimer);
 });
 </script>
 
@@ -244,7 +285,7 @@ onBeforeUnmount(() => {
     position: absolute;
     left: 171.390625px;
     top: 5.5px;
-    right: 360px;
+    right: 640px;
   }
 
   .right-menu {
@@ -274,6 +315,57 @@ onBeforeUnmount(() => {
   color: rgba(0, 0, 0, 0.45);
   font-size: 16px;
   line-height: 56px;
+}
+
+.timezone-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin-right: 12px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  outline: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  font-family: var(--app-font-family);
+  font-size: 13px;
+  line-height: 36px;
+  white-space: nowrap;
+
+  &:not(:disabled):hover,
+  &:not(:disabled):focus-visible {
+    background: var(--menu-hover);
+    color: var(--primary-color);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.timezone-clock-icon {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+
+.timezone-caption {
+  color: var(--text-secondary);
+}
+
+.timezone-name {
+  max-width: 128px;
+  overflow: hidden;
+  color: var(--primary-color);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.timezone-time {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .quick-badge {
@@ -552,6 +644,26 @@ onBeforeUnmount(() => {
     color: var(--text-secondary);
     font-size: 14px;
     line-height: 1;
+  }
+}
+
+@media (max-width: 1599px) {
+  .navbar .topmenu-container {
+    right: 640px;
+  }
+
+  .timezone-caption {
+    display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .navbar .topmenu-container {
+    right: 360px;
+  }
+
+  .timezone-clock {
+    display: none;
   }
 }
 </style>

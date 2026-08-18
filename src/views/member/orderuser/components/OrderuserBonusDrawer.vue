@@ -563,13 +563,6 @@ const taskProgressDisplay = computed(
 const tableScrollY = computed(
   () => `max(240px, calc(100vh - ${searchExpanded.value ? 496 : 440}px))`,
 );
-const taskGroupCompleted = computed(() => {
-  const limit = Number(user.memberOrderCountPerDay);
-  return Number.isFinite(limit)
-    && limit > 0
-    && Number(user.taskProgress || 0) >= limit;
-});
-
 watch(
   () => props.userId,
   (id) => {
@@ -1025,16 +1018,12 @@ function setRowPending(target, key, pending) {
 }
 
 function canGive(row) {
-  if (row.isReceived !== "0" || row.isDistributed !== "1") return false;
-  return row.distributionType !== "2" || taskGroupCompleted.value;
+  return row.isReceived === "0" && row.isDistributed === "1";
 }
 
 function giveDisabledReason(row) {
   if (row.isReceived !== "0") return "请先由管理员手动领取";
   if (row.isDistributed !== "1") return "彩金已发放";
-  if (row.distributionType === "2" && !taskGroupCompleted.value) {
-    return "完成当前任务组后才可由管理员发放";
-  }
   return "";
 }
 

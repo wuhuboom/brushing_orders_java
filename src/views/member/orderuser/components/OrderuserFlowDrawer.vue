@@ -87,7 +87,7 @@
             </a-space>
           </template>
           <template v-else-if="column.dataIndex === 'transactionType'">
-            <dict-tag :options="transaction_type" :value="record.transactionType" />
+            <a-badge status="processing" :text="transactionTypeText(record.transactionType)" />
           </template>
           <template v-else-if="column.dataIndex === 'createdTime'">
             {{ parseTime(record.createdTime, "{y}-{m}-{d} {h}:{i}:{s}") }}
@@ -100,6 +100,7 @@
 <script setup>
 import { ref, reactive, toRefs, watch, getCurrentInstance } from "vue";
 import { listFlow } from "@/api/member/flow";
+import { flowTransactionTypeFallbackLabel } from "@/views/member/flow/transactionTypeLabels.js";
 import { buildFlowListParams, createFlowQueryParams } from "./orderuserFlow.js";
 
 const props = defineProps({
@@ -206,6 +207,13 @@ function reset() {
   flowList.value = [];
   total.value = 0;
   Object.assign(queryParams.value, createFlowQueryParams());
+}
+
+function transactionTypeText(value) {
+  const fallbackLabel = flowTransactionTypeFallbackLabel(value);
+  if (fallbackLabel) return fallbackLabel;
+  const options = Array.isArray(transaction_type) ? transaction_type : transaction_type.value;
+  return proxy.selectDictLabel((options || []).filter(Boolean), value) || value || "-";
 }
 
 function getList() {
