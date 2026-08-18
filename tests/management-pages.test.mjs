@@ -113,9 +113,12 @@ test('member search mirrors the reference three-column collapsed and expanded la
   }
 
   assert.match(advancedSearch, /QuestionCircleOutlined/)
-  assert.match(advancedSearch, /v-model:value="queryParams\.id"[^>]*placeholder="请输入"/)
-  assert.match(advancedSearch, /v-model:value="queryParams\.workLimit"[^>]*placeholder="请输入"/)
-  assert.doesNotMatch(advancedSearch, /v-model:value="queryParams\.(?:id|workLimit)"[^>]*<a-input-number/)
+  assert.match(advancedSearch, /:value="queryParams\.id"[\s\S]*?inputmode="numeric"[\s\S]*?@update:value="updateMemberIdQuery"/)
+  assert.match(advancedSearch, /<a-input-number[\s\S]*?v-model:value="queryParams\.workLimit"[\s\S]*?string-mode[\s\S]*?:min="0"/)
+  assert.match(member, /function updateMemberIdQuery\(value\)[\s\S]*?normalizeMemberIdQuery\(value\)/)
+  for (const column of advancedSearch.match(/<a-col[\s\S]*?>/g) || []) {
+    if (/:lg="8"/.test(column)) assert.match(column, /:md="8"/)
+  }
   assert.match(member, /label: "任务开始前是否验证身份信息"/)
   assert.match(member, /label: "是否启用用户合同"/)
   assert.match(member, /label: "是否签署正式合同"/)

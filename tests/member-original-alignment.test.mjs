@@ -5,8 +5,10 @@ import {
   enabledBadgeStatus,
   fakeMemberTone,
   genderBadgeStatus,
+  memberYesNoBadgeStatus,
   yesNoBadgeStatus,
 } from "../src/views/member/orderuser/memberCellPresentation.js";
+import { normalizeMemberIdQuery } from "../src/views/member/orderuser/memberQueryValidation.js";
 import { formatOrderlinkAmount } from "../src/views/member/orderuser/components/orderlinkPresentation.js";
 
 const member = readFileSync(
@@ -36,9 +38,24 @@ test("member status cells follow the verified local dictionary semantics", () =>
   assert.equal(yesNoBadgeStatus("1"), "error");
   assert.equal(yesNoBadgeStatus(""), null);
 
+  assert.equal(memberYesNoBadgeStatus("isActivity", "0"), "success");
+  assert.equal(memberYesNoBadgeStatus("depositBlockWithdrawal", "0"), "error");
+  assert.equal(memberYesNoBadgeStatus("depositBlockWithdrawal", "1"), "success");
+  assert.equal(memberYesNoBadgeStatus("isInvalid", "0"), "error");
+
   assert.equal(fakeMemberTone("0"), "success");
   assert.equal(fakeMemberTone(1), "error");
   assert.equal(fakeMemberTone(undefined), null);
+});
+
+test("member ID queries stay precise and within the backend Long contract", () => {
+  assert.equal(normalizeMemberIdQuery(" 9007199254740993 "), "9007199254740993");
+  assert.equal(normalizeMemberIdQuery("9223372036854775807"), "9223372036854775807");
+  assert.equal(normalizeMemberIdQuery("9223372036854775808"), null);
+  assert.equal(normalizeMemberIdQuery("abc"), null);
+  assert.equal(normalizeMemberIdQuery("   "), null);
+  assert.equal(normalizeMemberIdQuery("-1"), null);
+  assert.equal(normalizeMemberIdQuery("1.25"), null);
 });
 
 test("member list renders reference badge dots on status fields", () => {
@@ -50,7 +67,7 @@ test("member list renders reference badge dots on status fields", () => {
     /<template v-else-if="column\.dict === 'yesNo'">([\s\S]*?)<\/template>/,
   )?.[1] || "";
   assert.match(genericYesNoBlock, /<a-badge/);
-  assert.match(genericYesNoBlock, /yesNoBadgeStatus\(record\[column\.dataIndex\]\)/);
+  assert.match(genericYesNoBlock, /memberYesNoBadgeStatus\(column\.dataIndex, record\[column\.dataIndex\]\)/);
 
   for (const field of [
     "isWithdrawalNotification",

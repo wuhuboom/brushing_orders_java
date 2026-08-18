@@ -24,6 +24,17 @@ export function yesNoBadgeStatus(value) {
   return null;
 }
 
+const negativeYesNoFields = new Set([
+  "depositBlockWithdrawal",
+  "isInvalid",
+]);
+
+export function memberYesNoBadgeStatus(field, value) {
+  const status = yesNoBadgeStatus(value);
+  if (!status || !negativeYesNoFields.has(field)) return status;
+  return status === "success" ? "error" : "success";
+}
+
 export function fakeMemberTone(value) {
   const normalized = normalizeValue(value);
   if (normalized === "0") return "success";

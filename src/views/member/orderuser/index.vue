@@ -45,6 +45,7 @@
             <a-col
               :xs="24"
               :sm="12"
+              :md="8"
               :lg="8"
               :xxl="6"
               class="online-query-field"
@@ -58,12 +59,19 @@
               </a-form-item>
             </a-col>
             <template v-if="advancedSearchVisible">
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="ID">
-                <a-input v-model:value="queryParams.id" allow-clear placeholder="请输入" />
+                <a-input
+                  :value="queryParams.id"
+                  allow-clear
+                  inputmode="numeric"
+                  :maxlength="19"
+                  placeholder="请输入"
+                  @update:value="updateMemberIdQuery"
+                />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="VIP等级">
                 <a-select v-model:value="queryParams.vipId" allow-clear placeholder="请选择">
                   <a-select-option v-for="item in levelList" :key="item.id" :value="item.id">
@@ -72,7 +80,7 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item>
                 <template #label>
                   <span>用户名列表</span>
@@ -83,13 +91,13 @@
                 <a-input v-model:value="queryParams.usernameList" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="上级邀请码">
                 <a-input v-model:value="queryParams.parentInviteCode" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
 
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="余额">
                 <a-space-compact block>
                   <a-input-number v-model:value="queryParams.balanceMin" :min="0" placeholder="请输入" class="range-input" />
@@ -98,12 +106,12 @@
                 </a-space-compact>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="最后登录IP">
                 <a-input v-model:value="queryParams.lastLoginIp" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="信誉分">
                 <a-space-compact block>
                   <a-input-number v-model:value="queryParams.reputationMin" :min="0" :precision="0" placeholder="请输入" class="range-input" />
@@ -117,6 +125,7 @@
               :key="field.key"
               :xs="24"
               :sm="12"
+              :md="8"
               :lg="8"
               :xxl="6"
             >
@@ -128,9 +137,16 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="工作限额">
-                <a-input v-model:value="queryParams.workLimit" allow-clear placeholder="请输入" />
+                <a-input-number
+                  v-model:value="queryParams.workLimit"
+                  string-mode
+                  :min="0"
+                  allow-clear
+                  class="full-width"
+                  placeholder="请输入"
+                />
               </a-form-item>
             </a-col>
             <a-col
@@ -138,6 +154,7 @@
               :key="field.key"
               :xs="24"
               :sm="12"
+              :md="8"
               :lg="8"
               :xxl="6"
             >
@@ -149,7 +166,7 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="创建时间">
                 <a-range-picker
                   v-model:value="queryParams.createTimeRange"
@@ -438,9 +455,9 @@
         </template>
         <template v-else-if="column.dict === 'yesNo'">
           <a-badge
-            v-if="yesNoBadgeStatus(record[column.dataIndex])"
+            v-if="memberYesNoBadgeStatus(column.dataIndex, record[column.dataIndex])"
             class="member-status-badge"
-            :status="yesNoBadgeStatus(record[column.dataIndex])"
+            :status="memberYesNoBadgeStatus(column.dataIndex, record[column.dataIndex])"
             :text="dictText(user_yes_no, record[column.dataIndex])"
           />
           <span v-else>-</span>
@@ -818,8 +835,10 @@ import {
   enabledBadgeStatus,
   fakeMemberTone,
   genderBadgeStatus,
+  memberYesNoBadgeStatus,
   yesNoBadgeStatus,
 } from "./memberCellPresentation";
+import { normalizeMemberIdQuery } from "./memberQueryValidation";
 import useUserStore from "@/store/modules/user";
 
 const { proxy } = getCurrentInstance();
@@ -1352,8 +1371,26 @@ function reset() {
   };
 }
 
+function updateMemberIdQuery(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    queryParams.value.id = null;
+    return;
+  }
+
+  const normalized = normalizeMemberIdQuery(value);
+  if (normalized) queryParams.value.id = normalized;
+}
+
 /** 搜索按钮操作 */
 function handleQuery() {
+  if (queryParams.value.id !== null && queryParams.value.id !== undefined) {
+    const normalized = normalizeMemberIdQuery(queryParams.value.id);
+    if (!normalized) {
+      proxy.$modal.msgWarning("ID 请输入有效的正整数");
+      return;
+    }
+    queryParams.value.id = normalized;
+  }
   queryParams.value.pageNum = 1;
   getList();
 }
