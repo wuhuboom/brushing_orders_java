@@ -3,11 +3,15 @@
     v-model:open="visible"
     title="彩金设置"
     width="85%"
+    root-class-name="bonus-settings-drawer"
     :mask-closable="!mutationPending"
     :closable="!mutationPending"
     :keyboard="!mutationPending"
   >
-    <div class="bonus-drawer ant-pro-member-page">
+    <div
+      class="bonus-drawer ant-pro-member-page"
+      :style="{ '--bonus-table-min-height': tableScrollY }"
+    >
       <ant-pro-table
         title=""
         :columns="bonusColumns"
@@ -16,39 +20,39 @@
         row-key="id"
         :row-selection="rowSelection"
         :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
-        :scroll="{ x: 2120 }"
+        :scroll="{ x: 2130, y: tableScrollY }"
         @page-change="handleAntPageChange"
         @refresh="getList"
       >
         <template #search>
           <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
-            <a-row :gutter="[24, 16]" align="middle">
-              <a-col :xs="24" :sm="12" :lg="5">
+            <a-row :gutter="[24, 24]" align="middle">
+              <a-col :xs="24" :sm="12" :lg="6">
                 <a-form-item label="单数">
                   <a-input-number
                     v-model:value="queryParams.orderNum"
                     :min="1"
                     :precision="0"
-                    placeholder="请输入单数"
+                    placeholder="请输入"
                     class="full-width"
                     @pressEnter="handleQuery"
                   />
                 </a-form-item>
               </a-col>
-              <a-col :xs="24" :sm="12" :lg="7">
+              <a-col :xs="24" :sm="12" :lg="6">
                 <a-form-item label="金额">
                   <a-space-compact block>
                     <a-input-number
                       v-model:value="queryParams.minAmount"
                       :min="0"
-                      placeholder="最低金额"
+                      placeholder="请输入"
                       class="amount-input"
                     />
-                    <a-input class="amount-separator" value="至" disabled />
+                    <a-input class="amount-separator" value="~" disabled />
                     <a-input-number
                       v-model:value="queryParams.maxAmount"
                       :min="0"
-                      placeholder="最高金额"
+                      placeholder="请输入"
                       class="amount-input"
                     />
                   </a-space-compact>
@@ -59,16 +63,72 @@
                   <a-select
                     v-model:value="queryParams.distributionType"
                     :options="distributionOptions"
-                    placeholder="请选择发放类型"
+                    placeholder="请选择"
                     allow-clear
                   />
                 </a-form-item>
               </a-col>
-              <a-col flex="auto" class="ant-pro-query-actions">
-                <a-space>
-                  <a-button @click="resetQuery">重置</a-button>
-                  <a-button type="primary" @click="handleQuery">查询</a-button>
-                </a-space>
+              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
+                <a-form-item label="推送类型">
+                  <a-input v-model:value="queryParams.pushType" placeholder="请输入" allow-clear />
+                </a-form-item>
+              </a-col>
+              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
+                <a-form-item label="是否领取">
+                  <a-select
+                    v-model:value="queryParams.isReceived"
+                    :options="yesNoOptions"
+                    placeholder="请选择"
+                    allow-clear
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
+                <a-form-item label="是否发放">
+                  <a-select
+                    v-model:value="queryParams.isDistributed"
+                    :options="yesNoOptions"
+                    placeholder="请选择"
+                    allow-clear
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
+                <a-form-item label="过期时间">
+                  <a-date-picker
+                    v-model:value="queryParams.expiryTime"
+                    value-format="YYYY-MM-DD"
+                    placeholder="请选择"
+                    class="full-width"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
+                <a-form-item label="创建时间">
+                  <a-range-picker
+                    v-model:value="queryParams.createTimeRange"
+                    value-format="YYYY-MM-DD"
+                    :placeholder="['请选择', '请选择']"
+                    class="full-width"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col
+                :xs="24"
+                :sm="12"
+                :lg="{ span: 6, offset: searchExpanded ? 18 : 0 }"
+                class="ant-pro-query-actions"
+              >
+                <a-form-item class="query-action-item">
+                  <a-space>
+                    <a-button @click="resetQuery">重置</a-button>
+                    <a-button type="primary" @click="handleQuery">查询</a-button>
+                    <a-button type="link" class="query-expand" @click="searchExpanded = !searchExpanded">
+                      {{ searchExpanded ? "收起" : "展开" }}
+                      <DownOutlined :class="{ expanded: searchExpanded }" />
+                    </a-button>
+                  </a-space>
+                </a-form-item>
               </a-col>
             </a-row>
           </a-form>
@@ -94,17 +154,20 @@
         </template>
 
         <template #toolbar>
-          <a-button type="primary" @click="handleAdd" v-hasPermi="['member:bonus:add']">
-            新增
-          </a-button>
           <a-button
+            type="primary"
             danger
             :disabled="!ids.length || deleting"
             :loading="deleting"
             @click="handleDelete"
             v-hasPermi="['member:bonus:remove']"
           >
+            <template #icon><DeleteOutlined /></template>
             删除
+          </a-button>
+          <a-button type="primary" @click="handleAdd" v-hasPermi="['member:bonus:add']">
+            <template #icon><PlusOutlined /></template>
+            创建
           </a-button>
         </template>
 
@@ -122,7 +185,7 @@
             <span v-else>{{ record.orderNum }}</span>
           </template>
           <template v-else-if="column.dataIndex === 'distributionType'">
-            <a-tag color="blue">{{ distributionText(record.distributionType) }}</a-tag>
+            <a-badge status="success" :text="distributionText(record.distributionType)" />
           </template>
           <template v-else-if="column.dataIndex === 'pushType'">
             <a-button
@@ -134,17 +197,19 @@
             >
               {{ pushText(record.pushType) }}
             </a-button>
-            <span v-else>{{ pushText(record.pushType) }}</span>
+            <span v-else class="push-type-text">{{ pushText(record.pushType) }}</span>
           </template>
           <template v-else-if="column.dataIndex === 'isReceived'">
-            <a-tag :color="record.isReceived === '0' ? 'green' : 'default'">
-              {{ record.isReceived === "0" ? "已领取" : "未领取" }}
-            </a-tag>
+            <a-badge
+              :status="record.isReceived === '0' ? 'success' : 'error'"
+              :text="record.isReceived === '0' ? '是' : '否'"
+            />
           </template>
           <template v-else-if="column.dataIndex === 'isDistributed'">
-            <a-tag :color="record.isDistributed === '0' ? 'green' : 'default'">
-              {{ record.isDistributed === "0" ? "已发放" : "未发放" }}
-            </a-tag>
+            <a-badge
+              :status="record.isDistributed === '0' ? 'success' : 'error'"
+              :text="record.isDistributed === '0' ? '是' : '否'"
+            />
           </template>
           <template v-else-if="timeColumns.includes(column.dataIndex)">
             {{ parseTime(record[column.dataIndex]) || "-" }}
@@ -198,6 +263,7 @@
         v-model:open="dialogOpen"
         :title="dialogTitle"
         width="65%"
+        root-class-name="bonus-editor-drawer"
         :mask-closable="false"
         :destroy-on-close="false"
         :closable="!submitting"
@@ -207,13 +273,13 @@
         <a-form ref="bonusRef" :model="form" :rules="rules" layout="vertical">
           <a-row :gutter="[20, 0]">
             <a-col :span="12">
-              <a-form-item label="余额"><a-input :value="user.balance" disabled /></a-form-item>
+              <a-form-item label="余额"><a-input-number :value="user.balance" disabled class="full-width" /></a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="冻结余额"><a-input :value="user.frozenBalance" disabled /></a-form-item>
+              <a-form-item label="冻结余额"><a-input-number :value="user.frozenBalance" disabled class="full-width" /></a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="总余额"><a-input :value="user.totalBalance" disabled /></a-form-item>
+              <a-form-item label="总余额"><a-input-number :value="user.totalBalance" disabled class="full-width" /></a-form-item>
             </a-col>
             <a-col :span="12">
               <a-form-item label="任务进度"><a-input :value="taskProgressDisplay" disabled /></a-form-item>
@@ -225,7 +291,7 @@
                   v-model:value="form.orderNum"
                   :min="1"
                   :precision="0"
-                  placeholder="请输入单数"
+                  placeholder="单数"
                   :disabled="fieldDisabled('orderNum')"
                   class="full-width"
                 />
@@ -237,7 +303,7 @@
                   v-model:value="form.amount"
                   :min="0.01"
                   :precision="2"
-                  placeholder="请输入金额"
+                  placeholder="金额"
                   :disabled="fieldDisabled('amount')"
                   class="full-width"
                 />
@@ -249,19 +315,25 @@
                   v-model:value="form.animationDuration"
                   :min="0"
                   :precision="0"
-                  placeholder="请输入动画时长"
+                  placeholder="动画时长（秒）"
                   :disabled="fieldDisabled('animationDuration')"
                   class="full-width"
                 />
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="显示时长（秒）" name="displayDuration">
+              <a-form-item name="displayDuration">
+                <template #label>
+                  <span>显示时长（秒）</span>
+                  <a-tooltip title="彩金弹窗在前台停留的秒数">
+                    <QuestionCircleOutlined class="field-help" />
+                  </a-tooltip>
+                </template>
                 <a-input-number
                   v-model:value="form.displayDuration"
                   :min="0"
                   :precision="0"
-                  placeholder="请输入显示时长"
+                  placeholder="显示时长（秒）"
                   :disabled="fieldDisabled('displayDuration')"
                   class="full-width"
                 />
@@ -282,7 +354,7 @@
                   v-model:value="form.expiryTime"
                   show-time
                   value-format="YYYY-MM-DD HH:mm:ss"
-                  placeholder="请选择过期时间"
+                  placeholder="过期时间"
                   :disabled="fieldDisabled('expiryTime')"
                   class="full-width"
                   allow-clear
@@ -291,9 +363,10 @@
             </a-col>
             <a-col :span="24">
               <a-form-item label="推送类型" name="pushType">
-                <a-radio-group
+                <a-select
                   v-model:value="form.pushType"
                   :options="pushOptions"
+                  placeholder="推送类型"
                   :disabled="fieldDisabled('pushType')"
                   @change="handlePushTypeChange"
                 />
@@ -321,12 +394,13 @@
         </a-form>
         <template #footer>
           <div class="drawer-footer">
-            <a-button :disabled="submitting" @click="closeDialog">
+            <a-button size="large" :disabled="submitting" @click="closeDialog">
               {{ formMode === "view" ? "关闭" : "取消" }}
             </a-button>
             <a-button
               v-if="formMode !== 'view'"
               type="primary"
+              size="large"
               :loading="submitting"
               :disabled="submitting"
               @click="submitForm"
@@ -342,7 +416,13 @@
 
 <script setup>
 import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
-import { ReloadOutlined } from "@ant-design/icons-vue";
+import {
+  DeleteOutlined,
+  DownOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons-vue";
 import {
   addBonus,
   delBonus,
@@ -375,7 +455,11 @@ const distributionOptions = [
 const pushOptions = [
   { label: "不推送", value: "0" },
   { label: "全部会员", value: "1" },
-  { label: "指定会员", value: "2" },
+  { label: "推送指定用户", value: "2" },
+];
+const yesNoOptions = [
+  { label: "是", value: "0" },
+  { label: "否", value: "1" },
 ];
 const timeColumns = ["receivedTime", "expiryTime", "distributionTime", "createTime"];
 const immutableAfterReceive = [
@@ -391,6 +475,7 @@ const visible = computed({
   set: (value) => emit("update:modelValue", value),
 });
 const loading = ref(false);
+const searchExpanded = ref(false);
 const loadingUser = ref(false);
 const loadingUsers = ref(false);
 const submitting = ref(false);
@@ -426,6 +511,11 @@ const queryParams = reactive({
   minAmount: null,
   maxAmount: null,
   distributionType: undefined,
+  pushType: undefined,
+  isReceived: undefined,
+  isDistributed: undefined,
+  expiryTime: null,
+  createTimeRange: [],
 });
 const form = reactive(defaultForm());
 const user = reactive({
@@ -460,23 +550,24 @@ const rules = {
 };
 
 const bonusColumns = [
-  { title: "单数", dataIndex: "orderNum", align: "center", width: 90 },
-  { title: "金额", dataIndex: "amount", align: "center", width: 110 },
-  { title: "动画时长（秒）", dataIndex: "animationDuration", align: "center", width: 130 },
-  { title: "显示时长（秒）", dataIndex: "displayDuration", align: "center", width: 130 },
-  { title: "发放类型", dataIndex: "distributionType", align: "center", width: 170 },
-  { title: "推送类型", dataIndex: "pushType", align: "center", width: 110 },
-  { title: "推送会员", dataIndex: "pushUsersDisplay", width: 170, ellipsis: true },
+  { title: "单数", dataIndex: "orderNum", align: "center", width: 100 },
+  { title: "金额", dataIndex: "amount", align: "center", width: 120 },
+  { title: "动画时长（秒）", dataIndex: "animationDuration", align: "center", width: 140 },
+  { title: "显示时长（秒）", dataIndex: "displayDuration", align: "center", width: 140 },
+  { title: "发放类型", dataIndex: "distributionType", align: "center", width: 160 },
+  { title: "推送类型", dataIndex: "pushType", align: "center", width: 120 },
+  { title: "推送会员", dataIndex: "pushUsersDisplay", width: 300, ellipsis: true },
   { title: "是否领取", dataIndex: "isReceived", align: "center", width: 100 },
   { title: "领取时间", dataIndex: "receivedTime", align: "center", width: 170 },
   { title: "是否发放", dataIndex: "isDistributed", align: "center", width: 100 },
-  { title: "过期时间", dataIndex: "expiryTime", align: "center", width: 170 },
+  { title: "过期时间", dataIndex: "expiryTime", align: "center", width: 180 },
   { title: "发放时间", dataIndex: "distributionTime", align: "center", width: 170 },
   { title: "创建时间", dataIndex: "createTime", align: "center", width: 170 },
-  { title: "操作", dataIndex: "action", align: "center", width: 260, fixed: "right" },
+  { title: "操作", dataIndex: "action", align: "center", width: 160, fixed: "right" },
 ];
 
 const rowSelection = computed(() => ({
+  columnWidth: 32,
   selectedRowKeys: ids.value,
   getCheckboxProps: (record) => ({ disabled: record.isReceived !== "1" }),
   onChange: (keys) => {
@@ -485,6 +576,9 @@ const rowSelection = computed(() => ({
 }));
 const taskProgressDisplay = computed(
   () => `${user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? "-"}`
+);
+const tableScrollY = computed(
+  () => `calc(100vh - ${searchExpanded.value ? 552 : 440}px)`,
 );
 const taskGroupCompleted = computed(() => {
   const limit = Number(user.memberOrderCountPerDay);
@@ -524,7 +618,7 @@ function defaultForm() {
     displayDuration: 0,
     distributionType: "2",
     expiryTime: null,
-    pushType: "0",
+    pushType: undefined,
     isDistributed: "1",
     isReceived: "1",
     toUsers: [],
@@ -632,7 +726,7 @@ async function getList() {
   }
   loading.value = true;
   try {
-    const response = await listBonus({ ...queryParams, userId: targetId });
+    const response = await listBonus(buildListParams(targetId));
     if (
       requestSequence !== listRequestSequence
       || !visible.value
@@ -668,8 +762,34 @@ function resetQuery() {
     minAmount: null,
     maxAmount: null,
     distributionType: undefined,
+    pushType: undefined,
+    isReceived: undefined,
+    isDistributed: undefined,
+    expiryTime: null,
+    createTimeRange: [],
   });
   getList();
+}
+
+function buildListParams(targetId) {
+  const [beginTime, endTime] = queryParams.createTimeRange || [];
+  return {
+    pageNum: queryParams.pageNum,
+    pageSize: queryParams.pageSize,
+    userId: targetId,
+    orderNum: queryParams.orderNum,
+    minAmount: queryParams.minAmount,
+    maxAmount: queryParams.maxAmount,
+    distributionType: queryParams.distributionType,
+    pushType: queryParams.pushType,
+    isReceived: queryParams.isReceived,
+    isDistributed: queryParams.isDistributed,
+    expiryTime: queryParams.expiryTime,
+    params: {
+      beginTime: beginTime ? `${beginTime} 00:00:00` : undefined,
+      endTime: endTime ? `${endTime} 23:59:59` : undefined,
+    },
+  };
 }
 
 function handleAntPageChange({ page, pageSize }) {
@@ -1018,6 +1138,12 @@ function isConfirmationCancel(error) {
 function pushUsersText(row) {
   if (row.pushType === "0") return "-";
   if (row.pushType === "1") return "全部会员";
+  const names = row.pushUsernames
+    ?? row.pushUserNames
+    ?? row.toUsernames
+    ?? row.toUserNames;
+  if (Array.isArray(names)) return names.join(", ") || "-";
+  if (names) return String(names);
   return normalizeUserIds(row.toUsers).join(", ") || "-";
 }
 
@@ -1039,12 +1165,63 @@ function pushText(value) {
   padding: 24px 0;
 }
 
+.bonus-drawer :deep(.ant-pro-search-card),
+.bonus-drawer :deep(.ant-pro-table-card) {
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .bonus-drawer :deep(.ant-pro-table-card .ant-card-body) {
   padding: 0;
 }
 
 .bonus-drawer :deep(.ant-pro-table-toolbar) {
   padding: 16px 0;
+}
+
+.bonus-drawer :deep(.ant-table-body) {
+  min-height: var(--bonus-table-min-height);
+}
+
+.bonus-drawer :deep(.ant-table-thead > tr > th),
+.bonus-drawer :deep(.ant-table-tbody > tr > td) {
+  padding: 12px 8px;
+  font-size: 15px;
+  line-height: 23.5714px;
+}
+
+.bonus-drawer :deep(.ant-pro-query-form .ant-form-item-label) {
+  flex: 0 0 80px;
+}
+
+.bonus-drawer :deep(.ant-pro-query-form .ant-form-item-control) {
+  min-width: 0;
+}
+
+.query-action-item {
+  width: 100%;
+}
+
+.query-action-item :deep(.ant-form-item-control-input-content) {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.query-expand {
+  padding-inline: 0;
+}
+
+.query-expand :deep(.anticon) {
+  transition: transform 0.2s ease;
+}
+
+.query-expand :deep(.anticon.expanded) {
+  transform: rotate(180deg);
+}
+
+:global(.bonus-settings-drawer .ant-drawer-title) {
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .bonus-drawer :deep(.ant-pro-table-title) {
@@ -1080,6 +1257,15 @@ function pushText(value) {
   font-family: inherit;
 }
 
+.push-type-text {
+  color: #1677ff;
+}
+
+.field-help {
+  margin-left: 8px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
 .full-width {
   width: 100%;
 }
@@ -1103,5 +1289,35 @@ function pushText(value) {
 
 :deep(.ant-pro-table .ant-btn-link) {
   padding-inline: 0;
+}
+
+:global(.bonus-editor-drawer .ant-drawer-title) {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+:global(.bonus-editor-drawer .ant-drawer-footer) {
+  padding: 8px 16px;
+}
+
+:global(.bonus-editor-drawer .ant-form-item) {
+  min-height: 88px;
+}
+
+:global(.bonus-editor-drawer .ant-input),
+:global(.bonus-editor-drawer .ant-input-number),
+:global(.bonus-editor-drawer .ant-picker),
+:global(.bonus-editor-drawer .ant-select-selector) {
+  min-height: 40px;
+}
+
+:global(.bonus-editor-drawer .ant-input),
+:global(.bonus-editor-drawer .ant-input-number-input) {
+  height: 38px;
+}
+
+:global(.bonus-editor-drawer .ant-select-single .ant-select-selector .ant-select-selection-item),
+:global(.bonus-editor-drawer .ant-select-single .ant-select-selector .ant-select-selection-placeholder) {
+  line-height: 38px;
 }
 </style>

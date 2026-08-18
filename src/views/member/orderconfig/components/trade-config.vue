@@ -4,10 +4,11 @@
     :model="localForm"
     :rules="localRules"
     layout="vertical"
+    size="large"
     class="config-form"
   >
-    <a-row :gutter="[20, 0]">
-      <a-col v-for="item in formItems" :key="item.prop" :span="item.span || 8">
+    <a-row :gutter="[24, 0]">
+      <a-col v-for="item in formItems" :key="item.prop" :span="item.span || 6">
         <a-form-item :label="item.label" :name="item.prop">
           <a-input-number
             v-if="item.type === 'number'"
@@ -16,10 +17,15 @@
             :max="item.max"
             :precision="item.precision"
             :placeholder="item.placeholder"
+            :addon-after="item.suffix"
             class="full-width"
           />
 
-          <a-radio-group v-else-if="item.type === 'radio'" v-model:value="localForm[item.prop]">
+          <a-radio-group
+            v-else-if="item.type === 'radio'"
+            v-model:value="localForm[item.prop]"
+            :disabled="item.lockWhenEnabled && Number(localForm[item.prop]) === 1"
+          >
             <a-radio v-for="option in item.options" :key="option.value" :value="option.value">
               {{ option.label }}
             </a-radio>
@@ -36,6 +42,15 @@
               {{ option.label }}
             </a-select-option>
           </a-select>
+
+          <a-select
+            v-else-if="item.type === 'serviceTimeRange'"
+            v-model:value="localForm[item.prop]"
+            :options="serviceTimeOptions"
+            mode="multiple"
+            placeholder="请选择服务时间范围"
+            class="full-width"
+          />
 
           <a-time-range-picker
             v-else-if="item.type === 'timeRange'"
@@ -54,7 +69,7 @@
               placeholder="0"
               @change="updateRange"
             />
-            <span>-</span>
+            <span>~</span>
             <a-input-number
               v-model:value="maxRange"
               :min="0"
@@ -85,14 +100,19 @@ const props = defineProps({
 const emit = defineEmits(["update:form", "submit", "cancel"])
 
 const yesNoOptions = [
-  { label: "是", value: "0" },
-  { label: "否", value: "1" }
+  { label: "否", value: "1" },
+  { label: "是", value: "0" }
 ]
 
 const enabledOptions = [
-  { label: "启用", value: "0" },
-  { label: "禁用", value: "1" }
+  { label: "禁用", value: "1" },
+  { label: "启用", value: "0" }
 ]
+
+const serviceTimeOptions = Array.from({ length: 24 }, (_, hour) => {
+  const value = `${String(hour).padStart(2, "0")}:00`
+  return { label: value, value }
+})
 
 const tradeTypeOptions = [
   { label: "赠送", value: "bonus" },
@@ -129,10 +149,10 @@ const formItems = [
   { prop: "minWithdrawalAmount", label: "会员最低提现金额", type: "number", precision: 2, placeholder: "请输入最低金额" },
   { prop: "maxWithdrawalAmount", label: "会员最高提现金额", type: "number", precision: 2, placeholder: "请输入最高金额" },
   { prop: "platformDailyMaxWithdrawal", label: "平台单日最高提现金额", type: "number", precision: 2, placeholder: "请输入单日最高金额" },
-  { prop: "withdrawalFeeRate", label: "提现手续费率 (%)", type: "number", max: 100, precision: 2, placeholder: "请输入费率" },
-  { prop: "parentRebatePercentage", label: "上级返佣百分比 (%)", type: "number", max: 100, precision: 2, placeholder: "请输入返佣百分比" },
-  { prop: "matchRangePercentage", label: "匹配范围 (%)", type: "range" },
-  { prop: "serviceTimeRange", label: "服务时间范围", type: "timeRange" },
+  { prop: "withdrawalFeeRate", label: "提现手续费率", type: "number", max: 100, precision: 2, suffix: "%", placeholder: "请输入费率" },
+  { prop: "parentRebatePercentage", label: "上级返佣百分比", type: "number", max: 100, precision: 2, suffix: "%", placeholder: "请输入返佣百分比" },
+  { prop: "matchRangePercentage", label: "匹配范围(%)", type: "range", required: false },
+  { prop: "serviceTimeRange", label: "服务时间范围", type: "serviceTimeRange" },
   { prop: "tradeTimeRange", label: "交易时间范围", type: "timeRange" },
   { prop: "prohibitWithdrawalAfterRecharge", label: "充值后禁止提现", type: "radio", options: yesNoOptions },
   { prop: "withdrawalRestrictLevelMinBalance", label: "提现是否限制等级最低余额", type: "radio", options: yesNoOptions },
@@ -140,26 +160,39 @@ const formItems = [
   { prop: "autoSubmitTask", label: "是否自动提交任务", type: "radio", options: yesNoOptions },
   { prop: "startTaskDelayMs", label: "开始任务延迟毫秒", type: "number", placeholder: "请输入延迟毫秒" },
   { prop: "submitTaskDelayMs", label: "提交任务延迟毫秒", type: "number", placeholder: "请输入延迟毫秒" },
-  { prop: "orderExpireSeconds", label: "订单过期时间（秒）", type: "number", placeholder: "0 表示不开启" },
+  { prop: "orderExpireSeconds", label: "订单过期时间（单位秒），为0则表示不开启", type: "number", placeholder: "请输入" },
   { prop: "lockExtraCommissionOnSubmit", label: "提交任务是否锁定额外佣金", type: "radio", options: yesNoOptions },
   { prop: "allowModifyWithdrawalAddress", label: "是否允许修改提现地址", type: "radio", options: yesNoOptions },
   { prop: "requiredTaskGroupsForWithdrawal", label: "提现需要完成的任务组数", type: "number", placeholder: "请输入任务组数" },
   { prop: "rechargeBonusTradeType", label: "充值赠送交易类型", type: "select", options: tradeTypeOptions, placeholder: "请选择交易类型" },
-  { prop: "includeContinuousOrderInTaskProgress", label: "任务进度是否计算连单明细", type: "radio", options: yesNoOptions },
-  { prop: "includePendingTasksInProgress", label: "任务进度是否包含待提交任务", type: "radio", options: yesNoOptions },
-  { prop: "maxPasswordFailuresForWithdrawal", label: "禁止客户提现所需交易密码失败次数 (0-不限制)", type: "number", placeholder: "请输入失败次数" }
+  { prop: "includeContinuousOrderInTaskProgress", label: "任务进度是否计算连单明细", type: "radio", options: yesNoOptions, lockWhenEnabled: true },
+  { prop: "includePendingTasksInProgress", label: "任务进度是否包含待提交任务", type: "radio", options: yesNoOptions, lockWhenEnabled: true },
+  { prop: "maxPasswordFailuresForWithdrawal", label: "禁止客户提现所需交易密码失败次数(0-不限制)", type: "number", required: false, placeholder: "请输入失败次数" },
+  { prop: "disabledChildCommissions", label: "余额为负数时禁止下级用户返佣", type: "radio", options: yesNoOptions },
+  { prop: "validAward", label: "任务是否验证彩金", type: "radio", options: yesNoOptions },
+  { prop: "validBalance", label: "开始任务是否验证可用余额", type: "radio", options: yesNoOptions },
+  { prop: "deductRegisterGiveAmountTaskGroup", label: "扣除注册赠送金额所在任务组数(0-不扣除)", type: "number", placeholder: "请输入" }
 ]
 
 const formFieldKeys = formItems.map(item => item.prop)
 const tradeFormRef = ref()
-const localForm = reactive({ ...props.form })
+const defaultTradeValues = {
+  disabledChildCommissions: "1",
+  validAward: "1",
+  validBalance: "1",
+  deductRegisterGiveAmountTaskGroup: 0
+}
+const localForm = reactive({ ...defaultTradeValues, ...props.form })
 const minRange = ref(0)
 const maxRange = ref(100)
 
 const localRules = reactive(
   formItems.reduce((rules, item) => {
+    if (item.required === false) {
+      return rules
+    }
     const trigger = item.type === "number" || item.type === "range" ? "blur" : "change"
-    const verb = item.type === "radio" || item.type === "select" || item.type === "timeRange" ? "请选择" : "请输入"
+    const verb = ["radio", "select", "timeRange", "serviceTimeRange"].includes(item.type) ? "请选择" : "请输入"
     rules[item.prop] = [{ required: true, message: `${verb}${item.label}`, trigger }]
     return rules
   }, {})
@@ -192,7 +225,9 @@ watch(
     try {
       const parsed = JSON.parse(newContent)
       const tradeFields = formFieldKeys.reduce((fields, key) => {
-        fields[key] = parsed[key]
+        if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+          fields[key] = parsed[key]
+        }
         return fields
       }, {})
       Object.assign(localForm, tradeFields)
