@@ -142,12 +142,32 @@ test("gift modal releases its pre-validation lock after validation fails", async
 
 test("bonus uses 85/65 percent drawers and preserves reference defaults", () => {
   assert.match(bonus, /title="彩金设置"[\s\S]{0,160}?width="85%"/);
+  assert.match(bonus, /root-class-name="bonus-settings-drawer"/);
   assert.match(bonus, /v-model:open="dialogOpen"[\s\S]*?width="65%"/);
   assert.match(bonus, /dialogTitle\.value = "创建"/);
   assert.doesNotMatch(bonus, /<a-modal\b/);
   assert.match(bonus, /displayDuration:\s*0/);
   assert.match(bonus, /distributionType:\s*"2"/);
-  assert.match(bonus, /pushType:\s*"0"/);
+  assert.match(bonus, /pushType:\s*undefined/);
+  assert.match(bonus, /const tableScrollY = computed\([\s\S]*?searchExpanded\.value \? 552 : 440/);
+  const bonusToolbar = bonus.slice(
+    bonus.indexOf('<template #toolbar>'),
+    bonus.indexOf('<template #bodyCell'),
+  );
+  assert.ok(bonusToolbar.indexOf("删除") < bonusToolbar.indexOf("创建"));
+  assert.match(bonus, /searchExpanded \? "收起" : "展开"/);
+  assert.match(bonus, /bonus-settings-drawer \.ant-drawer-title[\s\S]*?font-size:\s*16px;[\s\S]*?line-height:\s*24px;/);
+  assert.match(bonus, /\.ant-table-body\)\s*\{[\s\S]*?min-height:\s*var\(--bonus-table-min-height\)/);
+  for (const label of ["推送类型", "是否领取", "是否发放", "过期时间", "创建时间"]) {
+    assert.match(bonus, new RegExp(`v-if="searchExpanded"[\\s\\S]{0,260}?label="${label}"`));
+  }
+  assert.match(bonus, /:lg="\{ span: 6, offset: searchExpanded \? 18 : 0 \}"/);
+  assert.match(bonus, /<a-badge status="success" :text="distributionText/);
+  assert.match(bonus, /record\.isReceived === '0' \? '是' : '否'/);
+  assert.match(bonus, /record\.isDistributed === '0' \? '是' : '否'/);
+  assert.match(bonus, /root-class-name="bonus-editor-drawer"/);
+  assert.match(bonus, /<a-select[\s\S]*?v-model:value="form\.pushType"/);
+  assert.match(bonus, /bonus-editor-drawer \.ant-form-item\)\s*\{\s*min-height:\s*88px;/);
 });
 
 test("bonus member summary matches the reference table header title", () => {
