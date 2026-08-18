@@ -209,7 +209,10 @@ import {
 } from "@/api/member/level";
 import { CopyOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons-vue";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
-import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
+import {
+  adminTranslationLanguageFields,
+  createEmptyTranslations,
+} from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
 
@@ -229,16 +232,7 @@ const translationOpen = ref(false);
 const translationTitle = ref("");
 const translationForm = ref(createEmptyTranslations());
 const currentTranslationRow = ref(null);
-const levelTranslationLanguageFields = [
-  "enUs",
-  "esEs",
-  "frFr",
-  "zhCn",
-  "deDe",
-  "itIt",
-  "koKr",
-  "jaJp",
-];
+const levelTranslationLanguageFields = [...adminTranslationLanguageFields];
 const productMatchOptions = [
   { label: "启用", value: "1" },
   { label: "禁用", value: "0" },

@@ -73,7 +73,8 @@
       </template>
 
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'type'">
+        <template v-if="column.key === 'id'"><span class="withdrawal-type-id">{{ record.id }}</span></template>
+        <template v-else-if="column.key === 'type'">
           <a-badge :status="String(record.type) === '2' ? 'success' : 'processing'" :text="typeText(record.type)" />
         </template>
         <template v-else-if="column.key === 'privateKey'">
@@ -84,7 +85,7 @@
           <span v-else>-</span>
         </template>
         <template v-else-if="column.key === 'parameters'">
-          <a-typography-text v-if="parameterSummary(record)" :ellipsis="{ tooltip: parameterSummary(record) }" style="max-width: 370px">
+          <a-typography-text v-if="parameterSummary(record)" :ellipsis="{ tooltip: parameterSummary(record) }" class="withdrawal-parameters">
             {{ parameterSummary(record) }}
           </a-typography-text>
         </template>
@@ -105,6 +106,7 @@
       width="80%"
       size="large"
       :destroy-on-close="true"
+      :body-style="{ paddingBottom: '24px' }"
       root-class-name="withdrawal-type-drawer"
       @close="cancel"
     >
@@ -503,7 +505,6 @@ getList();
 :global(body:has(.site-management-alignment-page) .app-main) {
   padding-bottom: 0 !important;
 }
-
 .withdrawal-type-page {
   margin-top: 44px;
 }
@@ -538,6 +539,18 @@ getList();
   line-height: 1.5715;
 }
 
+.withdrawal-type-id {
+  color: #1677ff;
+}
+
+.withdrawal-parameters {
+  max-width: 370px;
+}
+
+.withdrawal-type-form :deep(.ant-input-number) {
+  width: 100%;
+}
+
 .withdrawal-type-form :deep(.ant-upload-list-picture-card .ant-upload-list-item-container),
 .withdrawal-type-form :deep(.ant-upload.ant-upload-select-picture-card) {
   width: 102px;
@@ -560,5 +573,19 @@ getList();
 
 .withdrawal-type-drawer-footer {
   text-align: right;
+}
+
+@media (max-width: 992px) {
+  .withdrawal-type-page {
+    margin-top: 12px;
+  }
+
+  .withdrawal-type-page :deep(.ant-table-body) {
+    height: auto;
+  }
+
+  :global(.withdrawal-type-drawer .ant-drawer-content-wrapper) {
+    width: 100% !important;
+  }
 }
 </style>

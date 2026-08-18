@@ -184,19 +184,13 @@ import {
   updateOrderconfig,
 } from "@/api/member/orderconfig";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
-import { createEmptyTranslations } from "@/views/member/components/translationLanguages";
+import {
+  adminTranslationLanguageFields,
+  createEmptyTranslations,
+} from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
-const websiteTranslationLanguageFields = [
-  "enUs",
-  "esEs",
-  "frFr",
-  "zhCn",
-  "deDe",
-  "itIt",
-  "koKr",
-  "jaJp",
-];
+const websiteTranslationLanguageFields = [...adminTranslationLanguageFields];
 
 const typeDefinitions = [
   ["website", "网站设置"],
