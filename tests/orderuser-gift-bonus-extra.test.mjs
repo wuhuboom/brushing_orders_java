@@ -149,7 +149,7 @@ test("bonus uses 85/65 percent drawers and preserves reference defaults", () => 
   assert.match(bonus, /displayDuration:\s*0/);
   assert.match(bonus, /distributionType:\s*"2"/);
   assert.match(bonus, /pushType:\s*undefined/);
-  assert.match(bonus, /const tableScrollY = computed\([\s\S]*?searchExpanded\.value \? 552 : 440/);
+  assert.match(bonus, /const tableScrollY = computed\([\s\S]*?max\(240px,[\s\S]*?searchExpanded\.value \? 496 : 440/);
   const bonusToolbar = bonus.slice(
     bonus.indexOf('<template #toolbar>'),
     bonus.indexOf('<template #bodyCell'),
@@ -158,10 +158,15 @@ test("bonus uses 85/65 percent drawers and preserves reference defaults", () => 
   assert.match(bonus, /searchExpanded \? "收起" : "展开"/);
   assert.match(bonus, /bonus-settings-drawer \.ant-drawer-title[\s\S]*?font-size:\s*16px;[\s\S]*?line-height:\s*24px;/);
   assert.match(bonus, /\.ant-table-body\)\s*\{[\s\S]*?min-height:\s*var\(--bonus-table-min-height\)/);
-  for (const label of ["推送类型", "是否领取", "是否发放", "过期时间", "创建时间"]) {
+  const bonusSearch = bonus.slice(bonus.indexOf('<template #search>'), bonus.indexOf('<template #title>'));
+  for (const label of ["推送类型", "是否领取", "是否发放"]) {
     assert.match(bonus, new RegExp(`v-if="searchExpanded"[\\s\\S]{0,260}?label="${label}"`));
   }
-  assert.match(bonus, /:lg="\{ span: 6, offset: searchExpanded \? 18 : 0 \}"/);
+  assert.match(bonusSearch, /label="推送类型"[\s\S]*?<a-select/);
+  assert.doesNotMatch(bonusSearch, /label="(?:过期时间|创建时间)"/);
+  assert.match(bonus, /:lg="\{ span: 6, offset: searchExpanded \? 6 : 0 \}"/);
+  const listParams = bonus.slice(bonus.indexOf("function buildListParams"), bonus.indexOf("function handleAntPageChange"));
+  assert.doesNotMatch(listParams, /expiryTime|createTimeRange|params:/);
   assert.match(bonus, /<a-badge status="success" :text="distributionText/);
   assert.match(bonus, /record\.isReceived === '0' \? '是' : '否'/);
   assert.match(bonus, /record\.isDistributed === '0' \? '是' : '否'/);

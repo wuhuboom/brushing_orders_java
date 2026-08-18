@@ -70,7 +70,12 @@
               </a-col>
               <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
                 <a-form-item label="推送类型">
-                  <a-input v-model:value="queryParams.pushType" placeholder="请输入" allow-clear />
+                  <a-select
+                    v-model:value="queryParams.pushType"
+                    :options="pushOptions"
+                    placeholder="请选择"
+                    allow-clear
+                  />
                 </a-form-item>
               </a-col>
               <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
@@ -93,30 +98,10 @@
                   />
                 </a-form-item>
               </a-col>
-              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
-                <a-form-item label="过期时间">
-                  <a-date-picker
-                    v-model:value="queryParams.expiryTime"
-                    value-format="YYYY-MM-DD"
-                    placeholder="请选择"
-                    class="full-width"
-                  />
-                </a-form-item>
-              </a-col>
-              <a-col v-if="searchExpanded" :xs="24" :sm="12" :lg="6">
-                <a-form-item label="创建时间">
-                  <a-range-picker
-                    v-model:value="queryParams.createTimeRange"
-                    value-format="YYYY-MM-DD"
-                    :placeholder="['请选择', '请选择']"
-                    class="full-width"
-                  />
-                </a-form-item>
-              </a-col>
               <a-col
                 :xs="24"
                 :sm="12"
-                :lg="{ span: 6, offset: searchExpanded ? 18 : 0 }"
+                :lg="{ span: 6, offset: searchExpanded ? 6 : 0 }"
                 class="ant-pro-query-actions"
               >
                 <a-form-item class="query-action-item">
@@ -514,8 +499,6 @@ const queryParams = reactive({
   pushType: undefined,
   isReceived: undefined,
   isDistributed: undefined,
-  expiryTime: null,
-  createTimeRange: [],
 });
 const form = reactive(defaultForm());
 const user = reactive({
@@ -578,7 +561,7 @@ const taskProgressDisplay = computed(
   () => `${user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? "-"}`
 );
 const tableScrollY = computed(
-  () => `calc(100vh - ${searchExpanded.value ? 552 : 440}px)`,
+  () => `max(240px, calc(100vh - ${searchExpanded.value ? 496 : 440}px))`,
 );
 const taskGroupCompleted = computed(() => {
   const limit = Number(user.memberOrderCountPerDay);
@@ -765,14 +748,11 @@ function resetQuery() {
     pushType: undefined,
     isReceived: undefined,
     isDistributed: undefined,
-    expiryTime: null,
-    createTimeRange: [],
   });
   getList();
 }
 
 function buildListParams(targetId) {
-  const [beginTime, endTime] = queryParams.createTimeRange || [];
   return {
     pageNum: queryParams.pageNum,
     pageSize: queryParams.pageSize,
@@ -784,11 +764,6 @@ function buildListParams(targetId) {
     pushType: queryParams.pushType,
     isReceived: queryParams.isReceived,
     isDistributed: queryParams.isDistributed,
-    expiryTime: queryParams.expiryTime,
-    params: {
-      beginTime: beginTime ? `${beginTime} 00:00:00` : undefined,
-      endTime: endTime ? `${endTime} 23:59:59` : undefined,
-    },
   };
 }
 

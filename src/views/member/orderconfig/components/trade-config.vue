@@ -8,7 +8,14 @@
     class="config-form"
   >
     <a-row :gutter="[24, 0]">
-      <a-col v-for="item in formItems" :key="item.prop" :span="item.span || 6">
+      <a-col
+        v-for="item in formItems"
+        :key="item.prop"
+        :xs="24"
+        :sm="12"
+        :lg="8"
+        :xl="item.span || 6"
+      >
         <a-form-item :label="item.label" :name="item.prop">
           <a-input-number
             v-if="item.type === 'number'"
@@ -24,7 +31,6 @@
           <a-radio-group
             v-else-if="item.type === 'radio'"
             v-model:value="localForm[item.prop]"
-            :disabled="item.lockWhenEnabled && Number(localForm[item.prop]) === 1"
           >
             <a-radio v-for="option in item.options" :key="option.value" :value="option.value">
               {{ option.label }}
@@ -43,15 +49,6 @@
             </a-select-option>
           </a-select>
 
-          <a-select
-            v-else-if="item.type === 'serviceTimeRange'"
-            v-model:value="localForm[item.prop]"
-            :options="serviceTimeOptions"
-            mode="multiple"
-            placeholder="请选择服务时间范围"
-            class="full-width"
-          />
-
           <a-time-range-picker
             v-else-if="item.type === 'timeRange'"
             v-model:value="localForm[item.prop]"
@@ -63,16 +60,16 @@
           <div v-else-if="item.type === 'range'" class="range-input">
             <a-input-number
               v-model:value="minRange"
-              :min="0"
+              :min="1"
               :max="100"
               :precision="0"
-              placeholder="0"
+              placeholder="1"
               @change="updateRange"
             />
             <span>~</span>
             <a-input-number
               v-model:value="maxRange"
-              :min="0"
+              :min="1"
               :max="100"
               :precision="0"
               placeholder="100"
@@ -108,11 +105,6 @@ const enabledOptions = [
   { label: "禁用", value: "1" },
   { label: "启用", value: "0" }
 ]
-
-const serviceTimeOptions = Array.from({ length: 24 }, (_, hour) => {
-  const value = `${String(hour).padStart(2, "0")}:00`
-  return { label: value, value }
-})
 
 const tradeTypeOptions = [
   { label: "赠送", value: "bonus" },
@@ -151,8 +143,8 @@ const formItems = [
   { prop: "platformDailyMaxWithdrawal", label: "平台单日最高提现金额", type: "number", precision: 2, placeholder: "请输入单日最高金额" },
   { prop: "withdrawalFeeRate", label: "提现手续费率", type: "number", max: 100, precision: 2, suffix: "%", placeholder: "请输入费率" },
   { prop: "parentRebatePercentage", label: "上级返佣百分比", type: "number", max: 100, precision: 2, suffix: "%", placeholder: "请输入返佣百分比" },
-  { prop: "matchRangePercentage", label: "匹配范围(%)", type: "range", required: false },
-  { prop: "serviceTimeRange", label: "服务时间范围", type: "serviceTimeRange" },
+  { prop: "matchRangePercentage", label: "匹配范围(%)", type: "range" },
+  { prop: "serviceTimeRange", label: "服务时间范围", type: "timeRange" },
   { prop: "tradeTimeRange", label: "交易时间范围", type: "timeRange" },
   { prop: "prohibitWithdrawalAfterRecharge", label: "充值后禁止提现", type: "radio", options: yesNoOptions },
   { prop: "withdrawalRestrictLevelMinBalance", label: "提现是否限制等级最低余额", type: "radio", options: yesNoOptions },
@@ -165,25 +157,15 @@ const formItems = [
   { prop: "allowModifyWithdrawalAddress", label: "是否允许修改提现地址", type: "radio", options: yesNoOptions },
   { prop: "requiredTaskGroupsForWithdrawal", label: "提现需要完成的任务组数", type: "number", placeholder: "请输入任务组数" },
   { prop: "rechargeBonusTradeType", label: "充值赠送交易类型", type: "select", options: tradeTypeOptions, placeholder: "请选择交易类型" },
-  { prop: "includeContinuousOrderInTaskProgress", label: "任务进度是否计算连单明细", type: "radio", options: yesNoOptions, lockWhenEnabled: true },
-  { prop: "includePendingTasksInProgress", label: "任务进度是否包含待提交任务", type: "radio", options: yesNoOptions, lockWhenEnabled: true },
-  { prop: "maxPasswordFailuresForWithdrawal", label: "禁止客户提现所需交易密码失败次数(0-不限制)", type: "number", required: false, placeholder: "请输入失败次数" },
-  { prop: "disabledChildCommissions", label: "余额为负数时禁止下级用户返佣", type: "radio", options: yesNoOptions },
-  { prop: "validAward", label: "任务是否验证彩金", type: "radio", options: yesNoOptions },
-  { prop: "validBalance", label: "开始任务是否验证可用余额", type: "radio", options: yesNoOptions },
-  { prop: "deductRegisterGiveAmountTaskGroup", label: "扣除注册赠送金额所在任务组数(0-不扣除)", type: "number", placeholder: "请输入" }
+  { prop: "includeContinuousOrderInTaskProgress", label: "任务进度是否计算连单明细", type: "radio", options: yesNoOptions },
+  { prop: "includePendingTasksInProgress", label: "任务进度是否包含待提交任务", type: "radio", options: yesNoOptions },
+  { prop: "maxPasswordFailuresForWithdrawal", label: "禁止客户提现所需交易密码失败次数(0-不限制)", type: "number", required: false, placeholder: "请输入失败次数" }
 ]
 
 const formFieldKeys = formItems.map(item => item.prop)
 const tradeFormRef = ref()
-const defaultTradeValues = {
-  disabledChildCommissions: "1",
-  validAward: "1",
-  validBalance: "1",
-  deductRegisterGiveAmountTaskGroup: 0
-}
-const localForm = reactive({ ...defaultTradeValues, ...props.form })
-const minRange = ref(0)
+const localForm = reactive({ ...props.form })
+const minRange = ref(1)
 const maxRange = ref(100)
 
 const localRules = reactive(
@@ -192,7 +174,7 @@ const localRules = reactive(
       return rules
     }
     const trigger = item.type === "number" || item.type === "range" ? "blur" : "change"
-    const verb = ["radio", "select", "timeRange", "serviceTimeRange"].includes(item.type) ? "请选择" : "请输入"
+    const verb = ["radio", "select", "timeRange"].includes(item.type) ? "请选择" : "请输入"
     rules[item.prop] = [{ required: true, message: `${verb}${item.label}`, trigger }]
     return rules
   }, {})
@@ -205,9 +187,9 @@ const localRules = reactive(
 function updateRange() {
   const min = Number(minRange.value)
   const max = Number(maxRange.value)
-  if (Number.isNaN(min) || Number.isNaN(max) || min < 0 || max > 100 || min >= max) {
+  if (Number.isNaN(min) || Number.isNaN(max) || min <= 0 || max > 100 || min > max) {
     localForm.matchRangePercentage = ""
-    message.warning("请输入有效的范围，例如 0-100，且最小值小于最大值")
+    message.warning("请输入 1-100 的有效范围，且最小值不大于最大值")
     return
   }
   localForm.matchRangePercentage = `${min}-${max}`
@@ -233,7 +215,7 @@ watch(
       Object.assign(localForm, tradeFields)
       if (localForm.matchRangePercentage) {
         const [min, max] = String(localForm.matchRangePercentage).split("-")
-        minRange.value = Number(min) || 0
+        minRange.value = Number(min) || 1
         maxRange.value = Number(max) || 100
       }
     } catch (e) {

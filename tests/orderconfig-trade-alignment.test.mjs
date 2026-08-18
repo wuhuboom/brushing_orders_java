@@ -7,17 +7,18 @@ const trade = readFileSync(
   "utf8"
 )
 
-test("trade settings mirror the reference four-column field layout", () => {
+test("trade settings keep the reference styling with responsive columns", () => {
   assert.match(trade, /:gutter="\[24, 0\]"/)
-  assert.match(trade, /:span="item\.span \|\| 6"/)
+  assert.match(trade, /:xs="24"[\s\S]*?:sm="12"[\s\S]*?:lg="8"[\s\S]*?:xl="item\.span \|\| 6"/)
   assert.match(trade, /size="large"/)
   assert.match(trade, /label: "提现手续费率"[^\n]*suffix: "%"/)
   assert.match(trade, /label: "上级返佣百分比"[^\n]*suffix: "%"/)
   assert.match(trade, /<span>~<\/span>/)
-  assert.match(trade, /mode="multiple"[\s\S]*?placeholder="请选择服务时间范围"/)
+  assert.match(trade, /prop: "serviceTimeRange"[^\n]*type: "timeRange"/)
+  assert.doesNotMatch(trade, /serviceTimeOptions|type === 'serviceTimeRange'|mode="multiple"/)
 })
 
-test("trade settings keep the reference order and complete field set", () => {
+test("trade settings keep the supported field order and backend contracts", () => {
   const orderedLabels = [
     "注册赠送金额",
     "交易最低余额",
@@ -45,10 +46,6 @@ test("trade settings keep the reference order and complete field set", () => {
     "任务进度是否计算连单明细",
     "任务进度是否包含待提交任务",
     "禁止客户提现所需交易密码失败次数(0-不限制)",
-    "余额为负数时禁止下级用户返佣",
-    "任务是否验证彩金",
-    "开始任务是否验证可用余额",
-    "扣除注册赠送金额所在任务组数(0-不扣除)",
   ]
 
   let previousIndex = -1
@@ -60,6 +57,10 @@ test("trade settings keep the reference order and complete field set", () => {
 
   assert.match(trade, /\{ label: "否", value: "1" \}[\s\S]*?\{ label: "是", value: "0" \}/)
   assert.match(trade, /\{ label: "禁用", value: "1" \}[\s\S]*?\{ label: "启用", value: "0" \}/)
-  assert.match(trade, /disabledChildCommissions: "1"[\s\S]*?validAward: "1"[\s\S]*?validBalance: "1"[\s\S]*?deductRegisterGiveAmountTaskGroup: 0/)
+  assert.doesNotMatch(trade, /disabledChildCommissions|validAward|validBalance|deductRegisterGiveAmountTaskGroup/)
+  assert.doesNotMatch(trade, /lockWhenEnabled/)
+  assert.match(trade, /prop: "matchRangePercentage"[^\n]*type: "range"[^\n]*\}/)
+  assert.doesNotMatch(trade, /prop: "matchRangePercentage"[^\n]*required: false/)
+  assert.match(trade, /minRange = ref\(1\)[\s\S]*?min <= 0[\s\S]*?min > max/)
   assert.match(trade, /Object\.prototype\.hasOwnProperty\.call\(parsed, key\)/)
 })
