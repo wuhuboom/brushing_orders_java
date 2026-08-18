@@ -17,6 +17,14 @@ export function getOrderuser(id) {
   });
 }
 
+// 附属操作抽屉使用脱敏后的会员概览，避免请求完整身份/合同等敏感详情
+export function getOrderuserOperationSummary(id) {
+  return request({
+    url: "/member/orderuser/operationSummary/" + id,
+    method: "get",
+  });
+}
+
 // 新增订单用户
 export function addOrderuser(data) {
   return request({

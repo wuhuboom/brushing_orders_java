@@ -1,21 +1,23 @@
 <template>
-  <div class="app-container ant-pro-member-page">
+  <div class="app-container ant-pro-member-page transaction-alignment-page">
     <ant-pro-table
+      :key="tableResetKey"
       title="交易流水列表"
       :columns="flowColumns"
       :data-source="flowList"
       :loading="loading"
       row-key="id"
       :row-selection="rowSelection"
-      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
-      :scroll="{ x: 1680 }"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total, size: 'small', showSizeChanger: true }"
+      :scroll="{ x: 1702, y: 'calc(100vh - 440px)' }"
       @page-change="handleAntPageChange"
-      @refresh="getList"
+      @change="handleTableChange"
+      @refresh="handleRefresh"
     >
       <template #search>
         <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
-          <a-row :gutter="[24, 16]" align="middle">
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+          <a-row :gutter="[24, 24]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="流水编号">
                 <a-input
                   v-model:value="queryParams.serialCode"
@@ -25,7 +27,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="用户名">
                 <a-input
                   v-model:value="queryParams.username"
@@ -35,7 +37,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="交易类型">
                 <a-select
                   v-model:value="queryParams.transactionType"
@@ -43,36 +45,27 @@
                   placeholder="请选择交易类型"
                 >
                   <a-select-option
-                    v-for="dict in transaction_type"
+                    v-for="dict in liveTransactionTypeOptions"
                     :key="dict.value"
                     :value="dict.value"
                   >{{ dict.label }}</a-select-option>
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col flex="auto" class="ant-pro-query-actions">
-              <a-space>
-                <a-button @click="resetQuery">重 置</a-button>
-                <a-button type="primary" @click="handleQuery">查 询</a-button>
-                <a-button type="link" @click="advancedSearchVisible = !advancedSearchVisible">
-                  {{ advancedSearchVisible ? "收起" : "展开" }}
-                </a-button>
-              </a-space>
-            </a-col>
-          </a-row>
-
-          <a-row v-if="advancedSearchVisible" :gutter="[24, 16]" class="advanced-query-row">
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="金额">
                 <a-space-compact block>
                   <a-input-number
                     v-model:value="queryParams.amountMin"
+                    string-mode
                     placeholder="最小金额"
                     :precision="2"
                     class="amount-range-input"
                   />
+                  <a-input disabled value="~" class="amount-range-separator" />
                   <a-input-number
                     v-model:value="queryParams.amountMax"
+                    string-mode
                     placeholder="最大金额"
                     :precision="2"
                     class="amount-range-input"
@@ -80,18 +73,18 @@
                 </a-space-compact>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="是否隐藏">
                 <a-select v-model:value="queryParams.isHidden" allow-clear placeholder="请选择">
                   <a-select-option
-                    v-for="dict in user_yes_no"
+                    v-for="dict in liveYesNoOptions"
                     :key="dict.value"
                     :value="dict.value"
                   >{{ dict.label }}</a-select-option>
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="交易编号">
                 <a-input
                   v-model:value="queryParams.transactionCode"
@@ -101,7 +94,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="创建时间">
                 <a-range-picker
                   v-model:value="dateRange"
@@ -110,6 +103,15 @@
                   class="full-width"
                 />
               </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button type="link" @click="advancedSearchVisible = !advancedSearchVisible">
+                  {{ advancedSearchVisible ? "收起" : "展开" }}
+                </a-button>
+              </a-space>
             </a-col>
           </a-row>
         </a-form>
@@ -123,7 +125,7 @@
           :disabled="multiple"
           @confirm="handleHidden('1')"
         >
-          <a-button :disabled="multiple" v-hasPermi="['member:flow:edit']">
+          <a-button type="primary" :disabled="multiple" v-hasPermi="['member:flow:edit']">
             <EyeOutlined />显示
           </a-button>
         </a-popconfirm>
@@ -134,7 +136,7 @@
           :disabled="multiple"
           @confirm="handleHidden('0')"
         >
-          <a-button :disabled="multiple" v-hasPermi="['member:flow:edit']">
+          <a-button type="primary" :disabled="multiple" v-hasPermi="['member:flow:edit']">
             <EyeInvisibleOutlined />隐藏
           </a-button>
         </a-popconfirm>
@@ -148,12 +150,19 @@
               v-if="record.transactionCode"
               type="link"
               size="small"
+              aria-label="复制交易编号"
               @click="copyTransactionCode(record.transactionCode)"
-            >复制</a-button>
+            ><CopyOutlined /></a-button>
           </a-space>
         </template>
-        <template v-else-if="column.dict">
-          {{ dictText(column.dict === "transaction" ? transaction_type : user_yes_no, record[column.dataIndex]) }}
+        <template v-else-if="column.key === 'transactionType'">
+          <a-badge status="processing" :text="transactionTypeText(record.transactionType)" />
+        </template>
+        <template v-else-if="column.key === 'isHidden'">
+          <a-badge
+            :status="hiddenBadge(record.isHidden).status"
+            :text="hiddenBadge(record.isHidden).text"
+          />
         </template>
         <template v-else-if="column.key === 'createdTime'">
           {{ parseTime(record.createdTime) }}
@@ -164,7 +173,7 @@
 </template>
 
 <script setup name="Flow">
-import { EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons-vue";
+import { CopyOutlined, EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons-vue";
 import { listFlow, updateFlow } from "@/api/member/flow";
 
 const { proxy } = getCurrentInstance();
@@ -178,8 +187,38 @@ const loading = ref(true);
 const ids = ref([]);
 const multiple = ref(true);
 const total = ref(0);
+let listRequestId = 0;
+const tableResetKey = ref(0);
 const advancedSearchVisible = ref(false);
 const dateRange = ref([]);
+
+const liveYesNoOptions = computed(() => [
+  { value: "1", label: "否" },
+  { value: "0", label: "是" },
+].map((expected) => {
+  const option = (user_yes_no.value || []).find(
+    (item) => String(item?.value) === expected.value
+  );
+  return option ? { ...option, label: expected.label } : expected;
+}));
+
+const liveTransactionTypeOptions = computed(() => [
+  { value: "zs", label: "赠送" },
+  { value: "kk", label: "扣款" },
+  { value: "cz", label: "充值" },
+  { value: "txz", label: "提现中" },
+  { value: "txjd", label: "提现解冻" },
+  { value: "tx", label: "提现" },
+  { value: "rw", label: "任务" },
+  { value: "bjfh", label: "本金返回" },
+  { value: "fy", label: "返佣" },
+  { value: "xjfy", label: "下级返佣" },
+].map((expected) => {
+  const option = (transaction_type.value || []).find(
+    (item) => String(item?.value) === expected.value
+  );
+  return option ? { ...option, label: expected.label } : expected;
+}));
 
 const queryParams = reactive({
   pageNum: 1,
@@ -191,28 +230,61 @@ const queryParams = reactive({
   amountMax: undefined,
   isHidden: undefined,
   transactionCode: undefined,
+  orderByColumn: "gtf.serial_code",
+  isAsc: "desc",
 });
 
 const flowColumns = [
-  { title: "流水编号", dataIndex: "serialCode", key: "serialCode", width: 190, fixed: "left" },
+  { title: "流水编号", dataIndex: "serialCode", key: "serialCode", width: 200, fixed: "left", sorter: true, defaultSortOrder: "descend" },
   { title: "用户名", dataIndex: "username", key: "username", width: 140 },
-  { title: "交易类型", dataIndex: "transactionType", key: "transactionType", dict: "transaction", width: 140 },
-  { title: "交易前余额", dataIndex: "balanceBefore", key: "balanceBefore", width: 140 },
-  { title: "金额", dataIndex: "transactionAmount", key: "transactionAmount", width: 140 },
-  { title: "交易后余额", dataIndex: "balanceAfter", key: "balanceAfter", width: 140 },
-  { title: "是否隐藏", dataIndex: "isHidden", key: "isHidden", dict: "yesNo", width: 120 },
-  { title: "交易编号", dataIndex: "transactionCode", key: "transactionCode", width: 270 },
-  { title: "创建时间", dataIndex: "createdTime", key: "createdTime", width: 180 },
-  { title: "备注", dataIndex: "remark", key: "remark", width: 220 },
+  { title: "交易类型", dataIndex: "transactionType", key: "transactionType", width: 140, sorter: true },
+  { title: "交易前余额", dataIndex: "balanceBefore", key: "balanceBefore", width: 160 },
+  { title: "金额", dataIndex: "transactionAmount", key: "transactionAmount", width: 160, sorter: true },
+  { title: "交易后余额", dataIndex: "balanceAfter", key: "balanceAfter", width: 160 },
+  { title: "是否隐藏", dataIndex: "isHidden", key: "isHidden", width: 100, sorter: true },
+  { title: "交易编号", dataIndex: "transactionCode", key: "transactionCode", width: 240 },
+  { title: "创建时间", dataIndex: "createdTime", key: "createdTime", width: 170, sorter: true },
+  { title: "备注", dataIndex: "remark", key: "remark", width: 200, ellipsis: true },
 ];
 
 const rowSelection = computed(() => ({
+  columnWidth: 32,
   selectedRowKeys: ids.value,
   onChange: (_keys, rows) => handleSelectionChange(rows),
 }));
 
 function dictText(options, value) {
-  return proxy.selectDictLabel(options, value) || value || "-";
+  const values = Array.isArray(options) ? options : options?.value;
+  return proxy.selectDictLabel((values || []).filter(Boolean), value) || value || "-";
+}
+
+const hiddenBadgeMap = Object.freeze({
+  "0": Object.freeze({ status: "error", text: "是" }),
+  "1": Object.freeze({ status: "error", text: "否" }),
+});
+
+const sortColumnMap = Object.freeze({
+  serialCode: "gtf.serial_code",
+  transactionType: "gtf.transaction_type",
+  transactionAmount: "gtf.transaction_amount",
+  isHidden: "gtf.is_hidden",
+  createdTime: "gtf.created_time",
+});
+
+function hiddenBadge(value) {
+  return hiddenBadgeMap[String(value)] || { status: "default", text: dictText(user_yes_no, value) };
+}
+
+function transactionTypeText(value) {
+  const option = liveTransactionTypeOptions.value.find(
+    (item) => String(item.value) === String(value)
+  );
+  return option?.label || dictText(transaction_type, value);
+}
+
+function clearSelection() {
+  ids.value = [];
+  multiple.value = true;
 }
 
 function requestParams() {
@@ -232,24 +304,28 @@ function requestParams() {
 }
 
 function getList() {
+  const requestId = ++listRequestId;
   loading.value = true;
-  listFlow(requestParams())
+  return listFlow(requestParams())
     .then((response) => {
-      flowList.value = response.rows;
-      total.value = response.total;
+      if (requestId !== listRequestId) return;
+      flowList.value = response.rows || [];
+      total.value = response.total || 0;
     })
     .finally(() => {
-      loading.value = false;
+      if (requestId === listRequestId) loading.value = false;
     });
 }
 
 function handleAntPageChange({ page, pageSize }) {
+  clearSelection();
   queryParams.pageNum = page;
   queryParams.pageSize = pageSize;
   getList();
 }
 
 function handleQuery() {
+  clearSelection();
   queryParams.pageNum = 1;
   getList();
 }
@@ -264,8 +340,30 @@ function resetQuery() {
     amountMax: undefined,
     isHidden: undefined,
     transactionCode: undefined,
+    orderByColumn: "gtf.serial_code",
+    isAsc: "desc",
   });
   dateRange.value = [];
+  clearSelection();
+  tableResetKey.value += 1;
+  getList();
+}
+
+function handleRefresh() {
+  clearSelection();
+  getList();
+}
+
+function handleTableChange(_pagination, _filters, sorter) {
+  const columnKey = sorter?.columnKey;
+  queryParams.orderByColumn = sorter?.order ? sortColumnMap[columnKey] || null : null;
+  queryParams.isAsc = sorter?.order === "ascend"
+    ? "asc"
+    : sorter?.order === "descend"
+      ? "desc"
+      : null;
+  clearSelection();
+  queryParams.pageNum = 1;
   getList();
 }
 
@@ -275,7 +373,9 @@ function handleSelectionChange(selection) {
 }
 
 function handleHidden(isHidden) {
-  Promise.all(ids.value.map((id) => updateFlow({ id, isHidden }))).then(() => {
+  const selectedIds = [...ids.value];
+  Promise.all(selectedIds.map((id) => updateFlow({ id, isHidden }))).then(() => {
+    clearSelection();
     proxy.$modal.msgSuccess("操作成功");
     getList();
   });
@@ -294,11 +394,71 @@ getList();
 </script>
 
 <style scoped>
+:global(body:has(.transaction-alignment-page)::-webkit-scrollbar) {
+  width: 15px;
+}
+
+:global(body:has(.transaction-alignment-page) .copyright) {
+  display: none;
+}
+
+:global(body:has(.transaction-alignment-page) .app-main) {
+  padding-bottom: 0 !important;
+}
+
+.transaction-alignment-page {
+  padding-top: 28px;
+  margin-bottom: 0;
+}
+
+.transaction-alignment-page :deep(.ant-pro-query-form .ant-form-item-label) {
+  flex: 0 0 80px;
+  max-width: 80px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-query-form .ant-picker) {
+  height: 32px;
+  padding-block: 4px;
+}
+
 .full-width {
   width: 100%;
 }
 
 .amount-range-input {
-  width: 50%;
+  width: calc(50% - 18px);
+}
+
+.amount-range-separator {
+  width: 36px;
+  padding-inline: 8px;
+  text-align: center;
+}
+
+.transaction-alignment-page :deep(.ant-pro-table .ant-table-thead > tr > th) {
+  box-sizing: border-box;
+  padding: 12px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-table .ant-table-column-sorters) {
+  height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-table .ant-table-tbody > tr > td) {
+  padding: 12px 8px;
+  font-size: 15px;
+  line-height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-badge-status-text) {
+  font-size: 15px;
+  line-height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-pagination) {
+  padding-top: 16px;
 }
 </style>

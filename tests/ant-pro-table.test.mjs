@@ -56,6 +56,9 @@ test('table toolbar exposes legacy density choices and a single refresh event', 
   assert.match(source, /key="middle">中等/)
   assert.match(source, /key="small">紧凑/)
   assert.match(source, /:size="tableSize"/)
+  assert.match(source, /:size="pagination\.size"/)
+  assert.match(source, /configuredSelectionWidth/)
+  assert.match(source, /configuredSelectionWidth : 48/)
   const reloadBody = source.match(/function reloadTable\(\) \{[\s\S]*?\n\}/)?.[0] || ''
   assert.equal((reloadBody.match(/emit\("refresh"\)/g) || []).length, 1)
   assert.doesNotMatch(reloadBody, /emit\("reload"\)/)

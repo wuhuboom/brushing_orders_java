@@ -6,7 +6,7 @@
 
     <a-card class="ant-pro-table-card" :bordered="false">
       <div class="ant-pro-table-toolbar">
-        <div class="ant-pro-table-title">{{ title }}</div>
+        <div class="ant-pro-table-title"><slot name="title">{{ title }}</slot></div>
         <div class="ant-pro-table-actions">
           <slot name="toolbar" />
           <a-space :size="8" class="ant-pro-table-tool-icons">
@@ -123,11 +123,14 @@
         :row-key="rowKey"
         :row-selection="rowSelection"
         :scroll="effectiveScroll"
-        :locale="{ emptyText: '暂无数据' }"
+        :locale="$slots.emptyText ? undefined : { emptyText: '暂无数据' }"
         @change="handleTableChange"
       >
         <template #bodyCell="slotProps">
           <slot name="bodyCell" v-bind="slotProps" />
+        </template>
+        <template v-if="$slots.emptyText" #emptyText>
+          <slot name="emptyText" />
         </template>
       </a-table>
 
@@ -139,6 +142,7 @@
           :show-size-changer="pagination.showSizeChanger ?? pagination.total > 50"
           :show-quick-jumper="pagination.showQuickJumper ?? pagination.total > pagination.pageSize"
           :page-size-options="pagination.pageSizeOptions"
+          :size="pagination.size"
           :show-total="(total, range) => `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`"
           @change="handlePageChange"
           @showSizeChange="handlePageChange"
@@ -231,10 +235,14 @@ const selectedRowCount = computed(() => {
 const effectiveScroll = computed(() => {
   if (!props.scroll) return undefined;
   if (typeof props.scroll.x !== "number") return props.scroll;
+  const configuredSelectionWidth = Number(props.rowSelection?.columnWidth);
+  const selectionWidth = props.rowSelection
+    ? (Number.isFinite(configuredSelectionWidth) && configuredSelectionWidth > 0 ? configuredSelectionWidth : 48)
+    : 0;
   const visibleWidth = visibleColumns.value.reduce((total, column) => {
     const width = Number(column.width);
     return total + (Number.isFinite(width) ? width : 120);
-  }, props.rowSelection ? 48 : 0);
+  }, selectionWidth);
   return { ...props.scroll, x: Math.max(visibleWidth, 600) };
 });
 

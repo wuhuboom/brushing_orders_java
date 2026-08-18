@@ -1,13 +1,11 @@
 <template>
-  <a-modal
+  <a-drawer
     v-model:open="visible"
     :title="title"
-    width="900px"
-    ok-text="确 定"
-    cancel-text="取 消"
-    destroy-on-close
-    @ok="handleSubmit"
-    @cancel="handleCancel"
+    width="70%"
+    :destroy-on-close="true"
+    root-class-name="notice-translation-drawer"
+    @close="handleCancel"
   >
     <a-tabs v-model:activeKey="activeLanguage" class="notice-translation-tabs">
       <a-tab-pane
@@ -15,20 +13,28 @@
         :key="language.field"
         :tab="`${language.flag} ${language.label}`"
       >
-        <a-form layout="vertical">
+        <a-form layout="vertical" size="large" class="notice-translation-form">
           <a-form-item label="标题">
-            <a-input v-model:value="localModels[language.field].title" />
+            <a-textarea v-model:value="localModels[language.field].title" :rows="3" />
           </a-form-item>
           <a-form-item label="内容">
             <editor
               v-model="localModels[language.field].content"
-              :min-height="300"
+              :min-height="551"
             />
           </a-form-item>
         </a-form>
       </a-tab-pane>
     </a-tabs>
-  </a-modal>
+    <template #footer>
+      <div class="notice-translation-footer">
+        <a-space>
+          <a-button size="large" @click="handleCancel">取 消</a-button>
+          <a-button type="primary" size="large" @click="handleSubmit">确 定</a-button>
+        </a-space>
+      </div>
+    </template>
+  </a-drawer>
 </template>
 
 <script setup>
@@ -136,6 +142,38 @@ hydrate(props.translations)
 
 <style scoped>
 .notice-translation-tabs {
-  min-height: 470px;
+  min-height: 640px;
+}
+
+.notice-translation-tabs :deep(.ant-tabs-nav) {
+  margin-bottom: 24px;
+}
+
+.notice-translation-form :deep(.ant-form-item) {
+  margin-bottom: 24px;
+}
+
+.notice-translation-form :deep(textarea.ant-input) {
+  padding: 7px 11px;
+  font-size: 16px;
+  line-height: 1.5715;
+}
+
+:global(.notice-translation-drawer .ant-drawer-body) {
+  padding: 24px;
+  overflow: auto;
+}
+
+:global(.notice-translation-drawer .ant-drawer-header) {
+  height: 57px;
+  min-height: 57px;
+}
+
+:global(.notice-translation-drawer .ant-drawer-footer) {
+  padding: 8px 16px;
+}
+
+.notice-translation-footer {
+  text-align: right;
 }
 </style>

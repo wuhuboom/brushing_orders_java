@@ -1,9 +1,10 @@
 <template>
   <a-drawer
     v-model:open="visible"
-    title="用户订单明细"
-    width="90%"
+    title="查看订单明细"
+    width="85%"
     :destroy-on-close="false"
+    @close="handleClose"
   >
     <div class="drawer-table-wrap ant-pro-member-page">
       <ant-pro-table
@@ -105,6 +106,7 @@ const orderinfoList = ref([]);
 const loading = ref(false);
 const total = ref(0);
 const showSearch = ref(true);
+let listRequestToken = 0;
 
 const orderinfoColumns = [
   { title: "明细编号", dataIndex: "orderNumber", align: "center", width: 180 },
@@ -137,27 +139,44 @@ const data = reactive({
 const { queryParams } = toRefs(data);
 
 function getList() {
-  if (!props.userId) {
+  const userId = props.userId;
+  if (!visible.value || userId === null || userId === undefined || userId === "") {
+    listRequestToken += 1;
     orderinfoList.value = [];
     total.value = 0;
+    loading.value = false;
     return;
   }
+  const requestToken = ++listRequestToken;
   loading.value = true;
   const params = {
     ...queryParams.value,
-    userId: props.userId,
+    userId,
   };
   listOrderinfo(params)
     .then((res) => {
-      const data = res.rows || res.data || res;
-      orderinfoList.value = data.rows || data || [];
-      total.value = data.total ?? (Array.isArray(data) ? data.length : 0);
+      if (
+        requestToken !== listRequestToken
+        || !visible.value
+        || String(props.userId) !== String(userId)
+      ) return;
+      const rows = Array.isArray(res.rows)
+        ? res.rows
+        : Array.isArray(res.data?.rows)
+          ? res.data.rows
+          : Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res)
+              ? res
+              : [];
+      orderinfoList.value = rows;
+      total.value = res.total ?? res.data?.total ?? rows.length;
     })
     .catch((err) => {
       console.error(err);
     })
     .finally(() => {
-      loading.value = false;
+      if (requestToken === listRequestToken) loading.value = false;
     });
 }
 
@@ -173,6 +192,25 @@ function resetQuery() {
   handleQuery();
 }
 
+function reset(userId = null) {
+  listRequestToken += 1;
+  loading.value = false;
+  orderinfoList.value = [];
+  total.value = 0;
+  Object.assign(queryParams.value, {
+    pageNum: 1,
+    pageSize: 10,
+    orderNumber: null,
+    userId,
+    type: null,
+  });
+}
+
+function handleClose() {
+  visible.value = false;
+  reset();
+}
+
 function handleAntPageChange({ page, pageSize }) {
   queryParams.value.pageNum = page;
   queryParams.value.pageSize = pageSize;
@@ -183,22 +221,24 @@ function handleSelectionChange() {}
 
 watch(
   () => props.userId,
-  (id) => {
-    queryParams.value.userId = id ?? queryParams.value.userId;
-    if (visible.value) {
-      getList();
-    }
+  (id, previousId) => {
+    if (!visible.value || String(id) === String(previousId)) return;
+    reset(id ?? null);
+    if (id != null) getList();
   }
 );
 
 watch(
   () => props.modelValue,
   (val) => {
-    if (val) {
-      queryParams.value.userId = props.userId ?? queryParams.value.userId;
+    if (val && props.userId != null) {
+      reset(props.userId);
       getList();
+    } else if (!val) {
+      reset();
     }
-  }
+  },
+  { immediate: true }
 );
 </script>
 

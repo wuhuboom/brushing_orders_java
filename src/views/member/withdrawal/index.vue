@@ -1,21 +1,23 @@
 <template>
-  <div class="app-container ant-pro-member-page">
+  <div class="app-container ant-pro-member-page transaction-alignment-page">
     <ant-pro-table
+      :key="tableResetKey"
       title="提现记录列表"
       :columns="withdrawalColumns"
       :data-source="withdrawalList"
       :loading="loading"
       row-key="id"
       :row-selection="rowSelection"
-      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
-      :scroll="{ x: 2500 }"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total, size: 'small', showSizeChanger: true }"
+      :scroll="{ x: 2702, y: 'calc(100vh - 440px)' }"
       @page-change="handleAntPageChange"
-      @refresh="getList"
+      @change="handleTableChange"
+      @refresh="handleRefresh"
     >
       <template #search>
         <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
-          <a-row :gutter="[24, 16]" align="middle">
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+          <a-row :gutter="[24, 24]" align="middle">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="用户名">
                 <a-input
                   v-model:value="queryParams.username"
@@ -25,7 +27,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="手机号码">
                 <a-input
                   v-model:value="queryParams.phoneNumber"
@@ -35,7 +37,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="上级用户名">
                 <a-input
                   v-model:value="queryParams.parentUsername"
@@ -45,18 +47,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col flex="auto" class="ant-pro-query-actions">
-              <a-space>
-                <a-button @click="resetQuery">重 置</a-button>
-                <a-button type="primary" @click="handleQuery">查 询</a-button>
-                <a-button type="link" @click="advancedSearchVisible = !advancedSearchVisible">
-                  {{ advancedSearchVisible ? "收起" : "展开" }}
-                </a-button>
-              </a-space>
-            </a-col>
-          </a-row>
-          <a-row v-if="advancedSearchVisible" :gutter="[24, 16]" class="advanced-query-row">
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="用户钱包地址">
                 <a-input
                   v-model:value="queryParams.accountAddress"
@@ -66,11 +57,12 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="金额">
                 <a-space-compact block>
                   <a-input-number
                     v-model:value="queryParams.amountMin"
+                    string-mode
                     placeholder="请输入"
                     :precision="2"
                     class="amount-range-input"
@@ -78,6 +70,7 @@
                   <a-input disabled value="~" class="amount-range-separator" />
                   <a-input-number
                     v-model:value="queryParams.amountMax"
+                    string-mode
                     placeholder="请输入"
                     :precision="2"
                     class="amount-range-input"
@@ -85,7 +78,7 @@
                 </a-space-compact>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="出金类型">
                 <a-select v-model:value="queryParams.withdrawalType" allow-clear placeholder="请选择">
                   <a-select-option v-for="dict in order_zhlx" :key="dict.value" :value="dict.value">
@@ -94,7 +87,7 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="状态">
                 <a-select v-model:value="queryParams.status" allow-clear placeholder="请选择">
                   <a-select-option v-for="dict in apply_status" :key="dict.value" :value="dict.value">
@@ -103,16 +96,16 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="是否假人">
                 <a-select v-model:value="queryParams.isFake" allow-clear placeholder="请选择">
-                  <a-select-option v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">
+                  <a-select-option v-for="dict in liveYesNoOptions" :key="dict.value" :value="dict.value">
                     {{ dict.label }}
                   </a-select-option>
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="创建时间">
                 <a-range-picker
                   v-model:value="dateRange"
@@ -122,23 +115,32 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="交易类型">
                 <a-select v-model:value="queryParams.transactionType" allow-clear placeholder="请选择">
-                  <a-select-option v-for="dict in transaction_type" :key="dict.value" :value="dict.value">
+                  <a-select-option v-for="dict in liveTransactionTypeOptions" :key="dict.value" :value="dict.value">
                     {{ dict.label }}
                   </a-select-option>
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col v-if="advancedSearchVisible" :xs="24" :sm="12" :md="8" :lg="8">
               <a-form-item label="是否隐藏">
                 <a-select v-model:value="queryParams.isHidden" allow-clear placeholder="请选择">
-                  <a-select-option v-for="dict in user_yes_no" :key="dict.value" :value="dict.value">
+                  <a-select-option v-for="dict in liveYesNoOptions" :key="dict.value" :value="dict.value">
                     {{ dict.label }}
                   </a-select-option>
                 </a-select>
               </a-form-item>
+            </a-col>
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button type="link" @click="advancedSearchVisible = !advancedSearchVisible">
+                  {{ advancedSearchVisible ? "收起" : "展开" }}
+                </a-button>
+              </a-space>
             </a-col>
           </a-row>
         </a-form>
@@ -152,7 +154,7 @@
           :disabled="multiple"
           @confirm="handleHidden('1')"
         >
-          <a-button :disabled="multiple" v-hasPermi="['member:withdrawal:edit']">
+          <a-button type="primary" :disabled="multiple" v-hasPermi="['member:withdrawal:edit']">
             <EyeOutlined />显示
           </a-button>
         </a-popconfirm>
@@ -163,7 +165,7 @@
           :disabled="multiple"
           @confirm="handleHidden('0')"
         >
-          <a-button :disabled="multiple" v-hasPermi="['member:withdrawal:edit']">
+          <a-button type="primary" :disabled="multiple" v-hasPermi="['member:withdrawal:edit']">
             <EyeInvisibleOutlined />隐藏
           </a-button>
         </a-popconfirm>
@@ -207,7 +209,9 @@
         </template>
         <template v-else-if="column.key === 'balanceInfo'">
           <div>总余额: {{ plainAmount(totalUserBalance(record)) }}</div>
-          <div>余额: {{ plainAmount(record.userBalance) }}</div>
+          <div :class="{ 'negative-amount': isNegativeAmount(record.userBalance) }">
+            余额: {{ plainAmount(record.userBalance) }}
+          </div>
           <div>冻结余额: {{ plainAmount(record.userFrozenBalance) }}</div>
         </template>
         <template v-else-if="column.key === 'attachment'">
@@ -219,13 +223,19 @@
           <span v-else>-</span>
         </template>
         <template v-else-if="column.dataIndex === 'status'">
-          <dict-tag :options="apply_status" :value="record.status" />
+          <a-badge
+            :status="applyBadge(record.status).status"
+            :text="applyBadge(record.status).text"
+          />
         </template>
         <template v-else-if="column.dataIndex === 'transactionType'">
-          <dict-tag :options="transaction_type" :value="record.transactionType" />
+          <a-badge status="processing" :text="transactionTypeText(record.transactionType)" />
         </template>
         <template v-else-if="column.dataIndex === 'isHidden'">
-          <dict-tag :options="user_yes_no" :value="record.isHidden" />
+          <a-badge
+            :status="hiddenBadge(record.isHidden).status"
+            :text="hiddenBadge(record.isHidden).text"
+          />
         </template>
         <template v-else-if="column.dataIndex === 'createTime'">
           {{ parseTime(record.createTime) }}
@@ -247,7 +257,6 @@
             >
               <a-button
                 type="link"
-                size="small"
                 :disabled="String(record.status) !== '1'"
                 v-hasPermi="['member:withdrawal:edit']"
               >通过</a-button>
@@ -255,20 +264,17 @@
             <a-button
               type="link"
               danger
-              size="small"
               :disabled="String(record.status) !== '1'"
               @click="openReviewDialog(record, 'reject')"
               v-hasPermi="['member:withdrawal:edit']"
             >拒绝</a-button>
             <a-button
               type="link"
-              size="small"
               @click="openReviewDialog(record, 'remark')"
               v-hasPermi="['member:withdrawal:edit']"
             >备注</a-button>
             <a-button
               type="link"
-              size="small"
               :disabled="!record.withdrawalAccountId"
               @click="handleSensitiveAccount(record)"
               v-hasPermi="['member:withdrawal:sensitive']"
@@ -278,31 +284,60 @@
       </template>
     </ant-pro-table>
 
-    <a-modal v-model:open="open" :title="title" width="500px" :mask-closable="false" @cancel="cancel">
+    <a-modal
+      v-if="dialogMode === 'reject'"
+      v-model:open="open"
+      title="拒绝"
+      width="450px"
+      :mask-closable="false"
+      :confirm-loading="submitting"
+      ok-text="确 定"
+      cancel-text="取 消"
+      @ok="submitForm"
+      @cancel="cancel"
+    >
+      <a-form ref="withdrawalRef" :model="form" :rules="rules" layout="vertical">
+        <a-form-item label="备注" name="remarks">
+          <a-textarea v-model:value="form.remarks" placeholder="请输入备注" :rows="4" allow-clear />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-drawer
+      v-else
+      v-model:open="open"
+      title="备注"
+      width="85%"
+      destroy-on-close
+      :mask-closable="false"
+      :closable="!submitting"
+      :keyboard="!submitting"
+      @close="cancel"
+    >
       <a-form ref="withdrawalRef" :model="form" :rules="rules" layout="vertical">
         <a-form-item label="备注" name="remarks">
           <a-textarea v-model:value="form.remarks" placeholder="请输入备注" :rows="4" allow-clear />
         </a-form-item>
       </a-form>
       <template #footer>
-        <a-space>
-          <a-button @click="cancel">取 消</a-button>
-          <a-button type="primary" @click="submitForm">确 定</a-button>
-        </a-space>
+        <div class="drawer-footer">
+          <a-space>
+            <a-button :disabled="submitting" @click="cancel">取 消</a-button>
+            <a-button type="primary" :loading="submitting" @click="submitForm">确 定</a-button>
+          </a-space>
+        </div>
       </template>
-    </a-modal>
+    </a-drawer>
 
-    <a-modal
+    <a-drawer
       v-model:open="sensitiveOpen"
       title="提现地址"
-      width="500px"
-      :destroy-on-close="true"
+      width="85%"
+      destroy-on-close
       :mask-closable="false"
-      :confirm-loading="sensitiveSubmitting"
-      ok-text="确 定"
-      cancel-text="取 消"
-      @ok="submitSensitiveAccount"
-      @cancel="cancelSensitiveAccount"
+      :closable="!sensitiveSubmitting"
+      :keyboard="!sensitiveSubmitting"
+      @close="cancelSensitiveAccount"
     >
       <a-form ref="sensitiveRef" :model="sensitiveAccount" layout="vertical">
         <template v-if="sensitiveAccount.type === '1'">
@@ -339,7 +374,15 @@
           </a-form-item>
         </template>
       </a-form>
-    </a-modal>
+      <template #footer>
+        <div class="drawer-footer">
+          <a-space>
+            <a-button :disabled="sensitiveSubmitting" @click="cancelSensitiveAccount">取 消</a-button>
+            <a-button type="primary" :loading="sensitiveSubmitting" @click="submitSensitiveAccount">确 定</a-button>
+          </a-space>
+        </div>
+      </template>
+    </a-drawer>
   </div>
 </template>
 
@@ -376,40 +419,71 @@ const ids = ref([]);
 const single = ref(true);
 const multiple = ref(true);
 const total = ref(0);
+let listRequestId = 0;
+const tableResetKey = ref(0);
 const advancedSearchVisible = ref(false);
 const dateRange = ref([]);
 const title = ref("");
 const dialogMode = ref("remark");
 const withdrawalRef = ref();
+const submitting = ref(false);
 const sensitiveOpen = ref(false);
 const sensitiveAccount = ref({});
 const sensitiveRef = ref();
 const sensitiveSubmitting = ref(false);
 const userStore = useUserStore();
 
+const liveYesNoOptions = computed(() => [
+  { value: "1", label: "否" },
+  { value: "0", label: "是" },
+].map((expected) => {
+  const option = (user_yes_no.value || []).find(
+    (item) => String(item?.value) === expected.value
+  );
+  return option ? { ...option, label: expected.label } : expected;
+}));
+
+const liveTransactionTypeOptions = computed(() => [
+  { value: "zs", label: "赠送" },
+  { value: "kk", label: "扣款" },
+  { value: "cz", label: "充值" },
+  { value: "txz", label: "提现中" },
+  { value: "txjd", label: "提现解冻" },
+  { value: "tx", label: "提现" },
+  { value: "rw", label: "任务" },
+  { value: "bjfh", label: "本金返回" },
+  { value: "fy", label: "返佣" },
+  { value: "xjfy", label: "下级返佣" },
+].map((expected) => {
+  const option = (transaction_type.value || []).find(
+    (item) => String(item?.value) === expected.value
+  );
+  return option ? { ...option, label: expected.label } : expected;
+}));
+
 const withdrawalColumns = [
-  { title: "用户名", dataIndex: "username", align: "center", width: 150 },
-  { title: "手机号码", dataIndex: "phoneNumber", align: "center", width: 150 },
-  { title: "上级用户名", dataIndex: "parentUsername", align: "center", width: 150 },
-  { title: "提现账户", key: "withdrawalAccount", dataIndex: "withdrawalAccountInfo", width: 280 },
-  { title: "余额信息", key: "balanceInfo", width: 190 },
-  { title: "金额", dataIndex: "amount", align: "center", width: 120 },
-  { title: "转换后金额", dataIndex: "netAmount", key: "convertedAmount", align: "center", width: 140, hidden: true },
-  { title: "附件", key: "attachment", width: 110 },
-  { title: "出金类型", key: "withdrawalType", align: "center", width: 140 },
-  { title: "状态", dataIndex: "status", align: "center", width: 120 },
-  { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
-  { title: "备注", dataIndex: "remarks", align: "center", width: 150 },
-  { title: "交易类型", dataIndex: "transactionType", align: "center", width: 130 },
-  { title: "订单号", dataIndex: "orderNumber", align: "center", width: 190 },
-  { title: "是否隐藏", dataIndex: "isHidden", align: "center", width: 120 },
-  { title: "手续费", dataIndex: "fee", align: "center", width: 120 },
-  { title: "最后修改人", dataIndex: "updateBy", align: "center", width: 140 },
-  { title: "最后修改时间", dataIndex: "updateTime", align: "center", width: 180 },
-  { title: "操作", key: "operation", align: "center", fixed: "right", width: 240 },
+  { title: "用户名", dataIndex: "username", key: "username", width: 140 },
+  { title: "手机号码", dataIndex: "phoneNumber", key: "phoneNumber", width: 140 },
+  { title: "上级用户名", dataIndex: "parentUsername", key: "parentUsername", width: 140 },
+  { title: "提现账户", key: "withdrawalAccount", dataIndex: "withdrawalAccountInfo", width: 300 },
+  { title: "余额信息", key: "balanceInfo", width: 180 },
+  { title: "金额", dataIndex: "amount", key: "amount", width: 120, sorter: true },
+  { title: "附件", key: "attachment", width: 100 },
+  { title: "出金类型", key: "withdrawalType", width: 120, sorter: true },
+  { title: "状态", dataIndex: "status", key: "status", width: 100, sorter: true },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 170, sorter: true },
+  { title: "备注", dataIndex: "remarks", key: "remarks", width: 200 },
+  { title: "交易类型", dataIndex: "transactionType", key: "transactionType", width: 100, sorter: true },
+  { title: "订单号", dataIndex: "orderNumber", key: "orderNumber", width: 200, sorter: true, defaultSortOrder: "descend" },
+  { title: "是否隐藏", dataIndex: "isHidden", key: "isHidden", width: 100, sorter: true },
+  { title: "手续费", dataIndex: "fee", key: "fee", width: 80 },
+  { title: "最后修改人", dataIndex: "updateBy", key: "updateBy", width: 120 },
+  { title: "最后修改时间", dataIndex: "updateTime", key: "updateTime", width: 170 },
+  { title: "操作", key: "operation", fixed: "right", width: 190 },
 ];
 
 const rowSelection = computed(() => ({
+  columnWidth: 32,
   selectedRowKeys: ids.value,
   onChange: (_, selectedRows) => handleSelectionChange(selectedRows),
 }));
@@ -436,6 +510,8 @@ const data = reactive({
     isHidden: null,
     fee: null,
     withdrawalAccountId: null,
+    orderByColumn: "ow.order_number",
+    isAsc: "desc",
   },
   rules: {
     userId: [{ required: true, message: "用户ID不能为空", trigger: "blur" }],
@@ -451,6 +527,53 @@ const data = reactive({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+
+function dictText(options, value) {
+  const values = Array.isArray(options) ? options : options?.value;
+  return proxy.selectDictLabel((values || []).filter(Boolean), value) || value || "-";
+}
+
+const applyBadgeMap = Object.freeze({
+  "1": Object.freeze({ status: "processing", text: "待审核" }),
+  "2": Object.freeze({ status: "success", text: "已通过" }),
+  "3": Object.freeze({ status: "error", text: "已拒绝" }),
+});
+
+const hiddenBadgeMap = Object.freeze({
+  "0": Object.freeze({ status: "error", text: "是" }),
+  "1": Object.freeze({ status: "error", text: "否" }),
+});
+
+const sortColumnMap = Object.freeze({
+  amount: "ow.amount",
+  withdrawalType: "gwa.withdrawal_type_id",
+  status: "ow.status",
+  createTime: "ow.create_time",
+  transactionType: "ow.transaction_type",
+  orderNumber: "ow.order_number",
+  isHidden: "ow.is_hidden",
+});
+
+function applyBadge(value) {
+  return applyBadgeMap[String(value)] || { status: "default", text: dictText(apply_status, value) };
+}
+
+function hiddenBadge(value) {
+  return hiddenBadgeMap[String(value)] || { status: "default", text: dictText(user_yes_no, value) };
+}
+
+function transactionTypeText(value) {
+  const option = liveTransactionTypeOptions.value.find(
+    (item) => String(item.value) === String(value)
+  );
+  return option?.label || dictText(transaction_type, value);
+}
+
+function clearSelection() {
+  ids.value = [];
+  single.value = true;
+  multiple.value = true;
+}
 
 function canViewSensitiveAccounts() {
   const permissions = userStore.permissions || [];
@@ -478,6 +601,7 @@ async function enrichSensitiveAccounts(rows) {
 
 /** 查询提现列表 */
 async function getList() {
+  const requestId = ++listRequestId;
   loading.value = true;
   const {
     amountMin,
@@ -495,10 +619,12 @@ async function getList() {
   if (Object.keys(params).length) request.params = params;
   try {
     const response = await listWithdrawal(request);
-    withdrawalList.value = await enrichSensitiveAccounts(response.rows || []);
-    total.value = response.total;
+    const rows = await enrichSensitiveAccounts(response.rows || []);
+    if (requestId !== listRequestId) return;
+    withdrawalList.value = rows;
+    total.value = response.total || 0;
   } finally {
-    loading.value = false;
+    if (requestId === listRequestId) loading.value = false;
   }
 }
 
@@ -529,6 +655,7 @@ function reset() {
 
 /** 鎼滅储鎸夐挳鎿嶄綔 */
 function handleQuery() {
+  clearSelection();
   queryParams.value.pageNum = 1;
   getList();
 }
@@ -546,11 +673,15 @@ function resetQuery() {
   queryParams.value.isFake = null;
   queryParams.value.transactionType = null;
   queryParams.value.isHidden = null;
+  queryParams.value.orderByColumn = "ow.order_number";
+  queryParams.value.isAsc = "desc";
   dateRange.value = [];
+  tableResetKey.value += 1;
   handleQuery();
 }
 
 function handleAntPageChange({ page, pageSize }) {
+  clearSelection();
   queryParams.value.pageNum = page;
   queryParams.value.pageSize = pageSize;
   getList();
@@ -573,6 +704,24 @@ function handleApprove(row) {
   });
 }
 
+function handleRefresh() {
+  clearSelection();
+  getList();
+}
+
+function handleTableChange(_pagination, _filters, sorter) {
+  const columnKey = sorter?.columnKey;
+  queryParams.value.orderByColumn = sorter?.order ? sortColumnMap[columnKey] || null : null;
+  queryParams.value.isAsc = sorter?.order === "ascend"
+    ? "asc"
+    : sorter?.order === "descend"
+      ? "desc"
+      : null;
+  clearSelection();
+  queryParams.value.pageNum = 1;
+  getList();
+}
+
 /** 拒绝操作 */
 function openReviewDialog(row, mode) {
   reset();
@@ -591,17 +740,26 @@ function handleSensitiveAccount(row) {
 }
 
 /** 提交按钮 */
-function submitForm() {
-  withdrawalRef.value?.validate().then(() => {
-    const request = dialogMode.value === "reject"
-      ? reviewWithdrawal({ id: form.value.id, status: "3", remarks: form.value.remarks })
-      : updateWithdrawal({ id: form.value.id, remarks: form.value.remarks });
-    request.then(() => {
-        proxy.$modal.msgSuccess("操作成功");
-        open.value = false;
-        getList();
-      });
-  }).catch(() => {});
+async function submitForm() {
+  try {
+    await withdrawalRef.value?.validate();
+  } catch {
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    if (dialogMode.value === "reject") {
+      await reviewWithdrawal({ id: form.value.id, status: "3", remarks: form.value.remarks });
+    } else {
+      await updateWithdrawal({ id: form.value.id, remarks: form.value.remarks });
+    }
+    proxy.$modal.msgSuccess("操作成功");
+    open.value = false;
+    getList();
+  } finally {
+    submitting.value = false;
+  }
 }
 
 async function submitSensitiveAccount() {
@@ -630,11 +788,39 @@ function cancelSensitiveAccount() {
 }
 
 function totalUserBalance(record) {
-  return Number(record.userBalance || 0) + Number(record.userFrozenBalance || 0);
+  return addDecimalStrings(record.userBalance, record.userFrozenBalance);
 }
 
 function plainAmount(value) {
-  return value === null || value === undefined || value === "" ? 0 : Number(value);
+  if (value === null || value === undefined || value === "") return "0";
+  return String(value);
+}
+
+function decimalParts(value) {
+  const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(plainAmount(value).trim());
+  if (!match) return { unscaled: 0n, scale: 0 };
+  const fraction = match[3] || "";
+  const digits = `${match[2]}${fraction}`.replace(/^0+(?=\d)/, "") || "0";
+  const sign = match[1] === "-" ? -1n : 1n;
+  return { unscaled: sign * BigInt(digits), scale: fraction.length };
+}
+
+function addDecimalStrings(left, right) {
+  const leftParts = decimalParts(left);
+  const rightParts = decimalParts(right);
+  const scale = Math.max(leftParts.scale, rightParts.scale);
+  const leftValue = leftParts.unscaled * (10n ** BigInt(scale - leftParts.scale));
+  const rightValue = rightParts.unscaled * (10n ** BigInt(scale - rightParts.scale));
+  const sum = leftValue + rightValue;
+  const sign = sum < 0n ? "-" : "";
+  const digits = (sum < 0n ? -sum : sum).toString().padStart(scale + 1, "0");
+  if (scale === 0) return `${sign}${digits}`;
+  return `${sign}${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
+}
+
+function isNegativeAmount(value) {
+  const text = plainAmount(value).trim();
+  return text.startsWith("-") && !/^-0(?:\.0+)?$/.test(text);
 }
 
 async function copyAccountValue(value) {
@@ -648,7 +834,7 @@ async function copyAccountValue(value) {
 
 function withdrawalTypeText(record) {
   const account = record.withdrawalAccountInfo;
-  if (!account) return "-";
+  if (!account) return dictText(order_zhlx, record.withdrawalType);
   const typeOption = (order_zhlx.value || []).find(
     (item) => item && String(item.value) === String(account.type)
   );
@@ -673,7 +859,9 @@ function handleDelete(row) {
 }
 
 function handleHidden(isHidden) {
-  Promise.all(ids.value.map((id) => updateWithdrawal({ id, isHidden }))).then(() => {
+  const selectedIds = [...ids.value];
+  Promise.all(selectedIds.map((id) => updateWithdrawal({ id, isHidden }))).then(() => {
+    clearSelection();
     proxy.$modal.msgSuccess("操作成功");
     getList();
   });
@@ -694,6 +882,33 @@ getList();
 </script>
 
 <style scoped>
+:global(body:has(.transaction-alignment-page)::-webkit-scrollbar) {
+  width: 15px;
+}
+
+:global(body:has(.transaction-alignment-page) .copyright) {
+  display: none;
+}
+
+:global(body:has(.transaction-alignment-page) .app-main) {
+  padding-bottom: 0 !important;
+}
+
+.transaction-alignment-page {
+  padding-top: 28px;
+  margin-bottom: 0;
+}
+
+.transaction-alignment-page :deep(.ant-pro-query-form .ant-form-item-label) {
+  flex: 0 0 80px;
+  max-width: 80px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-query-form .ant-picker) {
+  height: 32px;
+  padding-block: 4px;
+}
+
 .full-width {
   width: 100%;
 }
@@ -718,5 +933,40 @@ getList();
   width: 36px;
   padding-inline: 8px;
   text-align: center;
+}
+
+.negative-amount {
+  color: #ff4d4f;
+}
+
+.transaction-alignment-page :deep(.ant-pro-table .ant-table-thead > tr > th) {
+  box-sizing: border-box;
+  padding: 12px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-table .ant-table-column-sorters) {
+  height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-table .ant-table-tbody > tr > td) {
+  padding: 12px 8px;
+  font-size: 15px;
+  line-height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-badge-status-text) {
+  font-size: 15px;
+  line-height: 23.57px;
+}
+
+.transaction-alignment-page :deep(.ant-pro-pagination) {
+  padding-top: 16px;
+}
+
+.drawer-footer {
+  text-align: right;
 }
 </style>

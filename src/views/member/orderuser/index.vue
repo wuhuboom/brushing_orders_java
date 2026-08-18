@@ -7,16 +7,22 @@
       :loading="loading"
       row-key="id"
       :row-selection="rowSelection"
-      :scroll="{ x: 5600 }"
-      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
+      :scroll="{ x: 6602, y: 'calc(100vh - 410px)' }"
+      :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total, size: 'small' }"
       @page-change="handleAntPageChange"
       @refresh="getList"
       @change="handleTableChange"
     >
       <template #search>
-        <a-form layout="horizontal" :model="queryParams" class="ant-pro-query-form">
-          <a-row :gutter="[24, 16]" align="middle">
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+        <a-form
+          layout="horizontal"
+          :model="queryParams"
+          :label-col="{ flex: '100px' }"
+          :wrapper-col="{ flex: 1 }"
+          class="ant-pro-query-form"
+        >
+          <a-row :gutter="[24, 16]">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
               <a-form-item label="关键字">
                 <a-input
                   v-model:value="queryParams.keyword"
@@ -26,7 +32,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="7">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
               <a-form-item label="上级用户名">
                 <a-input
                   v-model:value="queryParams.parentUsername"
@@ -36,7 +42,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="5">
+            <a-col :xs="24" :sm="12" :md="8" :lg="6">
               <a-form-item label="是否在线">
                 <a-select v-model:value="queryParams.isOnline" allow-clear placeholder="请选择">
                   <a-select-option value="1">是</a-select-option>
@@ -44,7 +50,7 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col flex="auto" class="ant-pro-query-actions">
+            <a-col :xs="24" :sm="12" :md="24" :lg="6" class="ant-pro-query-actions">
               <a-space>
                 <a-button @click="resetQuery">重 置</a-button>
                 <a-button type="primary" @click="handleQuery">查 询</a-button>
@@ -265,7 +271,13 @@
           <div>累计充值金额: {{ record.totalRechargeAmount || 0 }}</div>
         </template>
         <template v-else-if="column.key === 'gender'">
-          {{ dictText(sys_user_sex, record.gender) }}
+          <a-badge
+            v-if="genderBadgeStatus(record.gender)"
+            class="member-status-badge"
+            :status="genderBadgeStatus(record.gender)"
+            :text="dictText(sys_user_sex, record.gender)"
+          />
+          <span v-else>-</span>
         </template>
         <template v-else-if="column.key === 'birthday'">
           {{ parseTime(record.birthday, '{y}-{m}-{d}') || '-' }}
@@ -298,19 +310,62 @@
         <template v-else-if="column.key === 'email'">
           {{ record.email || '-' }}
         </template>
+        <template v-else-if="column.key === 'isEnabled'">
+          <a-badge
+            v-if="enabledBadgeStatus(record.isEnabled)"
+            class="member-status-badge"
+            :status="enabledBadgeStatus(record.isEnabled)"
+            :text="dictText(sys_enabled, record.isEnabled)"
+          />
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'allowInvite'">
+          <a-badge
+            v-if="yesNoBadgeStatus(record.allowInvite)"
+            class="member-status-badge"
+            :status="yesNoBadgeStatus(record.allowInvite)"
+            :text="dictText(user_yes_no, record.allowInvite)"
+          />
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'isFrozen'">
+          <a-badge
+            v-if="yesNoBadgeStatus(record.isFrozen)"
+            class="member-status-badge"
+            :status="yesNoBadgeStatus(record.isFrozen)"
+            :text="dictText(user_yes_no, record.isFrozen)"
+          />
+          <span v-else>-</span>
+        </template>
         <template v-else-if="column.key === 'workLimit'">
           {{ record.workLimit ?? 0 }}
         </template>
         <template v-else-if="column.key === 'isFake'">
           <a
-            v-if="hasPermission('member:orderuser:edit')"
+            v-if="fakeMemberTone(record.isFake) && hasPermission('member:orderuser:edit')"
             v-hasPermi="['member:orderuser:edit']"
-            class="table-action-link"
+            class="fake-member-link"
+            :class="`fake-member-${fakeMemberTone(record.isFake)}`"
             @click="handleToggleFake(record)"
           >
             {{ dictText(user_yes_no, record.isFake) }}
           </a>
-          <span v-else>{{ dictText(user_yes_no, record.isFake) }}</span>
+          <span
+            v-else-if="fakeMemberTone(record.isFake)"
+            :class="`fake-member-${fakeMemberTone(record.isFake)}`"
+          >
+            {{ dictText(user_yes_no, record.isFake) }}
+          </span>
+          <span v-else>-</span>
+        </template>
+        <template v-else-if="column.key === 'isBanned'">
+          <a-badge
+            v-if="yesNoBadgeStatus(record.isBanned)"
+            class="member-status-badge"
+            :status="yesNoBadgeStatus(record.isBanned)"
+            :text="dictText(user_yes_no, record.isBanned)"
+          />
+          <span v-else>-</span>
         </template>
         <template v-else-if="column.key === 'productMatching'">
           <a
@@ -380,11 +435,18 @@
           {{ record[column.dataIndex] || '-' }}
         </template>
         <template v-else-if="column.key === 'operation'">
-          <div class="ant-action-grid">
-            <a-space :size="6" wrap>
+          <a-flex wrap="wrap" gap="small">
               <a-button size="small" type="primary" class="ant-action-warning" @click="handleTransaction(record)" v-hasPermi="['member:orderuser:edit']">上下分</a-button>
               <a-button size="small" type="primary" @click="handleOpenLink(record)" v-hasPermi="['member:orderlink:list']">连单设置</a-button>
-              <a-button size="small" type="primary" danger @click="handleReset(record)" v-hasPermi="['member:orderuser:edit']">重置单数</a-button>
+              <a-button
+                size="small"
+                type="primary"
+                danger
+                :loading="isMemberActionPending(record, 'resetOrder')"
+                :disabled="isMemberActionPending(record, 'resetOrder')"
+                @click="handleReset(record)"
+                v-hasPermi="['member:orderuser:edit']"
+              >重置单数</a-button>
               <a-button size="small" type="primary" @click="handleUpdate(record)" v-hasPermi="['member:orderuser:edit']">修 改</a-button>
               <a-button size="small" type="primary" @click="openModifyCount(record)" v-hasPermi="['member:orderuser:edit']">修改单数</a-button>
               <a-button size="small" type="primary" class="ant-action-success" @click="handleOpenBonus(record)" v-hasPermi="['member:bonus:list']">彩金设置</a-button>
@@ -397,7 +459,7 @@
               <a-button size="small" type="primary" @click="handleModifyVip(record)" v-hasPermi="['member:orderuser:edit']">修改等级</a-button>
               <a-dropdown
                 v-if="hasAnyPermission(moreActionPermissions)"
-                :trigger="['click']"
+                :trigger="['hover']"
               >
                 <a-button size="small" type="primary">
                   更多
@@ -411,18 +473,17 @@
                     <a-menu-item @click="handleModifySignDays(record)" v-hasPermi="['member:orderuser:edit']">修改签到天数</a-menu-item>
                     <a-menu-item @click="handleOrderDetails(record)" v-hasPermi="['member:orderinfo:list']">查看订单明细</a-menu-item>
                     <a-menu-item @click="handleExtraCommission(record)" v-hasPermi="['member:extracommission:list']">额外佣金设置</a-menu-item>
-                    <a-menu-item @click="handleToggleFake(record)" v-hasPermi="['member:orderuser:edit']">设为{{ record.isFake === '1' ? '\u771f\u4eba' : '\u5047\u4eba' }}</a-menu-item>
-                    <a-menu-item @click="handleToggleAccountStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.accountStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}账户</a-menu-item>
-                    <a-menu-item @click="handleToggleTransactionStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.transactionStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}交易</a-menu-item>
-                    <a-menu-item @click="handleToggleWithdrawalStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.withdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}提现</a-menu-item>
-                    <a-menu-item @click="handleToggleAssistWithdrawalStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ record.assistWithdrawalStatus === '1' ? '\u542f\u7528' : '\u7981\u7528' }}协助金提现</a-menu-item>
+                    <a-menu-item :disabled="isMemberActionPending(record, 'isFake')" @click="handleToggleFake(record)" v-hasPermi="['member:orderuser:edit']">{{ buildFakeMemberToggle(record.isFake).action }}</a-menu-item>
+                    <a-menu-item :disabled="isMemberActionPending(record, 'accountStatus')" @click="handleToggleAccountStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ isValueOne(record.accountStatus) ? '\u542f\u7528' : '\u7981\u7528' }}账户</a-menu-item>
+                    <a-menu-item :disabled="isMemberActionPending(record, 'transactionStatus')" @click="handleToggleTransactionStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ isValueOne(record.transactionStatus) ? '\u542f\u7528' : '\u7981\u7528' }}交易</a-menu-item>
+                    <a-menu-item :disabled="isMemberActionPending(record, 'withdrawalStatus')" @click="handleToggleWithdrawalStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ isValueOne(record.withdrawalStatus) ? '\u542f\u7528' : '\u7981\u7528' }}提现</a-menu-item>
+                    <a-menu-item :disabled="isMemberActionPending(record, 'assistWithdrawalStatus')" @click="handleToggleAssistWithdrawalStatus(record)" v-hasPermi="['member:orderuser:edit']">{{ isValueOne(record.assistWithdrawalStatus) ? '\u542f\u7528' : '\u7981\u7528' }}协助金提现</a-menu-item>
                     <a-menu-item @click="handleEditIdentity(record)" v-hasPermi="['member:orderuser:edit']">编辑身份信息</a-menu-item>
                     <a-menu-item @click="handleEditContract(record)" v-hasPermi="['member:orderuser:edit']">编辑合同</a-menu-item>
                   </a-menu>
                 </template>
               </a-dropdown>
-            </a-space>
-          </div>
+          </a-flex>
         </template>
       </template>
     </ant-pro-table>
@@ -432,13 +493,18 @@
       title="修改单数"
       width="416px"
       :mask-closable="false"
+      :closable="!modifySubmitting"
+      :keyboard="!modifySubmitting"
+      :confirm-loading="modifySubmitting"
+      :cancel-button-props="{ disabled: modifySubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitModifyCount"
+      @cancel="closeModifyCount"
     >
       <a-form ref="modifyFormRef" :model="modifyForm" :rules="modifyRules" layout="vertical">
         <a-form-item label="任务进度">
-          <a-input-number
+          <a-input
             v-model:value="modifyForm.orderCount"
             placeholder="任务进度"
             disabled
@@ -461,11 +527,16 @@
     <a-modal
       v-model:open="loginPasswordVisible"
       title="修改登录密码"
-      width="500px"
+      width="416px"
       :mask-closable="false"
+      :closable="!loginSubmitting"
+      :keyboard="!loginSubmitting"
+      :confirm-loading="loginSubmitting"
+      :cancel-button-props="{ disabled: loginSubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitLoginPassword"
+      @cancel="closeLoginPassword"
     >
       <a-form ref="loginFormRef" :model="loginForm" :rules="loginRules" layout="vertical">
         <a-form-item label="登录密码" name="password">
@@ -482,11 +553,16 @@
     <a-modal
       v-model:open="tradePasswordVisible"
       title="修改交易密码"
-      width="500px"
+      width="416px"
       :mask-closable="false"
+      :closable="!tradeSubmitting"
+      :keyboard="!tradeSubmitting"
+      :confirm-loading="tradeSubmitting"
+      :cancel-button-props="{ disabled: tradeSubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitTradePassword"
+      @cancel="closeTradePassword"
     >
       <a-form ref="tradeFormRef" :model="tradeForm" :rules="tradeRules" layout="vertical">
         <a-form-item label="交易密码" name="tradePassword">
@@ -503,11 +579,16 @@
     <a-modal
       v-model:open="parentVisible"
       title="修改上级"
-      width="500px"
+      width="416px"
       :mask-closable="false"
+      :closable="!parentSubmitting"
+      :keyboard="!parentSubmitting"
+      :confirm-loading="parentSubmitting"
+      :cancel-button-props="{ disabled: parentSubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitModifyParent"
+      @cancel="closeModifyParent"
     >
       <a-form ref="parentFormRef" :model="parentForm" :rules="parentRules" layout="vertical">
         <a-form-item label="用户层级">
@@ -516,7 +597,7 @@
             <a-radio :value="false">下级用户</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="上级邀请码" name="parentInviteCode">
+        <a-form-item label="上级邀请码" name="parentInviteCode" :required="!parentTopLevel">
           <a-input
             v-model:value="parentForm.parentInviteCode"
             :disabled="parentTopLevel"
@@ -531,15 +612,20 @@
     <a-modal
       v-model:open="vipVisible"
       title="修改等级"
-      width="500px"
+      width="416px"
       :mask-closable="false"
+      :closable="!vipSubmitting"
+      :keyboard="!vipSubmitting"
+      :confirm-loading="vipSubmitting"
+      :cancel-button-props="{ disabled: vipSubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitModifyVip"
+      @cancel="closeModifyVip"
     >
       <a-form ref="vipFormRef" :model="vipForm" :rules="vipRules" layout="vertical">
-        <a-form-item label="会员等级" name="vipId">
-          <a-select v-model:value="vipForm.vipId" placeholder="请选择会员等级" allow-clear>
+        <a-form-item label="VIP等级" name="vipId">
+          <a-select v-model:value="vipForm.vipId" placeholder="请选择VIP等级" allow-clear>
             <a-select-option v-for="item in levelList" :key="item.id" :value="item.id">
               {{ item.name }}
             </a-select-option>
@@ -554,9 +640,14 @@
       title="修改信誉分"
       width="416px"
       :mask-closable="false"
+      :closable="!reputationSubmitting"
+      :keyboard="!reputationSubmitting"
+      :confirm-loading="reputationSubmitting"
+      :cancel-button-props="{ disabled: reputationSubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitModifyReputation"
+      @cancel="closeModifyReputation"
     >
       <a-form ref="reputationFormRef" :model="reputationForm" :rules="reputationRules" layout="vertical">
         <a-form-item label="当前信誉分">
@@ -573,9 +664,14 @@
       title="修改签到天数"
       width="416px"
       :mask-closable="false"
+      :closable="!signDaysSubmitting"
+      :keyboard="!signDaysSubmitting"
+      :confirm-loading="signDaysSubmitting"
+      :cancel-button-props="{ disabled: signDaysSubmitting }"
       ok-text="确定"
       cancel-text="取消"
       @ok="submitModifySignDays"
+      @cancel="closeModifySignDays"
     >
       <a-form ref="signDaysFormRef" :model="signDaysForm" :rules="signDaysRules" layout="vertical">
         <a-form-item label="当前签到天数">
@@ -693,6 +789,17 @@ import OrderuserExtracommissionDrawer from "./components/OrderuserExtracommissio
 import OrderuserOrderinfoDrawer from "./components/OrderuserOrderinfoDrawer.vue";
 import OrderuserIdentityModal from "./components/OrderuserIdentityModal.vue";
 import OrderuserContractModal from "./components/OrderuserContractModal.vue";
+import {
+  buildFakeMemberToggle,
+  buildCopyMemberForm,
+  buildModifyCountPayload,
+} from "./components/orderuserFormPayload";
+import {
+  enabledBadgeStatus,
+  fakeMemberTone,
+  genderBadgeStatus,
+  yesNoBadgeStatus,
+} from "./memberCellPresentation";
 import useUserStore from "@/store/modules/user";
 
 const { proxy } = getCurrentInstance();
@@ -759,9 +866,11 @@ const subDrawerUserId = ref(null);
 const modifyModalVisible = ref(false);
 const modifyForm = reactive({
   id: null,
+  version: null,
   orderCount: null,
   taskProgress: null,
 });
+const modifySubmitting = ref(false);
 
 const giftVisible = ref(false);
 const giftUserId = ref(null);
@@ -772,7 +881,16 @@ const contractUserId = ref(null);
 const advancedSearchVisible = ref(false);
 
 const modifyRules = reactive({
-  taskProgress: [{ required: true, message: "请输入单数", trigger: "blur" }],
+  taskProgress: [
+    { required: true, message: "单数是必填项！", trigger: "change" },
+    {
+      validator: (_rule, value) => value == null || value === ""
+        || (Number.isInteger(value) && value >= 0)
+        ? Promise.resolve()
+        : Promise.reject(new Error("请输入不小于 0 的整数")),
+      trigger: "change",
+    },
+  ],
 });
 
 const modifyFormRef = ref(null);
@@ -783,13 +901,26 @@ const loginForm = reactive({
   id: null,
   password: null,
 });
+const requiredTrimmedRule = (label) => ({
+  required: true,
+  whitespace: true,
+  message: `${label}是必填项！`,
+  trigger: "blur",
+});
+const trimmedPasswordLengthRule = (label) => ({
+  validator: (_rule, value) => {
+    const password = String(value || "").trim();
+    return !password || password.length >= 6
+      ? Promise.resolve()
+      : Promise.reject(new Error(`${label}长度不能少于6位`));
+  },
+  trigger: "blur",
+});
 const loginRules = reactive({
-  password: [
-    { required: true, message: "请输入登录密码", trigger: "blur" },
-    { min: 6, message: "密码长度不能少于6位", trigger: "blur" },
-  ],
+  password: [requiredTrimmedRule("登录密码"), trimmedPasswordLengthRule("登录密码")],
 });
 const loginFormRef = ref(null);
+const loginSubmitting = ref(false);
 
 // 修改交易密码相关
 const tradePasswordVisible = ref(false);
@@ -798,12 +929,10 @@ const tradeForm = reactive({
   tradePassword: null,
 });
 const tradeRules = reactive({
-  tradePassword: [
-    { required: true, message: "请输入交易密码", trigger: "blur" },
-    { min: 6, message: "密码长度不能少于6位", trigger: "blur" },
-  ],
+  tradePassword: [requiredTrimmedRule("交易密码"), trimmedPasswordLengthRule("交易密码")],
 });
 const tradeFormRef = ref(null);
+const tradeSubmitting = ref(false);
 
 // 修改上级相关
 const parentVisible = ref(false);
@@ -822,36 +951,49 @@ const parentRules = reactive({
   }],
 });
 const parentFormRef = ref(null);
+const parentSubmitting = ref(false);
 
 // 修改等级相关
 const vipVisible = ref(false);
 const vipForm = reactive({
   id: null,
+  version: null,
   vipId: null,
 });
 const vipRules = reactive({
-  vipId: [{ required: true, message: "请选择会员等级", trigger: "change" }],
+  vipId: [{ required: true, message: "请选择VIP等级", trigger: "change" }],
 });
 const vipFormRef = ref(null);
+const vipSubmitting = ref(false);
 
 // 修改信誉分相关
 const reputationVisible = ref(false);
 const reputationForm = reactive({
   id: null,
+  version: null,
   currentReputation: null,
   newReputation: null,
 });
 const reputationRules = reactive({
   newReputation: [
-    { required: true, message: "请输入修改后的信誉分", trigger: "blur" },
+    { required: true, message: "信誉分是必填项！", trigger: "change" },
+    {
+      validator: (_rule, value) => value == null || value === ""
+        || (Number.isInteger(value) && value >= 0 && value <= 100)
+        ? Promise.resolve()
+        : Promise.reject(new Error("请输入 0 到 100 之间的整数")),
+      trigger: "change",
+    },
   ],
 });
 const reputationFormRef = ref(null);
+const reputationSubmitting = ref(false);
 
 const signDaysVisible = ref(false);
 const signDaysFormRef = ref(null);
 const signDaysForm = reactive({
   id: null,
+  version: null,
   currentSignDays: 0,
   signDays: 0,
   includeToday: "0",
@@ -868,6 +1010,9 @@ const signDaysRules = reactive({
   signDays: [nonNegativeIntegerRule],
   includeToday: [{ required: true, message: "请选择是否包含今日签到", trigger: "change" }],
 });
+const signDaysSubmitting = ref(false);
+const pendingMemberActions = reactive(new Set());
+let memberFormRequestSequence = 0;
 
 const advancedSelectFields = computed(() => [
   { key: "gender", label: "性别", options: sys_user_sex.value || [] },
@@ -980,55 +1125,56 @@ const sortableColumnKeys = new Set([
 
 const memberColumns = [
   { title: "ID", dataIndex: "id", key: "id", width: 80, fixed: "left" },
-  { title: "用户名", dataIndex: "username", key: "username", width: 150 },
-  { title: "手机号码", dataIndex: "phoneNumber", key: "phoneNumber", width: 150 },
+  { title: "用户名", dataIndex: "username", key: "username", width: 140 },
+  { title: "手机号码", dataIndex: "phoneNumber", key: "phoneNumber", width: 140 },
   { title: "VIP等级", dataIndex: ["memberLevel", "name"], key: "vip", width: 100 },
   { title: "上级信息", key: "parentInfo", width: 180 },
-  { title: "重置次数", key: "resetInfo", width: 170 },
-  { title: "余额信息", key: "balanceInfo", width: 190 },
-  { title: "任务进度", key: "taskProgress", width: 110 },
-  { title: "完成组数", key: "completeGroupNum", width: 110 },
-  { title: "登录信息", key: "loginInfo", width: 280 },
-  { title: "签到信息", key: "signinInfo", width: 170 },
-  { title: "统计信息", key: "statInfo", width: 190 },
-  { title: "信誉分", dataIndex: "reputationScore", key: "reputationScore", width: 100 },
-  { title: "邀请码", dataIndex: "inviteCode", key: "inviteCode", width: 140 },
-  { title: "性别", dataIndex: "gender", key: "gender", width: 90 },
-  { title: "邮箱", dataIndex: "email", key: "email", width: 160 },
-  { title: "生日", dataIndex: "birthday", key: "birthday", width: 130 },
-  { title: "是否启用", dataIndex: "isEnabled", key: "isEnabled", dict: "enabled", width: 110 },
-  { title: "允许邀请", dataIndex: "allowInvite", key: "allowInvite", dict: "yesNo", width: 110 },
-  { title: "是否冻结", dataIndex: "isFrozen", key: "isFrozen", dict: "yesNo", width: 110 },
-  { title: "是否假人", dataIndex: "isFake", key: "isFake", dict: "yesNo", width: 110 },
-  { title: "禁止工作", dataIndex: "isBanned", key: "isBanned", dict: "yesNo", width: 110 },
-  { title: "工作限额", dataIndex: "workLimit", key: "workLimit", width: 110 },
+  { title: "重置次数", key: "resetInfo", width: 180 },
+  { title: "余额信息", key: "balanceInfo", width: 180 },
+  { title: "任务进度", key: "taskProgress", width: 120 },
+  { title: "完成组数", key: "completeGroupNum", width: 120 },
+  { title: "登录信息", key: "loginInfo", width: 300 },
+  { title: "签到信息", key: "signinInfo", width: 180 },
+  { title: "统计信息", key: "statInfo", width: 200 },
+  { title: "信誉分", dataIndex: "reputationScore", key: "reputationScore", width: 80 },
+  { title: "邀请码", dataIndex: "inviteCode", key: "inviteCode", width: 100 },
+  { title: "性别", dataIndex: "gender", key: "gender", width: 100 },
+  { title: "邮箱", dataIndex: "email", key: "email", width: 180 },
+  { title: "生日", dataIndex: "birthday", key: "birthday", width: 140 },
+  { title: "是否启用", dataIndex: "isEnabled", key: "isEnabled", dict: "enabled", width: 100 },
+  { title: "允许邀请", dataIndex: "allowInvite", key: "allowInvite", dict: "yesNo", width: 100 },
+  { title: "是否冻结", dataIndex: "isFrozen", key: "isFrozen", dict: "yesNo", width: 100 },
+  { title: "是否假人", dataIndex: "isFake", key: "isFake", dict: "yesNo", width: 100, align: "center" },
+  { title: "禁止工作", dataIndex: "isBanned", key: "isBanned", dict: "yesNo", width: 100 },
+  { title: "工作限额", dataIndex: "workLimit", key: "workLimit", width: 100 },
   { title: "关闭提现通知", dataIndex: "isWithdrawalNotification", key: "isWithdrawalNotification", dict: "yesNo", width: 140 },
-  { title: "产品匹配", dataIndex: "productMatching", key: "productMatching", dict: "enabled", width: 110 },
-  { title: "账户状态", dataIndex: "accountStatus", key: "accountStatus", dict: "enabled", width: 110 },
-  { title: "交易状态", dataIndex: "transactionStatus", key: "transactionStatus", dict: "enabled", width: 110 },
-  { title: "提现状态", dataIndex: "withdrawalStatus", key: "withdrawalStatus", dict: "enabled", width: 110 },
-  { title: "协助金提现状态", dataIndex: "assistWithdrawalStatus", key: "assistWithdrawalStatus", dict: "enabled", width: 150 },
-  { title: "充值后禁止提现", dataIndex: "depositBlockWithdrawal", key: "depositBlockWithdrawal", dict: "yesNo", width: 150 },
+  { title: "产品匹配", dataIndex: "productMatching", key: "productMatching", dict: "enabled", width: 160 },
+  { title: "账户状态", dataIndex: "accountStatus", key: "accountStatus", dict: "enabled", width: 100 },
+  { title: "交易状态", dataIndex: "transactionStatus", key: "transactionStatus", dict: "enabled", width: 100 },
+  { title: "提现状态", dataIndex: "withdrawalStatus", key: "withdrawalStatus", dict: "enabled", width: 100 },
+  { title: "协助金提现状态", dataIndex: "assistWithdrawalStatus", key: "assistWithdrawalStatus", dict: "enabled", width: 140 },
+  { title: "充值后禁止提现", dataIndex: "depositBlockWithdrawal", key: "depositBlockWithdrawal", dict: "yesNo", width: 140 },
   { title: "启用Web3授权", dataIndex: "web3AuthEnabled", key: "web3AuthEnabled", dict: "yesNo", width: 140 },
-  { title: "是否无效", dataIndex: "isInvalid", key: "isInvalid", dict: "yesNo", width: 110 },
-  { title: "是否活动", dataIndex: "isActivity", key: "isActivity", dict: "yesNo", width: 110 },
-  { title: "禁止客户提现所需交易密码失败次数(0-不限制)", dataIndex: "withdrawalPasswordFailLimit", key: "withdrawalPasswordFailLimit", width: 270 },
-  { title: "禁止客户提现交易密码连续失败次数", dataIndex: "withdrawalPasswordFailCount", key: "withdrawalPasswordFailCount", width: 240 },
-  { title: "单次最大提现金额(0-不限制)", dataIndex: "maxSingleWithdrawal", key: "maxSingleWithdrawal", width: 210 },
-  { title: "任务开始前是否验证身份信息", dataIndex: "verifyIdentityBeforeTask", key: "verifyIdentityBeforeTask", dict: "yesNo", width: 210 },
+  { title: "是否无效", dataIndex: "isInvalid", key: "isInvalid", dict: "yesNo", width: 100 },
+  { title: "是否活动", dataIndex: "isActivity", key: "isActivity", dict: "yesNo", width: 100 },
+  { title: "禁止客户提现所需交易密码失败次数(0-不限制)", dataIndex: "withdrawalPasswordFailLimit", key: "withdrawalPasswordFailLimit", width: 160 },
+  { title: "禁止客户提现交易密码连续失败次数", dataIndex: "withdrawalPasswordFailCount", key: "withdrawalPasswordFailCount", width: 160 },
+  { title: "单次最大提现金额(0-不限制)", dataIndex: "maxSingleWithdrawal", key: "maxSingleWithdrawal", width: 160 },
+  { title: "任务开始前是否验证身份信息", dataIndex: "verifyIdentityBeforeTask", key: "verifyIdentityBeforeTask", dict: "yesNo", width: 160 },
   { title: "是否启用用户合同", dataIndex: "userContractEnabled", key: "userContractEnabled", dict: "yesNo", width: 160 },
   { title: "是否签署用户合同", dataIndex: "userContractSigned", key: "userContractSigned", dict: "yesNo", width: 160 },
-  { title: "是否启用正式合同", dataIndex: "formalContractEnabled", key: "formalContractEnabled", dict: "yesNo", width: 160 },
-  { title: "是否签署正式合同", dataIndex: "formalContractSigned", key: "formalContractSigned", dict: "yesNo", width: 160 },
-  { title: "禁止提现备注", dataIndex: "withdrawalBlockRemark", key: "withdrawalBlockRemark", width: 180 },
-  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180 },
-  { title: "备注", dataIndex: "remarks", key: "remarks", width: 160 },
-  { title: "操作", key: "operation", width: 360, fixed: "right" },
+  { title: "是否启用正式合同", dataIndex: "formalContractEnabled", key: "formalContractEnabled", dict: "yesNo", width: 200 },
+  { title: "是否签署正式合同", dataIndex: "formalContractSigned", key: "formalContractSigned", dict: "yesNo", width: 200 },
+  { title: "禁止提现备注", dataIndex: "withdrawalBlockRemark", key: "withdrawalBlockRemark", width: 200 },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 170 },
+  { title: "备注", dataIndex: "remarks", key: "remarks", width: 200 },
+  { title: "操作", key: "operation", width: 300, fixed: "right" },
 ].map((column) => sortableColumnKeys.has(column.key)
   ? { ...column, sorter: true }
   : column);
 
 const rowSelection = computed(() => ({
+  columnWidth: 32,
   selectedRowKeys: ids.value,
   onChange: (_selectedRowKeys, selectedRows) => {
     handleSelectionChange(selectedRows);
@@ -1218,6 +1364,7 @@ function handleSelectionChange(selection) {
 
 /** 新增按钮操作 */
 function handleAdd() {
+  memberFormRequestSequence += 1;
   reset();
   formReadonly.value = false;
   open.value = true;
@@ -1226,8 +1373,10 @@ function handleAdd() {
 
 /** 查看用户 */
 function handleView(row) {
+  const requestSequence = ++memberFormRequestSequence;
   reset();
   getOrderuser(row.id).then((response) => {
+    if (requestSequence !== memberFormRequestSequence) return;
     form.value = response.data;
     form.value.birthday = response.data.birthday
       ? proxy.parseTime(response.data.birthday, "{y}-{m}-{d}")
@@ -1242,18 +1391,20 @@ function handleView(row) {
 
 /** 修改按钮操作 */
 function handleUpdate(row) {
+  const requestSequence = ++memberFormRequestSequence;
   reset();
   formReadonly.value = false;
   const _id = row.id || ids.value;
   getOrderuser(_id).then((response) => {
+    if (requestSequence !== memberFormRequestSequence) return;
     form.value = response.data;
     form.value.birthday = response.data.birthday
       ? proxy.parseTime(response.data.birthday, "{y}-{m}-{d}")
       : null;
-    form.value.password = "******";
-    form.value.tradePassword = "******";
+    form.value.password = null;
+    form.value.tradePassword = null;
     open.value = true;
-    title.value = "修改用户";
+    title.value = "修改";
   });
 }
 
@@ -1320,23 +1471,90 @@ function handleExport() {
   );
 }
 
+function isValueOne(value) {
+  return String(value ?? "") === "1";
+}
+
+function memberActionKey(row, field) {
+  return `${field}:${row?.id ?? "unknown"}`;
+}
+
+function isMemberActionPending(row, field) {
+  return pendingMemberActions.has(memberActionKey(row, field));
+}
+
+function memberTarget(row) {
+  return row?.username || row?.phoneNumber || `ID ${row?.id}`;
+}
+
+async function runConfirmedMemberUpdate({ row, field, confirmText, payload, successMessage, failureMessage }) {
+  const key = memberActionKey(row, field);
+  if (pendingMemberActions.has(key)) return;
+  pendingMemberActions.add(key);
+  let confirmed = false;
+  try {
+    await proxy.$modal.confirm(confirmText);
+    confirmed = true;
+    await updateOrderuser(payload);
+    proxy.$modal.msgSuccess(successMessage);
+    getList();
+  } catch (error) {
+    if (confirmed) proxy.$modal.msgError(error?.message || failureMessage);
+  } finally {
+    pendingMemberActions.delete(key);
+  }
+}
+
+async function runValidatedModalAction({
+  formRef,
+  submitting,
+  visible,
+  request,
+  successMessage,
+  failureMessage,
+}) {
+  if (submitting.value) return;
+  submitting.value = true;
+  try {
+    await formRef.value?.validate?.();
+    await request();
+    visible.value = false;
+    proxy.$modal.msgSuccess(successMessage);
+    getList();
+  } catch (error) {
+    if (!error?.errorFields) proxy.$modal.msgError(error?.message || failureMessage);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function clearModalValidation(formRef) {
+  nextTick(() => formRef.value?.clearValidate?.());
+}
+
 /** 重置订单数确认并调用接口 */
-function handleReset(row) {
+async function handleReset(row) {
   const _id = row.id || ids.value;
-  proxy.$modal
-    .confirm('是否确认重置订单用户编号为"' + _id + '"的订单数量？')
-    .then(function () {
-      return resetOrder(_id);
-    })
-    .then(() => {
-      getList();
-      proxy.$modal.msgSuccess("重置成功");
-    })
-    .catch(() => {});
+  const key = memberActionKey(row, "resetOrder");
+  if (pendingMemberActions.has(key)) return;
+  pendingMemberActions.add(key);
+  let confirmed = false;
+  try {
+    await proxy.$modal.confirm(`是否确认重置会员“${memberTarget(row)}”的订单数量？`);
+    confirmed = true;
+    await resetOrder(_id);
+    proxy.$modal.msgSuccess("重置成功");
+    getList();
+  } catch (error) {
+    if (confirmed) proxy.$modal.msgError(error?.message || "重置失败，请刷新后重试");
+  } finally {
+    pendingMemberActions.delete(key);
+  }
 }
 
 function openModifyCount(row) {
   modifyForm.id = row.id || ids.value;
+  modifyForm.version = row.version ?? null;
 
   // 给 row.taskProgress 和 row.memberLevel.orderCountPerDay 设置默认值
   const taskProgress = row.taskProgress ?? 0; // 默认为0
@@ -1345,71 +1563,87 @@ function openModifyCount(row) {
   modifyForm.orderCount = `${taskProgress} / ${orderCountPerDay}`;
 
   modifyForm.taskProgress = taskProgress;
+  modifySubmitting.value = false;
   modifyModalVisible.value = true;
+  clearModalValidation(modifyFormRef);
 }
 
 async function submitModifyCount() {
-  modifyFormRef?.value?.validate?.().then(async () => {
-    try {
-      await updateOrderuser(modifyForm);
-      getList();
-      modifyModalVisible.value = false;
-      proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改成功");
-    } catch (err) {
-      proxy.$modal.msgError &&
-        proxy.$modal.msgError(err?.message || "修改失败");
-    }
-  }).catch(() => {});
+  await runValidatedModalAction({
+    formRef: modifyFormRef,
+    submitting: modifySubmitting,
+    visible: modifyModalVisible,
+    request: () => updateOrderuser(buildModifyCountPayload(modifyForm)),
+    successMessage: "修改成功",
+    failureMessage: "修改失败",
+  });
+}
+
+function closeModifyCount() {
+  if (modifySubmitting.value) return;
+  modifyModalVisible.value = false;
+  Object.assign(modifyForm, { id: null, version: null, orderCount: null, taskProgress: null });
+  clearModalValidation(modifyFormRef);
 }
 
 // 修改登录密码
 function handleModifyLoginPassword(row) {
   loginForm.id = row.id;
   loginForm.password = null;
+  loginSubmitting.value = false;
   loginPasswordVisible.value = true;
+  clearModalValidation(loginFormRef);
 }
 
 async function submitLoginPassword() {
-  loginFormRef?.value?.validate?.().then(async () => {
-    try {
-      await editPassword({ id: loginForm.id, password: loginForm.password });
-      getList();
-      loginPasswordVisible.value = false;
-      proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改登录密码成功");
-    } catch (err) {
-      proxy.$modal.msgError &&
-        proxy.$modal.msgError(err?.message || "修改登录密码失败");
-    }
-  }).catch(() => {});
+  await runValidatedModalAction({
+    formRef: loginFormRef,
+    submitting: loginSubmitting,
+    visible: loginPasswordVisible,
+    request: () => editPassword({
+      id: loginForm.id,
+      password: String(loginForm.password || "").trim(),
+    }),
+    successMessage: "修改登录密码成功",
+    failureMessage: "修改登录密码失败",
+  });
+}
+
+function closeLoginPassword() {
+  if (loginSubmitting.value) return;
+  loginPasswordVisible.value = false;
+  Object.assign(loginForm, { id: null, password: null });
+  clearModalValidation(loginFormRef);
 }
 
 // 修改交易密码
 function handleModifyTradePassword(row) {
   tradeForm.id = row.id;
   tradeForm.tradePassword = null;
+  tradeSubmitting.value = false;
   tradePasswordVisible.value = true;
+  clearModalValidation(tradeFormRef);
 }
 
 async function submitTradePassword() {
-  tradeFormRef?.value?.validate?.().then(async () => {
-    const normalizedPassword = String(tradeForm.tradePassword || "").trim();
-    if (normalizedPassword.length < 6) {
-      proxy.$modal.msgError("交易密码长度不能少于6位");
-      return;
-    }
-    try {
-      await editTradePassword({
+  await runValidatedModalAction({
+    formRef: tradeFormRef,
+    submitting: tradeSubmitting,
+    visible: tradePasswordVisible,
+    request: () => editTradePassword({
         id: tradeForm.id,
-        tradePassword: normalizedPassword,
-      });
-      getList();
-      tradePasswordVisible.value = false;
-      proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改交易密码成功");
-    } catch (err) {
-      proxy.$modal.msgError &&
-        proxy.$modal.msgError(err?.message || "修改交易密码失败");
-    }
-  }).catch(() => {});
+        tradePassword: String(tradeForm.tradePassword || "").trim(),
+      }),
+    successMessage: "修改交易密码成功",
+    failureMessage: "修改交易密码失败",
+  });
+}
+
+function closeTradePassword() {
+  if (tradeSubmitting.value) return;
+  tradePasswordVisible.value = false;
+  Object.assign(tradeForm, { id: null, tradePassword: null });
+  clearModalValidation(tradeFormRef);
 }
 
 // 修改上级
@@ -1418,7 +1652,9 @@ function handleModifyParent(row) {
   parentTopLevel.value = Number(row.parentId || 0) === 0;
   parentForm.parentId = row.parentId ?? null;
   parentForm.parentInviteCode = row.parentInviteCode || null;
+  parentSubmitting.value = false;
   parentVisible.value = true;
+  clearModalValidation(parentFormRef);
 }
 
 function handleParentTypeChange(event) {
@@ -1432,69 +1668,94 @@ function handleParentTypeChange(event) {
 }
 
 async function submitModifyParent() {
-  parentFormRef?.value?.validate?.().then(async () => {
-    try {
-      await editParentId({
+  await runValidatedModalAction({
+    formRef: parentFormRef,
+    submitting: parentSubmitting,
+    visible: parentVisible,
+    request: () => editParentId({
         id: parentForm.id,
         parentId: parentTopLevel.value ? 0 : null,
         parentInviteCode: parentTopLevel.value
           ? null
           : String(parentForm.parentInviteCode || "").trim(),
-      });
-      getList();
-      parentVisible.value = false;
-      proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改上级成功");
-    } catch (err) {
-      proxy.$modal.msgError &&
-        proxy.$modal.msgError(err?.message || "修改上级失败");
-    }
-  }).catch(() => {});
+      }),
+    successMessage: "修改上级成功",
+    failureMessage: "修改上级失败",
+  });
+}
+
+function closeModifyParent() {
+  if (parentSubmitting.value) return;
+  parentVisible.value = false;
+  parentTopLevel.value = false;
+  Object.assign(parentForm, { id: null, parentId: null, parentInviteCode: null });
+  clearModalValidation(parentFormRef);
 }
 
 // 修改等级
 function handleModifyVip(row) {
   vipForm.id = row.id;
-  vipForm.vipId = row.vipId || null;
+  vipForm.version = row.version ?? null;
+  vipForm.vipId = row.vipId ?? null;
+  vipSubmitting.value = false;
   vipVisible.value = true;
+  clearModalValidation(vipFormRef);
 }
 
 async function submitModifyVip() {
-  vipFormRef?.value?.validate?.().then(async () => {
-    try {
-      await updateOrderuser({ id: vipForm.id, vipId: vipForm.vipId });
-      getList();
-      vipVisible.value = false;
-      proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改等级成功");
-    } catch (err) {
-      proxy.$modal.msgError &&
-        proxy.$modal.msgError(err?.message || "修改等级失败");
-    }
-  }).catch(() => {});
+  await runValidatedModalAction({
+    formRef: vipFormRef,
+    submitting: vipSubmitting,
+    visible: vipVisible,
+    request: () => updateOrderuser({ id: vipForm.id, version: vipForm.version, vipId: vipForm.vipId }),
+    successMessage: "修改等级成功",
+    failureMessage: "修改等级失败",
+  });
+}
+
+function closeModifyVip() {
+  if (vipSubmitting.value) return;
+  vipVisible.value = false;
+  Object.assign(vipForm, { id: null, version: null, vipId: null });
+  clearModalValidation(vipFormRef);
 }
 
 // 修改信誉分
 function handleModifyReputation(row) {
   reputationForm.id = row.id;
-  reputationForm.currentReputation = row.reputationScore || 100;
-  reputationForm.newReputation = row.reputationScore || 100;
+  reputationForm.version = row.version ?? null;
+  reputationForm.currentReputation = row.reputationScore ?? 100;
+  reputationForm.newReputation = row.reputationScore ?? 100;
+  reputationSubmitting.value = false;
   reputationVisible.value = true;
+  clearModalValidation(reputationFormRef);
 }
 
 async function submitModifyReputation() {
-  reputationFormRef?.value?.validate?.().then(async () => {
-    try {
-      await updateOrderuser({
-        id: reputationForm.id,
-        reputationScore: reputationForm.newReputation,
-      });
-      getList();
-      reputationVisible.value = false;
-      proxy.$modal.msgSuccess && proxy.$modal.msgSuccess("修改信誉分成功");
-    } catch (err) {
-      proxy.$modal.msgError &&
-        proxy.$modal.msgError(err?.message || "修改信誉分失败");
-    }
-  }).catch(() => {});
+  await runValidatedModalAction({
+    formRef: reputationFormRef,
+    submitting: reputationSubmitting,
+    visible: reputationVisible,
+    request: () => updateOrderuser({
+      id: reputationForm.id,
+      version: reputationForm.version,
+      reputationScore: reputationForm.newReputation,
+      }),
+    successMessage: "修改信誉分成功",
+    failureMessage: "修改信誉分失败",
+  });
+}
+
+function closeModifyReputation() {
+  if (reputationSubmitting.value) return;
+  reputationVisible.value = false;
+  Object.assign(reputationForm, {
+    id: null,
+    version: null,
+    currentReputation: null,
+    newReputation: null,
+  });
+  clearModalValidation(reputationFormRef);
 }
 
 async function copyText(value) {
@@ -1517,27 +1778,15 @@ async function copyText(value) {
 }
 
 function handleCopyMember(row) {
+  memberFormRequestSequence += 1;
   reset();
-  getOrderuser(row.id).then((response) => {
-    const source = response.data || {};
-    form.value = {
-      ...source,
-      id: null,
-      username: null,
-      phoneNumber: null,
-      inviteCode: null,
-      password: null,
-      tradePassword: null,
-      version: null,
-      createTime: null,
-      updateTime: null,
-      birthday: source.birthday
-        ? proxy.parseTime(source.birthday, "{y}-{m}-{d}")
-        : null,
-    };
-    open.value = true;
-    title.value = "复制会员";
+  formReadonly.value = false;
+  const defaults = { ...form.value };
+  form.value = buildCopyMemberForm(defaults, row || {}, {
+    formatBirthday: (value) => proxy.parseTime(value, "{y}-{m}-{d}"),
   });
+  open.value = true;
+  title.value = "创建";
 }
 
 function handleEditIdentity(row) {
@@ -1565,30 +1814,48 @@ function handleSubMembers(row) {
 function handleModifySignDays(row) {
   Object.assign(signDaysForm, {
     id: row.id,
+    version: row.version ?? null,
     currentSignDays: Number(row.signDays || 0),
     signDays: Number(row.signDays || 0),
     includeToday: Number(row.todaySignCount || 0) > 0 ? "1" : "0",
     todaySignCount: Number(row.todaySignCount || 0),
     totalSignDays: Number(row.totalSignDays || 0),
   });
+  signDaysSubmitting.value = false;
   signDaysVisible.value = true;
+  clearModalValidation(signDaysFormRef);
 }
 
 async function submitModifySignDays() {
-  try {
-    await signDaysFormRef.value?.validate();
-    await updateOrderuser({
+  await runValidatedModalAction({
+    formRef: signDaysFormRef,
+    submitting: signDaysSubmitting,
+    visible: signDaysVisible,
+    request: () => updateOrderuser({
       id: signDaysForm.id,
+      version: signDaysForm.version,
       signDays: signDaysForm.signDays,
       todaySignCount: signDaysForm.includeToday === "1" ? Math.max(signDaysForm.todaySignCount, 1) : 0,
       totalSignDays: signDaysForm.totalSignDays,
-    });
-    signDaysVisible.value = false;
-    proxy.$modal.msgSuccess("修改签到天数成功");
-    getList();
-  } catch (error) {
-    if (error?.errorFields) return;
-  }
+    }),
+    successMessage: "修改签到天数成功",
+    failureMessage: "修改签到天数失败",
+  });
+}
+
+function closeModifySignDays() {
+  if (signDaysSubmitting.value) return;
+  signDaysVisible.value = false;
+  Object.assign(signDaysForm, {
+    id: null,
+    version: null,
+    currentSignDays: 0,
+    signDays: 0,
+    includeToday: "0",
+    todaySignCount: 0,
+    totalSignDays: 0,
+  });
+  clearModalValidation(signDaysFormRef);
 }
 
 function handleOrderDetails(row) {
@@ -1604,106 +1871,80 @@ function handleExtraCommission(row) {
 }
 
 async function handleToggleFake(row) {
-  const isCurrentlyFake = row.isFake === "1";
-  const newValue = isCurrentlyFake ? "0" : "1";
-  const action = isCurrentlyFake ? "设为真人" : "设为假人";
-  proxy.$modal
-    .confirm(`是否确认${action}？`)
-    .then(async () => {
-      try {
-        await updateOrderuser({ id: row.id, isFake: newValue });
-        proxy.$modal.msgSuccess(`${action}成功`);
-        getList();
-      } catch (err) {
-        proxy.$modal.msgError(err.message || `${action}失败`);
-      }
-    })
-    .catch(() => {});
+  const { value: newValue, action } = buildFakeMemberToggle(row.isFake);
+  return runConfirmedMemberUpdate({
+    row,
+    field: "isFake",
+    confirmText: `是否确认将会员“${memberTarget(row)}”${action}？`,
+    payload: { id: row.id, version: row.version, isFake: newValue },
+    successMessage: `${action}成功`,
+    failureMessage: `${action}失败`,
+  });
 }
 
 async function handleToggleProductMatching(row) {
-  const newValue = row.productMatching === "0" ? "1" : "0";
+  const newValue = String(row.productMatching ?? "") === "0" ? "1" : "0";
   const action = newValue === "0" ? "启用" : "禁用";
-  proxy.$modal
-    .confirm(`是否确认${action}产品匹配？`)
-    .then(async () => {
-      try {
-        await updateOrderuser({ id: row.id, productMatching: newValue });
-        proxy.$modal.msgSuccess(`${action}产品匹配成功`);
-        getList();
-      } catch (err) {
-        proxy.$modal.msgError(err.message || `${action}产品匹配失败`);
-      }
-    })
-    .catch(() => {});
+  return runConfirmedMemberUpdate({
+    row,
+    field: "productMatching",
+    confirmText: `是否确认对会员“${memberTarget(row)}”${action}产品匹配？`,
+    payload: { id: row.id, version: row.version, productMatching: newValue },
+    successMessage: `${action}产品匹配成功`,
+    failureMessage: `${action}产品匹配失败`,
+  });
 }
 
 async function handleToggleAccountStatus(row) {
-  const newValue = row.accountStatus === "0" ? "1" : "0";
+  const newValue = String(row.accountStatus ?? "") === "0" ? "1" : "0";
   const action = newValue === "0" ? "启用" : "禁用";
-  proxy.$modal
-    .confirm(`是否确认${action}账户？`)
-    .then(async () => {
-      try {
-        await updateOrderuser({ id: row.id, accountStatus: newValue });
-        proxy.$modal.msgSuccess(`${action}账户成功`);
-        getList();
-      } catch (err) {
-        proxy.$modal.msgError(err.message || `${action}账户失败`);
-      }
-    })
-    .catch(() => {});
+  return runConfirmedMemberUpdate({
+    row,
+    field: "accountStatus",
+    confirmText: `是否确认对会员“${memberTarget(row)}”${action}账户？`,
+    payload: { id: row.id, version: row.version, accountStatus: newValue },
+    successMessage: `${action}账户成功`,
+    failureMessage: `${action}账户失败`,
+  });
 }
 
 async function handleToggleTransactionStatus(row) {
-  const newValue = row.transactionStatus === "0" ? "1" : "0";
+  const newValue = String(row.transactionStatus ?? "") === "0" ? "1" : "0";
   const action = newValue === "0" ? "启用" : "禁用";
-  proxy.$modal
-    .confirm(`是否确认${action}交易？`)
-    .then(async () => {
-      try {
-        await updateOrderuser({ id: row.id, transactionStatus: newValue });
-        proxy.$modal.msgSuccess(`${action}交易成功`);
-        getList();
-      } catch (err) {
-        proxy.$modal.msgError(err.message || `${action}交易失败`);
-      }
-    })
-    .catch(() => {});
+  return runConfirmedMemberUpdate({
+    row,
+    field: "transactionStatus",
+    confirmText: `是否确认对会员“${memberTarget(row)}”${action}交易？`,
+    payload: { id: row.id, version: row.version, transactionStatus: newValue },
+    successMessage: `${action}交易成功`,
+    failureMessage: `${action}交易失败`,
+  });
 }
 
 async function handleToggleWithdrawalStatus(row) {
-  const newValue = row.withdrawalStatus === "0" ? "1" : "0";
+  const newValue = String(row.withdrawalStatus ?? "") === "0" ? "1" : "0";
   const action = newValue === "0" ? "启用" : "禁用";
-  proxy.$modal
-    .confirm(`是否确认${action}提现？`)
-    .then(async () => {
-      try {
-        await updateOrderuser({ id: row.id, withdrawalStatus: newValue });
-        proxy.$modal.msgSuccess(`${action}提现成功`);
-        getList();
-      } catch (err) {
-        proxy.$modal.msgError(err.message || `${action}提现失败`);
-      }
-    })
-    .catch(() => {});
+  return runConfirmedMemberUpdate({
+    row,
+    field: "withdrawalStatus",
+    confirmText: `是否确认对会员“${memberTarget(row)}”${action}提现？`,
+    payload: { id: row.id, version: row.version, withdrawalStatus: newValue },
+    successMessage: `${action}提现成功`,
+    failureMessage: `${action}提现失败`,
+  });
 }
 
 async function handleToggleAssistWithdrawalStatus(row) {
-  const newValue = row.assistWithdrawalStatus === "0" ? "1" : "0";
+  const newValue = String(row.assistWithdrawalStatus ?? "") === "0" ? "1" : "0";
   const action = newValue === "0" ? "启用" : "禁用";
-  proxy.$modal
-    .confirm(`是否确认${action}协助金提现？`)
-    .then(async () => {
-      try {
-        await updateOrderuser({ id: row.id, assistWithdrawalStatus: newValue });
-        proxy.$modal.msgSuccess(`${action}协助金提现成功`);
-        getList();
-      } catch (err) {
-        proxy.$modal.msgError(err.message || `${action}协助金提现失败`);
-      }
-    })
-    .catch(() => {});
+  return runConfirmedMemberUpdate({
+    row,
+    field: "assistWithdrawalStatus",
+    confirmText: `是否确认对会员“${memberTarget(row)}”${action}协助金提现？`,
+    payload: { id: row.id, version: row.version, assistWithdrawalStatus: newValue },
+    successMessage: `${action}协助金提现成功`,
+    failureMessage: `${action}协助金提现失败`,
+  });
 }
 
 getList();
@@ -1713,8 +1954,26 @@ getList();
   margin: 16px 40px 32px;
 }
 
+.member-orderuser-page :deep(.ant-pro-query-form),
+.member-orderuser-page :deep(.ant-pro-table-toolbar) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+.member-orderuser-page :deep(.ant-pro-query-form *),
+.member-orderuser-page :deep(.ant-pro-table-toolbar *),
+.member-orderuser-page :deep(.ant-table-tbody .ant-btn) {
+  font-family: inherit;
+}
+
 .ant-pro-query-form :deep(.ant-form-item) {
+  flex-wrap: nowrap;
   margin-bottom: 0;
+}
+
+.ant-pro-query-form :deep(.ant-form-item-control) {
+  flex: 1 1 0 !important;
+  max-width: calc(100% - 100px);
 }
 
 .ant-pro-query-actions {
@@ -1769,6 +2028,25 @@ getList();
   outline-offset: 2px;
 }
 
+.fake-member-link {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.member-status-badge :deep(.ant-badge-status-text) {
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.fake-member-success {
+  color: #52c41a !important;
+}
+
+.fake-member-error {
+  color: #ff4d4f !important;
+}
+
 .member-dot {
   display: inline-block;
   width: 6px;
@@ -1783,8 +2061,36 @@ getList();
   background: #52c41a;
 }
 
-.ant-action-grid {
-  max-width: 336px;
+.member-orderuser-page :deep(.ant-table-thead > tr > th),
+.member-orderuser-page :deep(.ant-table-tbody > tr > td) {
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 23.5714px;
+}
+
+.member-orderuser-page :deep(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid #f0f0f0 !important;
+}
+
+.member-orderuser-page :deep(.ant-table-body) {
+  min-height: calc(100vh - 440px);
+}
+
+.member-orderuser-page :deep(.ant-pro-query-form .ant-btn-primary),
+.member-orderuser-page :deep(.ant-pro-table-toolbar .ant-btn-primary:not(:disabled)),
+.member-orderuser-page :deep(.ant-table-tbody .ant-btn-primary:not(.ant-btn-dangerous):not(.ant-action-warning):not(.ant-action-success)) {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.member-orderuser-page :deep(.ant-pro-query-form .ant-btn-primary:hover),
+.member-orderuser-page :deep(.ant-pro-query-form .ant-btn-primary:focus),
+.member-orderuser-page :deep(.ant-pro-table-toolbar .ant-btn-primary:not(:disabled):hover),
+.member-orderuser-page :deep(.ant-pro-table-toolbar .ant-btn-primary:not(:disabled):focus),
+.member-orderuser-page :deep(.ant-table-tbody .ant-btn-primary:not(.ant-btn-dangerous):not(.ant-action-warning):not(.ant-action-success):hover),
+.member-orderuser-page :deep(.ant-table-tbody .ant-btn-primary:not(.ant-btn-dangerous):not(.ant-action-warning):not(.ant-action-success):focus) {
+  background: #40a9ff;
+  border-color: #40a9ff;
 }
 
 .ant-action-warning {

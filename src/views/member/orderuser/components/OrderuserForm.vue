@@ -4,6 +4,8 @@
     :title="title"
     width="85%"
     :mask-closable="false"
+    :closable="!submitting"
+    :keyboard="!submitting"
     destroy-on-close
     @close="handleClose"
   >
@@ -11,7 +13,12 @@
       <a-row :gutter="[20, 0]">
         <a-col :span="6">
           <a-form-item label="用户名" name="username">
-            <a-input v-model:value="formData.username" placeholder="用户名" allow-clear />
+            <a-input
+              v-model:value="formData.username"
+              placeholder="用户名"
+              :disabled="isEditMode"
+              allow-clear
+            />
           </a-form-item>
         </a-col>
         <a-col :span="6">
@@ -45,12 +52,12 @@
             </a-select>
           </a-form-item>
         </a-col>
-        <a-col :span="6">
+        <a-col v-if="!isEditMode" :span="6">
           <a-form-item label="登录密码" name="password">
             <a-input-password v-model:value="formData.password" placeholder="登录密码" allow-clear />
           </a-form-item>
         </a-col>
-        <a-col :span="6">
+        <a-col v-if="!isEditMode" :span="6">
           <a-form-item label="交易密码" name="tradePassword">
             <a-input-password v-model:value="formData.tradePassword" placeholder="交易密码" allow-clear />
           </a-form-item>
@@ -274,8 +281,14 @@
     <template #footer>
       <div class="drawer-footer">
         <a-space>
-          <a-button @click="handleCancel">取消</a-button>
-          <a-button type="primary" @click="handleSubmit">确定</a-button>
+          <a-button :disabled="submitting" @click="handleCancel">取消</a-button>
+          <a-button
+            v-if="!readonly"
+            type="primary"
+            :loading="submitting"
+            :disabled="submitting"
+            @click="handleSubmit"
+          >确定</a-button>
         </a-space>
       </div>
     </template>
@@ -283,8 +296,9 @@
 </template>
 
 <script setup name="OrderuserForm">
-import { computed, getCurrentInstance, ref } from "vue";
+import { computed, getCurrentInstance, nextTick, ref, watch } from "vue";
 import { addOrderuser, updateOrderuser } from "@/api/member/orderuser";
+import { buildMemberSubmitPayload } from "./orderuserFormPayload";
 
 const { proxy } = getCurrentInstance();
 const { user_yes_no, sys_user_sex, sys_enabled } = proxy.useDict(
@@ -318,15 +332,37 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "success"]);
 const formRef = ref();
+const submitting = ref(false);
+let formSession = 0;
 const visible = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
 });
+const isEditMode = computed(() => props.formData?.id != null);
 
-const rules = {
-  username: [{ required: true, message: "用户名不能为空", trigger: "blur" }],
-  tradePassword: [{ required: true, message: "交易密码不能为空", trigger: "blur" }],
-  password: [{ required: true, message: "密码不能为空", trigger: "blur" }],
+const requiredTrimmedRule = (label) => ({
+  required: true,
+  whitespace: true,
+  message: `${label}是必填项！`,
+  trigger: "blur",
+});
+const passwordLengthRule = (label) => ({
+  validator: (_rule, value) => {
+    const password = String(value || "").trim();
+    return !password || password.length >= 6
+      ? Promise.resolve()
+      : Promise.reject(new Error(`${label}长度不能少于6位`));
+  },
+  trigger: "blur",
+});
+const rules = computed(() => ({
+  username: isEditMode.value ? [] : [requiredTrimmedRule("用户名")],
+  tradePassword: isEditMode.value
+    ? []
+    : [requiredTrimmedRule("交易密码"), passwordLengthRule("交易密码")],
+  password: isEditMode.value
+    ? []
+    : [requiredTrimmedRule("登录密码"), passwordLengthRule("登录密码")],
   vipId: [{ required: true, message: "VIP等级不能为空", trigger: "change" }],
   reputationScore: [{ required: true, message: "信誉分不能为空", trigger: "change" }],
   gender: [{ required: true, message: "性别不能为空", trigger: "change" }],
@@ -349,7 +385,7 @@ const rules = {
   withdrawalPasswordFailLimit: [{ required: true, message: "失败次数限制不能为空", trigger: "change" }],
   withdrawalPasswordFailCount: [{ required: true, message: "连续失败次数不能为空", trigger: "change" }],
   maxSingleWithdrawal: [{ required: true, message: "单次最大提现金额不能为空", trigger: "change" }],
-};
+}));
 
 const orderedYesNoOptions = computed(() =>
   [...(user_yes_no.value || [])].sort((left, right) => Number(right.value) - Number(left.value))
@@ -365,10 +401,14 @@ const orderedGenderOptions = computed(() => {
 });
 
 function handleClose() {
+  if (submitting.value) return;
+  formRef.value?.clearValidate?.();
   visible.value = false;
 }
 
 function handleCancel() {
+  if (submitting.value) return;
+  formRef.value?.clearValidate?.();
   visible.value = false;
 }
 
@@ -379,34 +419,48 @@ function birthdayToTimestamp(value) {
   return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
 }
 
-function handleSubmit() {
+async function handleSubmit() {
+  if (submitting.value) return;
   if (props.readonly) {
     visible.value = false;
     return;
   }
-  formRef.value?.validate?.().then(() => {
-    const parentInviteCode = String(props.formData.parentInviteCode || "").trim();
-    const payload = {
-      ...props.formData,
-      birthday: birthdayToTimestamp(props.formData.birthday),
-      parentId: parentInviteCode ? props.formData.parentId : 0,
-      parentInviteCode: parentInviteCode || null,
-    };
-    if (props.formData.id != null) {
-      updateOrderuser(payload).then(() => {
-        proxy.$modal.msgSuccess("修改成功");
-        visible.value = false;
-        emit("success");
-      });
+  const submitSession = formSession;
+  const editing = isEditMode.value;
+  submitting.value = true;
+  try {
+    await formRef.value?.validate?.();
+    if (submitSession !== formSession || !props.modelValue) return;
+    const payload = buildMemberSubmitPayload(props.formData, { birthdayToTimestamp });
+    if (editing) {
+      await updateOrderuser(payload);
+      proxy.$modal.msgSuccess("修改成功");
     } else {
-      addOrderuser(payload).then(() => {
-        proxy.$modal.msgSuccess("新增成功");
-        visible.value = false;
-        emit("success");
-      });
+      await addOrderuser(payload);
+      proxy.$modal.msgSuccess("新增成功");
     }
-  }).catch(() => {});
+    if (submitSession === formSession && props.modelValue) {
+      visible.value = false;
+    }
+    emit("success");
+  } catch (error) {
+    if (!error?.errorFields) {
+      proxy.$modal.msgError(error?.message || `${editing ? "修改" : "新增"}失败`);
+    }
+  } finally {
+    submitting.value = false;
+  }
 }
+
+watch(visible, (open) => {
+  const session = ++formSession;
+  if (!open) return;
+  nextTick(() => {
+    if (session === formSession && visible.value) {
+      formRef.value?.clearValidate?.();
+    }
+  });
+});
 
 defineExpose({
   formRef,

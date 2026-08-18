@@ -2,8 +2,11 @@
   <a-drawer
     v-model:open="visible"
     title="修改提现账户"
-    width="90%"
+    width="85%"
     :destroy-on-close="false"
+    :mask-closable="!submitting && !deleting"
+    :closable="!submitting && !deleting"
+    :keyboard="!submitting && !deleting"
     @close="handleClose"
   >
     <div class="drawer-table-wrap ant-pro-member-page">
@@ -54,15 +57,18 @@
           <a-space>
             <a-button type="primary" @click="handleAdd" v-hasPermi="['member:withdrawalAcc:add']">新 增</a-button>
             <a-button :disabled="single" @click="handleUpdate" v-hasPermi="['member:withdrawalAcc:edit']">修 改</a-button>
-            <a-button danger :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:withdrawalAcc:remove']">删 除</a-button>
+            <a-button
+              danger
+              :disabled="multiple || deleting"
+              :loading="deleting"
+              @click="handleDelete()"
+              v-hasPermi="['member:withdrawalAcc:remove']"
+            >删 除</a-button>
           </a-space>
         </template>
 
         <template #bodyCell="{ column, record }">
-          <template v-if="column.dataIndex === 'type'">
-            <dict-tag :options="order_zhlx" :value="record.type" />
-          </template>
-          <template v-else-if="column.dataIndex === 'params'">
+          <template v-if="column.dataIndex === 'params'">
             <div v-if="record.type === '0'" class="table-detail-cell">
               <div>银行名称: {{ record.bankName }}</div>
               <div>存款种类: {{ record.depositType }}</div>
@@ -77,6 +83,14 @@
               <div>钱包地址: {{ record.walletAddress }}</div>
             </div>
           </template>
+          <template v-else-if="column.dataIndex === 'attachment'">
+            <a-image
+              v-if="record.attachment"
+              :src="record.attachment"
+              :width="64"
+            />
+            <span v-else>-</span>
+          </template>
           <template v-else-if="column.dataIndex === 'isDefault'">
             <dict-tag :options="user_yes_no" :value="record.isDefault" />
           </template>
@@ -86,13 +100,30 @@
           <template v-else-if="column.dataIndex === 'action'">
             <a-space>
               <a-button type="link" size="small" @click="handleUpdate(record)" v-hasPermi="['member:withdrawalAcc:edit']">修改</a-button>
-              <a-button type="link" danger size="small" @click="handleDelete(record)" v-hasPermi="['member:withdrawalAcc:remove']">删除</a-button>
+              <a-button
+                type="link"
+                danger
+                size="small"
+                :disabled="deleting"
+                :loading="deleting"
+                @click="handleDelete(record)"
+                v-hasPermi="['member:withdrawalAcc:remove']"
+              >删除</a-button>
             </a-space>
           </template>
         </template>
       </ant-pro-table>
 
-      <a-drawer v-model:open="open" :title="title" width="80%" :destroy-on-close="false">
+      <a-drawer
+        v-model:open="open"
+        :title="title"
+        width="85%"
+        :destroy-on-close="false"
+        :mask-closable="!submitting"
+        :closable="!submitting"
+        :keyboard="!submitting"
+        @close="handleFormClose"
+      >
         <a-form ref="withdrawalAccRef" :model="form" :rules="rules" layout="vertical">
           <a-row :gutter="[20, 0]">
             <a-col :span="8">
@@ -107,7 +138,7 @@
             <a-col :span="8">
               <a-form-item label="出金类型" name="withdrawalTypeId">
                 <a-radio-group v-model:value="form.withdrawalTypeId">
-                  <a-radio v-for="dict in formWithdrawalTypes" :key="dict.id" :value="dict.id">
+                  <a-radio v-for="dict in formWithdrawalTypes" :key="dict.id" :value="String(dict.id)">
                     {{ dict.name }}
                   </a-radio>
                 </a-radio-group>
@@ -172,14 +203,19 @@
                   <a-input v-model:value="form.walletAddress" placeholder="请输入钱包地址" allow-clear />
                 </a-form-item>
               </a-col>
+              <a-col :span="24">
+                <a-form-item label="附件" name="attachment">
+                  <image-upload v-model="form.attachment" :limit="1" :is-show-tip="false" />
+                </a-form-item>
+              </a-col>
             </template>
           </a-row>
         </a-form>
         <template #footer>
           <div class="drawer-footer">
             <a-space>
-              <a-button @click="cancel">取 消</a-button>
-              <a-button type="primary" @click="submitForm">确 定</a-button>
+              <a-button :disabled="submitting" @click="cancel">取 消</a-button>
+              <a-button type="primary" :loading="submitting" @click="submitForm">确 定</a-button>
             </a-space>
           </div>
         </template>
@@ -206,7 +242,7 @@ const props = defineProps({
     default: false,
   },
   userId: {
-    type: String,
+    type: [String, Number],
     default: null,
   },
 });
@@ -228,20 +264,27 @@ watch(visible, (v) => {
 });
 
 const loading = ref(false);
+const submitting = ref(false);
+const deleting = ref(false);
 const withdrawalAccList = ref([]);
 const total = ref(0);
 const withdrawalAccRef = ref(null);
+let listRequestToken = 0;
+let detailRequestToken = 0;
+const typeRequestTokens = {
+  form: 0,
+  query: 0,
+};
 
 const withdrawalColumns = [
   { title: "ID", dataIndex: "id", align: "center", width: 90 },
-  { title: "类型", dataIndex: "type", align: "center", width: 120 },
   { title: "出金类型", dataIndex: "withdrawalType", align: "center", width: 140 },
   { title: "参数", dataIndex: "params", align: "left", width: 320 },
+  { title: "附件", dataIndex: "attachment", align: "center", width: 110 },
   { title: "是否默认", dataIndex: "isDefault", align: "center", width: 120 },
   { title: "创建时间", dataIndex: "createTime", align: "center", width: 180 },
   { title: "操作", dataIndex: "action", align: "center", width: 140, fixed: "right" },
 ];
-const queryWithdrawalTypes = ref([]);
 const formWithdrawalTypes = ref([]);
 
 const data = reactive({
@@ -251,50 +294,66 @@ const data = reactive({
     pageSize: 10,
     userId: null,
     type: null,
-    withdrawalType: null,
     isDefault: null,
-    bankName: null,
-    depositType: null,
-    branchCode: null,
-    branchName: null,
-    bankAccount: null,
-    accountHolder: null,
-    accountName: null,
-    walletName: null,
-    walletAddress: null,
   },
   rules: {},
 });
 
 const { queryParams, form, rules } = toRefs(data);
 
+function clearSelection() {
+  ids.value = [];
+  single.value = true;
+  multiple.value = true;
+}
+
 function getList() {
+  const userId = props.userId;
+  if (!visible.value || userId === null || userId === undefined || userId === "") {
+    listRequestToken += 1;
+    withdrawalAccList.value = [];
+    total.value = 0;
+    loading.value = false;
+    clearSelection();
+    return;
+  }
+
+  const requestToken = ++listRequestToken;
+  clearSelection();
   loading.value = true;
   const params = {
     ...queryParams.value,
-    userId: props.userId ?? queryParams.value.userId,
+    userId,
   };
-  listWithdrawalAcc(params)
+  return listWithdrawalAcc(params)
     .then((response) => {
+      if (
+        requestToken !== listRequestToken
+        || !visible.value
+        || String(props.userId) !== String(userId)
+      ) return;
       withdrawalAccList.value = response.rows ?? response.data?.rows ?? [];
       total.value = response.total ?? response.data?.total ?? 0;
-      loading.value = false;
     })
-    .catch(() => {
-      loading.value = false;
+    .catch(() => {})
+    .finally(() => {
+      if (requestToken === listRequestToken) loading.value = false;
     });
 }
 
-async function loadWithdrawalTypes(value, targetRef = formWithdrawalTypes) {
+async function loadWithdrawalTypes(value, targetRef = formWithdrawalTypes, scope = "form") {
+  const requestToken = ++typeRequestTokens[scope];
   if (value === null || value === undefined) {
     targetRef.value = [];
     return;
   }
   try {
-    const response = await getType(value);
+    const response = await getType({ type: value });
+    if (requestToken !== typeRequestTokens[scope]) return;
     const allTypes = (response.data ?? response.rows ?? response) || [];
-    targetRef.value = allTypes.filter((item) => item.type === value);
+    targetRef.value = allTypes.filter((item) => String(item.type) === String(value));
   } catch (error) {
+    if (requestToken !== typeRequestTokens[scope]) return;
     console.error("Failed to fetch withdrawal types:", error);
     targetRef.value = [];
   }
@@ -302,11 +361,13 @@ async function loadWithdrawalTypes(value, targetRef = formWithdrawalTypes) {
 
 async function handleTypeChange(eventOrValue) {
   const value = eventOrValue?.target?.value ?? eventOrValue;
+  form.value.withdrawalType = null;
+  form.value.withdrawalTypeId = null;
   if (value === "0") {
-    form.value.withdrawalType = null;
     form.value.accountName = null;
     form.value.walletName = null;
     form.value.walletAddress = null;
+    form.value.attachment = null;
   } else if (value === "1") {
     form.value.bankName = null;
     form.value.depositType = null;
@@ -315,8 +376,9 @@ async function handleTypeChange(eventOrValue) {
     form.value.bankAccount = null;
     form.value.accountHolder = null;
   }
-  await loadWithdrawalTypes(value, formWithdrawalTypes);
+  await loadWithdrawalTypes(value, formWithdrawalTypes, "form");
   updateRules();
+  withdrawalAccRef.value?.clearValidate?.();
 }
 
 function updateRules() {
@@ -329,16 +391,11 @@ function updateRules() {
   if (form.value.type === "0") {
     Object.assign(newRules, {
       bankName: [{ required: true, message: "银行名称不能为空", trigger: "blur" }],
-      depositType: [{ required: true, message: "存款种类不能为空", trigger: "blur" }],
-      branchCode: [{ required: true, message: "支行代码不能为空", trigger: "blur" }],
-      branchName: [{ required: true, message: "支行名称不能为空", trigger: "blur" }],
       bankAccount: [{ required: true, message: "银行账号不能为空", trigger: "blur" }],
       accountHolder: [{ required: true, message: "账户持有人不能为空", trigger: "blur" }],
     });
   } else if (form.value.type === "1") {
     Object.assign(newRules, {
-      accountName: [{ required: true, message: "账户名称不能为空", trigger: "blur" }],
-      walletName: [{ required: true, message: "钱包名称不能为空", trigger: "blur" }],
       walletAddress: [{ required: true, message: "钱包地址不能为空", trigger: "blur" }],
     });
   }
@@ -347,20 +404,30 @@ function updateRules() {
 }
 
 function cancel() {
+  if (submitting.value) return;
   open.value = false;
   reset();
+  formWithdrawalTypes.value = [];
+}
+
+function handleFormClose() {
+  if (submitting.value) return;
+  detailRequestToken += 1;
+  typeRequestTokens.form += 1;
+  reset();
+  formWithdrawalTypes.value = [];
 }
 
 function handleClose() {
   open.value = false;
-  reset();
+  resetDrawerState();
 }
 
-function reset() {
-  form.value = {
+function createDefaultForm(userId = null) {
+  return {
     id: null,
-    userId: null,
-    type: "0",
+    userId,
+    type: null,
     withdrawalType: null,
     withdrawalTypeId: null,
     isDefault: "1",
@@ -373,10 +440,41 @@ function reset() {
     accountName: null,
     walletName: null,
     walletAddress: null,
+    attachment: null,
     createTime: null,
   };
+}
+
+function reset() {
+  form.value = createDefaultForm();
   updateRules();
   withdrawalAccRef.value?.clearValidate?.();
+}
+
+function resetQueryState(userId = null) {
+  Object.assign(queryParams.value, {
+    pageNum: 1,
+    pageSize: 10,
+    userId,
+    type: null,
+    isDefault: null,
+  });
+}
+
+function resetDrawerState(userId = null) {
+  listRequestToken += 1;
+  detailRequestToken += 1;
+  typeRequestTokens.form += 1;
+  typeRequestTokens.query += 1;
+  loading.value = false;
+  open.value = false;
+  reset();
+  resetQueryState(userId);
+  clearSelection();
+  withdrawalAccList.value = [];
+  total.value = 0;
+  formWithdrawalTypes.value = [];
+  title.value = "";
 }
 
 function handleQuery() {
@@ -385,21 +483,7 @@ function handleQuery() {
 }
 
 function resetQuery() {
-  Object.assign(queryParams.value, {
-    pageNum: 1,
-    type: null,
-    withdrawalType: null,
-    isDefault: null,
-    bankName: null,
-    depositType: null,
-    branchCode: null,
-    branchName: null,
-    bankAccount: null,
-    accountHolder: null,
-    accountName: null,
-    walletName: null,
-    walletAddress: null,
-  });
+  resetQueryState(props.userId);
   handleQuery();
 }
 
@@ -427,50 +511,129 @@ const open = ref(false);
 const title = ref("");
 
 async function handleAdd() {
+  const userId = props.userId;
+  if (userId === null || userId === undefined || userId === "") return;
+  detailRequestToken += 1;
   reset();
-  form.value.userId = props.userId;
-  await loadWithdrawalTypes(form.value.type, formWithdrawalTypes);
+  form.value.userId = userId;
+  await loadWithdrawalTypes(form.value.type, formWithdrawalTypes, "form");
+  if (!visible.value || String(props.userId) !== String(userId)) return;
   open.value = true;
-  title.value = "添加提现账户";
+  title.value = "创建";
 }
 
-function handleUpdate(row) {
+async function handleUpdate(row = {}) {
   reset();
-  const _id = row.id || ids.value;
-  getWithdrawalAcc(_id).then(async (response) => {
-    form.value = response.data ?? response;
-    await loadWithdrawalTypes(form.value.type, formWithdrawalTypes);
-    updateRules();
-    open.value = true;
-    title.value = "修改提现账户";
-  });
+  const selectedId = Array.isArray(ids.value) ? ids.value[0] : ids.value;
+  const targetId = row.id ?? selectedId;
+  if (targetId === null || targetId === undefined) return;
+  const userId = props.userId;
+  if (userId === null || userId === undefined || userId === "") return;
+  const requestToken = ++detailRequestToken;
+  let response;
+  try {
+    response = await getWithdrawalAcc(targetId);
+  } catch {
+    return;
+  }
+  if (
+    requestToken !== detailRequestToken
+    || !visible.value
+    || String(props.userId) !== String(userId)
+  ) return;
+  const record = response.data ?? response;
+  form.value = {
+    ...createDefaultForm(userId),
+    id: record.id,
+    userId: userId ?? record.userId,
+    type: record.type == null ? null : String(record.type),
+    withdrawalTypeId: record.withdrawalTypeId == null
+      ? null
+      : String(record.withdrawalTypeId),
+    isDefault: String(record.isDefault ?? "1"),
+    bankName: record.bankName ?? null,
+    depositType: record.depositType ?? null,
+    branchCode: record.branchCode ?? null,
+    branchName: record.branchName ?? null,
+    bankAccount: record.bankAccount ?? null,
+    accountHolder: record.accountHolder ?? null,
+    accountName: record.accountName ?? null,
+    walletName: record.walletName ?? null,
+    walletAddress: record.walletAddress ?? null,
+    attachment: record.attachment ?? null,
+  };
+  await loadWithdrawalTypes(form.value.type, formWithdrawalTypes, "form");
+  if (
+    requestToken !== detailRequestToken
+    || !visible.value
+    || String(props.userId) !== String(userId)
+  ) return;
+  updateRules();
+  withdrawalAccRef.value?.clearValidate?.();
+  open.value = true;
+  title.value = "修改提现账户";
 }
 
-function submitForm() {
-  withdrawalAccRef.value?.validate?.().then(() => {
-    form.value.userId = form.value.userId || props.userId;
-    if (form.value.id != null) {
-      updateWithdrawalAcc(form.value).then(() => {
-        proxy.$modal.msgSuccess("修改成功");
-        open.value = false;
-        getList();
-      });
+function buildWithdrawalPayload() {
+  const payload = {
+    id: form.value.id,
+    userId: props.userId,
+    type: form.value.type,
+    withdrawalTypeId: form.value.withdrawalTypeId,
+    isDefault: form.value.isDefault,
+  };
+  if (form.value.type === "0") {
+    Object.assign(payload, {
+      bankName: form.value.bankName,
+      depositType: form.value.depositType,
+      branchCode: form.value.branchCode,
+      branchName: form.value.branchName,
+      bankAccount: form.value.bankAccount,
+      accountHolder: form.value.accountHolder,
+    });
+  } else if (form.value.type === "1") {
+    Object.assign(payload, {
+      accountName: form.value.accountName,
+      walletName: form.value.walletName,
+      walletAddress: form.value.walletAddress,
+      attachment: form.value.attachment,
+    });
+  }
+  return payload;
+}
+
+async function submitForm() {
+  if (submitting.value || !withdrawalAccRef.value) return;
+  submitting.value = true;
+  try {
+    await withdrawalAccRef.value.validate();
+    const payload = buildWithdrawalPayload();
+    if (payload.id != null) {
+      await updateWithdrawalAcc(payload);
+      proxy.$modal.msgSuccess("修改成功");
     } else {
-      addWithdrawalAcc(form.value).then(() => {
-        proxy.$modal.msgSuccess("新增成功");
-        open.value = false;
-        getList();
-      });
+      await addWithdrawalAcc(payload);
+      proxy.$modal.msgSuccess("新增成功");
     }
-  }).catch(() => {});
+    open.value = false;
+    reset();
+    await getList();
+    emit("success");
+  } catch {
+    // Form validation and request errors are already surfaced by their owners.
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function handleDelete(row) {
+  if (deleting.value) return;
   const _ids = resolveDeleteIds(row, ids.value);
   if (!_ids.length) {
     proxy.$modal.msgWarning("请选择要删除的数据");
     return;
   }
+  deleting.value = true;
   proxy.$modal
     .confirm(`是否确认删除提现账户编号为"${_ids}"的数据项？`)
     .then(() => delWithdrawalAcc(Array.isArray(_ids) ? _ids.join(",") : _ids))
@@ -480,7 +643,10 @@ function handleDelete(row) {
       proxy.$modal.msgSuccess("删除成功");
       emit("success");
     })
-    .catch(() => {});
+    .catch(() => {})
+    .finally(() => {
+      deleting.value = false;
+    });
 }
 
 function handleExport() {
@@ -495,37 +661,26 @@ function handleExport() {
 
 watch(
   () => props.userId,
-  (id) => {
-    if (id != null && visible.value) {
-      queryParams.value.userId = id;
-      queryParams.value.pageNum = 1;
-      getList();
-    }
+  (id, previousId) => {
+    if (!visible.value || String(id) === String(previousId)) return;
+    resetDrawerState(id ?? null);
+    if (id != null) getList();
   }
 );
 
 watch(
   () => props.modelValue,
   (val) => {
-    if (val) {
-      queryParams.value.userId = props.userId ?? queryParams.value.userId;
+    if (val && props.userId != null) {
+      resetDrawerState(props.userId);
       getList();
     } else {
-      open.value = false;
+      resetDrawerState();
     }
-  }
+  },
+  { immediate: true }
 );
 
-watch(
-  () => queryParams.value.type,
-  async (newVal) => {
-    await loadWithdrawalTypes(newVal, queryWithdrawalTypes);
-    queryParams.value.withdrawalType = null;
-  }
-);
-
-reset();
-getList();
 </script>
 
 <style scoped>

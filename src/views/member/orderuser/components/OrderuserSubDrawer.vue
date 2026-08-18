@@ -1,8 +1,8 @@
 <template>
   <a-drawer
-    title="下级会员"
+    title="查看下级会员"
     v-model:open="visible"
-    width="90%"
+    width="85%"
     :destroy-on-close="false"
     @close="handleClose"
   >
@@ -47,7 +47,10 @@
           <template v-else-if="column.dataIndex === 'taskProgressText'">
             {{ record.taskProgress }} / {{ record.memberLevel?.orderCountPerDay ?? 0 }}
           </template>
-          <template v-else-if="['isEnabled','isFrozen','isFake','depositBlockWithdrawal'].includes(column.dataIndex)">
+          <template v-else-if="column.dataIndex === 'isEnabled'">
+            <dict-tag :options="sys_enabled" :value="record[column.dataIndex]" />
+          </template>
+          <template v-else-if="['isFrozen','isFake','depositBlockWithdrawal'].includes(column.dataIndex)">
             <dict-tag :options="user_yes_no" :value="record[column.dataIndex]" />
           </template>
           <template v-else-if="['accountStatus','transactionStatus','withdrawalStatus','assistWithdrawalStatus'].includes(column.dataIndex)">
@@ -57,7 +60,12 @@
             {{ parseTime(record.lastLoginTime, "{y}-{m}-{d} {h}:{i}:{s}") }}
           </template>
           <template v-else-if="column.dataIndex === 'action'">
-            <a-button type="link" size="small" @click="openFlow(record)">流水</a-button>
+            <a-button
+              type="link"
+              size="small"
+              @click="openFlow(record)"
+              v-hasPermi="['member:flow:list']"
+            >流水</a-button>
           </template>
         </template>
       </ant-pro-table>
@@ -102,6 +110,7 @@ watch(visible, (v) => {
 const loading = ref(false);
 const subList = ref([]);
 const total = ref(0);
+let listRequestToken = 0;
 
 const subColumns = [
   { title: "ID", dataIndex: "id", align: "center", width: 80 },
@@ -117,10 +126,10 @@ const subColumns = [
   { title: "累计签到次数", dataIndex: "totalSignDays", align: "center", width: 140 },
   { title: "余额", dataIndex: "balance", align: "center", width: 120 },
   { title: "冻结余额", dataIndex: "frozenBalance", align: "center", width: 120 },
-  { title: "提现金额", dataIndex: "withdrawalAmount", align: "center", width: 140 },
-  { title: "充值金额", dataIndex: "rechargeAmount", align: "center", width: 140 },
-  { title: "今日重置次数", dataIndex: "todayResetCount", align: "center", width: 140 },
-  { title: "累计重置次数", dataIndex: "totalResetCount", align: "center", width: 140 },
+  { title: "提现金额", dataIndex: "totalWithdrawalAmount", align: "center", width: 140 },
+  { title: "充值金额", dataIndex: "totalRechargeAmount", align: "center", width: 140 },
+  { title: "今日重置次数", dataIndex: "todayRest", align: "center", width: 140 },
+  { title: "累计重置次数", dataIndex: "totalRest", align: "center", width: 140 },
   { title: "今日佣金", dataIndex: "todayCommission", align: "center", width: 140 },
   { title: "是否启用", dataIndex: "isEnabled", align: "center", width: 110 },
   { title: "是否冻结", dataIndex: "isFrozen", align: "center", width: 110 },
@@ -151,12 +160,10 @@ const { queryParams } = toRefs(data);
 
 watch(
   () => props.userId,
-  (id) => {
-    if (id != null && visible.value) {
-      queryParams.value.pageNum = 1;
-      queryParams.value.scope = showAll.value ? "all" : "direct";
-      getList();
-    }
+  (id, previousId) => {
+    if (!visible.value || String(id) === String(previousId)) return;
+    reset();
+    if (id != null) getList();
   }
 );
 
@@ -164,17 +171,18 @@ watch(
   () => props.modelValue,
   (val) => {
     if (val && props.userId != null) {
-      queryParams.value.pageNum = 1;
-      queryParams.value.scope = showAll.value ? "all" : "direct";
+      reset();
       getList();
     } else if (!val) {
       reset();
     }
-  }
+  },
+  { immediate: true }
 );
 
 function handleClose() {
   visible.value = false;
+  reset();
 }
 
 function handleSelectionChange() {
@@ -199,6 +207,8 @@ function resetQuery() {
 }
 
 function reset() {
+  listRequestToken += 1;
+  loading.value = false;
   subList.value = [];
   total.value = 0;
   queryParams.value.pageNum = 1;
@@ -213,18 +223,27 @@ function openFlow(row) {
 }
 
 function getList() {
-  if (!props.userId) {
+  const userId = props.userId;
+  if (!visible.value || userId === null || userId === undefined || userId === "") {
+    listRequestToken += 1;
     subList.value = [];
     total.value = 0;
+    loading.value = false;
     return;
   }
+  const requestToken = ++listRequestToken;
   loading.value = true;
   const params = {
     ...queryParams.value,
-    id: props.userId,
+    id: userId,
   };
   selectChildrenById(params)
     .then((res) => {
+      if (
+        requestToken !== listRequestToken
+        || !visible.value
+        || String(props.userId) !== String(userId)
+      ) return;
       // API may return rows or data.rows depending on backend wrapper
       subList.value = res.rows ?? res.data?.rows ?? [];
       total.value = res.total ?? res.data?.total ?? 0;
@@ -233,7 +252,7 @@ function getList() {
       console.error(err);
     })
     .finally(() => {
-      loading.value = false;
+      if (requestToken === listRequestToken) loading.value = false;
     });
 }
 </script>

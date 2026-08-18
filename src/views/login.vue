@@ -185,7 +185,9 @@ function handleLogin() {
           }
           return
         }
-        navigateAfterLogin()
+        return navigateAfterLogin().finally(() => {
+          loading.value = false
+        })
       })
       .catch(() => {
         loading.value = false
@@ -216,7 +218,7 @@ function navigateAfterLogin() {
     }
     return acc
   }, {})
-  router.push({ path: redirect.value || "/", query: otherQueryParams })
+  return router.push({ path: redirect.value || "/", query: otherQueryParams })
 }
 
 function handleGoogleConfirm() {

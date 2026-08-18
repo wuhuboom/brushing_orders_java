@@ -4,6 +4,7 @@
     :title="title"
     width="800px"
     :mask-closable="false"
+    :confirm-loading="submitting"
     ok-text="确定"
     cancel-text="取消"
     @ok="handleConfirm"
@@ -16,57 +17,52 @@
     <a-form v-else ref="formRef" :model="form" :rules="rules" layout="vertical">
       <a-row :gutter="[20, 0]">
         <a-col :span="12">
-          <a-form-item label="用户名称">
-            <a-input :value="user.username" disabled />
+          <a-form-item label="用户名">
+            <a-input :value="user.username" placeholder="用户名" disabled />
           </a-form-item>
         </a-col>
         <a-col :span="12">
           <a-form-item label="手机号码">
-            <a-input :value="user.phoneNumber" disabled />
+            <a-input :value="user.phoneNumber" placeholder="手机号码" disabled />
           </a-form-item>
         </a-col>
 
         <a-col :span="8">
-          <a-form-item label="用户余额">
-            <a-input :value="user.balance" disabled />
+          <a-form-item label="余额">
+            <a-input-number :value="user.balance" :min="0" placeholder="余额" class="full-width" disabled />
           </a-form-item>
         </a-col>
         <a-col :span="8">
           <a-form-item label="冻结余额">
-            <a-input :value="user.frozenBalance" disabled />
+            <a-input-number :value="user.frozenBalance" :min="0" placeholder="冻结余额" class="full-width" disabled />
           </a-form-item>
         </a-col>
         <a-col :span="8">
           <a-form-item label="总余额">
-            <a-input :value="Number(user.frozenBalance || 0) + Number(user.balance || 0)" disabled />
+            <a-input-number :value="totalBalance" :min="0" placeholder="总余额" class="full-width" disabled />
           </a-form-item>
         </a-col>
 
         <a-col :span="8">
           <a-form-item label="操作类型" name="operationType">
             <a-select v-model:value="form.operationType" placeholder="请选择操作类型">
-              <a-select-option :value="0">加</a-select-option>
-              <a-select-option :value="1">减</a-select-option>
+              <a-select-option :value="OPERATION_ADD">加</a-select-option>
+              <a-select-option :value="OPERATION_SUBTRACT">减</a-select-option>
             </a-select>
           </a-form-item>
         </a-col>
         <a-col :span="8">
           <a-form-item label="交易类型" name="transactionType">
             <a-select v-model:value="form.transactionType" placeholder="请选择交易类型">
-              <a-select-option value="sxf">手续费</a-select-option>
-              <a-select-option value="ck">存款</a-select-option>
-              <a-select-option value="cz">充值</a-select-option>
-              <a-select-option value="jj">奖金</a-select-option>
-              <a-select-option value="dx">底薪</a-select-option>
-              <a-select-option value="yzj">援助金</a-select-option>
-              <a-select-option value="spfr">商品分润</a-select-option>
-              <a-select-option value="qt">其他</a-select-option>
+              <a-select-option v-for="option in transactionTypeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </a-select-option>
             </a-select>
           </a-form-item>
         </a-col>
         <a-col :span="8">
           <a-form-item label="金额" name="amount">
-            <a-input-number v-model:value="form.amount" :min="0" :step="0.01" class="full-width" />
+            <a-input-number v-model:value="form.amount" :min="0" placeholder="金额" class="full-width" />
           </a-form-item>
         </a-col>
 
@@ -74,30 +70,30 @@
           <a-col :span="8">
             <a-form-item label="赠送类型" name="giftType">
               <a-select v-model:value="form.giftType" placeholder="请选择赠送类型">
-                <a-select-option :value="0">比例</a-select-option>
-                <a-select-option :value="1">金额</a-select-option>
+                <a-select-option :value="GIFT_BY_RATIO">比例</a-select-option>
+                <a-select-option :value="GIFT_BY_AMOUNT">金额</a-select-option>
               </a-select>
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="赠送比例" name="giftRatio">
+            <a-form-item label="赠送比例" name="giftRatio" required>
               <a-input-number
                 v-model:value="form.giftRatio"
                 :min="0"
-                :max="100"
-                :step="0.01"
-                :disabled="form.giftType === 1"
+                :disabled="form.giftType === GIFT_BY_AMOUNT"
+                placeholder="赠送比例"
+                addon-after="%"
                 class="full-width"
               />
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="赠送金额" name="giftAmount">
+            <a-form-item label="赠送金额" name="giftAmount" required>
               <a-input-number
                 v-model:value="form.giftAmount"
                 :min="0"
-                :step="0.01"
-                :disabled="form.giftType === 0"
+                :disabled="form.giftType === GIFT_BY_RATIO"
+                placeholder="赠送金额"
                 class="full-width"
               />
             </a-form-item>
@@ -106,7 +102,7 @@
 
         <a-col :span="24">
           <a-form-item label="备注" name="remark">
-            <a-textarea v-model:value="form.remark" :rows="3" placeholder="请输入备注" />
+            <a-textarea v-model:value="form.remark" :rows="3" placeholder="备注" />
           </a-form-item>
         </a-col>
       </a-row>
@@ -117,6 +113,18 @@
 <script setup>
 import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
 import { getOrderuser, transaction } from "@/api/member/orderuser";
+import {
+  GIFT_BY_AMOUNT,
+  GIFT_BY_RATIO,
+  OPERATION_ADD,
+  OPERATION_SUBTRACT,
+  buildTransactionPayload,
+  calculateGiftAmount,
+  createTransactionForm,
+  isGiftTransaction,
+  isPositiveTransactionAmount,
+  transactionTypeOptions,
+} from "./orderuserTransaction";
 
 const { proxy } = getCurrentInstance();
 const props = defineProps({
@@ -142,6 +150,7 @@ const visible = computed({
 });
 
 const loadingUser = ref(false);
+const submitting = ref(false);
 const user = reactive({
   id: null,
   username: null,
@@ -151,41 +160,56 @@ const user = reactive({
 });
 
 const formRef = ref(null);
-const form = reactive({
-  operationType: 0,
-  transactionType: "ck",
-  amount: null,
-  giftType: 0,
-  giftRatio: null,
-  giftAmount: null,
-  remark: null,
-});
+const form = reactive(createTransactionForm());
 
-const rules = reactive({
-  operationType: [{ required: true, message: "请选择操作类型", trigger: "change" }],
-  transactionType: [{ required: true, message: "请选择交易类型", trigger: "change" }],
-  amount: [{ required: true, message: "请输入金额", trigger: "blur" }],
-});
+const totalBalance = computed(() => Number(user.frozenBalance || 0) + Number(user.balance || 0));
 
-const showGiftRow = computed(() => Number(form.operationType) === 0);
+async function validatePositiveAmount(_rule, value) {
+  if (!isPositiveTransactionAmount(value)) {
+    return Promise.reject(value === null || value === undefined || value === ""
+      ? "金额是必填项！"
+      : "金额必须大于0！");
+  }
+  return Promise.resolve();
+}
+
+async function validateGiftRatio(_rule, value) {
+  if (!showGiftRow.value || form.giftType !== GIFT_BY_RATIO) return Promise.resolve();
+  return value === null || value === undefined || value === ""
+    ? Promise.reject("赠送比例是必填项！")
+    : Promise.resolve();
+}
+
+async function validateGiftAmount(_rule, value) {
+  if (!showGiftRow.value || form.giftType !== GIFT_BY_AMOUNT) return Promise.resolve();
+  return value === null || value === undefined || value === ""
+    ? Promise.reject("赠送金额是必填项！")
+    : Promise.resolve();
+}
+
+const rules = {
+  operationType: [{ required: true, message: "操作类型是必填项！", trigger: "change" }],
+  transactionType: [{ required: true, message: "交易类型是必填项！", trigger: "change" }],
+  amount: [{ required: true, validator: validatePositiveAmount, trigger: ["change", "blur"] }],
+  giftType: [{ required: true, message: "赠送类型是必填项！", trigger: "change" }],
+  giftRatio: [{ validator: validateGiftRatio, trigger: ["change", "blur"] }],
+  giftAmount: [{ validator: validateGiftAmount, trigger: ["change", "blur"] }],
+};
+
+const showGiftRow = computed(() => isGiftTransaction(form));
 
 watch(
   () => form.giftType,
-  (newType) => {
-    if (newType === 1) {
-      form.giftRatio = null;
-    } else if (!form.amount || !form.giftRatio) {
-      form.giftAmount = null;
-    }
+  () => {
     formRef.value?.clearValidate?.(["giftRatio", "giftAmount"]);
   }
 );
 
 watch(
-  [() => form.amount, () => form.giftRatio],
+  [() => form.amount, () => form.giftRatio, () => form.giftType],
   () => {
-    if (form.giftType === 0 && form.amount && form.giftRatio != null) {
-      form.giftAmount = Number((form.amount * (form.giftRatio / 100)).toFixed(2));
+    if (form.giftType === GIFT_BY_RATIO) {
+      form.giftAmount = calculateGiftAmount(form.amount, form.giftRatio);
     }
   },
   { immediate: true }
@@ -229,13 +253,8 @@ async function fetchUser(id) {
 }
 
 function resetForm() {
-  form.operationType = 0;
-  form.transactionType = "ck";
-  form.amount = null;
-  form.giftType = 0;
-  form.giftRatio = 0;
-  form.giftAmount = null;
-  form.remark = null;
+  Object.assign(form, createTransactionForm());
+  submitting.value = false;
   formRef.value?.clearValidate?.();
   Object.assign(user, {
     id: null,
@@ -247,49 +266,30 @@ function resetForm() {
 }
 
 function handleCancel() {
+  if (submitting.value) return;
   visible.value = false;
 }
 
-function applyDynamicRules() {
-  if (showGiftRow.value) {
-    rules.giftType = [{ required: true, message: "请选择赠送类型", trigger: "change" }];
-    if (Number(form.giftType) === 0) {
-      rules.giftRatio = [{ required: true, message: "请输入赠送比例", trigger: "blur" }];
-      rules.giftAmount = [];
-    } else {
-      rules.giftAmount = [{ required: true, message: "请输入赠送金额", trigger: "blur" }];
-      rules.giftRatio = [];
-    }
-  } else {
-    delete rules.giftType;
-    delete rules.giftRatio;
-    delete rules.giftAmount;
+async function handleConfirm() {
+  if (submitting.value || !formRef.value) return;
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
   }
-}
 
-function handleConfirm() {
-  applyDynamicRules();
-
-  formRef.value?.validate?.().then(async () => {
-    try {
-      await transaction({
-        userId: user.id,
-        operationType: form.operationType,
-        transactionType: form.transactionType,
-        amount: form.amount,
-        giftType: form.giftType,
-        giftRatio: form.giftRatio,
-        giftAmount: form.giftAmount,
-        remark: form.remark,
-      });
-      emit("success");
-      visible.value = false;
-      proxy?.$modal?.msgSuccess?.("操作成功");
-    } catch (err) {
-      proxy?.$modal?.msgError?.(err?.message || "操作失败");
-      console.error(err);
-    }
-  }).catch(() => {});
+  submitting.value = true;
+  try {
+    await transaction(buildTransactionPayload(user.id, form));
+    emit("success");
+    visible.value = false;
+    proxy?.$modal?.msgSuccess?.("操作成功");
+  } catch (err) {
+    proxy?.$modal?.msgError?.(err?.message || "操作失败");
+    console.error(err);
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 

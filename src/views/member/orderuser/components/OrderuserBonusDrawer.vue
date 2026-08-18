@@ -1,18 +1,15 @@
 <template>
-  <a-drawer v-model:open="visible" title="彩金设置" width="85%">
+  <a-drawer
+    v-model:open="visible"
+    title="彩金设置"
+    width="85%"
+    :mask-closable="!mutationPending"
+    :closable="!mutationPending"
+    :keyboard="!mutationPending"
+  >
     <div class="bonus-drawer ant-pro-member-page">
-      <div v-if="loadingUser" class="user-summary-loading">加载中...</div>
-      <div v-else class="user-summary">
-        <span><strong>用户名：</strong>{{ user.username || "-" }}</span>
-        <span><strong>手机号：</strong>{{ user.phoneNumber || "-" }}</span>
-        <span><strong>余额：</strong>{{ user.balance ?? 0 }}</span>
-        <span><strong>任务进度：</strong>{{ taskProgressDisplay }}</span>
-        <span><strong>最后登录：</strong>{{ parseTime(user.lastLoginTime) || "-" }}</span>
-        <a-button size="small" @click="refreshAll">刷新</a-button>
-      </div>
-
       <ant-pro-table
-        title="彩金列表"
+        title=""
         :columns="bonusColumns"
         :data-source="bonusList"
         :loading="loading"
@@ -77,13 +74,33 @@
           </a-form>
         </template>
 
+        <template #title>
+          <div class="member-summary">
+            <span class="member-summary-field">用户名: {{ user.username || "-" }}</span>
+            <span class="member-summary-field">手机号码: {{ user.phoneNumber || "-" }}</span>
+            <span class="member-summary-field">余额: {{ user.balance ?? 0 }}</span>
+            <span class="member-summary-field">任务进度: {{ taskProgressDisplay }}</span>
+            <span>最后登录时间: {{ parseTime(user.lastLoginTime) || "-" }}</span>
+            <a-button
+              type="link"
+              class="summary-refresh"
+              :loading="loadingUser"
+              aria-label="刷新用户信息和彩金列表"
+              @click="refreshAll"
+            >
+              <ReloadOutlined />
+            </a-button>
+          </div>
+        </template>
+
         <template #toolbar>
           <a-button type="primary" @click="handleAdd" v-hasPermi="['member:bonus:add']">
             新增
           </a-button>
           <a-button
             danger
-            :disabled="!ids.length"
+            :disabled="!ids.length || deleting"
+            :loading="deleting"
             @click="handleDelete"
             v-hasPermi="['member:bonus:remove']"
           >
@@ -109,7 +126,7 @@
           </template>
           <template v-else-if="column.dataIndex === 'pushType'">
             <a-button
-              v-if="hasPermission('member:bonus:edit')"
+              v-if="hasPermission('member:bonus:edit') && record.isReceived === '1'"
               v-hasPermi="['member:bonus:edit']"
               type="link"
               size="small"
@@ -137,7 +154,8 @@
               <a-button
                 type="link"
                 size="small"
-                :disabled="record.isReceived !== '1'"
+                :disabled="record.isReceived !== '1' || isReceiving(record)"
+                :loading="isReceiving(record)"
                 @click="handleReceive(record)"
                 v-hasPermi="['member:bonus:receive']"
               >
@@ -147,6 +165,7 @@
                 type="link"
                 size="small"
                 :disabled="!canGive(record)"
+                :loading="isGiving(record)"
                 :title="giveDisabledReason(record)"
                 @click="handleGive(record)"
                 v-hasPermi="['member:bonus:give']"
@@ -156,7 +175,7 @@
               <a-button
                 type="link"
                 size="small"
-                :disabled="record.isDistributed === '0'"
+                :disabled="record.isDistributed === '0' || record.isReceived === '0'"
                 @click="handleUpdate(record)"
                 v-hasPermi="['member:bonus:edit']"
               >
@@ -175,15 +194,15 @@
         </template>
       </ant-pro-table>
 
-      <a-modal
+      <a-drawer
         v-model:open="dialogOpen"
         :title="dialogTitle"
-        width="800px"
-        :footer="formMode === 'view' ? null : undefined"
-        ok-text="确定"
-        cancel-text="取消"
-        @ok="submitForm"
-        @cancel="closeDialog"
+        width="65%"
+        :mask-closable="false"
+        :destroy-on-close="false"
+        :closable="!submitting"
+        :keyboard="!submitting"
+        @close="closeDialog"
       >
         <a-form ref="bonusRef" :model="form" :rules="rules" layout="vertical">
           <a-row :gutter="[20, 0]">
@@ -300,13 +319,30 @@
             </a-col>
           </a-row>
         </a-form>
-      </a-modal>
+        <template #footer>
+          <div class="drawer-footer">
+            <a-button :disabled="submitting" @click="closeDialog">
+              {{ formMode === "view" ? "关闭" : "取消" }}
+            </a-button>
+            <a-button
+              v-if="formMode !== 'view'"
+              type="primary"
+              :loading="submitting"
+              :disabled="submitting"
+              @click="submitForm"
+            >
+              确定
+            </a-button>
+          </div>
+        </template>
+      </a-drawer>
     </div>
   </a-drawer>
 </template>
 
 <script setup>
 import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
+import { ReloadOutlined } from "@ant-design/icons-vue";
 import {
   addBonus,
   delBonus,
@@ -316,7 +352,7 @@ import {
   receiveBonus,
   updateBonus,
 } from "@/api/member/bonus";
-import { getOrderuser, listOrderuser } from "@/api/member/orderuser";
+import { getOrderuserOperationSummary, listOrderuser } from "@/api/member/orderuser";
 import useUserStore from "@/store/modules/user";
 
 const props = defineProps({
@@ -357,14 +393,30 @@ const visible = computed({
 const loading = ref(false);
 const loadingUser = ref(false);
 const loadingUsers = ref(false);
+const submitting = ref(false);
+const deleting = ref(false);
+const receivingIds = ref(new Set());
+const givingIds = ref(new Set());
+const mutationPending = computed(() =>
+  submitting.value
+  || deleting.value
+  || receivingIds.value.size > 0
+  || givingIds.value.size > 0
+);
 const bonusList = ref([]);
 const total = ref(0);
 const ids = ref([]);
 const dialogOpen = ref(false);
 const formMode = ref("create");
-const dialogTitle = ref("添加彩金");
+const dialogTitle = ref("创建");
 const bonusRef = ref();
 const userOptions = ref([]);
+let userRequestSequence = 0;
+let listRequestSequence = 0;
+let optionRequestSequence = 0;
+let recordRequestSequence = 0;
+let submitRequestSequence = 0;
+let searchTimer;
 
 const queryParams = reactive({
   pageNum: 1,
@@ -426,6 +478,7 @@ const bonusColumns = [
 
 const rowSelection = computed(() => ({
   selectedRowKeys: ids.value,
+  getCheckboxProps: (record) => ({ disabled: record.isReceived !== "1" }),
   onChange: (keys) => {
     ids.value = keys;
   },
@@ -444,12 +497,21 @@ watch(
   () => props.userId,
   (id) => {
     queryParams.userId = id;
-    if (visible.value) refreshAll();
+    if (visible.value) {
+      submitRequestSequence += 1;
+      submitting.value = false;
+      closeDialog();
+      refreshAll();
+    }
   }
 );
 watch(visible, (open) => {
-  if (open) refreshAll();
-  else closeDialog();
+  if (open) {
+    queryParams.userId = props.userId;
+    refreshAll();
+  } else {
+    resetDrawerState();
+  }
 });
 
 function defaultForm() {
@@ -470,8 +532,49 @@ function defaultForm() {
 }
 
 function resetForm() {
-  Object.assign(form, defaultForm(), { userId: props.userId });
+  const defaults = defaultForm();
+  Object.keys(form).forEach((key) => {
+    if (!(key in defaults)) delete form[key];
+  });
+  Object.assign(form, defaults);
   bonusRef.value?.clearValidate?.();
+}
+
+function resetUser() {
+  Object.assign(user, {
+    id: null,
+    username: "",
+    phoneNumber: "",
+    balance: 0,
+    frozenBalance: 0,
+    totalBalance: 0,
+    taskProgress: 0,
+    memberOrderCountPerDay: null,
+    lastLoginTime: null,
+  });
+}
+
+function resetDrawerState() {
+  userRequestSequence += 1;
+  listRequestSequence += 1;
+  optionRequestSequence += 1;
+  recordRequestSequence += 1;
+  submitRequestSequence += 1;
+  clearTimeout(searchTimer);
+  dialogOpen.value = false;
+  submitting.value = false;
+  deleting.value = false;
+  receivingIds.value = new Set();
+  givingIds.value = new Set();
+  loading.value = false;
+  loadingUser.value = false;
+  loadingUsers.value = false;
+  bonusList.value = [];
+  total.value = 0;
+  ids.value = [];
+  userOptions.value = [];
+  resetUser();
+  resetForm();
 }
 
 async function refreshAll() {
@@ -480,10 +583,21 @@ async function refreshAll() {
 }
 
 async function fetchUser(id) {
-  if (!id) return;
+  const requestSequence = ++userRequestSequence;
+  const targetId = normalizeIdentifier(id);
+  if (!targetId) {
+    resetUser();
+    loadingUser.value = false;
+    return;
+  }
   loadingUser.value = true;
   try {
-    const response = await getOrderuser(id);
+    const response = await getOrderuserOperationSummary(id);
+    if (
+      requestSequence !== userRequestSequence
+      || !visible.value
+      || normalizeIdentifier(props.userId) !== targetId
+    ) return;
     const value = response.data || response;
     const balance = Number(value.balance || 0);
     const frozenBalance = Number(value.frozenBalance ?? value.freezeBalance ?? 0);
@@ -495,27 +609,48 @@ async function fetchUser(id) {
       frozenBalance: value.frozenBalance ?? value.freezeBalance ?? 0,
       totalBalance: value.totalBalance ?? balance + frozenBalance,
       taskProgress: value.taskProgress ?? 0,
-      memberOrderCountPerDay: value.memberLevel?.orderCountPerDay ?? null,
+      memberOrderCountPerDay: value.orderCountPerDay ?? null,
       lastLoginTime: value.lastLoginTime,
     });
+  } catch (error) {
+    if (requestSequence === userRequestSequence && visible.value) {
+      proxy.$modal.msgError(error?.message || "加载会员信息失败");
+    }
   } finally {
-    loadingUser.value = false;
+    if (requestSequence === userRequestSequence) loadingUser.value = false;
   }
 }
 
 async function getList() {
-  if (!queryParams.userId) return;
+  const targetId = normalizeIdentifier(queryParams.userId);
+  const requestSequence = ++listRequestSequence;
+  if (!targetId) {
+    bonusList.value = [];
+    total.value = 0;
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   try {
-    const response = await listBonus({ ...queryParams });
+    const response = await listBonus({ ...queryParams, userId: targetId });
+    if (
+      requestSequence !== listRequestSequence
+      || !visible.value
+      || normalizeIdentifier(props.userId) !== targetId
+    ) return;
     bonusList.value = (response.rows || []).map((row) => ({
       ...row,
+      id: normalizeIdentifier(row.id),
       pushUsersDisplay: pushUsersText(row),
     }));
     total.value = response.total || 0;
     ids.value = [];
+  } catch (error) {
+    if (requestSequence === listRequestSequence && visible.value) {
+      proxy.$modal.msgError(error?.message || "加载彩金列表失败");
+    }
   } finally {
-    loading.value = false;
+    if (requestSequence === listRequestSequence) loading.value = false;
   }
 }
 
@@ -544,22 +679,33 @@ function handleAntPageChange({ page, pageSize }) {
 }
 
 function handleAdd() {
+  recordRequestSequence += 1;
   resetForm();
   formMode.value = "create";
-  dialogTitle.value = "添加彩金";
+  dialogTitle.value = "创建";
   dialogOpen.value = true;
 }
 
 async function loadRecord(row, mode, title) {
-  const response = await getBonus(row.id);
-  resetForm();
-  Object.assign(form, response.data || response);
-  form.toUsers = normalizeUserIds(form.toUsers);
-  formMode.value = mode;
-  dialogTitle.value = title;
-  dialogOpen.value = true;
-  if (form.pushType === "2") await loadUsers();
-  bonusRef.value?.clearValidate?.();
+  const requestSequence = ++recordRequestSequence;
+  try {
+    const response = await getBonus(row.id);
+    if (requestSequence !== recordRequestSequence || !visible.value) return;
+    resetForm();
+    Object.assign(form, response.data || response);
+    form.expiryTime = formatExpiryInput(form.expiryTime);
+    form.userId = normalizeIdentifier(props.userId);
+    form.toUsers = normalizeUserIds(form.toUsers);
+    formMode.value = mode;
+    dialogTitle.value = title;
+    dialogOpen.value = true;
+    if (form.pushType === "2") await loadUsers();
+    bonusRef.value?.clearValidate?.();
+  } catch (error) {
+    if (requestSequence === recordRequestSequence) {
+      proxy.$modal.msgError(error?.message || "加载彩金详情失败");
+    }
+  }
 }
 
 function handleView(row) {
@@ -567,29 +713,47 @@ function handleView(row) {
 }
 
 function handleUpdate(row) {
+  if (row.isReceived !== "1" || row.isDistributed === "0") {
+    proxy.$modal.msgWarning("已领取或已发放的彩金不能修改");
+    return;
+  }
   loadRecord(row, "edit", "修改彩金");
 }
 
 function handlePushEdit(row) {
+  if (row.isReceived !== "1") {
+    proxy.$modal.msgWarning("已领取的彩金不能修改推送设置");
+    return;
+  }
   loadRecord(row, "push", "修改推送设置");
 }
 
 async function handleCopy(row) {
-  const response = await getBonus(row.id);
-  resetForm();
-  Object.assign(form, response.data || response, {
-    id: null,
-    isReceived: "1",
-    isDistributed: "1",
-    receivedTime: null,
-    distributionTime: null,
-    createTime: null,
-  });
-  form.toUsers = normalizeUserIds(form.toUsers);
-  formMode.value = "create";
-  dialogTitle.value = "复制彩金";
-  dialogOpen.value = true;
-  if (form.pushType === "2") await loadUsers();
+  const requestSequence = ++recordRequestSequence;
+  try {
+    const response = await getBonus(row.id);
+    if (requestSequence !== recordRequestSequence || !visible.value) return;
+    resetForm();
+    Object.assign(form, response.data || response, {
+      id: null,
+      userId: normalizeIdentifier(props.userId),
+      isReceived: "1",
+      isDistributed: "1",
+      receivedTime: null,
+      distributionTime: null,
+      createTime: null,
+    });
+    form.expiryTime = formatExpiryInput(form.expiryTime);
+    form.toUsers = normalizeUserIds(form.toUsers);
+    formMode.value = "create";
+    dialogTitle.value = "复制彩金";
+    dialogOpen.value = true;
+    if (form.pushType === "2") await loadUsers();
+  } catch (error) {
+    if (requestSequence === recordRequestSequence) {
+      proxy.$modal.msgError(error?.message || "加载彩金详情失败");
+    }
+  }
 }
 
 function fieldDisabled(field) {
@@ -603,32 +767,66 @@ function fieldDisabled(field) {
 }
 
 function closeDialog() {
+  recordRequestSequence += 1;
+  optionRequestSequence += 1;
+  clearTimeout(searchTimer);
   dialogOpen.value = false;
+  userOptions.value = [];
   resetForm();
 }
 
 async function submitForm() {
+  if (submitting.value) return;
+  submitting.value = true;
   try {
     await bonusRef.value?.validate?.();
-    const payload = {
-      ...form,
-      userId: props.userId,
-      toUsers: form.pushType === "2" ? form.toUsers.join(",") : null,
-    };
-    if (form.id) {
+  } catch (error) {
+    submitting.value = false;
+    if (!error?.errorFields) {
+      proxy.$modal.msgError(error?.message || "彩金设置校验失败");
+    }
+    return;
+  }
+
+  const requestSequence = ++submitRequestSequence;
+  try {
+    const payload = buildBonusPayload();
+    let successMessage;
+    if (form.id != null) {
       await updateBonus(payload);
-      proxy.$modal.msgSuccess("修改成功");
+      successMessage = "修改成功";
     } else {
       await addBonus(payload);
-      proxy.$modal.msgSuccess("新增成功");
+      successMessage = "新增成功";
     }
-    dialogOpen.value = false;
+    if (requestSequence !== submitRequestSequence || !visible.value) return;
+    proxy.$modal.msgSuccess(successMessage);
+    closeDialog();
     await getList();
     emit("success");
   } catch (error) {
-    if (error?.errorFields) return;
-    return;
+    if (requestSequence === submitRequestSequence) {
+      proxy.$modal.msgError(error?.message || "保存彩金设置失败");
+    }
+  } finally {
+    if (requestSequence === submitRequestSequence) submitting.value = false;
   }
+}
+
+function buildBonusPayload() {
+  const payload = {
+    userId: normalizeIdentifier(props.userId),
+    orderNum: Number(form.orderNum),
+    amount: Number(form.amount),
+    animationDuration: Number(form.animationDuration),
+    displayDuration: Number(form.displayDuration),
+    distributionType: String(form.distributionType),
+    expiryTime: toExpiryTimestamp(form.expiryTime),
+    pushType: String(form.pushType),
+    toUsers: form.pushType === "2" ? normalizeUserIds(form.toUsers).join(",") : null,
+  };
+  if (form.id != null) payload.id = normalizeIdentifier(form.id);
+  return payload;
 }
 
 function handlePushTypeChange() {
@@ -639,6 +837,7 @@ function handlePushTypeChange() {
 
 async function loadUsers(keyword = "") {
   const normalizedKeyword = typeof keyword === "string" ? keyword.trim() : "";
+  const requestSequence = ++optionRequestSequence;
   loadingUsers.value = true;
   try {
     const response = await listOrderuser({
@@ -646,49 +845,88 @@ async function loadUsers(keyword = "") {
       pageSize: 100,
       username: normalizedKeyword || undefined,
     });
+    if (requestSequence !== optionRequestSequence || !dialogOpen.value) return;
     const rows = response.rows || [];
     const selected = normalizeUserIds(form.toUsers).map((id) => ({
       value: id,
       label: String(id),
     }));
-    const fetched = rows.map((item) => ({
-      value: Number(item.id),
-      label: item.username,
-    }));
+    const fetched = rows
+      .filter((item) => !normalizedKeyword
+        || String(item.username || "").includes(normalizedKeyword))
+      .map((item) => ({
+        value: normalizeIdentifier(item.id),
+        label: item.username,
+      }))
+      .filter((item) => item.value);
     userOptions.value = [...selected, ...fetched].filter(
       (item, index, all) => all.findIndex((value) => value.value === item.value) === index
     );
+  } catch (error) {
+    if (requestSequence === optionRequestSequence) {
+      proxy.$modal.msgError(error?.message || "加载会员列表失败");
+    }
   } finally {
-    loadingUsers.value = false;
+    if (requestSequence === optionRequestSequence) loadingUsers.value = false;
   }
 }
 
-let searchTimer;
 function handleUserSearch(value) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => loadUsers(value), 300);
 }
 
 async function handleReceive(row) {
+  const key = normalizeIdentifier(row.id);
+  if (!key || receivingIds.value.has(key)) return;
+  setRowPending(receivingIds, key, true);
+  let confirmed = false;
   try {
     await proxy.$modal.confirm("确认将该彩金标记为已领取吗？");
+    confirmed = true;
     await receiveBonus(row.id);
     proxy.$modal.msgSuccess("领取成功");
     await getList();
-  } catch (_) {
-    // Cancelled confirmations do not require feedback.
+    emit("success");
+  } catch (error) {
+    reportMutationError(error, "领取彩金失败", confirmed);
+  } finally {
+    setRowPending(receivingIds, key, false);
   }
 }
 
 async function handleGive(row) {
+  const key = normalizeIdentifier(row.id);
+  if (!key || givingIds.value.has(key)) return;
+  setRowPending(givingIds, key, true);
+  let confirmed = false;
   try {
     await proxy.$modal.confirm("确认发放该彩金并增加会员余额吗？");
+    confirmed = true;
     await giveBonus(row.id);
     proxy.$modal.msgSuccess("发放成功");
     await Promise.all([getList(), fetchUser(props.userId)]);
-  } catch (_) {
-    // Cancelled confirmations do not require feedback.
+    emit("success");
+  } catch (error) {
+    reportMutationError(error, "发放彩金失败", confirmed);
+  } finally {
+    setRowPending(givingIds, key, false);
   }
+}
+
+function isReceiving(row) {
+  return receivingIds.value.has(normalizeIdentifier(row.id));
+}
+
+function isGiving(row) {
+  return givingIds.value.has(normalizeIdentifier(row.id));
+}
+
+function setRowPending(target, key, pending) {
+  const next = new Set(target.value);
+  if (pending) next.add(key);
+  else next.delete(key);
+  target.value = next;
 }
 
 function canGive(row) {
@@ -706,20 +944,75 @@ function giveDisabledReason(row) {
 }
 
 async function handleDelete() {
+  if (deleting.value || !ids.value.length) return;
+  deleting.value = true;
+  let confirmed = false;
   try {
     await proxy.$modal.confirm(`确认删除选中的 ${ids.value.length} 条彩金记录吗？`);
+    confirmed = true;
     await delBonus(ids.value.join(","));
     proxy.$modal.msgSuccess("删除成功");
     await getList();
-  } catch (_) {
-    // Cancelled confirmations do not require feedback.
+    emit("success");
+  } catch (error) {
+    reportMutationError(error, "删除彩金失败", confirmed);
+  } finally {
+    deleting.value = false;
   }
 }
 
 function normalizeUserIds(value) {
-  if (Array.isArray(value)) return value.map(Number).filter(Number.isFinite);
-  if (!value) return [];
-  return String(value).split(",").map(Number).filter(Number.isFinite);
+  const values = Array.isArray(value) ? value : value ? String(value).split(",") : [];
+  return values.map(normalizeIdentifier).filter(Boolean);
+}
+
+function normalizeIdentifier(value) {
+  return value == null ? "" : String(value).trim();
+}
+
+function formatExpiryInput(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+    return value;
+  }
+  const numericValue = typeof value === "string" && /^\d+$/.test(value)
+    ? Number(value)
+    : value;
+  const date = new Date(numericValue);
+  if (Number.isNaN(date.getTime())) return null;
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function toExpiryTimestamp(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+  const timestamp = match
+    ? new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+        Number(match[4]),
+        Number(match[5]),
+        Number(match[6]),
+      ).getTime()
+    : Number(value);
+  if (!Number.isFinite(timestamp)) throw new Error("过期时间格式无效");
+  return timestamp;
+}
+
+function reportMutationError(error, fallbackMessage, confirmed = false) {
+  if (!confirmed && isConfirmationCancel(error)) return;
+  proxy.$modal.msgError(error?.message || fallbackMessage);
+}
+
+function isConfirmationCancel(error) {
+  return error == null
+    || error === "cancel"
+    || error === "close"
+    || error?.type === "cancel"
+    || error?.type === "close";
 }
 
 function pushUsersText(row) {
@@ -742,24 +1035,49 @@ function pushText(value) {
   min-width: 0;
 }
 
-.user-summary,
-.user-summary-loading {
-  display: flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 24px;
-  padding: 0 4px 14px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #595959;
+.bonus-drawer :deep(.ant-pro-search-card .ant-card-body) {
+  padding: 24px 0;
 }
 
-.user-summary {
-  flex-wrap: wrap;
+.bonus-drawer :deep(.ant-pro-table-card .ant-card-body) {
+  padding: 0;
 }
 
-.user-summary strong {
-  color: #262626;
+.bonus-drawer :deep(.ant-pro-table-toolbar) {
+  padding: 16px 0;
+}
+
+.bonus-drawer :deep(.ant-pro-table-title) {
+  flex: 0 0 50%;
+  min-width: 0;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.bonus-drawer :deep(.ant-pro-table-actions) {
+  flex: 1 1 50%;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.member-summary {
+  padding: 0;
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 16px;
+  background: transparent;
+  border: 0;
+}
+
+.member-summary-field {
+  margin-right: 10px;
+}
+
+.summary-refresh {
+  color: #1677ff;
+  font-family: inherit;
 }
 
 .full-width {
@@ -777,7 +1095,13 @@ function pushText(value) {
   pointer-events: none;
 }
 
-:deep(.ant-btn-link) {
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+:deep(.ant-pro-table .ant-btn-link) {
   padding-inline: 0;
 }
 </style>
