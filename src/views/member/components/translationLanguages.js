@@ -23,6 +23,26 @@ export const translationLanguages = [
   { field: "koKr", column: "ko_KR", flag: "🇰🇷", label: "한국어" },
 ];
 
+// Shared by level management and all website-setting translation drawers.
+// Keep existing languages and append newly requested languages only once.
+export const adminTranslationLanguageFields = [
+  "enUs",
+  "esEs",
+  "frFr",
+  "zhCn",
+  "deDe",
+  "itIt",
+  "koKr",
+  "jaJp",
+  "idId",
+  "svSe",
+  "noNo",
+  "ruRu",
+  "huHu",
+  "plPl",
+  "skSk",
+];
+
 export const createEmptyTranslations = () =>
   translationLanguages.reduce((translations, language) => {
     translations[language.field] = "";

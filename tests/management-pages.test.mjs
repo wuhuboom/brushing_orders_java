@@ -117,6 +117,7 @@ test('continuous order settings preserve the legacy list and editor workflow', (
 
 test('website settings mirror the reference list and large drawer layout', () => {
   const settings = source('src/views/member/orderconfig/index.vue')
+  const translationLanguages = source('src/views/member/components/translationLanguages.js')
   const website = source('src/views/member/orderconfig/components/website-config.vue')
 
   assert.match(settings, /<a-badge status="processing" :text="displayName\(record\)"/)
@@ -124,8 +125,12 @@ test('website settings mirror the reference list and large drawer layout', () =>
   assert.match(settings, /size="large"[\s\S]*?class="settings-base-form"/)
   assert.match(settings, /\.settings-page\s*\{[\s\S]*?margin-top:\s*44px/)
   assert.match(settings, /\.ant-table-tbody > tr > td[\s\S]*?font-size:\s*15px/)
-  assert.match(settings, /"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp",[\s\S]*?"idId"/)
-  assert.match(source('src/views/member/components/translationLanguages.js'), /field:\s*"idId"[\s\S]*?column:\s*"id_ID"[\s\S]*?label:\s*"Bahasa Indonesia"/)
+  assert.match(settings, /const websiteTranslationLanguageFields = \[\.\.\.adminTranslationLanguageFields\]/)
+  assert.match(translationLanguages, /field:\s*"idId"[\s\S]*?column:\s*"id_ID"[\s\S]*?label:\s*"Bahasa Indonesia"/)
+  const adminLanguageFields = translationLanguages.match(/export const adminTranslationLanguageFields = \[[\s\S]*?\];/)?.[0] || ''
+  for (const field of ['itIt', 'esEs', 'frFr', 'jaJp', 'svSe', 'deDe', 'noNo', 'ruRu', 'huHu', 'plPl', 'skSk']) {
+    assert.match(adminLanguageFields, new RegExp(`"${field}"`))
+  }
   assert.match(source('src/views/member/components/TranslationDrawer.vue'), /props\.languageFields[\s\S]*?\.map\(\(field\) => languagesByField\.get\(field\)\)/)
   assert.match(website, /size="large"[\s\S]*?class="config-form website-config-form"/)
   assert.equal((website.match(/:is-show-tip="false"/g) || []).length, 4)
@@ -139,11 +144,11 @@ test('bonus member search never serializes focus events as username parameters',
   assert.match(drawer, /username:\s*normalizedKeyword\s*\|\|\s*undefined/)
 })
 
-test('level translations only expose the requested nine languages', () => {
+test('level translations expose existing and newly requested languages', () => {
   const level = source('src/views/member/level/index.vue')
 
   assert.match(level, /:language-fields="levelTranslationLanguageFields"/)
-  assert.match(level, /const levelTranslationLanguageFields = \[[\s\S]*?"enUs",[\s\S]*?"esEs",[\s\S]*?"frFr",[\s\S]*?"zhCn",[\s\S]*?"deDe",[\s\S]*?"itIt",[\s\S]*?"koKr",[\s\S]*?"jaJp",[\s\S]*?"idId",?[\s\S]*?\]/)
+  assert.match(level, /const levelTranslationLanguageFields = \[\.\.\.adminTranslationLanguageFields\]/)
 })
 
 test('customer service management mirrors the reference list and drawer fields', () => {
@@ -159,6 +164,18 @@ test('customer service management mirrors the reference list and drawer fields',
   assert.doesNotMatch(customerService, /:ellipsis="\{ tooltip: record\.link \}"/)
   assert.match(customerService, /\.customer-service-page[\s\S]*?margin-top:\s*44px/)
   assert.match(customerService, /\.customer-service-drawer-footer[\s\S]*?text-align:\s*right/)
+})
+
+test('withdrawal type management mirrors the reference drawer and parameter fields', () => {
+  const withdrawalType = source('src/views/member/withdrawaltype/index.vue')
+
+  assert.match(withdrawalType, /<a-drawer[\s\S]*?width="80%"/)
+  assert.match(withdrawalType, /label="接口服务地址"[\s\S]*?:span="24"[\s\S]*?label="收款钱包地址"[\s\S]*?:span="24"[\s\S]*?label="货币合约地址"/)
+  assert.match(withdrawalType, /label="Abi"[\s\S]*?<a-textarea[\s\S]*?:rows="4"/)
+  assert.match(withdrawalType, /label="网络"[\s\S]*?<a-textarea[\s\S]*?:rows="10"/)
+  assert.match(withdrawalType, /label="授权金额"[\s\S]*?label="手续费价格（默认：2000000000）"[\s\S]*?label="手续费限制（默认：300000）"/)
+  assert.match(withdrawalType, /orderByColumn:\s*"sortOrder"[\s\S]*?isAsc:\s*"asc"/)
+  assert.match(withdrawalType, /key:\s*"sortOrder"[\s\S]*?defaultSortOrder:\s*"ascend"/)
 })
 
 test('bonus receipt and distribution remain explicit administrator actions', () => {

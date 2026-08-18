@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container ant-pro-member-page">
+  <div class="app-container ant-pro-member-page withdrawal-type-page">
     <ant-pro-table
       title="出金类型"
       :columns="columns"
@@ -11,6 +11,7 @@
       :scroll="{ x: 1750 }"
       @page-change="handlePageChange"
       @refresh="getList"
+      @change="handleTableChange"
     >
       <template #search>
         <a-form layout="horizontal" :model="query" class="ant-pro-query-form">
@@ -67,15 +68,16 @@
       </template>
 
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'type'">{{ typeText(record.type) }}</template>
+        <template v-if="column.key === 'id'"><span class="withdrawal-type-id">{{ record.id }}</span></template>
+        <template v-else-if="column.key === 'type'">{{ typeText(record.type) }}</template>
         <template v-else-if="column.key === 'privateKey'">{{ privateKeyText(record.hasPrivateKey) }}</template>
         <template v-else-if="column.key === 'icon'">
           <image-preview v-if="record.icon" :src="record.icon" :width="48" :height="48" />
           <span v-else>-</span>
         </template>
         <template v-else-if="column.key === 'parameters'">
-          <a-typography-text :ellipsis="{ tooltip: parameterSummary(record) }" style="max-width: 250px">
-            {{ parameterSummary(record) || "-" }}
+          <a-typography-text :ellipsis="{ tooltip: parameterSummary(record) }" class="withdrawal-parameters">
+            {{ parameterSummary(record) }}
           </a-typography-text>
         </template>
         <template v-else-if="column.key === 'createTime'">{{ formatDateTime(record.createTime) }}</template>
@@ -88,19 +90,18 @@
       </template>
     </ant-pro-table>
 
-    <a-modal
+    <a-drawer
       v-model:open="open"
       :title="title"
-      width="900px"
-      ok-text="确定"
-      cancel-text="取消"
-      :confirm-loading="submitting"
+      width="80%"
+      size="large"
       :destroy-on-close="true"
-      @ok="submitForm"
-      @cancel="cancel"
+      :body-style="{ paddingBottom: '24px' }"
+      class="withdrawal-type-drawer"
+      @close="cancel"
     >
-      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-        <a-row :gutter="20">
+      <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" size="large" class="withdrawal-type-form">
+        <a-row :gutter="[24, 0]">
           <a-col :span="12">
             <a-form-item label="类型" name="type">
               <a-radio-group v-model:value="form.type">
@@ -112,102 +113,111 @@
           </a-col>
           <a-col :span="12">
             <a-form-item label="名称" name="name">
-              <a-input v-model:value="form.name" placeholder="请输入" />
+              <a-input v-model:value="form.name" placeholder="名称" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="汇率" name="exchangeRate">
-              <a-input v-model:value="form.exchangeRate" placeholder="请输入" />
+              <a-input v-model:value="form.exchangeRate" placeholder="汇率" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="序号" name="sortOrder">
-              <a-input-number v-model:value="form.sortOrder" :precision="0" style="width: 100%" />
+              <a-input-number v-model:value="form.sortOrder" :precision="0" placeholder="序号" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="图标" name="icon">
+              <image-upload v-model="form.icon" :limit="1" :is-show-tip="false" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+
+        <a-row v-if="form.type !== '1'" :gutter="[24, 0]">
+          <a-col v-for="field in bankFields" :key="field.prop" :span="12">
+            <a-form-item :label="field.label" :name="field.prop">
+              <a-input v-model:value="form[field.prop]" :placeholder="field.label" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+
+        <a-row v-if="form.type === '1'" :gutter="[24, 0]">
+          <a-col :span="24">
+            <a-form-item label="接口服务地址" name="serviceUrl">
+              <a-input v-model:value="form.serviceUrl" placeholder="接口服务地址" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
-            <a-form-item label="图标" name="icon">
-              <image-upload v-model="form.icon" :limit="1" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-
-        <a-row v-if="form.type === '0'" :gutter="20">
-          <a-col v-for="field in bankFields" :key="field.prop" :span="12">
-            <a-form-item :label="field.label" :name="field.prop">
-              <a-input v-model:value="form[field.prop]" placeholder="请输入" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-
-        <a-row v-if="form.type === '1'" :gutter="20">
-          <a-col :span="12">
-            <a-form-item label="接口服务地址" name="serviceUrl">
-              <a-input v-model:value="form.serviceUrl" placeholder="请输入" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
             <a-form-item label="收款钱包地址" name="walletAddress">
-              <a-input v-model:value="form.walletAddress" placeholder="请输入" />
+              <a-input v-model:value="form.walletAddress" placeholder="收款钱包地址" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="24">
             <a-form-item label="货币合约地址" name="contractAddress">
-              <a-input v-model:value="form.contractAddress" placeholder="请输入" />
+              <a-input v-model:value="form.contractAddress" placeholder="货币合约地址" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="24">
             <a-form-item label="Abi" name="abi">
-              <a-input v-model:value="form.abi" placeholder="请输入" />
+              <a-textarea v-model:value="form.abi" :rows="4" placeholder="Abi" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="24">
             <a-form-item label="网络" name="networkName">
-              <a-input v-model:value="form.networkName" placeholder="请输入" />
+              <a-textarea v-model:value="form.networkName" :rows="10" placeholder="网络" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="24">
             <a-form-item label="手续费钱包地址" name="feeWalletAddress">
-              <a-input v-model:value="form.feeWalletAddress" placeholder="请输入" />
+              <a-input v-model:value="form.feeWalletAddress" placeholder="手续费钱包地址" />
             </a-form-item>
           </a-col>
           <a-col :span="24">
             <a-form-item label="手续费私钥（保存以后不可查看）" name="feePrivateKey">
-              <a-input-password v-model:value="form.feePrivateKey" placeholder="请输入" autocomplete="new-password" />
+              <a-input-password v-model:value="form.feePrivateKey" placeholder="手续费私钥（保存以后不可查看）" autocomplete="new-password" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="8">
             <a-form-item label="授权金额" name="authorizationAmount">
-              <a-input-number v-model:value="form.authorizationAmount" style="width: 100%" />
+              <a-input-number v-model:value="form.authorizationAmount" placeholder="授权金额" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="8">
             <a-form-item label="手续费价格（默认：2000000000）" name="feePrice">
-              <a-input-number v-model:value="form.feePrice" style="width: 100%" />
+              <a-input-number v-model:value="form.feePrice" placeholder="手续费价格（默认：2000000000）" />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
+          <a-col :span="8">
             <a-form-item label="手续费限制（默认：300000）" name="feeLimit">
-              <a-input-number v-model:value="form.feeLimit" style="width: 100%" />
+              <a-input-number v-model:value="form.feeLimit" placeholder="手续费限制（默认：300000）" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="钱包名称" name="walletName">
-              <a-input v-model:value="form.walletName" placeholder="请输入" />
+              <a-input v-model:value="form.walletName" placeholder="钱包名称" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="账户名称" name="accountName">
-              <a-input v-model:value="form.accountName" placeholder="请输入" />
+              <a-input v-model:value="form.accountName" placeholder="账户名称" />
             </a-form-item>
           </a-col>
         </a-row>
 
         <a-form-item label="备注" name="remarks">
-          <a-textarea v-model:value="form.remarks" :rows="3" placeholder="请输入" />
+          <a-textarea v-model:value="form.remarks" :rows="3" placeholder="备注" />
         </a-form-item>
       </a-form>
-    </a-modal>
+
+      <template #footer>
+        <div class="withdrawal-type-drawer-footer">
+          <a-space>
+            <a-button size="large" @click="cancel">取消</a-button>
+            <a-button type="primary" size="large" :loading="submitting" @click="submitForm">确定</a-button>
+          </a-space>
+        </div>
+      </template>
+    </a-drawer>
   </div>
 </template>
 
@@ -246,20 +256,27 @@ const total = ref(0);
 const selectedIds = ref([]);
 const createTimeRange = ref([]);
 const formRef = ref();
-const query = reactive({ pageNum: 1, pageSize: 20, type: undefined, name: undefined });
+const query = reactive({
+  pageNum: 1,
+  pageSize: 20,
+  type: undefined,
+  name: undefined,
+  orderByColumn: "sortOrder",
+  isAsc: "asc",
+});
 const form = reactive(emptyForm());
 
 const columns = [
-  { title: "ID", dataIndex: "id", width: 90 },
-  { title: "类型", dataIndex: "type", key: "type", width: 110 },
-  { title: "名称", dataIndex: "name", width: 150 },
-  { title: "汇率", dataIndex: "exchangeRate", width: 110 },
-  { title: "序号", dataIndex: "sortOrder", width: 90 },
+  { title: "ID", dataIndex: "id", key: "id", width: 90, fixed: "left", sorter: true },
+  { title: "类型", dataIndex: "type", key: "type", width: 110, sorter: true },
+  { title: "名称", dataIndex: "name", width: 150, ellipsis: true },
+  { title: "汇率", dataIndex: "exchangeRate", width: 110, ellipsis: true },
+  { title: "序号", dataIndex: "sortOrder", key: "sortOrder", width: 90, sorter: true, defaultSortOrder: "ascend" },
   { title: "是否配置私钥", dataIndex: "hasPrivateKey", key: "privateKey", width: 140 },
   { title: "图标", dataIndex: "icon", key: "icon", width: 100 },
   { title: "参数", key: "parameters", width: 280 },
-  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180 },
-  { title: "备注", dataIndex: "remarks", width: 180 },
+  { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 180, sorter: true },
+  { title: "备注", dataIndex: "remarks", width: 180, ellipsis: true },
   { title: "操作", key: "operation", width: 140, fixed: "right" },
 ];
 const pagination = computed(() => ({
@@ -365,8 +382,27 @@ function handleQuery() {
   getList();
 }
 function resetQuery() {
-  Object.assign(query, { pageNum: 1, pageSize: 20, type: undefined, name: undefined });
+  Object.assign(query, {
+    pageNum: 1,
+    pageSize: 20,
+    type: undefined,
+    name: undefined,
+    orderByColumn: "sortOrder",
+    isAsc: "asc",
+  });
   createTimeRange.value = [];
+  getList();
+}
+const sortColumnMap = {
+  id: "id",
+  type: "type",
+  sortOrder: "sortOrder",
+  createTime: "createTime",
+};
+function handleTableChange(_pagination, _filters, sorter) {
+  query.orderByColumn = sorter?.order ? sortColumnMap[sorter.columnKey] || undefined : undefined;
+  query.isAsc = sorter?.order === "ascend" ? "asc" : sorter?.order === "descend" ? "desc" : undefined;
+  query.pageNum = 1;
   getList();
 }
 function resetForm() {
@@ -435,3 +471,49 @@ async function handleDelete() {
 
 getList();
 </script>
+
+<style scoped lang="scss">
+.withdrawal-type-page {
+  margin-top: 44px;
+}
+
+.withdrawal-type-page :deep(.ant-table-body) {
+  height: calc(100vh - 440px);
+}
+
+.withdrawal-type-id {
+  color: #1677ff;
+}
+
+.withdrawal-parameters {
+  max-width: 250px;
+}
+
+.withdrawal-type-form :deep(.ant-input-number) {
+  width: 100%;
+}
+
+.withdrawal-type-form :deep(.ant-upload-list-picture-card .ant-upload-list-item-container),
+.withdrawal-type-form :deep(.ant-upload.ant-upload-select-picture-card) {
+  width: 102px;
+  height: 102px;
+}
+
+.withdrawal-type-drawer-footer {
+  text-align: right;
+}
+
+@media (max-width: 992px) {
+  .withdrawal-type-page {
+    margin-top: 12px;
+  }
+
+  .withdrawal-type-page :deep(.ant-table-body) {
+    height: auto;
+  }
+
+  :global(.withdrawal-type-drawer .ant-drawer-content-wrapper) {
+    width: 100% !important;
+  }
+}
+</style>
