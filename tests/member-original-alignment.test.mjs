@@ -41,9 +41,30 @@ test("member status cells follow the verified local dictionary semantics", () =>
   assert.equal(fakeMemberTone(undefined), null);
 });
 
-test("member list renders badges only on the original badge fields", () => {
+test("member list renders reference badge dots on status fields", () => {
   for (const field of ["gender", "isEnabled", "allowInvite", "isFrozen", "isBanned"]) {
     assert.match(member, new RegExp(`column\\.key === '${field}'[\\s\\S]*?<a-badge`));
+  }
+
+  const genericYesNoBlock = member.match(
+    /<template v-else-if="column\.dict === 'yesNo'">([\s\S]*?)<\/template>/,
+  )?.[1] || "";
+  assert.match(genericYesNoBlock, /<a-badge/);
+  assert.match(genericYesNoBlock, /yesNoBadgeStatus\(record\[column\.dataIndex\]\)/);
+
+  for (const field of [
+    "isWithdrawalNotification",
+    "depositBlockWithdrawal",
+    "web3AuthEnabled",
+    "isInvalid",
+    "isActivity",
+    "verifyIdentityBeforeTask",
+    "userContractEnabled",
+    "userContractSigned",
+    "formalContractEnabled",
+    "formalContractSigned",
+  ]) {
+    assert.match(member, new RegExp(`key: "${field}"[^\\n]*dict: "yesNo"`));
   }
 
   const fakeBlock = member.match(

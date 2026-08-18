@@ -60,6 +60,8 @@ test('member list keeps the reference table viewport and status prompts describe
   assert.match(member, /:scroll="\{ x: 6602, y: 'calc\(100vh - 410px\)' \}"/)
   assert.match(member, /:pagination="\{[^\"]*size: 'small'/)
   assert.match(member, /:label-col="\{ flex: '100px' \}"/)
+  assert.match(member, /\.ant-pro-member-page\s*\{[\s\S]*?margin:\s*44px 40px 32px/)
+  assert.match(member, /\.ant-pro-query-actions\s*\{[\s\S]*?margin-left:\s*auto/)
   assert.match(member, /<a-flex wrap="wrap" gap="small">/)
   assert.match(member, /title: "用户名"[^\n]*width: 140/)
   assert.match(member, /title: "操作"[^\n]*width: 300/)
@@ -71,6 +73,52 @@ test('member list keeps the reference table viewport and status prompts describe
     (member.match(/const action = newValue === "0" \? "启用" : "禁用";/g) || []).length,
     5
   )
+})
+
+test('member search mirrors the reference three-column collapsed and expanded layout', () => {
+  const member = source('src/views/member/orderuser/index.vue')
+  const collapsedSearch = member.slice(
+    member.indexOf('<a-row :gutter="[24, 24]">'),
+    member.indexOf('<template v-if="advancedSearchVisible">')
+  )
+  const advancedSearch = member.slice(
+    member.indexOf('<a-row :gutter="[24, 24]">'),
+    member.indexOf('class="ant-pro-query-actions"')
+  )
+
+  assert.match(collapsedSearch, /label="关键字"/)
+  assert.match(collapsedSearch, /label="上级用户名"/)
+  assert.match(collapsedSearch, /label="是否在线"/)
+  assert.equal((collapsedSearch.match(/:lg="8"/g) || []).length, 3)
+  assert.equal((collapsedSearch.match(/:xxl="6"/g) || []).length, 3)
+  assert.match(collapsedSearch, /online-query-field-collapsed/)
+  assert.match(member, /<\/template>[\s\S]*?class="ant-pro-query-actions"/)
+  assert.match(member, /@media \(min-width: 1600px\)[\s\S]*?\.online-query-field-collapsed[\s\S]*?display: block/)
+
+  const orderedLabels = [
+    '是否在线',
+    'ID',
+    'VIP等级',
+    '用户名列表',
+    '上级邀请码',
+    '余额',
+    '最后登录IP',
+    '信誉分',
+  ]
+  let previousIndex = -1
+  for (const label of orderedLabels) {
+    const index = advancedSearch.indexOf(label)
+    assert.ok(index > previousIndex, `${label} should keep the reference order`)
+    previousIndex = index
+  }
+
+  assert.match(advancedSearch, /QuestionCircleOutlined/)
+  assert.match(advancedSearch, /v-model:value="queryParams\.id"[^>]*placeholder="请输入"/)
+  assert.match(advancedSearch, /v-model:value="queryParams\.workLimit"[^>]*placeholder="请输入"/)
+  assert.doesNotMatch(advancedSearch, /v-model:value="queryParams\.(?:id|workLimit)"[^>]*<a-input-number/)
+  assert.match(member, /label: "任务开始前是否验证身份信息"/)
+  assert.match(member, /label: "是否启用用户合同"/)
+  assert.match(member, /label: "是否签署正式合同"/)
 })
 
 test('member management keeps root-member hierarchy and legacy actions aligned', () => {

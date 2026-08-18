@@ -21,8 +21,8 @@
           :wrapper-col="{ flex: 1 }"
           class="ant-pro-query-form"
         >
-          <a-row :gutter="[24, 16]">
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+          <a-row :gutter="[24, 24]">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="关键字">
                 <a-input
                   v-model:value="queryParams.keyword"
@@ -32,7 +32,7 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6">
               <a-form-item label="上级用户名">
                 <a-input
                   v-model:value="queryParams.parentUsername"
@@ -42,7 +42,14 @@
                 />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="8" :lg="6">
+            <a-col
+              :xs="24"
+              :sm="12"
+              :lg="8"
+              :xxl="6"
+              class="online-query-field"
+              :class="{ 'online-query-field-collapsed': !advancedSearchVisible }"
+            >
               <a-form-item label="是否在线">
                 <a-select v-model:value="queryParams.isOnline" allow-clear placeholder="请选择">
                   <a-select-option value="1">是</a-select-option>
@@ -50,25 +57,13 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :md="24" :lg="6" class="ant-pro-query-actions">
-              <a-space>
-                <a-button @click="resetQuery">重 置</a-button>
-                <a-button type="primary" @click="handleQuery">查 询</a-button>
-                <a-button type="link" class="ant-pro-expand-btn" @click="advancedSearchVisible = !advancedSearchVisible">
-                  {{ advancedSearchVisible ? "收起" : "展开" }}
-                  <UpOutlined v-if="advancedSearchVisible" />
-                  <DownOutlined v-else />
-                </a-button>
-              </a-space>
-            </a-col>
-          </a-row>
-          <a-row v-if="advancedSearchVisible" :gutter="[24, 16]" class="advanced-query-row">
-            <a-col :xs="24" :sm="12" :lg="6">
+            <template v-if="advancedSearchVisible">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="ID">
-                <a-input-number v-model:value="queryParams.id" :min="1" :precision="0" class="full-width" placeholder="请输入" />
+                <a-input v-model:value="queryParams.id" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="VIP等级">
                 <a-select v-model:value="queryParams.vipId" allow-clear placeholder="请选择">
                   <a-select-option v-for="item in levelList" :key="item.id" :value="item.id">
@@ -77,37 +72,43 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
-              <a-form-item label="用户名列表">
-                <a-input v-model:value="queryParams.usernameList" allow-clear placeholder="多个用户名用逗号分隔" />
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
+              <a-form-item>
+                <template #label>
+                  <span>用户名列表</span>
+                  <a-tooltip title="多个用户名请使用逗号分隔">
+                    <QuestionCircleOutlined class="query-label-help" />
+                  </a-tooltip>
+                </template>
+                <a-input v-model:value="queryParams.usernameList" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="上级邀请码">
                 <a-input v-model:value="queryParams.parentInviteCode" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
 
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="余额">
                 <a-space-compact block>
-                  <a-input-number v-model:value="queryParams.balanceMin" :min="0" placeholder="最小值" class="range-input" />
+                  <a-input-number v-model:value="queryParams.balanceMin" :min="0" placeholder="请输入" class="range-input" />
                   <a-input class="range-separator" value="~" disabled />
-                  <a-input-number v-model:value="queryParams.balanceMax" :min="0" placeholder="最大值" class="range-input" />
+                  <a-input-number v-model:value="queryParams.balanceMax" :min="0" placeholder="请输入" class="range-input" />
                 </a-space-compact>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="最后登录IP">
                 <a-input v-model:value="queryParams.lastLoginIp" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="信誉分">
                 <a-space-compact block>
-                  <a-input-number v-model:value="queryParams.reputationMin" :min="0" :precision="0" placeholder="最小值" class="range-input" />
+                  <a-input-number v-model:value="queryParams.reputationMin" :min="0" :precision="0" placeholder="请输入" class="range-input" />
                   <a-input class="range-separator" value="~" disabled />
-                  <a-input-number v-model:value="queryParams.reputationMax" :min="0" :precision="0" placeholder="最大值" class="range-input" />
+                  <a-input-number v-model:value="queryParams.reputationMax" :min="0" :precision="0" placeholder="请输入" class="range-input" />
                 </a-space-compact>
               </a-form-item>
             </a-col>
@@ -116,7 +117,8 @@
               :key="field.key"
               :xs="24"
               :sm="12"
-              :lg="6"
+              :lg="8"
+              :xxl="6"
             >
               <a-form-item :label="field.label">
                 <a-select v-model:value="queryParams[field.key]" allow-clear placeholder="请选择">
@@ -126,9 +128,9 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="工作限额">
-                <a-input-number v-model:value="queryParams.workLimit" :min="0" class="full-width" placeholder="请输入" />
+                <a-input v-model:value="queryParams.workLimit" allow-clear placeholder="请输入" />
               </a-form-item>
             </a-col>
             <a-col
@@ -136,7 +138,8 @@
               :key="field.key"
               :xs="24"
               :sm="12"
-              :lg="6"
+              :lg="8"
+              :xxl="6"
             >
               <a-form-item :label="field.label">
                 <a-select v-model:value="queryParams[field.key]" allow-clear placeholder="请选择">
@@ -146,7 +149,7 @@
                 </a-select>
               </a-form-item>
             </a-col>
-            <a-col :xs="24" :sm="12" :lg="6">
+            <a-col :xs="24" :sm="12" :lg="8" :xxl="6">
               <a-form-item label="创建时间">
                 <a-range-picker
                   v-model:value="queryParams.createTimeRange"
@@ -155,6 +158,17 @@
                   allow-clear
                 />
               </a-form-item>
+            </a-col>
+            </template>
+            <a-col :xs="24" :sm="12" :md="8" :lg="8" :xxl="6" class="ant-pro-query-actions">
+              <a-space>
+                <a-button @click="resetQuery">重 置</a-button>
+                <a-button type="primary" @click="handleQuery">查 询</a-button>
+                <a-button type="link" class="ant-pro-expand-btn" @click="advancedSearchVisible = !advancedSearchVisible">
+                  {{ advancedSearchVisible ? "收起" : "展开" }}
+                  <DownOutlined :class="{ 'ant-pro-expand-icon-open': advancedSearchVisible }" />
+                </a-button>
+              </a-space>
             </a-col>
           </a-row>
         </a-form>
@@ -423,7 +437,13 @@
           <span v-else>{{ dictText(sys_enabled, record.assistWithdrawalStatus) }}</span>
         </template>
         <template v-else-if="column.dict === 'yesNo'">
-          {{ dictText(user_yes_no, record[column.dataIndex]) }}
+          <a-badge
+            v-if="yesNoBadgeStatus(record[column.dataIndex])"
+            class="member-status-badge"
+            :status="yesNoBadgeStatus(record[column.dataIndex])"
+            :text="dictText(user_yes_no, record[column.dataIndex])"
+          />
+          <span v-else>-</span>
         </template>
         <template v-else-if="column.dict === 'enabled'">
           {{ dictText(sys_enabled, record[column.dataIndex]) }}
@@ -774,8 +794,8 @@ import {
   CopyOutlined,
   DownOutlined,
   PlusOutlined,
+  QuestionCircleOutlined,
   UnlockOutlined,
-  UpOutlined,
 } from "@ant-design/icons-vue";
 import OrderuserForm from "./components/OrderuserForm.vue";
 import OrderuserTransactionModal from "./components/OrderuserTransactionModal.vue";
@@ -1031,11 +1051,11 @@ const advancedSelectFields = computed(() => [
   { key: "web3AuthEnabled", label: "启用Web3授权", options: user_yes_no.value || [] },
   { key: "isInvalid", label: "是否无效", options: user_yes_no.value || [] },
   { key: "isActivity", label: "是否活动", options: user_yes_no.value || [] },
-  { key: "verifyIdentityBeforeTask", label: "任务前验证身份", options: user_yes_no.value || [] },
-  { key: "userContractEnabled", label: "启用用户合同", options: user_yes_no.value || [] },
-  { key: "userContractSigned", label: "签署用户合同", options: user_yes_no.value || [] },
-  { key: "formalContractEnabled", label: "启用正式合同", options: user_yes_no.value || [] },
-  { key: "formalContractSigned", label: "签署正式合同", options: user_yes_no.value || [] },
+  { key: "verifyIdentityBeforeTask", label: "任务开始前是否验证身份信息", options: user_yes_no.value || [] },
+  { key: "userContractEnabled", label: "是否启用用户合同", options: user_yes_no.value || [] },
+  { key: "userContractSigned", label: "是否签署用户合同", options: user_yes_no.value || [] },
+  { key: "formalContractEnabled", label: "是否启用正式合同", options: user_yes_no.value || [] },
+  { key: "formalContractSigned", label: "是否签署正式合同", options: user_yes_no.value || [] },
 ]);
 const advancedSelectFieldsBeforeWorkLimit = computed(() => advancedSelectFields.value.slice(0, 6));
 const advancedSelectFieldsAfterWorkLimit = computed(() => advancedSelectFields.value.slice(6));
@@ -1951,7 +1971,7 @@ getList();
 </script>
 <style scoped>
 .ant-pro-member-page {
-  margin: 16px 40px 32px;
+  margin: 44px 40px 32px;
 }
 
 .member-orderuser-page :deep(.ant-pro-query-form),
@@ -1979,14 +1999,30 @@ getList();
 .ant-pro-query-actions {
   display: flex;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .ant-pro-expand-btn {
   padding-right: 0;
 }
 
-.advanced-query-row {
-  margin-top: 16px;
+.ant-pro-expand-icon-open {
+  transform: rotate(180deg);
+}
+
+.online-query-field-collapsed {
+  display: none;
+}
+
+@media (min-width: 1600px) {
+  .online-query-field-collapsed {
+    display: block;
+  }
+}
+
+.query-label-help {
+  margin-left: 4px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .range-input {
