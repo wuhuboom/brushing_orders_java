@@ -255,7 +255,9 @@
         </template>
         <template v-else-if="column.key === 'balanceInfo'">
           <div>总余额: {{ Number(record.balance || 0) + Number(record.frozenBalance || 0) }}</div>
-          <div>余额: {{ record.balance || 0 }}</div>
+          <div :class="{ 'negative-balance': Number(record.balance) < 0 }">
+            余额: {{ record.balance ?? 0 }}
+          </div>
           <div>冻结余额: {{ record.frozenBalance || 0 }}</div>
           <div>底薪: {{ record.baseSalary || 0 }}</div>
           <div>今日佣金: {{ record.todayCommission || 0 }}</div>
@@ -2084,6 +2086,10 @@ getList();
   padding: 0;
   text-align: center;
   pointer-events: none;
+}
+
+.negative-balance {
+  color: #ff4d4f;
 }
 
 .copy-button {

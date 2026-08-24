@@ -74,12 +74,18 @@ test("dangerous row actions identify their target and cannot be submitted twice"
 test("operation payloads preserve zero reputation and exclude display-only or hidden fields", () => {
   assert.match(page, /row\.reputationScore \?\? 100/g);
   assert.match(page, /updateOrderuser\(buildModifyCountPayload\(modifyForm\)\)/);
+  assert.doesNotMatch(page, /updateTaskProgress\(buildModifyCountPayload\(modifyForm\)\)/);
   assert.match(page, /buildCopyMemberForm\(defaults, row \|\| \{\}/);
   assert.doesNotMatch(page, /function handleCopyMember\(row\)[\s\S]{0,320}?getOrderuser\(/);
   assert.match(form, /buildMemberSubmitPayload\(props\.formData/);
   assert.doesNotMatch(form, /\.\.\.props\.formData/);
   assert.match(form, /v-if="!isEditMode"/);
   assert.match(form, /:disabled="isEditMode"/);
+});
+
+test("negative member balances are highlighted in red", () => {
+  assert.match(page, /:class="\{ 'negative-balance': Number\(record\.balance\) < 0 \}"/);
+  assert.match(page, /\.negative-balance\s*\{\s*color:\s*#ff4d4f;/);
 });
 
 test("operation forms expose required state and reference validation messages", () => {

@@ -11,6 +11,12 @@ const gift = source("OrderuserGiftModal.vue");
 const bonus = source("OrderuserBonusDrawer.vue");
 const extra = source("OrderuserExtracommissionDrawer.vue");
 
+test("bonus push-member cells prefer usernames with a persisted user-id fallback", () => {
+  assert.match(bonus, /row\.toUsernames/);
+  assert.match(bonus, /return normalizeUserIds\(row\.toUsers\)\.join/);
+  assert.match(bonus, /userOptions\.value = \[\.\.\.fetched, \.\.\.selected\]/);
+});
+
 function deferred() {
   let resolve;
   let reject;

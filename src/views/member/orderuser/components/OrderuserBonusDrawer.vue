@@ -947,7 +947,7 @@ async function loadUsers(keyword = "") {
         label: item.username,
       }))
       .filter((item) => item.value);
-    userOptions.value = [...selected, ...fetched].filter(
+    userOptions.value = [...fetched, ...selected].filter(
       (item, index, all) => all.findIndex((value) => value.value === item.value) === index
     );
   } catch (error) {
