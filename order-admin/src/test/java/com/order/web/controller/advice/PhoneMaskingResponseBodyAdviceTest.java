@@ -1,10 +1,9 @@
 package com.order.web.controller.advice;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +21,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.order.common.core.domain.entity.SysUser;
@@ -39,7 +39,7 @@ class PhoneMaskingResponseBodyAdviceTest
     {
         ReflectionTestUtils.setField(advice, "alignmentService", alignmentService);
         ReflectionTestUtils.setField(advice, "objectMapper", new ObjectMapper());
-        authenticateListOperator();
+        authenticateOperator();
     }
 
     @AfterEach
@@ -49,42 +49,38 @@ class PhoneMaskingResponseBodyAdviceTest
     }
 
     @Test
-    void memberListKeepsCompletePhoneNumberForListOperator()
+    void adviceIsNotAppliedToManagementConsoleControllers()
     {
-        when(alignmentService.shouldHidePhone(9L)).thenReturn(true);
-        TableDataInfo body = phoneTable();
+        ControllerAdvice annotation = PhoneMaskingResponseBodyAdvice.class
+                .getAnnotation(ControllerAdvice.class);
 
-        Object result = write(body, "/member/orderuser/list");
-
-        assertSame(body, result);
-        assertEquals("+12345674455", phoneValue(body));
-        verify(alignmentService, never()).shouldHidePhone(9L);
+        assertArrayEquals(
+                new String[] {"com.order.api.controller"},
+                annotation.basePackages());
     }
 
     @Test
-    void otherManagementListsStillHonorPhoneMaskingRole()
+    void customerFacingAdviceStillHonorsLegacyPhoneMaskingSetting()
     {
         when(alignmentService.shouldHidePhone(9L)).thenReturn(true);
 
-        JsonNode result = assertInstanceOf(JsonNode.class,
-                write(phoneTable(), "/member/recharge/list"));
+        JsonNode result = assertInstanceOf(JsonNode.class, write(phoneTable()));
 
         assertEquals("+12****4455", result.path("rows").path(0).path("phoneNumber").asText());
         verify(alignmentService).shouldHidePhone(9L);
     }
 
-    private void authenticateListOperator()
+    private void authenticateOperator()
     {
         SysUser user = new SysUser();
-        LoginUser loginUser = new LoginUser(
-                9L, null, user, Set.of("member:orderuser:list"));
+        LoginUser loginUser = new LoginUser(9L, null, user, Set.of("member:orderuser:list"));
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(loginUser, null, List.of()));
     }
 
-    private Object write(TableDataInfo body, String path)
+    private Object write(TableDataInfo body)
     {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/user/profile");
         return advice.beforeBodyWrite(
                 body,
                 null,
@@ -97,11 +93,5 @@ class PhoneMaskingResponseBodyAdviceTest
     private TableDataInfo phoneTable()
     {
         return new TableDataInfo(List.of(Map.of("phoneNumber", "+12345674455")), 1L);
-    }
-
-    @SuppressWarnings("unchecked")
-    private String phoneValue(TableDataInfo body)
-    {
-        return ((Map<String, String>) body.getRows().get(0)).get("phoneNumber");
     }
 }

@@ -51,21 +51,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                gwa.id as gwa_id, gwa.user_id as gwa_user_id, gwa.type as gwa_type, gwa.withdrawal_type_id as gwa_withdrawal_type_id,
                gwa.is_default as gwa_is_default, gwa.bank_name as gwa_bank_name, gwa.deposit_type as gwa_deposit_type,
                gwa.branch_code as gwa_branch_code, gwa.branch_name as gwa_branch_name,
-               COALESCE(gwa.bank_account_mask,
-                        CASE WHEN gwa.bank_account IS NULL THEN NULL
-                             ELSE CONCAT('****', RIGHT(REPLACE(gwa.bank_account, ' ', ''), 4)) END) as gwa_bank_account,
-               COALESCE(gwa.account_holder_mask,
-                        CASE WHEN gwa.account_holder IS NULL THEN NULL
-                             ELSE CONCAT(LEFT(gwa.account_holder, 1), '***') END) as gwa_account_holder,
-               COALESCE(gwa.account_name_mask,
-                        CASE WHEN gwa.account_name IS NULL THEN NULL
-                             ELSE CONCAT(LEFT(gwa.account_name, 1), '***') END) as gwa_account_name,
+               gwa.bank_account as gwa_bank_account,
+               gwa.account_holder as gwa_account_holder,
+               gwa.account_name as gwa_account_name,
                gwa.wallet_name as gwa_wallet_name,
-               COALESCE(gwa.wallet_address_mask,
-                        CASE WHEN gwa.wallet_address IS NULL THEN NULL
-                             WHEN CHAR_LENGTH(gwa.wallet_address) &lt;= 10
-                                  THEN CONCAT('****', RIGHT(gwa.wallet_address, 4))
-                             ELSE CONCAT(LEFT(gwa.wallet_address, 6), '****', RIGHT(gwa.wallet_address, 4)) END) as gwa_wallet_address,
+               gwa.wallet_address as gwa_wallet_address,
                gwa.bank_account_enc as gwa_bank_account_enc,
                gwa.account_holder_enc as gwa_account_holder_enc,
                gwa.account_name_enc as gwa_account_name_enc,
@@ -96,7 +86,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                     or gwa.wallet_address_mask like concat('%', #{accountAddress}, '%')
                 )
             </if>
-            <if test="withdrawalType != null and withdrawalType != ''"> and gwa.type = #{withdrawalType}</if>
+            <if test="withdrawalType != null and withdrawalType != ''"> and ow.withdrawal_type = #{withdrawalType}</if>
             <if test="status != null and status != ''"> and ow.status = #{status}</if>
             <if test="isFake != null and isFake != ''"> and ou.is_fake = #{isFake}</if>
             <if test="transactionType != null and transactionType != ''"> and ow.transaction_type = #{transactionType}</if>
@@ -114,7 +104,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and ow.create_time &lt;= #{params.endTime}
             </if>
         </where>
-        order by ow.create_time desc
+        order by ow.create_time desc, ow.id desc
     </select>
     
     <select id="selectOrderWithdrawalById" parameterType="Long" resultMap="OrderWithdrawalResult">

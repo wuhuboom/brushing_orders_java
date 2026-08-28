@@ -349,6 +349,97 @@ public class WithdrawalApplicationService {
                 account.getAttachment());
     }
 
+    /**
+     * Reveals payout data only for management-console list, detail, and export responses.
+     * The same list instance is returned so PageHelper pagination metadata is preserved.
+     */
+    @Transactional(readOnly = true)
+    public List<OrderWithdrawal> revealAdminAccounts(List<OrderWithdrawal> withdrawals) {
+        if (withdrawals != null) {
+            withdrawals.forEach(this::revealAdminAccount);
+        }
+        return withdrawals;
+    }
+
+    @Transactional(readOnly = true)
+    public OrderWithdrawal revealAdminAccount(OrderWithdrawal withdrawal) {
+        if (withdrawal == null) {
+            return null;
+        }
+
+        GoodsWithdrawalAccount account;
+        if (withdrawal.getAccountSnapshotEncrypted() != null
+                && !withdrawal.getAccountSnapshotEncrypted().isBlank()) {
+            account = accountFromSnapshot(withdrawal, cipher.decryptSnapshot(
+                    withdrawal.getUserId(), withdrawal.getAccountSnapshotEncrypted()));
+        } else {
+            account = cipher.reveal(withdrawal.getWithdrawalAccountInfo());
+        }
+
+        if (account == null) {
+            withdrawal.setAdminAccountDisplay(null);
+            log.warn("event=admin_withdrawal_account_unavailable withdrawalId={}", withdrawal.getId());
+            return withdrawal;
+        }
+        clearDisplayMasks(account);
+        withdrawal.setWithdrawalAccountInfo(account);
+        withdrawal.setAdminAccountDisplay(fullAccountDisplay(account));
+        return withdrawal;
+    }
+
+    private GoodsWithdrawalAccount accountFromSnapshot(
+            OrderWithdrawal withdrawal,
+            Map<String, Object> snapshot) {
+        GoodsWithdrawalAccount account = new GoodsWithdrawalAccount();
+        account.setId(withdrawal.getWithdrawalAccountId());
+        account.setUserId(withdrawal.getUserId());
+        account.setType(text(snapshot.get("type")));
+        account.setWithdrawalTypeId(text(snapshot.get("withdrawalTypeId")));
+        account.setWithdrawalType(text(snapshot.get("withdrawalType")));
+        account.setBankName(text(snapshot.get("bankName")));
+        account.setDepositType(text(snapshot.get("depositType")));
+        account.setBranchCode(text(snapshot.get("branchCode")));
+        account.setBranchName(text(snapshot.get("branchName")));
+        account.setBankAccount(text(snapshot.get("bankAccount")));
+        account.setAccountHolder(text(snapshot.get("accountHolder")));
+        account.setAccountName(text(snapshot.get("accountName")));
+        account.setWalletName(text(snapshot.get("walletName")));
+        account.setWalletAddress(text(snapshot.get("walletAddress")));
+        account.setAttachment(text(snapshot.get("attachment")));
+        return account;
+    }
+
+    private void clearDisplayMasks(GoodsWithdrawalAccount account) {
+        account.setBankAccountMask(null);
+        account.setAccountHolderMask(null);
+        account.setAccountNameMask(null);
+        account.setWalletAddressMask(null);
+    }
+
+    private String fullAccountDisplay(GoodsWithdrawalAccount account) {
+        List<String> parts = new ArrayList<>();
+        if ("1".equals(account.getType())) {
+            addDisplayPart(parts, "账户名称", account.getAccountName());
+            addDisplayPart(parts, "钱包名称", account.getWalletName());
+            addDisplayPart(parts, "钱包地址", account.getWalletAddress());
+        } else {
+            addDisplayPart(parts, "银行名称", account.getBankName());
+            addDisplayPart(parts, "存款种类", account.getDepositType());
+            addDisplayPart(parts, "支行代码", account.getBranchCode());
+            addDisplayPart(parts, "支行名称", account.getBranchName());
+            addDisplayPart(parts, "账户持有人", account.getAccountHolder());
+            addDisplayPart(parts, "账户名称", account.getAccountName());
+            addDisplayPart(parts, "银行账号", account.getBankAccount());
+        }
+        return parts.isEmpty() ? null : String.join("; ", parts);
+    }
+
+    private void addDisplayPart(List<String> parts, String label, String value) {
+        if (value != null && !value.isBlank()) {
+            parts.add(label + ": " + value);
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void updateSensitiveAccount(
             Long withdrawalId,

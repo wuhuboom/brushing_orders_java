@@ -88,8 +88,11 @@ public class OrderWithdrawal extends BaseEntity
     private BigDecimal netAmount;
     @JsonIgnore
     private String accountSnapshotEncrypted;
-    @Excel(name = "提现账户（脱敏）")
+    @JsonIgnore
     private String accountMask;
+    @JsonIgnore
+    @Excel(name = "提现账户")
+    private String adminAccountDisplay;
     private LocalDate businessDate;
 
     public void setId(Long id)
@@ -308,6 +311,14 @@ public class OrderWithdrawal extends BaseEntity
 
     public void setAccountMask(String accountMask) {
         this.accountMask = accountMask;
+    }
+
+    public String getAdminAccountDisplay() {
+        return adminAccountDisplay;
+    }
+
+    public void setAdminAccountDisplay(String adminAccountDisplay) {
+        this.adminAccountDisplay = adminAccountDisplay;
     }
 
     public LocalDate getBusinessDate() {

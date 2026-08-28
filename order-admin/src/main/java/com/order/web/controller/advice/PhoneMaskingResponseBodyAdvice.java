@@ -3,7 +3,6 @@ package com.order.web.controller.advice;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.MethodParameter;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
@@ -19,11 +18,14 @@ import com.order.common.core.page.TableDataInfo;
 import com.order.common.utils.SecurityUtils;
 import com.order.system.service.ISystemAlignmentService;
 
-/** Applies role-based phone masking consistently to JSON list/detail responses. */
-@ControllerAdvice
+/**
+ * Keeps the legacy role-based phone masking out of management-console responses.
+ * Administrators who can read a management list/detail are allowed to see its full
+ * phone values; this advice remains scoped to the customer-facing API only.
+ */
+@ControllerAdvice(basePackages = "com.order.api.controller")
 public class PhoneMaskingResponseBodyAdvice implements ResponseBodyAdvice<Object>
 {
-    private static final String MEMBER_LIST_PATH = "/member/orderuser/list";
     private static final Set<String> PHONE_FIELDS = Set.of("phone", "phonenumber", "mobile", "mobilephone");
 
     @Autowired
@@ -43,9 +45,6 @@ public class PhoneMaskingResponseBodyAdvice implements ResponseBodyAdvice<Object
             Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request, ServerHttpResponse response)
     {
         if (!(body instanceof AjaxResult) && !(body instanceof TableDataInfo)) return body;
-        // The list permission is sufficient to view complete phone numbers on
-        // the member-management list, regardless of the role masking setting.
-        if (isMemberListRequest(request)) return body;
         Long userId;
         try { userId = SecurityUtils.getUserId(); }
         catch (Exception ignored) { return body; }
@@ -53,15 +52,6 @@ public class PhoneMaskingResponseBodyAdvice implements ResponseBodyAdvice<Object
         JsonNode tree = objectMapper.valueToTree(body);
         mask(tree);
         return tree;
-    }
-
-    static boolean isMemberListRequest(ServerHttpRequest request)
-    {
-        if (request == null || request.getURI() == null) return false;
-        String path = request.getURI().getPath();
-        return HttpMethod.GET.equals(request.getMethod())
-                && path != null
-                && (path.equals(MEMBER_LIST_PATH) || path.endsWith(MEMBER_LIST_PATH));
     }
 
     private void mask(JsonNode node)

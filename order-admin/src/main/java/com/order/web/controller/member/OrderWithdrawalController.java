@@ -44,7 +44,9 @@ public class OrderWithdrawalController extends BaseController {
     @GetMapping("/list")
     public TableDataInfo list(OrderWithdrawal withdrawal) {
         startPage();
-        return getDataTable(withdrawalQueryService.selectOrderWithdrawalList(withdrawal));
+        List<OrderWithdrawal> list = withdrawalQueryService.selectOrderWithdrawalList(withdrawal);
+        withdrawalApplicationService.revealAdminAccounts(list);
+        return getDataTable(list);
     }
 
     @PreAuthorize("@ss.hasPermi('member:withdrawal:export')")
@@ -52,13 +54,15 @@ public class OrderWithdrawalController extends BaseController {
     @PostMapping("/export")
     public void export(HttpServletResponse response, OrderWithdrawal withdrawal) {
         List<OrderWithdrawal> list = withdrawalQueryService.selectOrderWithdrawalList(withdrawal);
+        withdrawalApplicationService.revealAdminAccounts(list);
         new ExcelUtil<>(OrderWithdrawal.class).exportExcel(response, list, "提现数据");
     }
 
     @PreAuthorize("@ss.hasPermi('member:withdrawal:query')")
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable Long id) {
-        return success(withdrawalQueryService.selectOrderWithdrawalById(id));
+        return success(withdrawalApplicationService.revealAdminAccount(
+                withdrawalQueryService.selectOrderWithdrawalById(id)));
     }
 
     @PreAuthorize("@ss.hasPermi('member:withdrawal:sensitive')")
