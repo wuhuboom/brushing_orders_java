@@ -2,6 +2,7 @@ package com.order.web.controller.member;
 
 import java.util.List;
 
+import com.order.api.service.WithdrawalAccountApplicationService;
 import com.order.member.domain.OrderWithdrawalType;
 import com.order.member.service.IOrderWithdrawalTypeService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,7 +21,6 @@ import com.order.common.core.controller.BaseController;
 import com.order.common.core.domain.AjaxResult;
 import com.order.common.enums.BusinessType;
 import com.order.member.domain.GoodsWithdrawalAccount;
-import com.order.member.service.IGoodsWithdrawalAccountService;
 import com.order.common.utils.poi.ExcelUtil;
 import com.order.common.core.page.TableDataInfo;
 
@@ -35,7 +35,7 @@ import com.order.common.core.page.TableDataInfo;
 public class GoodsWithdrawalAccountController extends BaseController
 {
     @Autowired
-    private IGoodsWithdrawalAccountService goodsWithdrawalAccountService;
+    private WithdrawalAccountApplicationService withdrawalAccountApplicationService;
 
     @Autowired
     private IOrderWithdrawalTypeService orderWithdrawalTypeService;
@@ -48,7 +48,7 @@ public class GoodsWithdrawalAccountController extends BaseController
     public TableDataInfo list(GoodsWithdrawalAccount goodsWithdrawalAccount)
     {
         startPage();
-        List<GoodsWithdrawalAccount> list = goodsWithdrawalAccountService.selectGoodsWithdrawalAccountList(goodsWithdrawalAccount);
+        List<GoodsWithdrawalAccount> list = withdrawalAccountApplicationService.listAdmin(goodsWithdrawalAccount);
         return getDataTable(list);
     }
 
@@ -60,7 +60,7 @@ public class GoodsWithdrawalAccountController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, GoodsWithdrawalAccount goodsWithdrawalAccount)
     {
-        List<GoodsWithdrawalAccount> list = goodsWithdrawalAccountService.selectGoodsWithdrawalAccountList(goodsWithdrawalAccount);
+        List<GoodsWithdrawalAccount> list = withdrawalAccountApplicationService.listAdmin(goodsWithdrawalAccount);
         ExcelUtil<GoodsWithdrawalAccount> util = new ExcelUtil<GoodsWithdrawalAccount>(GoodsWithdrawalAccount.class);
         util.exportExcel(response, list, "提现账户数据");
     }
@@ -68,11 +68,11 @@ public class GoodsWithdrawalAccountController extends BaseController
     /**
      * 获取提现账户详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:withdrawalAcc:query')")
+    @PreAuthorize("@ss.hasAnyPermi('member:withdrawalAcc:query,member:withdrawalAcc:list,member:withdrawalAcc:edit')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
-        return success(goodsWithdrawalAccountService.selectGoodsWithdrawalAccountById(id));
+        return success(withdrawalAccountApplicationService.getAdmin(id));
     }
 
     /**
@@ -83,7 +83,8 @@ public class GoodsWithdrawalAccountController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody GoodsWithdrawalAccount goodsWithdrawalAccount)
     {
-        return toAjax(goodsWithdrawalAccountService.insertGoodsWithdrawalAccount(goodsWithdrawalAccount));
+        withdrawalAccountApplicationService.createAdmin(goodsWithdrawalAccount);
+        return success();
     }
 
     @PreAuthorize("@ss.hasAnyPermi('member:withdrawalAcc:list,member:withdrawalAcc:add,member:withdrawalAcc:edit')")
@@ -101,7 +102,8 @@ public class GoodsWithdrawalAccountController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody GoodsWithdrawalAccount goodsWithdrawalAccount)
     {
-        return toAjax(goodsWithdrawalAccountService.updateGoodsWithdrawalAccount(goodsWithdrawalAccount));
+        withdrawalAccountApplicationService.updateAdmin(goodsWithdrawalAccount);
+        return success();
     }
 
     /**
@@ -112,6 +114,7 @@ public class GoodsWithdrawalAccountController extends BaseController
 	@DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {
-        return toAjax(goodsWithdrawalAccountService.deleteGoodsWithdrawalAccountByIds(ids));
+        withdrawalAccountApplicationService.deleteAdmin(ids);
+        return success();
     }
 }

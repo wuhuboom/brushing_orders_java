@@ -3,6 +3,7 @@ package com.order.api.service;
 import com.order.api.controller.dto.AccountApiDtos.WithdrawalAccountRequest;
 import com.order.api.controller.dto.AccountApiDtos.WithdrawalAccountResponse;
 import com.order.api.controller.dto.AccountApiDtos.WithdrawalTypeResponse;
+import com.order.common.exception.ServiceException;
 import com.order.common.utils.DateUtils;
 import com.order.member.domain.GoodsWithdrawalAccount;
 import com.order.member.domain.OrderWithdrawalType;
@@ -14,9 +15,12 @@ import com.order.member.service.IOrderWithdrawalTypeService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import static com.order.api.service.AccountErrorCodes.ACCOUNT_MUTATION_CONFLICT;
 import static com.order.api.service.AccountErrorCodes.INVALID_REQUEST;
@@ -70,18 +74,103 @@ public class WithdrawalAccountApplicationService {
         return toFullResponse(cipher.reveal(requireOwned(userId, id)));
     }
 
-    /** Compatibility-only full data. Do not use from new public endpoints. */
-    public List<GoodsWithdrawalAccount> listLegacy(Long userId) {
-        return accountMapper.selectActiveByUserId(userId).stream().map(cipher::reveal).toList();
+    /**
+     * Full-data view for the separately permissioned management console.
+     * The mapper-owned list instance is deliberately retained so PageHelper metadata survives
+     * decryption and the controller can still report the database total.
+     */
+    public List<GoodsWithdrawalAccount> listAdmin(GoodsWithdrawalAccount criteria) {
+        GoodsWithdrawalAccount safeCriteria = criteria == null
+                ? new GoodsWithdrawalAccount()
+                : criteria;
+        List<GoodsWithdrawalAccount> accounts = accountMapper.selectGoodsWithdrawalAccountList(safeCriteria);
+        accounts.forEach(this::revealForAdmin);
+        return accounts;
     }
 
-    /** Compatibility-only full data. */
-    public GoodsWithdrawalAccount getLegacy(Long userId, Long id) {
-        return cipher.reveal(requireOwned(userId, id));
+    public GoodsWithdrawalAccount getAdmin(Long id) {
+        try {
+            return revealForAdmin(requireActive(id));
+        } catch (AccountApiException exception) {
+            throw new ServiceException(exception.getMessage());
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public GoodsWithdrawalAccount createAdmin(GoodsWithdrawalAccount input) {
+        try {
+            Long userId = requireAdminUserId(input);
+            return revealForAdmin(createAccount(userId, toAdminRequest(input)));
+        } catch (AccountApiException exception) {
+            throw new ServiceException(exception.getMessage());
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public GoodsWithdrawalAccount updateAdmin(GoodsWithdrawalAccount input) {
+        try {
+            Long userId = requireAdminUserId(input);
+            if (input.getId() == null) {
+                throw AccountApiException.badRequest(INVALID_REQUEST, "Withdrawal account id is required");
+            }
+            return revealForAdmin(updateAccount(
+                    userId, input.getId(), toAdminRequest(input), false));
+        } catch (AccountApiException exception) {
+            throw new ServiceException(exception.getMessage());
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteAdmin(Long[] ids) {
+        try {
+            if (ids == null || ids.length == 0) {
+                throw AccountApiException.badRequest(INVALID_REQUEST, "Withdrawal account id is required");
+            }
+
+            Set<Long> uniqueIds = new HashSet<>();
+            List<GoodsWithdrawalAccount> accounts = new ArrayList<>();
+            for (Long id : ids) {
+                if (id != null && uniqueIds.add(id)) {
+                    accounts.add(requireActive(id));
+                }
+            }
+            if (accounts.isEmpty()) {
+                throw AccountApiException.badRequest(INVALID_REQUEST, "Withdrawal account id is required");
+            }
+
+            accounts.sort(Comparator.comparing(GoodsWithdrawalAccount::getUserId)
+                    .thenComparing(GoodsWithdrawalAccount::getId));
+            Long lockedUserId = null;
+            for (GoodsWithdrawalAccount account : accounts) {
+                if (!account.getUserId().equals(lockedUserId)) {
+                    lockUser(account.getUserId());
+                    lockedUserId = account.getUserId();
+                }
+            }
+
+            Set<Long> affectedUsers = new HashSet<>();
+            for (GoodsWithdrawalAccount account : accounts) {
+                GoodsWithdrawalAccount existing = requireOwned(account.getUserId(), account.getId());
+                ensureNoPendingWithdrawal(existing.getId());
+                if (accountMapper.softDeleteOwned(existing.getId(), existing.getUserId()) != 1) {
+                    throw AccountApiException.conflict(
+                            ACCOUNT_MUTATION_CONFLICT,
+                            "Withdrawal account was changed by another request");
+                }
+                affectedUsers.add(existing.getUserId());
+            }
+            affectedUsers.forEach(userId -> normalizeDefaultAccount(userId, null));
+        } catch (AccountApiException exception) {
+            throw new ServiceException(exception.getMessage());
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)
     public WithdrawalAccountResponse create(Long userId, WithdrawalAccountRequest request) {
+        return toResponse(createAccount(userId, request));
+    }
+
+    private GoodsWithdrawalAccount createAccount(Long userId, WithdrawalAccountRequest request) {
         lockUser(userId);
         GoodsWithdrawalAccount account = buildAccount(userId, null, request);
         boolean makeDefault = accountMapper.existsDefaultByUserId(userId) == 0
@@ -91,53 +180,50 @@ public class WithdrawalAccountApplicationService {
         account.setCreateTime(DateUtils.getNowDate());
         account.setUpdateTime(DateUtils.getNowDate());
         cipher.protect(account);
-        if (makeDefault) {
-            accountMapper.clearDefaultByUserId(userId);
-        }
         if (accountMapper.insertGoodsWithdrawalAccount(account) != 1) {
             throw new IllegalStateException("Unable to save withdrawal account");
         }
-        return toResponse(accountMapper.selectActiveByIdAndUserId(account.getId(), userId));
+        normalizeDefaultAccount(userId, makeDefault ? account.getId() : null);
+        return requireOwned(userId, account.getId());
     }
 
     @Transactional(rollbackFor = Exception.class)
     public WithdrawalAccountResponse update(Long userId, Long id, WithdrawalAccountRequest request) {
-        ensureModificationAllowed();
+        return toResponse(updateAccount(userId, id, request, true));
+    }
+
+    private GoodsWithdrawalAccount updateAccount(
+            Long userId,
+            Long id,
+            WithdrawalAccountRequest request,
+            boolean enforceCustomerSetting) {
+        if (enforceCustomerSetting) {
+            ensureModificationAllowed();
+        }
         lockUser(userId);
         requireOwned(userId, id);
-        if (withdrawalMapper.existsPendingByAccountId(id) != 0) {
-            throw AccountApiException.conflict(ACCOUNT_MUTATION_CONFLICT, "A pending withdrawal is using this account");
-        }
+        ensureNoPendingWithdrawal(id);
         GoodsWithdrawalAccount account = buildAccount(userId, id, request);
         boolean makeDefault = Boolean.TRUE.equals(request.isDefault());
         account.setIsDefault(makeDefault ? "0" : "1");
         cipher.protect(account);
-        if (makeDefault) {
-            accountMapper.clearDefaultByUserId(userId);
-        }
         if (accountMapper.updateOwnedAccount(account) != 1) {
             throw AccountApiException.conflict(ACCOUNT_MUTATION_CONFLICT, "Withdrawal account was changed by another request");
         }
-        if (!makeDefault && accountMapper.existsDefaultByUserId(userId) == 0) {
-            accountMapper.setNewestActiveAsDefault(userId);
-        }
-        return toResponse(accountMapper.selectActiveByIdAndUserId(id, userId));
+        normalizeDefaultAccount(userId, makeDefault ? id : null);
+        return requireOwned(userId, id);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long userId, Long id) {
         ensureModificationAllowed();
         lockUser(userId);
-        GoodsWithdrawalAccount existing = requireOwned(userId, id);
-        if (withdrawalMapper.existsPendingByAccountId(id) != 0) {
-            throw AccountApiException.conflict(ACCOUNT_MUTATION_CONFLICT, "A pending withdrawal is using this account");
-        }
+        requireOwned(userId, id);
+        ensureNoPendingWithdrawal(id);
         if (accountMapper.softDeleteOwned(id, userId) != 1) {
             throw AccountApiException.conflict(ACCOUNT_MUTATION_CONFLICT, "Withdrawal account was changed by another request");
         }
-        if ("0".equals(existing.getIsDefault())) {
-            accountMapper.setNewestActiveAsDefault(userId);
-        }
+        normalizeDefaultAccount(userId, null);
     }
 
     private GoodsWithdrawalAccount buildAccount(Long userId, Long id, WithdrawalAccountRequest request) {
@@ -178,9 +264,86 @@ public class WithdrawalAccountApplicationService {
 
     private GoodsWithdrawalAccount requireOwned(Long userId, Long id) {
         GoodsWithdrawalAccount account = accountMapper.selectActiveByIdAndUserId(id, userId);
-        if (account == null) {
+        if (account == null || account.getUserId() == null) {
             throw AccountApiException.notFound(WITHDRAWAL_ACCOUNT, "Withdrawal account not found");
         }
+        return account;
+    }
+
+    private GoodsWithdrawalAccount requireActive(Long id) {
+        if (id == null) {
+            throw AccountApiException.badRequest(INVALID_REQUEST, "Withdrawal account id is required");
+        }
+        GoodsWithdrawalAccount account = accountMapper.selectActiveById(id);
+        if (account == null || account.getUserId() == null) {
+            throw AccountApiException.notFound(WITHDRAWAL_ACCOUNT, "Withdrawal account not found");
+        }
+        return account;
+    }
+
+    private void ensureNoPendingWithdrawal(Long id) {
+        if (withdrawalMapper.existsPendingByAccountId(id) != 0) {
+            throw AccountApiException.conflict(
+                    ACCOUNT_MUTATION_CONFLICT,
+                    "A pending withdrawal is using this account");
+        }
+    }
+
+    private void normalizeDefaultAccount(Long userId, Long preferredId) {
+        Long selectedId = preferredId;
+        if (selectedId == null) {
+            selectedId = accountMapper.selectActiveByUserId(userId).stream()
+                    .filter(account -> "0".equals(account.getIsDefault()))
+                    .map(GoodsWithdrawalAccount::getId)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        accountMapper.clearDefaultByUserId(userId);
+        if (selectedId != null) {
+            if (accountMapper.setDefaultByIdAndUserId(selectedId, userId) != 1) {
+                throw AccountApiException.conflict(
+                        ACCOUNT_MUTATION_CONFLICT,
+                        "Withdrawal account was changed by another request");
+            }
+        } else {
+            accountMapper.setNewestActiveAsDefault(userId);
+        }
+    }
+
+    private Long requireAdminUserId(GoodsWithdrawalAccount input) {
+        if (input == null || input.getUserId() == null) {
+            throw AccountApiException.badRequest(INVALID_REQUEST, "User id is required");
+        }
+        return input.getUserId();
+    }
+
+    private WithdrawalAccountRequest toAdminRequest(GoodsWithdrawalAccount input) {
+        String isDefault = input.getIsDefault();
+        if (isDefault != null && !"0".equals(isDefault) && !"1".equals(isDefault)) {
+            throw AccountApiException.badRequest(INVALID_REQUEST, "Invalid default-account value");
+        }
+        return new WithdrawalAccountRequest(
+                input.getWithdrawalTypeId(),
+                "0".equals(isDefault),
+                input.getBankName(),
+                input.getDepositType(),
+                input.getBranchCode(),
+                input.getBranchName(),
+                input.getBankAccount(),
+                input.getAccountHolder(),
+                input.getAccountName(),
+                input.getWalletName(),
+                input.getWalletAddress(),
+                input.getAttachment());
+    }
+
+    private GoodsWithdrawalAccount revealForAdmin(GoodsWithdrawalAccount account) {
+        cipher.reveal(account);
+        account.setBankAccountMask(null);
+        account.setAccountHolderMask(null);
+        account.setAccountNameMask(null);
+        account.setWalletAddressMask(null);
         return account;
     }
 

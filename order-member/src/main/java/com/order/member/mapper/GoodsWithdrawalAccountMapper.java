@@ -64,6 +64,8 @@ public interface GoodsWithdrawalAccountMapper
 
     GoodsWithdrawalAccount selectActiveByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
+    GoodsWithdrawalAccount selectActiveById(Long id);
+
     int countActiveByUserId(Long userId);
 
     int existsDefaultByUserId(Long userId);

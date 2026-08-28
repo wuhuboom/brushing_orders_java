@@ -50,9 +50,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectGoodsWithdrawalAccountList" parameterType="GoodsWithdrawalAccount" resultMap="GoodsWithdrawalAccountResult">
         <include refid="selectGoodsWithdrawalAccountVo"/>
-        <where>  
+        <where>
+            and COALESCE(gwa.deleted, '0') = '0'
             <if test="userId != null "> and gwa.user_id = #{userId}</if>
             <if test="type != null  and type != ''"> and gwa.type = #{type}</if>
+            <if test="isDefault != null and isDefault != ''"> and gwa.is_default = #{isDefault}</if>
         </where>
     </select>
     
@@ -162,6 +164,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectGoodsWithdrawalAccountVo"/>
         where gwa.id = #{id} and gwa.user_id = #{userId}
           and COALESCE(gwa.deleted, '0') = '0'
+    </select>
+
+    <select id="selectActiveById" parameterType="Long" resultMap="GoodsWithdrawalAccountResult">
+        <include refid="selectGoodsWithdrawalAccountVo"/>
+        where gwa.id = #{id} and COALESCE(gwa.deleted, '0') = '0'
     </select>
 
     <select id="countActiveByUserId" parameterType="Long" resultType="int">
