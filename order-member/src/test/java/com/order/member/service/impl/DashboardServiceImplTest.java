@@ -1,6 +1,8 @@
 package com.order.member.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
@@ -25,15 +27,17 @@ class DashboardServiceImplTest
     private DashboardServiceImpl service;
 
     @Test
-    void exposesLiveHeaderCounters()
+    void exposesPendingWithdrawalCounterInHeader()
     {
         when(mapper.getTotalOrders()).thenReturn(1979L);
-        when(mapper.getTotalWithdrawals()).thenReturn(4L);
+        when(mapper.getPendingWithdrawals()).thenReturn(2L);
 
         Map<String, Object> stats = service.getHeaderStats();
 
         assertEquals(1979L, stats.get("totalOrders"));
-        assertEquals(4L, stats.get("totalWithdrawals"));
+        assertEquals(2L, stats.get("totalWithdrawals"));
+        verify(mapper).getPendingWithdrawals();
+        verify(mapper, never()).getTotalWithdrawals();
     }
 
     @Test

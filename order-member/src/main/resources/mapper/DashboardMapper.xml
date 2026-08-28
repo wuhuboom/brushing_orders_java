@@ -34,6 +34,9 @@
     <select id="getTotalWithdrawals" resultType="java.lang.Long">
         SELECT COUNT(id) FROM order_withdrawal
     </select>
+    <select id="getPendingWithdrawals" resultType="java.lang.Long">
+        SELECT COUNT(id) FROM order_withdrawal WHERE status = '1'
+    </select>
 
     <!--今日会员注册数量，今日任务完成次数，总任务完成次数，总会员注册数量 -->
     <select id="getTodayRegisteredUsers" resultType="java.lang.Long">

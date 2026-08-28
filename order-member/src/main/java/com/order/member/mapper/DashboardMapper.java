@@ -24,6 +24,7 @@ public interface DashboardMapper {
     BigDecimal getTotalCommissionAmount();
     BigDecimal getTotalWithdrawalAmount();
     Long getTotalWithdrawals();
+    Long getPendingWithdrawals();
 
     // 3--今日会员注册数量，今日任务完成次数，总任务完成次数，总会员注册数量
     Long getTodayRegisteredUsers();

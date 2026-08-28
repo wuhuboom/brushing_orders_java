@@ -95,7 +95,7 @@ public class DashboardServiceImpl implements IDashboardService {
     public Map<String, Object> getHeaderStats() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", count(dashboardMapper.getTotalOrders()));
-        stats.put("totalWithdrawals", count(dashboardMapper.getTotalWithdrawals()));
+        stats.put("totalWithdrawals", count(dashboardMapper.getPendingWithdrawals()));
         return stats;
     }
 
