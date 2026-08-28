@@ -51,7 +51,8 @@ test('users expose legacy filters, columns, editor lists and google authenticato
 
 test('roles save strategy, resource and data-row permissions in one payload', () => {
   const role = source('src/views/system/role/index.vue')
-  assertOrdered(role, ['代码', '名称', '隐藏手机号码', '是否内置', '备注', '策略列表', '资源列表', '数据行权限'])
+  assertOrdered(role, ['代码', '名称', '是否内置', '备注', '策略列表', '资源列表', '数据行权限'])
+  assert.doesNotMatch(role, /hidePhone|隐藏手机号码/)
   assert.match(role, /strategyIds/)
   assert.match(role, /dataRules/)
   assert.match(role, /DEPT_AND_CHILD/)

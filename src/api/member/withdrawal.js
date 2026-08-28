@@ -47,7 +47,7 @@ export function reviewWithdrawal(data) {
   })
 }
 
-// 查看完整付款账户（需要独立敏感信息权限）
+// 查看用于编辑的完整付款账户（需要独立修改权限）
 export function getSensitiveWithdrawalAccount(id) {
   return request({
     url: '/member/withdrawal/' + id + '/sensitive-account',

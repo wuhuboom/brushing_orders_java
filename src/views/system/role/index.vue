@@ -26,7 +26,6 @@
         <a-row :gutter="24">
           <a-col :span="12"><a-form-item label="代码" name="roleKey"><a-input v-model:value="form.roleKey" placeholder="代码" /></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="名称" name="roleName"><a-input v-model:value="form.roleName" placeholder="名称" /></a-form-item></a-col>
-          <a-col :span="12"><a-form-item label="是否隐藏手机号码"><a-radio-group v-model:value="form.hidePhone"><a-radio value="N">否</a-radio><a-radio value="Y">是</a-radio></a-radio-group></a-form-item></a-col>
           <a-col :span="12"><a-form-item label="是否内置"><a-radio-group v-model:value="form.isBuiltin" disabled><a-radio value="N">否</a-radio><a-radio value="Y">是</a-radio></a-radio-group></a-form-item></a-col>
           <a-col :span="24"><a-form-item label="备注"><a-textarea v-model:value="form.remark" :rows="3" placeholder="备注" /></a-form-item></a-col>
           <a-col :span="24"><a-form-item label="策略列表"><a-checkbox-group v-model:value="form.strategyIds" class="legacy-checkbox-list"><a-checkbox v-for="item in strategyOptions" :key="item.value" :value="item.value">{{ item.label }}</a-checkbox></a-checkbox-group></a-form-item></a-col>
@@ -71,7 +70,8 @@ const menuTree = ref([])
 const checkedKeys = ref([])
 const strategyOptions = ref([])
 const query = reactive({ pageNum: 1, pageSize: 20, roleKey: undefined, roleName: undefined, isBuiltin: undefined })
-const form = reactive({ roleId: undefined, roleKey: '', roleName: '', roleSort: 0, status: '0', hidePhone: '', isBuiltin: 'N', remark: '', strategyIds: [], menuIds: [], dataRules: [], menuCheckStrictly: false })
+const form = reactive({ roleId: undefined, roleKey: '', roleName: '', roleSort: 0, status: '0', isBuiltin: 'N', remark: '', strategyIds: [], menuIds: [], dataRules: [], menuCheckStrictly: false })
+const editableRoleFields = ['roleId', 'roleKey', 'roleName', 'roleSort', 'status', 'isBuiltin', 'remark', 'menuCheckStrictly']
 const rules = { roleKey: [{ required: true, message: '代码不能为空' }], roleName: [{ required: true, message: '名称不能为空' }] }
 const columns = [
   { title: 'ID', dataIndex: 'roleId', width: 90, fixed: 'left' },
@@ -93,10 +93,10 @@ function search() { query.pageNum = 1; load() }
 function resetQuery() { Object.assign(query, { pageNum: 1, roleKey: undefined, roleName: undefined, isBuiltin: undefined }); dateRange.value = []; load() }
 function pageChange({ page, pageSize }) { query.pageNum = page; query.pageSize = pageSize; load() }
 function flattenOptions(nodes = [], prefix = '') { return nodes.flatMap(node => { const label = prefix ? `${prefix} / ${node.label}` : node.label; return [{ label, value: node.id }, ...flattenOptions(node.children || [], label)] }) }
-function clear() { Object.assign(form, { roleId: undefined, roleKey: '', roleName: '', roleSort: 0, status: '0', hidePhone: '', isBuiltin: 'N', remark: '', strategyIds: [], menuIds: [], dataRules: [], menuCheckStrictly: false }); checkedKeys.value = []; formRef.value?.clearValidate?.() }
+function clear() { Object.assign(form, { roleId: undefined, roleKey: '', roleName: '', roleSort: 0, status: '0', isBuiltin: 'N', remark: '', strategyIds: [], menuIds: [], dataRules: [], menuCheckStrictly: false }); checkedKeys.value = []; formRef.value?.clearValidate?.() }
 async function loadOptions(roleId) { const requests = [treeselect(), listStrategies({ pageNum: 1, pageSize: 1000 })]; if (roleId) requests.push(roleMenuTreeselect(roleId)); const [menus, strategies, roleMenus] = await Promise.all(requests); menuTree.value = decorateLegacyResourceTree(roleMenus?.menus || menus.data || []); strategyOptions.value = (strategies.rows || []).map(item => ({ label: `${item.strategyName}[${item.strategyCode}]`, value: item.strategyId })); checkedKeys.value = roleMenus?.checkedKeys || [] }
 async function create() { clear(); await loadOptions(); title.value = '创建'; open.value = true }
-async function fill(id, asCopy = false) { clear(); await loadOptions(id); const [detail, alignment] = await Promise.all([getRole(id), getRoleAlignment(id)]); Object.assign(form, detail.data || {}); form.strategyIds = detail.data?.strategyIds || alignment.data?.strategyIds || []; form.dataRules = (detail.data?.dataRules || alignment.data?.dataRules || []).map((item, index) => ({ ...item, _key: `${id}-${index}-${Date.now()}` })); if (asCopy) { form.roleId = undefined; form.roleKey = `${form.roleKey}_copy`; form.roleName = `${form.roleName}-复制`; form.isBuiltin = 'N' }; title.value = asCopy ? '复制' : '修改'; open.value = true }
+async function fill(id, asCopy = false) { clear(); await loadOptions(id); const [detail, alignment] = await Promise.all([getRole(id), getRoleAlignment(id)]); for (const key of editableRoleFields) if (detail.data?.[key] !== undefined) form[key] = detail.data[key]; form.strategyIds = detail.data?.strategyIds || alignment.data?.strategyIds || []; form.dataRules = (detail.data?.dataRules || alignment.data?.dataRules || []).map((item, index) => ({ ...item, _key: `${id}-${index}-${Date.now()}` })); if (asCopy) { form.roleId = undefined; form.roleKey = `${form.roleKey}_copy`; form.roleName = `${form.roleName}-复制`; form.isBuiltin = 'N' }; title.value = asCopy ? '复制' : '修改'; open.value = true }
 const edit = row => fill(row.roleId)
 const copy = row => fill(row.roleId, true)
 function onResourceCheck(keys) { checkedKeys.value = Array.isArray(keys) ? keys : keys.checked || [] }

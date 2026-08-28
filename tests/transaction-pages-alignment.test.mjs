@@ -96,13 +96,13 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function listHarness(page, { apiName, listName, queryIsRef, includeRequestParams = false }, api, enrich) {
+function listHarness(page, { apiName, listName, queryIsRef, includeRequestParams = false }, api) {
   const requestCounter = page.match(/let listRequestId = 0;/)?.[0];
   assert.ok(requestCounter, "missing latest-request counter");
   const queryState = "{ pageNum: 1, pageSize: 20, amountMin: null, amountMax: null }";
   const requestParams = includeRequestParams ? functionDeclaration(page, "requestParams") : "";
   const getList = functionDeclaration(page, "getList");
-  const factory = Function(apiName, "enrichSensitiveAccounts", `
+  const factory = Function(apiName, `
     "use strict";
     const loading = { value: false };
     const total = { value: 0 };
@@ -114,7 +114,7 @@ function listHarness(page, { apiName, listName, queryIsRef, includeRequestParams
     ${getList}
     return { getList, loading, rows: ${listName}, total };
   `);
-  return factory(api, enrich || (async (rows) => rows));
+  return factory(api);
 }
 
 test("transaction searches use one three-column flow with two collapsed fields and trailing actions", () => {
@@ -258,6 +258,29 @@ test("withdrawal columns match the live order and widths without a fake conversi
   assert.match(withdrawal, /:scroll="\{ x: 2702, y: 'calc\(100vh - 440px\)' \}"/);
 });
 
+test("full withdrawal bank and wallet values wrap inside their table cell", () => {
+  const accountLineRule = cssRuleBody(withdrawal, ".account-line {");
+  const accountTextRule = cssRuleBody(withdrawal, ".account-line > span");
+  const copyButtonRule = cssRuleBody(withdrawal, ".account-line :deep(.ant-btn)");
+  assert.match(accountLineRule, /align-items:\s*flex-start/);
+  assert.match(accountLineRule, /white-space:\s*normal/);
+  assert.doesNotMatch(accountLineRule, /white-space:\s*nowrap/);
+  assert.match(accountTextRule, /flex:\s*1 1 auto/);
+  assert.match(accountTextRule, /min-width:\s*0/);
+  assert.match(accountTextRule, /overflow-wrap:\s*anywhere/);
+  assert.match(accountTextRule, /word-break:\s*break-all/);
+  assert.match(copyButtonRule, /flex:\s*0 0 auto/);
+  assert.match(withdrawal, /v-if="record\.withdrawalAccountInfo\.walletName" title="复制"/);
+  assert.match(withdrawal, /v-if="record\.withdrawalAccountInfo\.walletAddress" title="复制"/);
+  assert.match(withdrawal, /v-if="record\.withdrawalAccountInfo\.bankAccount" title="复制"/);
+  for (const label of ["银行账号", "账户持有人", "账户名称", "钱包名称", "用户钱包地址"]) {
+    assert.match(withdrawal, new RegExp(label));
+  }
+  assert.doesNotMatch(withdrawal, /String\(record\.status\).*?withdrawalAccountInfo\.(?:walletName|walletAddress)/);
+  assert.doesNotMatch(withdrawal, /canViewSensitiveAccounts|useUserStore/);
+  assert.doesNotMatch(withdrawal, /getWithdrawalWalletAccount|wallet-account|record\.accountMask/);
+});
+
 test("live status semantics render as badge dots rather than tags", () => {
   for (const page of [recharge, flow, withdrawal]) {
     assert.doesNotMatch(page, /<dict-tag/);
@@ -328,12 +351,12 @@ test("transaction lists statically guard rows, totals, and loading with the late
   const withdrawalGetList = functionDeclaration(withdrawal, "getList");
   assert.match(
     withdrawalGetList,
-    /const rows = await enrichSensitiveAccounts\(response\.rows \|\| \[\]\);\s*if \(requestId !== listRequestId\) return;\s*withdrawalList\.value = rows;/,
+    /if \(requestId !== listRequestId\) return;\s*withdrawalList\.value = response\.rows \|\| \[\];/,
   );
 }
 );
 
-test("recharge and flow keep the newest out-of-order response and loading owner", async () => {
+test("transaction lists keep the newest out-of-order response and loading owner", async () => {
   const cases = [
     {
       name: "recharge",
@@ -349,6 +372,11 @@ test("recharge and flow keep the newest out-of-order response and loading owner"
         queryIsRef: false,
         includeRequestParams: true,
       },
+    },
+    {
+      name: "withdrawal",
+      page: withdrawal,
+      options: { apiName: "listWithdrawal", listName: "withdrawalList", queryIsRef: true },
     },
   ];
 
@@ -386,60 +414,6 @@ test("recharge and flow keep the newest out-of-order response and loading owner"
     assert.deepEqual(loadingHarness.rows.value, [{ id: `${name}-latest-last` }]);
     assert.equal(loadingHarness.total.value, 3);
   }
-});
-
-test("withdrawal latest-request guard spans the sensitive-account enrichment batch", async () => {
-  const options = {
-    apiName: "listWithdrawal",
-    listName: "withdrawalList",
-    queryIsRef: true,
-  };
-
-  const staleEnrichment = deferred();
-  const latestEnrichment = deferred();
-  const responses = [
-    { rows: [{ id: "stale" }], total: 1 },
-    { rows: [{ id: "latest" }], total: 2 },
-  ];
-  let responseIndex = 0;
-  const harness = listHarness(
-    withdrawal,
-    options,
-    async () => responses[responseIndex++],
-    (rows) => rows[0].id === "stale" ? staleEnrichment.promise : latestEnrichment.promise,
-  );
-  const staleRequest = harness.getList();
-  const latestRequest = harness.getList();
-  latestEnrichment.resolve([{ id: "latest-enriched" }]);
-  await latestRequest;
-  staleEnrichment.resolve([{ id: "stale-enriched" }]);
-  await staleRequest;
-  assert.deepEqual(harness.rows.value, [{ id: "latest-enriched" }]);
-  assert.equal(harness.total.value, 2);
-  assert.equal(harness.loading.value, false);
-
-  const staleFirstEnrichment = deferred();
-  const pendingLatestEnrichment = deferred();
-  let secondResponseIndex = 0;
-  const loadingHarness = listHarness(
-    withdrawal,
-    options,
-    async () => responses[secondResponseIndex++],
-    (rows) => rows[0].id === "stale"
-      ? staleFirstEnrichment.promise
-      : pendingLatestEnrichment.promise,
-  );
-  const staleFirstRequest = loadingHarness.getList();
-  const pendingLatestRequest = loadingHarness.getList();
-  staleFirstEnrichment.resolve([{ id: "stale-first-enriched" }]);
-  await staleFirstRequest;
-  assert.equal(loadingHarness.loading.value, true);
-  assert.deepEqual(loadingHarness.rows.value, []);
-  pendingLatestEnrichment.resolve([{ id: "latest-last-enriched" }]);
-  await pendingLatestRequest;
-  assert.equal(loadingHarness.loading.value, false);
-  assert.deepEqual(loadingHarness.rows.value, [{ id: "latest-last-enriched" }]);
-  assert.equal(loadingHarness.total.value, 2);
 });
 
 test("list lifecycle always releases loading and clears stale row selection", () => {

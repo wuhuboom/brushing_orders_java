@@ -174,9 +174,12 @@
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'withdrawalAccount'">
           <div v-if="record.withdrawalAccountInfo?.type === '1'">
+            <div v-if="record.withdrawalAccountInfo.accountName" class="account-line">
+              <span>账户名称: {{ record.withdrawalAccountInfo.accountName }}</span>
+            </div>
             <div class="account-line">
               <span>钱包名称: {{ record.withdrawalAccountInfo.walletName || "-" }}</span>
-              <a-tooltip v-if="String(record.status) === '1' && record.withdrawalAccountInfo.walletName" title="复制">
+              <a-tooltip v-if="record.withdrawalAccountInfo.walletName" title="复制">
                 <a-button
                   type="link"
                   size="small"
@@ -187,7 +190,7 @@
             </div>
             <div class="account-line">
               <span>用户钱包地址: {{ record.withdrawalAccountInfo.walletAddress || "-" }}</span>
-              <a-tooltip v-if="String(record.status) === '1' && record.withdrawalAccountInfo.walletAddress" title="复制">
+              <a-tooltip v-if="record.withdrawalAccountInfo.walletAddress" title="复制">
                 <a-button
                   type="link"
                   size="small"
@@ -198,10 +201,34 @@
             </div>
           </div>
           <div v-else-if="record.withdrawalAccountInfo">
-            <div>银行名称: {{ record.withdrawalAccountInfo.bankName || "-" }}</div>
-            <div>银行账号: {{ record.withdrawalAccountInfo.bankAccount || "-" }}</div>
+            <div class="account-line"><span>银行名称: {{ record.withdrawalAccountInfo.bankName || "-" }}</span></div>
+            <div v-if="record.withdrawalAccountInfo.depositType" class="account-line">
+              <span>存款种类: {{ record.withdrawalAccountInfo.depositType }}</span>
+            </div>
+            <div v-if="record.withdrawalAccountInfo.branchCode" class="account-line">
+              <span>支行代码: {{ record.withdrawalAccountInfo.branchCode }}</span>
+            </div>
+            <div v-if="record.withdrawalAccountInfo.branchName" class="account-line">
+              <span>支行名称: {{ record.withdrawalAccountInfo.branchName }}</span>
+            </div>
+            <div v-if="record.withdrawalAccountInfo.accountHolder" class="account-line">
+              <span>账户持有人: {{ record.withdrawalAccountInfo.accountHolder }}</span>
+            </div>
+            <div v-if="record.withdrawalAccountInfo.accountName" class="account-line">
+              <span>账户名称: {{ record.withdrawalAccountInfo.accountName }}</span>
+            </div>
+            <div class="account-line">
+              <span>银行账号: {{ record.withdrawalAccountInfo.bankAccount || "-" }}</span>
+              <a-tooltip v-if="record.withdrawalAccountInfo.bankAccount" title="复制">
+                <a-button
+                  type="link"
+                  size="small"
+                  aria-label="复制"
+                  @click.stop="copyAccountValue(record.withdrawalAccountInfo.bankAccount)"
+                ><CopyOutlined /></a-button>
+              </a-tooltip>
+            </div>
           </div>
-          <div v-else-if="record.accountMask">{{ record.accountMask }}</div>
           <span v-else>-</span>
         </template>
         <template v-else-if="column.key === 'withdrawalType'">
@@ -400,7 +427,6 @@ import {
   getSensitiveWithdrawalAccount,
   updateSensitiveWithdrawalAccount,
 } from "@/api/member/withdrawal";
-import useUserStore from "@/store/modules/user";
 
 const { proxy } = getCurrentInstance();
 const { transaction_type, apply_status, order_zhlx, user_yes_no } =
@@ -431,7 +457,6 @@ const sensitiveOpen = ref(false);
 const sensitiveAccount = ref({});
 const sensitiveRef = ref();
 const sensitiveSubmitting = ref(false);
-const userStore = useUserStore();
 
 const liveYesNoOptions = computed(() => [
   { value: "1", label: "否" },
@@ -575,30 +600,6 @@ function clearSelection() {
   multiple.value = true;
 }
 
-function canViewSensitiveAccounts() {
-  const permissions = userStore.permissions || [];
-  return permissions.includes("*:*:*") || permissions.includes("member:withdrawal:sensitive");
-}
-
-async function enrichSensitiveAccounts(rows) {
-  if (!canViewSensitiveAccounts()) return rows;
-  return Promise.all(rows.map(async (row) => {
-    if (!row.withdrawalAccountId) return row;
-    try {
-      const response = await getSensitiveWithdrawalAccount(row.id);
-      return {
-        ...row,
-        withdrawalAccountInfo: {
-          ...(row.withdrawalAccountInfo || {}),
-          ...(response.data || {}),
-        },
-      };
-    } catch {
-      return row;
-    }
-  }));
-}
-
 /** 查询提现列表 */
 async function getList() {
   const requestId = ++listRequestId;
@@ -619,9 +620,8 @@ async function getList() {
   if (Object.keys(params).length) request.params = params;
   try {
     const response = await listWithdrawal(request);
-    const rows = await enrichSensitiveAccounts(response.rows || []);
     if (requestId !== listRequestId) return;
-    withdrawalList.value = rows;
+    withdrawalList.value = response.rows || [];
     total.value = response.total || 0;
   } finally {
     if (requestId === listRequestId) loading.value = false;
@@ -915,12 +915,20 @@ getList();
 
 .account-line {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 2px;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.account-line > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .account-line :deep(.ant-btn) {
+  flex: 0 0 auto;
   height: auto;
   padding: 0 4px;
 }
