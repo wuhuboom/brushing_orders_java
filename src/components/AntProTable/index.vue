@@ -33,12 +33,18 @@
               v-if="enabledTools.columns"
               v-model:open="columnPopoverOpen"
               placement="bottomRight"
-              trigger="click"
+              :trigger="columnPreferenceLoading ? [] : ['click']"
               overlay-class-name="ant-pro-column-popover"
               @open-change="handleColumnPopoverChange"
             >
-              <a-tooltip title="列设置">
-                <span class="ant-pro-tool-action" role="button" aria-label="列设置"><SettingOutlined /></span>
+              <a-tooltip :title="columnPreferenceLoading ? '列设置加载中' : '列设置'">
+                <span
+                  class="ant-pro-tool-action"
+                  :class="{ disabled: columnPreferenceLoading }"
+                  role="button"
+                  aria-label="列设置"
+                  :aria-disabled="columnPreferenceLoading"
+                ><SettingOutlined /></span>
               </a-tooltip>
               <template #content>
                 <div ref="columnPanelRef" class="column-setting-panel">
@@ -48,7 +54,13 @@
                       :indeterminate="someColumnsVisible"
                       @change="toggleAllColumns"
                     >列展示</a-checkbox>
-                    <a-button type="link" size="small" @click="resetColumns">重置</a-button>
+                    <a-button
+                      type="link"
+                      size="small"
+                      :loading="columnPreferenceResetting"
+                      :disabled="columnPreferenceLoading"
+                      @click="resetColumns"
+                    >重置</a-button>
                   </div>
 
                   <section v-for="group in columnGroups" :key="group.key" class="column-setting-group">
@@ -89,6 +101,22 @@
                         </a-space>
                       </div>
                       <div v-if="group.items.length === 0" class="column-setting-empty">暂无列</div>
+                    </div>
+                  </section>
+
+                  <section class="column-setting-group column-setting-hidden-group">
+                    <div class="column-setting-group-title">隐藏列</div>
+                    <div class="column-setting-hidden-list">
+                      <div
+                        v-for="item in hiddenColumns"
+                        :key="item.id"
+                        class="column-setting-item column-setting-hidden-item"
+                      >
+                        <span class="drag-handle-placeholder" aria-hidden="true" />
+                        <a-checkbox :checked="item.visible" @change="toggleColumn(item.id, $event.target.checked)" />
+                        <span class="column-setting-label" :title="columnLabel(item)">{{ columnLabel(item) }}</span>
+                      </div>
+                      <div v-if="hiddenColumns.length === 0" class="column-setting-empty">暂无隐藏列</div>
                     </div>
                   </section>
                 </div>
@@ -167,13 +195,22 @@ import {
   SettingOutlined,
 } from "@ant-design/icons-vue";
 import {
+  createColumnStateConfig,
   createColumnStates,
+  deserializeColumnStates,
   groupColumns,
+  mergeColumnStatePreferences,
   moveColumn,
   moveColumnByOffset,
   setAllColumnsVisible,
   setColumnVisible,
 } from "@/utils/ant-pro-table";
+import {
+  getTableColumnConfig,
+  resetTableColumnConfig,
+  saveTableColumnConfig,
+} from "@/api/system/tableColumnConfig";
+import { createTableColumnConfigWriter } from "@/utils/table-column-config-writer";
 
 defineOptions({ inheritAttrs: false });
 
@@ -192,6 +229,7 @@ const props = defineProps({
     validator: (value) => ["large", "middle", "small"].includes(value),
   },
   toolOptions: { type: Object, default: () => ({}) },
+  columnStateKey: { type: String, default: "" },
 });
 
 const emit = defineEmits(["page-change", "refresh", "change"]);
@@ -200,6 +238,8 @@ const columnPanelRef = ref();
 const tableSize = ref(props.defaultSize);
 const columnStates = ref([]);
 const columnPopoverOpen = ref(false);
+const columnPreferenceLoading = ref(false);
+const columnPreferenceResetting = ref(false);
 const fullscreenActive = ref(false);
 let sortableInstances = [];
 
@@ -221,6 +261,8 @@ const columnGroups = computed(() => [
   { key: "none", title: "不固定", items: groupedColumns.value.none },
   { key: "right", title: "固定在右侧", items: groupedColumns.value.right },
 ]);
+const hiddenColumns = computed(() => groupedColumns.value.hidden);
+const normalizedColumnStateKey = computed(() => String(props.columnStateKey || "").trim());
 
 const allColumnsVisible = computed(() => columnStates.value.length > 0 && columnStates.value.every((item) => item.visible));
 const someColumnsVisible = computed(() => {
@@ -246,10 +288,28 @@ const effectiveScroll = computed(() => {
   return { ...props.scroll, x: Math.max(visibleWidth, 600) };
 });
 
+let activeColumnStateKey;
+let persistedColumnStates = [];
+let columnPreferenceLoadSequence = 0;
+let columnPreferenceResetSequence = 0;
+let localColumnStateRevision = 0;
+let savePendingUntilLoaded = false;
+let componentDisposed = false;
+
+const columnConfigWriter = createTableColumnConfigWriter({
+  save: saveTableColumnConfig,
+  reset: resetTableColumnConfig,
+});
+
 watch(
-  () => props.columns,
-  (columns) => {
-    columnStates.value = createColumnStates(columns, columnStates.value);
+  [() => props.columns, normalizedColumnStateKey],
+  ([columns, tableKey]) => {
+    if (tableKey !== activeColumnStateKey) {
+      activateColumnStateKey(tableKey, columns);
+      return;
+    }
+    const previous = tableKey ? persistedColumnStates : columnStates.value;
+    columnStates.value = createColumnStates(columns, previous);
     if (columnPopoverOpen.value) nextTick(initSortables);
   },
   { immediate: true, deep: true }
@@ -283,28 +343,151 @@ function handleDensityChange({ key }) {
   tableSize.value = key;
 }
 
+function persistColumnStates(states = columnStates.value) {
+  const tableKey = activeColumnStateKey;
+  if (!tableKey) return;
+  persistedColumnStates = mergeColumnStatePreferences(persistedColumnStates, states);
+  if (columnPreferenceLoading.value) {
+    savePendingUntilLoaded = true;
+    return;
+  }
+  columnConfigWriter.schedule(tableKey, createColumnStateConfig(persistedColumnStates));
+}
+
+function flushColumnStateSave() {
+  if (savePendingUntilLoaded && activeColumnStateKey) {
+    savePendingUntilLoaded = false;
+    columnConfigWriter.schedule(
+      activeColumnStateKey,
+      createColumnStateConfig(persistedColumnStates)
+    );
+  }
+  return columnConfigWriter.flush();
+}
+
+function isActiveColumnPreferenceRequest(tableKey, requestSequence) {
+  return !componentDisposed
+    && tableKey === activeColumnStateKey
+    && requestSequence === columnPreferenceLoadSequence;
+}
+
+async function loadColumnStateConfig(tableKey, requestSequence, startingRevision) {
+  try {
+    const response = await getTableColumnConfig(tableKey);
+    if (!isActiveColumnPreferenceRequest(tableKey, requestSequence)) return;
+    const loadedPreferences = deserializeColumnStates(response?.data);
+    if (localColumnStateRevision === startingRevision) {
+      persistedColumnStates = loadedPreferences;
+      columnStates.value = createColumnStates(props.columns, loadedPreferences);
+    } else {
+      // Defensive merge for programmatic changes made while the settings entry
+      // is disabled during the initial request.
+      persistedColumnStates = mergeColumnStatePreferences(
+        loadedPreferences,
+        columnStates.value
+      );
+    }
+  } catch {
+    // The request layer reports the error. Defaults remain usable and are not
+    // written back unless the user subsequently changes them.
+    if (!isActiveColumnPreferenceRequest(tableKey, requestSequence)) return;
+  } finally {
+    if (!isActiveColumnPreferenceRequest(tableKey, requestSequence)) return;
+    columnPreferenceLoading.value = false;
+    if (savePendingUntilLoaded) {
+      savePendingUntilLoaded = false;
+      columnConfigWriter.schedule(
+        tableKey,
+        createColumnStateConfig(persistedColumnStates)
+      );
+    }
+    if (columnPopoverOpen.value) nextTick(initSortables);
+  }
+}
+
+function activateColumnStateKey(tableKey, columns) {
+  if (activeColumnStateKey !== undefined) {
+    void flushColumnStateSave().catch(() => undefined);
+  }
+
+  activeColumnStateKey = tableKey;
+  const requestSequence = ++columnPreferenceLoadSequence;
+  columnPreferenceResetSequence += 1;
+  columnPopoverOpen.value = false;
+  columnPreferenceResetting.value = false;
+  persistedColumnStates = [];
+  savePendingUntilLoaded = false;
+  columnStates.value = createColumnStates(columns);
+  columnPreferenceLoading.value = Boolean(tableKey);
+
+  if (!tableKey) return;
+  const startingRevision = localColumnStateRevision;
+  void loadColumnStateConfig(tableKey, requestSequence, startingRevision);
+}
+
+function updateColumnStates(states) {
+  columnStates.value = states;
+  localColumnStateRevision += 1;
+  persistColumnStates(states);
+}
+
 function toggleColumn(id, visible) {
-  columnStates.value = setColumnVisible(columnStates.value, id, visible);
+  updateColumnStates(setColumnVisible(columnStates.value, id, visible));
 }
 
 function toggleAllColumns(event) {
   const visible = event.target.checked;
-  columnStates.value = setAllColumnsVisible(columnStates.value, visible);
+  updateColumnStates(setAllColumnsVisible(columnStates.value, visible));
 }
 
 function resetColumns() {
+  if (columnPreferenceResetting.value) return;
+  const tableKey = activeColumnStateKey;
+  const previousPreferences = persistedColumnStates.slice();
+  const previousColumnStates = columnStates.value.slice();
+  const resetRevision = ++localColumnStateRevision;
+  const resetSequence = ++columnPreferenceResetSequence;
+
+  // A reset supersedes an initial GET and any save that has not entered the
+  // serial queue yet. Saves already in flight remain ahead of the DELETE.
+  columnPreferenceLoadSequence += 1;
+  columnPreferenceLoading.value = false;
+  savePendingUntilLoaded = false;
+  persistedColumnStates = [];
   columnStates.value = createColumnStates(props.columns);
   nextTick(initSortables);
+
+  if (!tableKey) return;
+  columnPreferenceResetting.value = true;
+  columnConfigWriter.reset(tableKey)
+    .catch(() => {
+      if (
+        componentDisposed
+        || tableKey !== activeColumnStateKey
+        || resetSequence !== columnPreferenceResetSequence
+        || resetRevision !== localColumnStateRevision
+      ) return;
+      persistedColumnStates = previousPreferences;
+      columnStates.value = createColumnStates(props.columns, previousColumnStates);
+      nextTick(initSortables);
+    })
+    .finally(() => {
+      if (
+        !componentDisposed
+        && tableKey === activeColumnStateKey
+        && resetSequence === columnPreferenceResetSequence
+      ) columnPreferenceResetting.value = false;
+    });
 }
 
 function moveByOffset(id, offset) {
-  columnStates.value = moveColumnByOffset(columnStates.value, id, offset);
+  updateColumnStates(moveColumnByOffset(columnStates.value, id, offset));
   nextTick(initSortables);
 }
 
 function setColumnFixed(id, group) {
   const items = groupColumns(columnStates.value)[group] || [];
-  columnStates.value = moveColumn(columnStates.value, id, group, items.length);
+  updateColumnStates(moveColumn(columnStates.value, id, group, items.length));
   nextTick(initSortables);
 }
 
@@ -325,7 +508,7 @@ function initSortables() {
       onEnd(event) {
         const id = event.item?.dataset.columnId;
         const group = event.to?.dataset.columnGroup || "none";
-        if (id) columnStates.value = moveColumn(columnStates.value, id, group, event.newIndex ?? 0);
+        if (id) updateColumnStates(moveColumn(columnStates.value, id, group, event.newIndex ?? 0));
         nextTick(initSortables);
       },
     }));
@@ -334,7 +517,10 @@ function initSortables() {
 
 function handleColumnPopoverChange(open) {
   if (open) nextTick(initSortables);
-  else destroySortables();
+  else {
+    destroySortables();
+    void flushColumnStateSave().catch(() => undefined);
+  }
 }
 
 function handleFullscreenChange() {
@@ -351,6 +537,11 @@ function toggleFullscreen() {
 
 onMounted(() => document.addEventListener("fullscreenchange", handleFullscreenChange));
 onBeforeUnmount(() => {
+  componentDisposed = true;
+  columnPreferenceLoadSequence += 1;
+  columnPreferenceResetSequence += 1;
+  void flushColumnStateSave().catch(() => undefined);
+  void columnConfigWriter.dispose().catch(() => undefined);
   destroySortables();
   document.removeEventListener("fullscreenchange", handleFullscreenChange);
 });
@@ -387,11 +578,13 @@ onBeforeUnmount(() => {
 .column-setting-panel { width: 320px; max-height: 520px; overflow-y: auto; }
 .column-setting-header { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; border-bottom: 1px solid var(--border-color); }
 .column-setting-group { padding-top: 10px; }
+.column-setting-hidden-group { margin-top: 4px; border-top: 1px solid var(--border-color); }
 .column-setting-group-title { padding: 0 4px 6px; color: var(--text-secondary); font-size: 12px; }
 .column-setting-list { min-height: 8px; }
 .column-setting-item { display: flex; align-items: center; min-height: 36px; padding: 2px 4px; border-radius: 4px; }
 .column-setting-item:hover { background: var(--control-alt-bg, rgba(0, 0, 0, 0.04)); }
 .drag-handle { margin-right: 8px; color: var(--text-secondary); cursor: grab; }
+.drag-handle-placeholder { flex: 0 0 14px; margin-right: 8px; }
 .column-setting-label { flex: 1; min-width: 0; margin-left: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .column-setting-actions { visibility: hidden; }
 .column-setting-item:hover .column-setting-actions { visibility: visible; }

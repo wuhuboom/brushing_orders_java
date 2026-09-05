@@ -15,6 +15,10 @@ test('continuous-order list and both editors use the reference 85% drawers', () 
 })
 
 test('continuous-order requests discard stale member sessions and normalize table results', () => {
+  const fetchGoods = drawer.match(
+    /async function fetchGoods\(session = drawerSession, targetUserId = props\.userId\) \{[\s\S]*?\n\}\n\nfunction handleGoodsPageChange/
+  )?.[0] || ''
+
   assert.match(drawer, /getOrderuserOperationSummary/)
   assert.match(drawer, /let drawerSession = 0/)
   assert.match(drawer, /function isCurrentDrawerRequest\(session, targetUserId\)/)
@@ -28,6 +32,8 @@ test('continuous-order requests discard stale member sessions and normalize tabl
   assert.match(drawer, /total:\s*Number\.isFinite\(normalizedTotal\)/)
   assert.match(drawer, /watch\(\s*\[\(\) => props\.modelValue, \(\) => props\.userId\]/)
   assert.match(drawer, /\{ immediate: true \}/)
+  assert.match(fetchGoods, /orderByColumn:\s*"g\.price"/)
+  assert.match(fetchGoods, /isAsc:\s*"desc"/)
 })
 
 test('continuous-order mutations are guarded and send explicit payload whitelists', () => {

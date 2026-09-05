@@ -54,13 +54,15 @@ test('member sign-in statistics are data-backed and editable', () => {
   assert.match(member, /submitModifySignDays/)
 })
 
-test('member list keeps the reference table viewport and status prompts describe the target state', () => {
+test('member list fits the viewport and status prompts describe the target state', () => {
   const member = source('src/views/member/orderuser/index.vue')
 
-  assert.match(member, /:scroll="\{ x: 6602, y: 'calc\(100vh - 410px\)' \}"/)
+  assert.match(member, /:scroll="\{ x: 6602, y: 'calc\(100vh - 440px\)' \}"/)
   assert.match(member, /:pagination="\{[^\"]*size: 'small'/)
   assert.match(member, /:label-col="\{ flex: '100px' \}"/)
-  assert.match(member, /\.ant-pro-member-page\s*\{[\s\S]*?margin:\s*44px 40px 32px/)
+  assert.match(member, /body:has\(\.member-orderuser-page\) \.copyright\)\s*\{[\s\S]*?display:\s*none/)
+  assert.match(member, /body:has\(\.member-orderuser-page\) \.app-main\)\s*\{[\s\S]*?padding-bottom:\s*0 !important/)
+  assert.match(member, /\.ant-pro-member-page\s*\{[\s\S]*?margin:\s*44px 40px 0/)
   assert.match(member, /\.ant-pro-query-actions\s*\{[\s\S]*?margin-left:\s*auto/)
   assert.match(member, /<a-flex wrap="wrap" gap="small">/)
   assert.match(member, /title: "用户名"[^\n]*width: 140/)

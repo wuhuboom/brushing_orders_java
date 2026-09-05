@@ -23,6 +23,7 @@ test("trade settings keep the supported field order and backend contracts", () =
     "注册赠送金额",
     "交易最低余额",
     "会员提现状态",
+    "是否允许用户重复发起提现",
     "会员提现最低信誉分",
     "会员最低提现金额",
     "会员最高提现金额",
@@ -57,6 +58,9 @@ test("trade settings keep the supported field order and backend contracts", () =
 
   assert.match(trade, /\{ label: "否", value: "1" \}[\s\S]*?\{ label: "是", value: "0" \}/)
   assert.match(trade, /\{ label: "禁用", value: "1" \}[\s\S]*?\{ label: "启用", value: "0" \}/)
+  assert.match(trade, /prop: "allowMultiplePendingWithdrawals"[^\n]*label: "是否允许用户重复发起提现"[^\n]*type: "radio"[^\n]*options: yesNoOptions/)
+  assert.match(trade, /const tradeFieldDefaults = \{\s*allowMultiplePendingWithdrawals: "1"\s*\}/)
+  assert.match(trade, /const parsed = \{ \.\.\.tradeFieldDefaults, \.\.\.JSON\.parse\(newContent\) \}/)
   assert.doesNotMatch(trade, /disabledChildCommissions|validAward|validBalance|deductRegisterGiveAmountTaskGroup/)
   assert.doesNotMatch(trade, /lockWhenEnabled/)
   assert.match(trade, /prop: "matchRangePercentage"[^\n]*type: "range"[^\n]*\}/)

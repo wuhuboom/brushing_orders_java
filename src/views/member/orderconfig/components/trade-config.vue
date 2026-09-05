@@ -114,6 +114,7 @@ const formItems = [
   { prop: "registerBonusAmount", label: "注册赠送金额", type: "number", precision: 2, placeholder: "请输入金额" },
   { prop: "minTradeBalance", label: "交易最低余额", type: "number", precision: 2, placeholder: "请输入最低余额" },
   { prop: "memberWithdrawalStatus", label: "会员提现状态", type: "radio", options: enabledOptions },
+  { prop: "allowMultiplePendingWithdrawals", label: "是否允许用户重复发起提现", type: "radio", options: yesNoOptions },
   { prop: "minCreditScoreForWithdrawal", label: "会员提现最低信誉分", type: "number", placeholder: "请输入最低信誉分" },
   { prop: "minWithdrawalAmount", label: "会员最低提现金额", type: "number", precision: 2, placeholder: "请输入最低金额" },
   { prop: "maxWithdrawalAmount", label: "会员最高提现金额", type: "number", precision: 2, placeholder: "请输入最高金额" },
@@ -139,9 +140,12 @@ const formItems = [
   { prop: "maxPasswordFailuresForWithdrawal", label: "禁止客户提现所需交易密码失败次数(0-不限制)", type: "number", required: false, placeholder: "请输入失败次数" }
 ]
 
+const tradeFieldDefaults = {
+  allowMultiplePendingWithdrawals: "1"
+}
 const formFieldKeys = formItems.map(item => item.prop)
 const tradeFormRef = ref()
-const localForm = reactive({ ...props.form })
+const localForm = reactive({ ...tradeFieldDefaults, ...props.form })
 const minRange = ref(1)
 const maxRange = ref(100)
 
@@ -182,7 +186,7 @@ watch(
       return
     }
     try {
-      const parsed = JSON.parse(newContent)
+      const parsed = { ...tradeFieldDefaults, ...JSON.parse(newContent) }
       const tradeFields = formFieldKeys.reduce((fields, key) => {
         if (Object.prototype.hasOwnProperty.call(parsed, key)) {
           fields[key] = key === "rechargeBonusTradeType"

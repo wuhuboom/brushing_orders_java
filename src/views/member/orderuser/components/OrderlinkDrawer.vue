@@ -1243,6 +1243,8 @@ async function fetchGoods(session = drawerSession, targetUserId = props.userId) 
       title: goodsQuery.title,
       typeId: goodsQuery.typeId,
       isEnabled: "0",
+      orderByColumn: "g.price",
+      isAsc: "desc",
       params: {
         beginPrice,
         endPrice,

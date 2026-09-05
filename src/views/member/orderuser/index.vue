@@ -2,12 +2,13 @@
   <div class="app-container member-orderuser-page ant-pro-member-page">
     <ant-pro-table
       title="会员列表"
+      column-state-key="member.orderuser.main"
       :columns="memberColumns"
       :data-source="orderuserList"
       :loading="loading"
       row-key="id"
       :row-selection="rowSelection"
-      :scroll="{ x: 6602, y: 'calc(100vh - 410px)' }"
+      :scroll="{ x: 6602, y: 'calc(100vh - 440px)' }"
       :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total, size: 'small' }"
       @page-change="handleAntPageChange"
       @refresh="getList"
@@ -2022,8 +2023,16 @@ async function handleToggleAssistWithdrawalStatus(row) {
 getList();
 </script>
 <style scoped>
+:global(body:has(.member-orderuser-page) .copyright) {
+  display: none;
+}
+
+:global(body:has(.member-orderuser-page) .app-main) {
+  padding-bottom: 0 !important;
+}
+
 .ant-pro-member-page {
-  margin: 44px 40px 32px;
+  margin: 44px 40px 0;
 }
 
 .member-orderuser-page :deep(.ant-pro-query-form),

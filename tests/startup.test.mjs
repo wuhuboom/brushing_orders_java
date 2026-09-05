@@ -5,13 +5,13 @@ import { COMPRESSIBLE_ASSET_FILTER } from '../vite/plugins/compression.js'
 
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('startup configuration has an immediate environment fallback and no polling', () => {
+test('startup configuration bypasses cache, has an immediate fallback, and uses no polling', () => {
   const html = source('index.html')
   const main = source('src/main.js')
 
   assert.match(html, /\/config\/config\.js/)
   assert.match(html, /%VITE_APP_BASE_API%/)
-  assert.doesNotMatch(html, /Date\.now\(\)|new Date\(\)\.getTime\(\)/)
+  assert.match(html, /Date\.now\(\)/)
   assert.doesNotMatch(main, /waitForConfig|setTimeout\(waitForConfig/)
   assert.match(main, /import\.meta\.env\.VITE_APP_BASE_API/)
 })
