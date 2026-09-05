@@ -64,7 +64,7 @@ public class OrderBonusTableController extends BaseController
     /**
      * 获取彩金详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:bonus:query')")
+    @PreAuthorize("@ss.hasAnyPermi('member:bonus:query,member:bonus:add,member:bonus:edit')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {

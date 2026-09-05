@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import com.order.common.annotation.Log;
 import com.order.common.core.controller.BaseController;
 import com.order.common.core.domain.AjaxResult;
@@ -75,6 +77,7 @@ public class OrderInfoController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:orderinfo:add')")
     @Log(title = "订单", businessType = BusinessType.INSERT)
     @PostMapping
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public AjaxResult add(@RequestBody OrderInfo orderInfo)
     {
         return AjaxResult.error(
@@ -110,6 +113,7 @@ public class OrderInfoController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:orderinfo:remove')")
     @Log(title = "订单", businessType = BusinessType.DELETE)
 	@DeleteMapping("/{ids}")
+    @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public AjaxResult remove(@PathVariable Long[] ids)
     {
         return AjaxResult.error(405, "Financial order history cannot be deleted");

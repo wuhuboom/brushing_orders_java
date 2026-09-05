@@ -30,7 +30,7 @@ class OrderInfoServiceImplTest {
                     orderMapper, userMapper, extraCommissionMapper, transactionService);
 
     @Test
-    void cancelPendingNormalOrderReturnsFrozenPrincipalAndProgress() {
+    void cancelNewPendingNormalOrderReturnsPrincipalWithoutChangingCompletedProgress() {
         OrderInfo snapshot = order(20L, 7L, "1");
         OrderInfo locked = order(20L, 7L, "1");
         locked.setType("0");
@@ -39,6 +39,7 @@ class OrderInfoServiceImplTest {
         OrderUser user = new OrderUser();
         user.setId(7L);
         user.setBalance(new BigDecimal("50.00"));
+        user.setTaskProgress(3L);
 
         when(orderMapper.selectOrderInfoById(20L)).thenReturn(snapshot);
         when(userMapper.lockUserById(7L)).thenReturn(7L);
@@ -46,14 +47,14 @@ class OrderInfoServiceImplTest {
         when(userMapper.selectOrderBalanceById(7L)).thenReturn(user);
         when(orderMapper.transitionStatus(20L, 7L, "1", "3")).thenReturn(1);
         when(userMapper.releaseCancelledOrderFunds(
-                7L, new BigDecimal("30.00"), 1L)).thenReturn(1);
+                7L, new BigDecimal("30.00"), 0L)).thenReturn(1);
         when(extraCommissionMapper.releaseReserved(
                 77L, 7L, 4L, new BigDecimal("30.00"))).thenReturn(1);
 
         assertEquals(1, service.cancelPendingOrder(20L));
 
         verify(userMapper).releaseCancelledOrderFunds(
-                7L, new BigDecimal("30.00"), 1L);
+                7L, new BigDecimal("30.00"), 0L);
         verify(extraCommissionMapper).releaseReserved(
                 77L, 7L, 4L, new BigDecimal("30.00"));
         verify(transactionService).recordFlowWithoutNotification(
@@ -62,6 +63,56 @@ class OrderInfoServiceImplTest {
                 new BigDecimal("30.00"),
                 new BigDecimal("50.00"),
                 "order-cancel:O-20");
+    }
+
+    @Test
+    void cancelLegacyPendingNormalOrderRollsBackItsPrematureProgress() {
+        OrderInfo snapshot = order(20L, 7L, "1");
+        OrderInfo locked = order(20L, 7L, "1");
+        locked.setType("0");
+        locked.setOrderCount(4L);
+        OrderUser user = new OrderUser();
+        user.setId(7L);
+        user.setBalance(new BigDecimal("50.00"));
+        user.setTaskProgress(4L);
+
+        when(orderMapper.selectOrderInfoById(20L)).thenReturn(snapshot);
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(locked);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(user);
+        when(orderMapper.transitionStatus(20L, 7L, "1", "3")).thenReturn(1);
+        when(userMapper.releaseCancelledOrderFunds(
+                7L, new BigDecimal("30.00"), 1L)).thenReturn(1);
+
+        assertEquals(1, service.cancelPendingOrder(20L));
+
+        verify(userMapper).releaseCancelledOrderFunds(
+                7L, new BigDecimal("30.00"), 1L);
+    }
+
+    @Test
+    void cancelPendingNormalOrderDoesNotReduceHigherCompletedProgress() {
+        OrderInfo snapshot = order(20L, 7L, "1");
+        OrderInfo locked = order(20L, 7L, "1");
+        locked.setType("0");
+        locked.setOrderCount(4L);
+        OrderUser user = new OrderUser();
+        user.setId(7L);
+        user.setBalance(new BigDecimal("50.00"));
+        user.setTaskProgress(5L);
+
+        when(orderMapper.selectOrderInfoById(20L)).thenReturn(snapshot);
+        when(userMapper.lockUserById(7L)).thenReturn(7L);
+        when(orderMapper.selectOwnedOrderForUpdate(20L, 7L)).thenReturn(locked);
+        when(userMapper.selectOrderBalanceById(7L)).thenReturn(user);
+        when(orderMapper.transitionStatus(20L, 7L, "1", "3")).thenReturn(1);
+        when(userMapper.releaseCancelledOrderFunds(
+                7L, new BigDecimal("30.00"), 0L)).thenReturn(1);
+
+        assertEquals(1, service.cancelPendingOrder(20L));
+
+        verify(userMapper).releaseCancelledOrderFunds(
+                7L, new BigDecimal("30.00"), 0L);
     }
 
     @Test
@@ -99,7 +150,7 @@ class OrderInfoServiceImplTest {
 
         verify(orderMapper, never()).transitionStatus(20L, 7L, "1", "3");
         verify(userMapper, never()).releaseCancelledOrderFunds(
-                7L, new BigDecimal("30.00"), 1L);
+                7L, new BigDecimal("30.00"), 0L);
     }
 
     @Test
@@ -117,7 +168,7 @@ class OrderInfoServiceImplTest {
         when(userMapper.selectOrderBalanceById(7L)).thenReturn(user);
         when(orderMapper.transitionStatus(20L, 7L, "1", "3")).thenReturn(1);
         when(userMapper.releaseCancelledOrderFunds(
-                7L, new BigDecimal("30.00"), 1L)).thenReturn(1);
+                7L, new BigDecimal("30.00"), 0L)).thenReturn(1);
 
         assertThrows(ServiceException.class, () -> service.cancelPendingOrder(20L));
 

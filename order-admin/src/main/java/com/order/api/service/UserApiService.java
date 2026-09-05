@@ -9,8 +9,9 @@ import com.order.api.controller.dto.EditTradePasswordDto;
 import com.order.api.controller.dto.LoginUserDto;
 import com.order.api.controller.dto.RegisterDto;
 import com.order.api.controller.dto.UserProfileResponse;
-import com.order.common.utils.ip.IpUtils;
 import com.order.common.i18n.SupportedLocale;
+import com.order.common.utils.ExceptionUtil;
+import com.order.common.utils.ip.IpUtils;
 import com.order.framework.front.FrontJwtUtil;
 import com.order.framework.init.GeoIpQueryQueryService;
 import com.order.member.domain.OrderUser;
@@ -162,7 +163,8 @@ public class UserApiService {
             frontJwtUtil.invalidateTokenIfPresent(authorizationHeader.substring("Bearer ".length()));
         } catch (RuntimeException ex) {
             // Logout is an idempotent client cleanup operation.
-            log.error("event=front_logout_store_failure", ex);
+            log.error("event=front_logout_store_failure error={}",
+                    ExceptionUtil.getConciseErrorMessage(ex));
         }
     }
 
@@ -296,7 +298,8 @@ public class UserApiService {
                     loginLogService.insertLoginAttempt(
                             userId, ipAddress, address, success ? "1" : "0", headersJson);
                 } catch (Exception ex) {
-                    log.error("event=front_login_audit_failed userId={}", userId, ex);
+                    log.error("event=front_login_audit_failed userId={} error={}",
+                            userId, ExceptionUtil.getConciseErrorMessage(ex));
                 }
             });
         } catch (RejectedExecutionException ex) {

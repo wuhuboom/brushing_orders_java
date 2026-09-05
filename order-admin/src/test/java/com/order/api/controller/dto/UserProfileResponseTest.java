@@ -24,6 +24,7 @@ class UserProfileResponseTest {
         user.setWithdrawalPasswordFailCount(4);
         user.setBalance(new BigDecimal("12.50"));
         user.setTodayCommission(new BigDecimal("1.25"));
+        user.setLuckyBonus(new BigDecimal("20.00"));
 
         GoodsMemberLevel level = new GoodsMemberLevel();
         level.setId(2L);
@@ -34,11 +35,19 @@ class UserProfileResponseTest {
 
         assertTrue(json.contains("\"username\":\"member_1\""));
         assertTrue(json.contains("\"balance\":12.50"));
+        assertTrue(json.contains("\"luckyBonus\":20.00"));
         assertTrue(json.contains("\"memberLevel\""));
         assertFalse(json.contains("login-hash"));
         assertFalse(json.contains("trade-hash"));
         assertFalse(json.contains("ancestors"));
         assertFalse(json.contains("remarks"));
         assertFalse(json.contains("withdrawalPasswordFailCount"));
+    }
+
+    @Test
+    void luckyBonusDefaultsToZeroWhenThereIsNoDistributedBonus() throws Exception {
+        String json = new ObjectMapper().writeValueAsString(UserProfileResponse.from(new OrderUser()));
+
+        assertTrue(json.contains("\"luckyBonus\":0"));
     }
 }

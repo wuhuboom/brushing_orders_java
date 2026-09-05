@@ -3,6 +3,8 @@ package com.order.member.service.impl;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
+import java.util.Map;
+import java.util.Set;
 
 import com.order.member.mapper.OrderUserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,7 @@ import com.order.member.service.IGoodsRechargeRecordService;
 import com.order.member.service.IGoodsTransactionFlowService;
 import com.order.member.service.IOrderSequenceManagerService;
 import com.order.member.service.IOrderUserService;
+import com.order.member.service.IOrderConfigService;
 import com.order.member.service.ITransactionService;
 import com.order.member.service.SiteMessageNotificationService;
 
@@ -28,6 +31,36 @@ import com.order.member.service.SiteMessageNotificationService;
  */
 @Service
 public class TransactionServiceImpl implements ITransactionService {
+
+    private static final String DEFAULT_RECHARGE_GIFT_TRANSACTION_TYPE = "zs";
+    private static final Set<String> ALLOWED_TRANSACTION_TYPES = Set.of(
+            "zs", "kk", "cz", "txz", "txjd", "tx", "rw", "bjfh", "fy", "xjfy",
+            "qd", "sxf", "ck", "jj", "dx", "yzj", "zczs", "spfr", "rwjl", "yebzc",
+            "yebzr", "gzjl", "sjjl", "qt", "txbh");
+    private static final Map<String, String> LEGACY_TRANSACTION_TYPE_ALIASES = Map.ofEntries(
+            Map.entry("bonus", "jj"),
+            Map.entry("deduction", "kk"),
+            Map.entry("recharge", "cz"),
+            Map.entry("withdrawing", "txz"),
+            Map.entry("withdrawalUnfreeze", "txjd"),
+            Map.entry("withdrawal", "tx"),
+            Map.entry("task", "rw"),
+            Map.entry("principalReturn", "bjfh"),
+            Map.entry("rebate", "fy"),
+            Map.entry("subRebate", "xjfy"),
+            Map.entry("signIn", "qd"),
+            Map.entry("fee", "sxf"),
+            Map.entry("deposit", "ck"),
+            Map.entry("baseSalary", "dx"),
+            Map.entry("aid", "yzj"),
+            Map.entry("registerBonus", "zczs"),
+            Map.entry("productShare", "spfr"),
+            Map.entry("taskReward", "rwjl"),
+            Map.entry("balanceOut", "yebzc"),
+            Map.entry("balanceIn", "yebzr"),
+            Map.entry("workBonus", "gzjl"),
+            Map.entry("upgradeBonus", "sjjl"),
+            Map.entry("other", "qt"));
 
     @Autowired
     private OrderUserMapper orderUserMapper;
@@ -43,6 +76,9 @@ public class TransactionServiceImpl implements ITransactionService {
 
     @Autowired
     private SiteMessageNotificationService siteMessageNotificationService;
+
+    @Autowired
+    private IOrderConfigService orderConfigService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -175,9 +211,11 @@ public class TransactionServiceImpl implements ITransactionService {
         // 3) 如果有赠送金额 >0，则再保存一条交易流水
         String flowSerialGift = null;
         String tradeCodeGift = null;
+        String giftTransactionType = null;
         if (giftAmount.compareTo(BigDecimal.ZERO) > 0) {
+            giftTransactionType = resolveRechargeGiftTransactionType();
             TransactionFlowResult giftRes = recordFlow(
-                    user.getId(), "zs", giftAmount, midBalance,
+                    user.getId(), giftTransactionType, giftAmount, midBalance,
                     orderNo, remark, false);
             flowSerialGift = giftRes.getFlowSerial();
             tradeCodeGift = giftRes.getTradeCode();
@@ -194,7 +232,8 @@ public class TransactionServiceImpl implements ITransactionService {
                 user.getId(), "ck", amount, beforeBalance, afterBalance);
         if (giftAmount.compareTo(BigDecimal.ZERO) > 0) {
             siteMessageNotificationService.createForTransaction(
-                    user.getId(), "bonus", giftAmount, beforeBalance.add(amount), afterBalance);
+                    user.getId(), giftTransactionType, giftAmount,
+                    beforeBalance.add(amount), afterBalance);
         }
 
         // 5) 返回结果
@@ -204,6 +243,21 @@ public class TransactionServiceImpl implements ITransactionService {
         result.setTradeCode(tradeCode1);
         result.setFinalBalance(afterBalance);
         return result;
+    }
+
+    String resolveRechargeGiftTransactionType() {
+        try {
+            Object configured = orderConfigService
+                    .getConfigValue("trade", "rechargeBonusTradeType")
+                    .orElse(DEFAULT_RECHARGE_GIFT_TRANSACTION_TYPE);
+            String value = String.valueOf(configured).trim();
+            String normalized = LEGACY_TRANSACTION_TYPE_ALIASES.getOrDefault(value, value);
+            return ALLOWED_TRANSACTION_TYPES.contains(normalized)
+                    ? normalized
+                    : DEFAULT_RECHARGE_GIFT_TRANSACTION_TYPE;
+        } catch (RuntimeException ignored) {
+            return DEFAULT_RECHARGE_GIFT_TRANSACTION_TYPE;
+        }
     }
 
     @Override

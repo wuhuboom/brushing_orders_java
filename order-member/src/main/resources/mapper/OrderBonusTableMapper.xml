@@ -20,6 +20,7 @@
         <result property="receivedTime"    column="received_time"    />
         <result property="distributionTime"    column="distribution_time"    />
         <result property="toUsers"    column="to_users"    />
+        <result property="toUsernames" column="to_usernames" />
     </resultMap>
 
     <sql id="selectOrderBonusTableVo">
@@ -29,26 +30,45 @@
                distribution_time, to_users from order_bonus_table
     </sql>
 
+    <sql id="selectOrderBonusTableListVo">
+        select obt.id, obt.order_num, obt.user_id, obt.amount, obt.animation_duration,
+               obt.display_duration, obt.distribution_type, obt.expiry_time, obt.push_type,
+               obt.create_time, obt.is_distributed, obt.is_received, obt.received_time,
+               obt.distribution_time, obt.to_users,
+               (
+                   select group_concat(
+                       ou.username
+                       order by find_in_set(
+                           cast(ou.id as char), replace(obt.to_users, ' ', ''))
+                       separator ', '
+                   )
+                   from order_user ou
+                   where find_in_set(
+                       cast(ou.id as char), replace(obt.to_users, ' ', '')) > 0
+               ) as to_usernames
+        from order_bonus_table obt
+    </sql>
+
     <select id="selectOrderBonusTableList" parameterType="OrderBonusTable" resultMap="OrderBonusTableResult">
-        <include refid="selectOrderBonusTableVo"/>
+        <include refid="selectOrderBonusTableListVo"/>
         <where>
-            <if test="orderNum != null "> and order_num = #{orderNum}</if>
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="amount != null "> and amount = #{amount}</if>
-            <if test="minAmount != null "> and amount &gt;= #{minAmount}</if>
-            <if test="maxAmount != null "> and amount &lt;= #{maxAmount}</if>
-            <if test="animationDuration != null "> and animation_duration = #{animationDuration}</if>
-            <if test="displayDuration != null "> and display_duration = #{displayDuration}</if>
-            <if test="distributionType != null  and distributionType != ''"> and distribution_type = #{distributionType}</if>
-            <if test="expiryTime != null "> and expiry_time = #{expiryTime}</if>
-            <if test="pushType != null  and pushType != ''"> and push_type = #{pushType}</if>
-            <if test="isDistributed != null  and isDistributed != ''"> and is_distributed = #{isDistributed}</if>
-            <if test="isReceived != null  and isReceived != ''"> and is_received = #{isReceived}</if>
-            <if test="receivedTime != null "> and received_time = #{receivedTime}</if>
-            <if test="distributionTime != null "> and distribution_time = #{distributionTime}</if>
-            <if test="toUsers != null  and toUsers != ''"> and to_users = #{toUsers}</if>
+            <if test="orderNum != null "> and obt.order_num = #{orderNum}</if>
+            <if test="userId != null "> and obt.user_id = #{userId}</if>
+            <if test="amount != null "> and obt.amount = #{amount}</if>
+            <if test="minAmount != null "> and obt.amount &gt;= #{minAmount}</if>
+            <if test="maxAmount != null "> and obt.amount &lt;= #{maxAmount}</if>
+            <if test="animationDuration != null "> and obt.animation_duration = #{animationDuration}</if>
+            <if test="displayDuration != null "> and obt.display_duration = #{displayDuration}</if>
+            <if test="distributionType != null  and distributionType != ''"> and obt.distribution_type = #{distributionType}</if>
+            <if test="expiryTime != null "> and obt.expiry_time = #{expiryTime}</if>
+            <if test="pushType != null  and pushType != ''"> and obt.push_type = #{pushType}</if>
+            <if test="isDistributed != null  and isDistributed != ''"> and obt.is_distributed = #{isDistributed}</if>
+            <if test="isReceived != null  and isReceived != ''"> and obt.is_received = #{isReceived}</if>
+            <if test="receivedTime != null "> and obt.received_time = #{receivedTime}</if>
+            <if test="distributionTime != null "> and obt.distribution_time = #{distributionTime}</if>
+            <if test="toUsers != null  and toUsers != ''"> and obt.to_users = #{toUsers}</if>
         </where>
-        order by id desc
+        order by obt.id desc
     </select>
 
     <select id="selectActiveDistributedReceivedByUserAndOrder"  resultMap="OrderBonusTableResult">

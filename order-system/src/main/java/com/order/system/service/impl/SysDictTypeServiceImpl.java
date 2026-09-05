@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.order.common.constant.UserConstants;
@@ -24,6 +25,7 @@ import com.order.system.service.ISysDictTypeService;
  * @author order
  */
 @Service
+@DependsOnDatabaseInitialization
 public class SysDictTypeServiceImpl implements ISysDictTypeService
 {
     @Autowired

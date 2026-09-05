@@ -8,7 +8,7 @@ import java.util.Locale;
 public class RegisterDto {
 
     @NotBlank(message = "Username must not be blank")
-    @Pattern(regexp = "[A-Za-z0-9_]{4,10}", message = "Username length must be 4-10 characters")
+    @Size(min = 4, max = 30, message = "Username length must be 4-30 characters")
     private String username;
 
     @NotBlank(message = "Password must not be blank")

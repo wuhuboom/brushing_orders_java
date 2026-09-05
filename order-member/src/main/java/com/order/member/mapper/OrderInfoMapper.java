@@ -62,6 +62,8 @@ public interface OrderInfoMapper
 
     public OrderInfo hasOpenOrders(Long userId);
 
+    boolean hasFrozenLinkedOrders(Long userId);
+
     OrderInfo selectOwnedOrderForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 
     OrderInfo selectPublicOrderById(@Param("id") Long id, @Param("userId") Long userId);

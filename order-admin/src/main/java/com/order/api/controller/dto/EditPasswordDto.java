@@ -9,7 +9,7 @@ public class EditPasswordDto {
     private String oldPassword;
 
     @NotBlank(message = "New password must not be blank")
-    @Size(min = 8, max = 64, message = "Password length must be between 8 and 64 characters")
+    @Size(min = 6, max = 64, message = "Password length must be between 6 and 64 characters")
     private String newPassword;
 
     public String getOldPassword() {

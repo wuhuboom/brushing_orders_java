@@ -82,6 +82,9 @@ public class OrderBonusTable extends BaseEntity
     @Excel(name = "推送用户")
     private String toUsers;
 
+    /** Usernames resolved from toUsers for administration display. */
+    private String toUsernames;
+
     public void setId(Long id)
     {
         this.id = id;
@@ -242,6 +245,16 @@ public class OrderBonusTable extends BaseEntity
         return toUsers;
     }
 
+    public void setToUsernames(String toUsernames)
+    {
+        this.toUsernames = toUsernames;
+    }
+
+    public String getToUsernames()
+    {
+        return toUsernames;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -262,6 +275,7 @@ public class OrderBonusTable extends BaseEntity
                 .append("receivedTime", getReceivedTime())
                 .append("distributionTime", getDistributionTime())
                 .append("toUsers", getToUsers())
+                .append("toUsernames", getToUsernames())
                 .toString();
     }
 }

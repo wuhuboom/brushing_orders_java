@@ -52,6 +52,12 @@ public interface IOrderInfoService
     int cancelPendingOrder(Long id);
 
     /**
+     * Whether the member has a partially submitted linked-order group whose
+     * principal is still frozen.
+     */
+    boolean hasFrozenLinkedOrders(Long userId);
+
+    /**
      * 批量删除订单
      * 
      * @param ids 需要删除的订单主键集合

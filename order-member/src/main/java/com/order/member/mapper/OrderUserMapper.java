@@ -1,5 +1,6 @@
 package com.order.member.mapper;
 
+import java.util.Collection;
 import java.util.List;
 import com.order.member.domain.OrderUser;
 import org.apache.ibatis.annotations.Param;
@@ -23,6 +24,12 @@ public interface OrderUserMapper
     public OrderUser selectOrderUserByName(String username);
 
     public OrderUser selectOrderUserByInviteCode(String inviteCode);
+
+    /**
+     * Batch-resolves usernames for online member IDs without running the
+     * administration reporting query for every member.
+     */
+    List<String> selectUsernamesByIds(@Param("userIds") Collection<Long> userIds);
 
     /**
      * Front-end authentication lookup. This query must stay small and must not
@@ -60,7 +67,8 @@ public interface OrderUserMapper
     int settleOrderFunds(
             @Param("userId") Long userId,
             @Param("amount") java.math.BigDecimal amount,
-            @Param("rebate") java.math.BigDecimal rebate);
+            @Param("rebate") java.math.BigDecimal rebate,
+            @Param("completedOrderCount") Long completedOrderCount);
 
     int settleLinkedOrderGroup(
             @Param("userId") Long userId,
@@ -102,6 +110,12 @@ public interface OrderUserMapper
      * @return 结果
      */
     public int updateOrderUser(OrderUser orderUser);
+
+    int updateTaskProgress(
+            @Param("userId") Long userId,
+            @Param("taskProgress") Long taskProgress);
+
+    int resetTaskProgress(@Param("userId") Long userId);
 
     int updateAvatarById(@Param("userId") Long userId,
                          @Param("avatar") String avatar);

@@ -221,9 +221,12 @@ public class SiteMessageNotificationService {
     private static Map<String, String> templateKeys() {
         Map<String, String> keys = new LinkedHashMap<>();
         keys.put("zs", "gift");
+        keys.put("kk", "deduction");
         keys.put("kc", "deduction");
         keys.put("cz", "recharge");
-        keys.put("tx", "withdrawing");
+        keys.put("txz", "withdrawing");
+        keys.put("txjd", "withdrawalUnfreeze");
+        keys.put("tx", "withdrawal");
         keys.put("txbh", "withdrawalUnfreeze");
         keys.put("txwc", "withdrawal");
         keys.put("rw", "task");
@@ -233,6 +236,7 @@ public class SiteMessageNotificationService {
         keys.put("qd", "signIn");
         keys.put("sxf", "fee");
         keys.put("ck", "deposit");
+        keys.put("jj", "bonus");
         keys.put("bonus", "bonus");
         keys.put("dx", "baseSalary");
         keys.put("yzj", "aid");
@@ -241,7 +245,9 @@ public class SiteMessageNotificationService {
         keys.put("rwjl", "taskReward");
         keys.put("yebzc", "balanceOut");
         keys.put("yebzr", "balanceIn");
+        keys.put("gzjl", "workBonus");
         keys.put("gzjj", "workBonus");
+        keys.put("sjjl", "upgradeBonus");
         keys.put("sjjj", "upgradeBonus");
         keys.put("bt", "subsidy");
         keys.put("zjyc", "abnormalDeposit");

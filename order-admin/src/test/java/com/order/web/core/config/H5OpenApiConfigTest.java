@@ -60,7 +60,7 @@ class H5OpenApiConfigTest {
             "errorMessages", "content", "website", "customerServices",
             "memberLevels", "timeZone", "trade", "upload",
             "getGoodsList",
-            "create", "submit", "orders",
+            "create", "submit", "order", "orders",
             "list", "get",
             "withdrawalTypes", "withdrawalAccounts", "createWithdrawalAccount",
             "withdrawalAccount", "updateWithdrawalAccount", "deleteWithdrawalAccount",
@@ -236,6 +236,9 @@ class H5OpenApiConfigTest {
         String orders = description(openApi, "/api/order", PathItem.HttpMethod.GET);
         assertInlineFields(orders, "rows", "rows[].id", "rows[].status", "total");
 
+        String order = description(openApi, "/api/order/{id}", PathItem.HttpMethod.GET);
+        assertInlineFields(order, "data.id", "data.orderNumber", "data.status");
+
         String creation = description(openApi, "/api/order", PathItem.HttpMethod.POST);
         assertInlineFields(creation,
                 "data[ORDER].id",
@@ -271,6 +274,7 @@ class H5OpenApiConfigTest {
         assertTrue(openApi.getPaths().keySet().stream().noneMatch(path -> path.contains("/api/test/")));
         assertNotNull(openApi.getPaths().get("/api/order").getGet());
         assertNotNull(openApi.getPaths().get("/api/order").getPost());
+        assertNotNull(openApi.getPaths().get("/api/order/{id}").getGet());
         assertNotNull(openApi.getPaths().get("/api/order/{id}/submit").getPost());
         assertNotNull(openApi.getPaths().get("/api/config/website").getGet());
 
@@ -283,6 +287,8 @@ class H5OpenApiConfigTest {
                 property(component(openApi, "RegisterDto"), "gender").getDescription());
         assertEquals("性别：0 未知，1 男，2 女",
                 property(component(openApi, "UserProfileResponse"), "gender").getDescription());
+        assertEquals("累计已发放彩金金额；无已发放彩金时为 0",
+                property(component(openApi, "UserProfileResponse"), "luckyBonus").getDescription());
 
         Schema<?> withdrawalType = component(openApi, "WithdrawalTypeResponse");
         assertEquals("提现方式类别：0 银行卡，1 数字钱包",

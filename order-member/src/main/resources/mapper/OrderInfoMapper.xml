@@ -66,7 +66,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>  
             <if test="orderNumber != null  and orderNumber != ''"> and oi.order_number = #{orderNumber}</if>
             <if test="userId != null "> and oi.user_id = #{userId}</if>
-            <if test="username != null "> and ou.username = #{username}</if>
+            <if test="username != null and username != ''"> and ou.username = #{username}</if>
             <if test="type != null  and type != ''"> and oi.type = #{type}</if>
             <if test="orderCount != null "> and oi.order_count = #{orderCount}</if>
             <if test="status != null and status != ''"> and oi.status = #{status}</if>
@@ -92,7 +92,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and COALESCE(gecs.amount, 0) = #{params.extraCommission}
             </if>
         </where>
-        order by oi.create_time desc
+        order by oi.create_time desc, oi.id desc
     </select>
     
     <select id="selectOrderInfoById" parameterType="Long" resultMap="OrderInfoResult">
@@ -108,6 +108,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         WHERE user_id = #{userId} AND status = '1'
         ORDER BY id DESC
         LIMIT 1
+    </select>
+
+    <select id="hasFrozenLinkedOrders" parameterType="Long" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM order_info
+            WHERE user_id = #{userId}
+              AND type = '1'
+              AND status = '2'
+        )
     </select>
 
     <select id="selectOwnedOrderForUpdate" resultMap="OrderInfoResult">

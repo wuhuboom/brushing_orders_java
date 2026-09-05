@@ -62,7 +62,7 @@ public class GoodsExtraCommissionSettingController extends BaseController
     /**
      * 获取额外佣金设置详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:extracommission:query')")
+    @PreAuthorize("@ss.hasAnyPermi('member:extracommission:query,member:extracommission:edit')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {

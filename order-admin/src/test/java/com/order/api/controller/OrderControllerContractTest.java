@@ -1,6 +1,7 @@
 package com.order.api.controller;
 
 import com.order.api.controller.dto.OrderApiDtos.CreationResult;
+import com.order.api.controller.dto.OrderApiDtos.OrderResponse;
 import com.order.api.controller.dto.OrderApiDtos.SubmitResponse;
 import com.order.api.service.OrderApiException;
 import com.order.api.service.OrderApplicationService;
@@ -123,6 +124,22 @@ class OrderControllerContractTest {
         mockMvc.perform(post("/api/order/20/submit").requestAttr("userId", 7L))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value(ORDER_STATE_CONFLICT));
+    }
+
+    @Test
+    void detailDelegatesCurrentTokenUserAndReturnsSafeOrder() throws Exception {
+        OrderInfo order = order();
+        order.setUserId(7L);
+        order.setUpperRebate(new BigDecimal("9.99"));
+        when(orderService.order(7L, 20L)).thenReturn(OrderResponse.from(order));
+
+        mockMvc.perform(get("/api/order/20").requestAttr("userId", 7L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(20))
+                .andExpect(jsonPath("$.data.productTitle").value("Snapshot"))
+                .andExpect(jsonPath("$.data.userId").doesNotExist())
+                .andExpect(jsonPath("$.data.upperRebate").doesNotExist());
     }
 
     @Test

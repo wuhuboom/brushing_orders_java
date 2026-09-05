@@ -152,6 +152,8 @@ class ConfigQueryServiceTest {
                 {
                   "registerBonusAmount": 12,
                   "minTradeBalance": 100,
+                  "startTaskDelayMs": 1500,
+                  "submitTaskDelayMs": 2500,
                   "matchDelaySeconds": 999,
                   "passwordFailureThreshold": 3
                 }
@@ -162,6 +164,8 @@ class ConfigQueryServiceTest {
 
         assertEquals(12, result.registerBonusAmount());
         assertEquals(100, result.minTradeBalance());
+        assertEquals(1500, result.startTaskDelayMs());
+        assertEquals(2500, result.submitTaskDelayMs());
     }
 
     @Test

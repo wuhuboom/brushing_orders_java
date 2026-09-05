@@ -1,12 +1,12 @@
 package com.order.api.controller.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class LoginUserDto {
     @NotBlank(message = "Username must not be blank")
-    @Pattern(regexp = "[A-Za-z0-9_]{2,20}", message = "Username format is invalid")
+    // Login must also accept existing usernames created by administrators or legacy systems.
+    @Size(max = 100, message = "Username is too long")
     private String username;
 
     @NotBlank(message = "Password must not be blank")

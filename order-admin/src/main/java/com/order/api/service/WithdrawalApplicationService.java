@@ -159,7 +159,8 @@ public class WithdrawalApplicationService {
         if (account == null) {
             throw AccountApiException.badRequest(WITHDRAWAL_ACCOUNT, "Please check your withdrawal account");
         }
-        if (withdrawalMapper.existsPendingByUserId(userId) != 0) {
+        if (!isYes(policy.get("allowMultiplePendingWithdrawals"))
+                && withdrawalMapper.existsPendingByUserId(userId) != 0) {
             throw AccountApiException.conflict(PENDING_WITHDRAWAL, "A withdrawal request is already pending");
         }
 
@@ -544,10 +545,6 @@ public class WithdrawalApplicationService {
             throw AccountApiException.forbidden(WITHDRAWAL_DISABLED, firstNonBlank(user.getWithdrawalBlockRemark(),
                     "Withdrawal is disabled for this account"));
         }
-        if (isYes(policy.get("prohibitWithdrawalAfterRecharge"))
-                && "0".equals(user.getDepositBlockWithdrawal())) {
-            throw AccountApiException.forbidden(WITHDRAWAL_DISABLED, "Withdrawal is blocked after recharge");
-        }
         if (!withinTimeRange(policy.get("withdrawalTimeRange"), zone)) {
             throw AccountApiException.forbidden(OUTSIDE_WITHDRAWAL_WINDOW, "Current time is outside the withdrawal window");
         }
@@ -557,12 +554,16 @@ public class WithdrawalApplicationService {
         if (positive(minCredit) && credit.compareTo(minCredit) < 0) {
             throw AccountApiException.forbidden(CREDIT_SCORE, "Credit score is below the withdrawal requirement");
         }
-        BigDecimal min = maxPositive(decimal(policy, "minWithdrawalAmount"), level.getMinWithdraw());
+        // The trade-wide amounts are legacy defaults. A configured member level is
+        // authoritative; otherwise every level above the 10,000 default is capped at 10,000.
+        BigDecimal min = levelLimitOrFallback(
+                level.getMinWithdraw(), decimal(policy, "minWithdrawalAmount"));
         if (positive(min) && amount.compareTo(min) < 0) {
             throw AccountApiException.badRequest(AMOUNT_BELOW_MINIMUM, "Withdrawal amount is below the minimum");
         }
-        BigDecimal max = minPositive(decimal(policy, "maxWithdrawalAmount"),
-                level.getMaxWithdraw(), user.getMaxSingleWithdrawal());
+        BigDecimal max = effectiveWithdrawalMaximum(
+                level.getMaxWithdraw(), decimal(policy, "maxWithdrawalAmount"),
+                user.getMaxSingleWithdrawal());
         if (positive(max) && amount.compareTo(max) > 0) {
             throw AccountApiException.badRequest(AMOUNT_ABOVE_MAXIMUM, "Withdrawal amount exceeds the maximum");
         }
@@ -724,7 +725,8 @@ public class WithdrawalApplicationService {
     private boolean isEnabled(Object value) {
         if (value == null) return false;
         String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
-        return "1".equals(normalized) || "enabled".equals(normalized)
+        // Legacy trade-setting radios use 0 for enabled/yes and 1 for disabled/no.
+        return "0".equals(normalized) || "enabled".equals(normalized)
                 || "true".equals(normalized) || "yes".equals(normalized);
     }
 
@@ -754,6 +756,15 @@ public class WithdrawalApplicationService {
             if (positive(value) && (result == null || value.compareTo(result) < 0)) result = value;
         }
         return result;
+    }
+
+    static BigDecimal levelLimitOrFallback(BigDecimal levelLimit, BigDecimal globalFallback) {
+        return positive(levelLimit) ? levelLimit : positive(globalFallback) ? globalFallback : null;
+    }
+
+    static BigDecimal effectiveWithdrawalMaximum(
+            BigDecimal levelMaximum, BigDecimal globalFallback, BigDecimal userMaximum) {
+        return minPositive(levelLimitOrFallback(levelMaximum, globalFallback), userMaximum);
     }
 
     private long maxLong(long first, long second) {

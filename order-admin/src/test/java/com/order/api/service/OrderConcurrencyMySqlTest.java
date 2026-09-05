@@ -467,12 +467,12 @@ class OrderConcurrencyMySqlTest {
                                 order.getProductImage());
                     });
             when(harness.userMapper.reserveOrderFunds(
-                    7L, new BigDecimal("30.00"), 1L, false)).thenAnswer(invocation ->
+                    7L, new BigDecimal("30.00"), 0L, false)).thenAnswer(invocation ->
                     harness.jdbc.update("""
                             UPDATE order_user
                             SET balance = balance - 30,
                                 frozen_balance = frozen_balance + 30,
-                                task_progress = task_progress + 1
+                                task_progress = task_progress + 0
                             WHERE id = 7 AND balance >= 30
                             """));
 
@@ -504,8 +504,9 @@ class OrderConcurrencyMySqlTest {
                 VALUES (7, 70, 30, 1)
                 """);
         execute("""
-                INSERT INTO order_info(id, order_number, user_id, status, amount, rebate)
-                VALUES (20, 'O-ROLLBACK-SUBMIT', 7, '1', 30, 0.30)
+                INSERT INTO order_info(
+                    id, order_number, user_id, order_count, status, amount, rebate
+                ) VALUES (20, 'O-ROLLBACK-SUBMIT', 7, 2, '1', 30, 0.30)
                 """);
 
         try (RollbackHarness harness = rollbackHarness()) {
@@ -531,16 +532,18 @@ class OrderConcurrencyMySqlTest {
                             WHERE id = 20 AND user_id = 7 AND status = '1'
                             """));
             when(harness.userMapper.settleOrderFunds(
-                    7L, new BigDecimal("30.00"), new BigDecimal("0.30")))
+                    7L, new BigDecimal("30.00"), new BigDecimal("0.30"), 2L))
                     .thenAnswer(invocation -> harness.jdbc.update("""
                             UPDATE order_user
                             SET balance = balance + ? + ?,
-                                frozen_balance = frozen_balance - ?
+                                frozen_balance = frozen_balance - ?,
+                                task_progress = GREATEST(task_progress, ?)
                             WHERE id = ? AND frozen_balance >= ?
                             """,
                             invocation.getArgument(1),
                             invocation.getArgument(2),
                             invocation.getArgument(1),
+                            invocation.getArgument(3),
                             invocation.getArgument(0),
                             invocation.getArgument(1)));
             failFlowAfterInsert(harness);
@@ -574,6 +577,8 @@ class OrderConcurrencyMySqlTest {
                 "SELECT balance FROM order_user WHERE id = 7"));
         assertEquals(new BigDecimal("30.00"), queryDecimal(
                 "SELECT frozen_balance FROM order_user WHERE id = 7"));
+        assertEquals(0L, queryLong(
+                "SELECT task_progress FROM order_user WHERE id = 7"));
         assertEquals(1L, queryLong("""
                 SELECT COUNT(*) FROM goods_transaction_flow
                 WHERE user_id = 7 AND transaction_type = 'rw'
@@ -587,8 +592,9 @@ class OrderConcurrencyMySqlTest {
                 VALUES (7, 70, 30, 1)
                 """);
         execute("""
-                INSERT INTO order_info(id, order_number, user_id, status, amount, rebate)
-                VALUES (20, 'O-20', 7, '1', 30, 0.30)
+                INSERT INTO order_info(
+                    id, order_number, user_id, order_count, status, amount, rebate
+                ) VALUES (20, 'O-20', 7, 2, '1', 30, 0.30)
                 """);
 
         List<Boolean> results = concurrently(
@@ -600,6 +606,8 @@ class OrderConcurrencyMySqlTest {
                 "SELECT balance FROM order_user WHERE id = 7"));
         assertEquals(new BigDecimal("0.00"), queryDecimal(
                 "SELECT frozen_balance FROM order_user WHERE id = 7"));
+        assertEquals(2L, queryLong(
+                "SELECT task_progress FROM order_user WHERE id = 7"));
         assertEquals(1L, queryLong("""
                 SELECT COUNT(*) FROM goods_transaction_flow
                 WHERE user_id = 7 AND transaction_type = 'bjfh'
@@ -640,6 +648,8 @@ class OrderConcurrencyMySqlTest {
                 queryDecimal("SELECT balance FROM order_user WHERE id = 7"));
         assertEquals(new BigDecimal("0.00"),
                 queryDecimal("SELECT frozen_balance FROM order_user WHERE id = 7"));
+        assertEquals(2L,
+                queryLong("SELECT task_progress FROM order_user WHERE id = 7"));
     }
 
     @Test
@@ -649,8 +659,9 @@ class OrderConcurrencyMySqlTest {
                 VALUES (7, 70, 30, 1)
                 """);
         execute("""
-                INSERT INTO order_info(id, order_number, user_id, status, amount, rebate)
-                VALUES (20, 'O-20', 7, '1', 30, 0.30)
+                INSERT INTO order_info(
+                    id, order_number, user_id, order_count, status, amount, rebate
+                ) VALUES (20, 'O-20', 7, 2, '1', 30, 0.30)
                 """);
 
         concurrently(
@@ -817,19 +828,28 @@ class OrderConcurrencyMySqlTest {
                     connection.commit();
                     return false;
                 }
+                long orderCount;
+                try (PreparedStatement progress = connection.prepareStatement(
+                        "SELECT task_progress + 1 FROM order_user WHERE id = 7")) {
+                    try (ResultSet result = progress.executeQuery()) {
+                        result.next();
+                        orderCount = result.getLong(1);
+                    }
+                }
                 try (PreparedStatement insert = connection.prepareStatement("""
-                        INSERT INTO order_info(order_number, user_id, status, amount, rebate)
-                        VALUES (?, 7, '1', ?, 0)
+                        INSERT INTO order_info(
+                            order_number, user_id, order_count, status, amount, rebate
+                        ) VALUES (?, 7, ?, '1', ?, 0)
                         """)) {
                     insert.setString(1, orderNumber);
-                    insert.setBigDecimal(2, amount);
+                    insert.setLong(2, orderCount);
+                    insert.setBigDecimal(3, amount);
                     insert.executeUpdate();
                 }
                 try (PreparedStatement reserve = connection.prepareStatement("""
                         UPDATE order_user
                         SET balance = balance - ?,
                             frozen_balance = frozen_balance + ?,
-                            task_progress = task_progress + 1,
                             version = version + 1
                         WHERE id = 7 AND balance >= ?
                         """)) {
@@ -858,9 +878,10 @@ class OrderConcurrencyMySqlTest {
                 lockUser(connection);
                 BigDecimal amount;
                 BigDecimal rebate;
+                long orderCount;
                 String status;
                 try (PreparedStatement lockOrder = connection.prepareStatement("""
-                        SELECT amount, rebate, status
+                        SELECT amount, rebate, order_count, status
                         FROM order_info
                         WHERE id = ? AND user_id = 7
                         FOR UPDATE
@@ -870,6 +891,7 @@ class OrderConcurrencyMySqlTest {
                         result.next();
                         amount = result.getBigDecimal("amount");
                         rebate = result.getBigDecimal("rebate");
+                        orderCount = result.getLong("order_count");
                         status = result.getString("status");
                     }
                 }
@@ -891,13 +913,15 @@ class OrderConcurrencyMySqlTest {
                         UPDATE order_user
                         SET balance = balance + ? + ?,
                             frozen_balance = frozen_balance - ?,
+                            task_progress = GREATEST(task_progress, ?),
                             version = version + 1
                         WHERE id = 7 AND balance >= 0 AND frozen_balance >= ?
                         """)) {
                     settle.setBigDecimal(1, amount);
                     settle.setBigDecimal(2, rebate);
                     settle.setBigDecimal(3, amount);
-                    settle.setBigDecimal(4, amount);
+                    settle.setLong(4, orderCount);
+                    settle.setBigDecimal(5, amount);
                     if (settle.executeUpdate() != 1) {
                         connection.rollback();
                         return false;
@@ -1155,6 +1179,7 @@ class OrderConcurrencyMySqlTest {
         order.setUserId(7L);
         order.setStatus("1");
         order.setType("0");
+        order.setOrderCount(2L);
         order.setAmount(new BigDecimal("30.00"));
         order.setRebate(new BigDecimal("0.30"));
         order.setUpperRebate(BigDecimal.ZERO);

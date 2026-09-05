@@ -72,6 +72,7 @@
 
         <!-- 额外计算字段 -->
         <result property="todayCommission" column="today_commission"/>
+        <result property="luckyBonus" column="lucky_bonus"/>
         <result property="todayParentCommission" column="today_parent_commission"/>
         <result property="lastLoginIp" column="last_login_ip"/>
         <result property="lastLoginAddress" column="last_login_address"/>
@@ -162,8 +163,14 @@
                 WHERE gtf.user_id = ou.id
                   AND gtf.transaction_type = 'fy'
                   AND gtf.created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
-                  AND gtf.created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
+                   AND gtf.created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
             ), 0) AS today_commission,
+            COALESCE((
+                SELECT SUM(obt.amount)
+                FROM order_bonus_table obt
+                WHERE obt.user_id = ou.id
+                  AND obt.is_distributed = '0'
+            ), 0) AS lucky_bonus,
             gml.id AS member_level_id, gml.name, gml.level, gml.icon, gml.price,
             gml.min_balance, gml.invite_count, gml.order_count_per_day,
             gml.min_commission_rate, gml.max_commission_rate,
@@ -234,7 +241,7 @@
     </select>
 
     <select id="selectOrderBalanceById" parameterType="Long" resultMap="OrderUserResult">
-        SELECT id, parent_id, balance, frozen_balance
+        SELECT id, parent_id, balance, frozen_balance, task_progress
         FROM order_user
         WHERE id = #{id}
         LIMIT 1
@@ -257,6 +264,10 @@
         UPDATE order_user
         SET balance = balance + #{amount} + #{rebate},
             frozen_balance = frozen_balance - #{amount},
+            task_progress = GREATEST(
+                COALESCE(task_progress, 0),
+                COALESCE(#{completedOrderCount}, COALESCE(task_progress, 0))
+            ),
             version = COALESCE(version, 0) + 1,
             update_time = NOW(3)
         WHERE id = #{userId}
@@ -413,10 +424,33 @@
             <if test="username != null  and username != ''"> and ou.username like concat('%', #{username}, '%')</if>
             <if test="phoneNumber != null  and phoneNumber != ''"> and ou.phone_number = #{phoneNumber}</if>
             <if test="keyword != null and keyword != ''">
-                and (ou.username like concat('%', #{keyword}, '%')
-                  or ou.phone_number like concat('%', #{keyword}, '%')
-                  or ou.invite_code like concat('%', #{keyword}, '%')
-                  or ll.ip like concat('%', #{keyword}, '%'))
+                <!-- Match both the member's own invite code and the displayed parent invite code. -->
+                and (
+                    (ou.username = #{keyword}
+                     or ou.phone_number = #{keyword}
+                     or ou.invite_code = #{keyword}
+                     or pu.invite_code = #{keyword}
+                     or ll.ip = #{keyword})
+                    or (
+                        not exists (
+                            select 1
+                            from order_user keyword_ou
+                            left join order_user keyword_pu on keyword_ou.parent_id = keyword_pu.id
+                            left join last_logins keyword_ll
+                                on keyword_ou.id = keyword_ll.user_id and keyword_ll.rn = 1
+                            where keyword_ou.username = #{keyword}
+                               or keyword_ou.phone_number = #{keyword}
+                               or keyword_ou.invite_code = #{keyword}
+                               or keyword_pu.invite_code = #{keyword}
+                               or keyword_ll.ip = #{keyword}
+                        )
+                        and (ou.username like concat('%', #{keyword}, '%')
+                             or ou.phone_number like concat('%', #{keyword}, '%')
+                             or ou.invite_code like concat('%', #{keyword}, '%')
+                             or pu.invite_code like concat('%', #{keyword}, '%')
+                             or ll.ip like concat('%', #{keyword}, '%'))
+                    )
+                )
             </if>
             <if test="parentUsername != null and parentUsername != ''">and pu.username like concat('%', #{parentUsername}, '%')</if>
             <if test="id != null">and ou.id = #{id}</if>
@@ -504,6 +538,23 @@
     <select id="selectOrderUserByInviteCode" parameterType="String" resultMap="OrderUserResult">
         <include refid="selectOrderUserVo"/>
         where ou.invite_code = #{inviteCode}
+    </select>
+
+    <select id="selectUsernamesByIds" resultType="java.lang.String">
+        select username
+        from order_user
+        where
+        <choose>
+            <when test="userIds != null and !userIds.isEmpty()">
+                id in
+                <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                    #{userId}
+                </foreach>
+            </when>
+            <otherwise>1 = 0</otherwise>
+        </choose>
+          and username is not null
+          and username &lt;&gt; ''
     </select>
 
     <select id="selectChildrenById" parameterType="map" resultMap="OrderUserResult">
@@ -733,6 +784,24 @@
             <if test="version != null">version = version + 1,</if>
         </trim>
         where id = #{id} AND version = #{version}
+    </update>
+
+    <update id="updateTaskProgress">
+        UPDATE order_user
+        SET task_progress = #{taskProgress},
+            version = COALESCE(version, 0) + 1,
+            update_time = NOW(3)
+        WHERE id = #{userId}
+    </update>
+
+    <update id="resetTaskProgress">
+        UPDATE order_user
+        SET task_progress = 0,
+            today_rest = COALESCE(today_rest, 0) + 1,
+            total_rest = COALESCE(total_rest, 0) + 1,
+            version = COALESCE(version, 0) + 1,
+            update_time = NOW(3)
+        WHERE id = #{userId}
     </update>
 
     <update id="updateAvatarById">

@@ -47,20 +47,41 @@ class OrderBonusTableServiceImplTest {
     }
 
     @Test
-    void delayedBonusCannotBeDistributedBeforeTheTaskGroupIsComplete() {
+    void administratorCannotDistributeBeforeReceipt() {
+        OrderBonusTable bonus = bonus("2");
+        bonus.setIsReceived("1");
+        when(bonusMapper.selectOrderBonusTableById(88L)).thenReturn(bonus);
+
+        assertThrows(IllegalStateException.class, () -> service.distributeBonus(88L));
+
+        verify(userMapper, never()).lockUserById(any());
+        verify(bonusMapper, never()).distributeBonus(any());
+        verify(userMapper, never()).creditBalance(any(), any());
+        verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void administratorCanDistributeDelayedBonusAfterReceiptBeforeTaskGroupCompletion() {
         OrderBonusTable bonus = bonus("2");
         OrderUser balanceUser = user(new BigDecimal("100.00"), 10L, 40L);
         when(bonusMapper.selectOrderBonusTableById(88L)).thenReturn(bonus);
         when(userMapper.lockUserById(7L)).thenReturn(7L);
         when(bonusMapper.selectBonusForUpdate(88L)).thenReturn(bonus);
         when(userMapper.selectOrderBalanceById(7L)).thenReturn(balanceUser);
-        when(userMapper.selectOrderTaskUserById(7L)).thenReturn(balanceUser);
+        when(bonusMapper.distributeBonus(88L)).thenReturn(1);
+        when(userMapper.creditBalance(7L, new BigDecimal("28.88"))).thenReturn(1);
 
-        assertThrows(IllegalStateException.class, () -> service.distributeBonus(88L));
+        service.distributeBonus(88L);
 
-        verify(bonusMapper, never()).distributeBonus(any());
-        verify(userMapper, never()).creditBalance(any(), any());
-        verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
+        verify(userMapper, never()).selectOrderTaskUserById(any());
+        verify(bonusMapper).distributeBonus(88L);
+        verify(userMapper).creditBalance(7L, new BigDecimal("28.88"));
+        verify(transactionService).recordFlow(
+                7L,
+                "rwjl",
+                new BigDecimal("28.88"),
+                new BigDecimal("100.00"),
+                "manual-bonus:88");
     }
 
     @Test
@@ -71,7 +92,6 @@ class OrderBonusTableServiceImplTest {
         when(userMapper.lockUserById(7L)).thenReturn(7L);
         when(bonusMapper.selectBonusForUpdate(88L)).thenReturn(bonus);
         when(userMapper.selectOrderBalanceById(7L)).thenReturn(balanceUser);
-        when(userMapper.selectOrderTaskUserById(7L)).thenReturn(balanceUser);
         when(bonusMapper.distributeBonus(88L)).thenReturn(1);
         when(userMapper.creditBalance(7L, new BigDecimal("28.88"))).thenReturn(1);
 
@@ -81,10 +101,40 @@ class OrderBonusTableServiceImplTest {
         verify(userMapper).creditBalance(7L, new BigDecimal("28.88"));
         verify(transactionService).recordFlow(
                 7L,
-                "bonus",
+                "rwjl",
                 new BigDecimal("28.88"),
                 new BigDecimal("100.00"),
                 "manual-bonus:88");
+    }
+
+    @Test
+    void updateRejectsAnAlreadyReceivedBonusBeforeWriting() {
+        OrderBonusTable existing = bonus("1");
+        existing.setIsReceived("0");
+        OrderBonusTable incoming = bonus("1");
+        when(bonusMapper.selectOrderBonusTableById(88L)).thenReturn(existing);
+
+        assertThrows(IllegalStateException.class, () -> service.updateOrderBonusTable(incoming));
+
+        verify(bonusMapper, never()).updateOrderBonusTable(any());
+    }
+
+    @Test
+    void batchDeleteRejectsMixedReceivedStateWithoutPartialDeletion() {
+        OrderBonusTable available = bonus("1");
+        available.setId(88L);
+        available.setIsReceived("1");
+        OrderBonusTable received = bonus("1");
+        received.setId(89L);
+        received.setIsReceived("0");
+        when(bonusMapper.selectOrderBonusTableById(88L)).thenReturn(available);
+        when(bonusMapper.selectOrderBonusTableById(89L)).thenReturn(received);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> service.deleteOrderBonusTableByIds(new Long[]{88L, 89L}));
+
+        verify(bonusMapper, never()).deleteOrderBonusTableByIds(any());
     }
 
     private OrderBonusTable bonus(String distributionType) {

@@ -2,8 +2,10 @@
 order:
   # 名称
   name: order
-  # 版本
-  version: 1.1.0
+  # 版本：发布构建默认使用 Maven project.version，可通过 APP_VERSION 覆盖
+  version: "${APP_VERSION:@project.version@}"
+  # 数据库迁移发布号（与展示版本分离）
+  migration-version: 1.2.2
   # 版权年份
   copyrightYear: 2025
   # 文件路径 示例（ Windows配置D:/order/uploadPath，Linux配置 /home/order/uploadPath）
@@ -34,7 +36,7 @@ server:
 # 日志配置
 logging:
   level:
-    com.order: debug
+    com.order: info
     org.springframework: warn
 
 # 用户配置
@@ -47,6 +49,24 @@ user:
 
 # Spring配置
 spring:
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/mysql
+    table: flyway_schema_history
+    encoding: UTF-8
+    baseline-on-migrate: false
+    baseline-version: 2026.08.17.0
+    baseline-description: Controlled legacy adoption through 20260817
+    validate-on-migrate: true
+    validate-migration-naming: true
+    out-of-order: false
+    clean-disabled: true
+    placeholder-replacement: false
+    fail-on-missing-locations: true
+    lock-retry-count: 60
   # 资源信息
   messages:
     # 国际化资源文件路径

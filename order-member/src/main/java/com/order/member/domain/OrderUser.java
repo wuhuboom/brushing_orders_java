@@ -216,6 +216,7 @@ public class OrderUser extends BaseEntity
 
     // 额外查询字段
     private java.math.BigDecimal todayCommission;
+    private java.math.BigDecimal luckyBonus;
     private java.math.BigDecimal todayParentCommission;
     private String lastLoginIp;
     private String lastLoginAddress;
@@ -307,6 +308,14 @@ public class OrderUser extends BaseEntity
 
     public void setTodayCommission(java.math.BigDecimal todayCommission) {
         this.todayCommission = todayCommission;
+    }
+
+    public java.math.BigDecimal getLuckyBonus() {
+        return luckyBonus;
+    }
+
+    public void setLuckyBonus(java.math.BigDecimal luckyBonus) {
+        this.luckyBonus = luckyBonus;
     }
 
     public java.math.BigDecimal getTodayParentCommission() {
@@ -794,6 +803,7 @@ public class OrderUser extends BaseEntity
                 .append("todaySignCount", getTodaySignCount())
                 .append("totalSignDays", getTotalSignDays())
                 .append("todayCommission", getTodayCommission())
+                .append("luckyBonus", getLuckyBonus())
                 .append("todayParentCommission", getTodayParentCommission())
                 .append("lastLoginIp", getLastLoginIp())
                 .append("lastLoginAddress", getLastLoginAddress())

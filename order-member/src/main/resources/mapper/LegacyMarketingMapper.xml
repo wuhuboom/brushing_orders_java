@@ -89,7 +89,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="dailyActivityUnion">
         select date(oi.create_time) as statDate, oi.user_id as userId,
                count(1) as orderNumber,
-               sum(case when oi.status in ('2', 'completed', 'complete', 'success') then 1 else 0 end) as taskCompleteNumber,
+               count(1) as taskCompleteNumber,
                0 as resetNumber,
                0 as rechargeNumber,
                0 as rechargeAmount,
@@ -105,6 +105,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                0 as giveAmount
         from order_info oi
         where oi.create_time is not null
+          and oi.status in ('0', 'completed', 'complete', 'success')
         group by date(oi.create_time), oi.user_id
         union all
         select date(grr.create_time) as statDate, grr.user_id as userId,
@@ -135,8 +136,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                ifnull(sum(case when gtf.transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then gtf.transaction_amount else 0 end), 0),
                sum(case when gtf.transaction_type in ('sign', 'signIn', 'qd') then 1 else 0 end),
                ifnull(sum(case when gtf.transaction_type in ('sign', 'signIn', 'qd') then gtf.transaction_amount else 0 end), 0),
-               sum(case when gtf.transaction_type in ('give', 'gift', 'bonus') then 1 else 0 end),
-               ifnull(sum(case when gtf.transaction_type in ('give', 'gift', 'bonus') then gtf.transaction_amount else 0 end), 0)
+               sum(case when gtf.transaction_type in ('give', 'gift')
+                         or (gtf.transaction_type = 'bonus'
+                             and (gtf.remark is null or gtf.remark not like 'manual-bonus:%'))
+                        then 1 else 0 end),
+               ifnull(sum(case when gtf.transaction_type in ('give', 'gift')
+                                or (gtf.transaction_type = 'bonus'
+                                    and (gtf.remark is null or gtf.remark not like 'manual-bonus:%'))
+                               then gtf.transaction_amount else 0 end), 0)
         from goods_transaction_flow gtf
         where gtf.created_time is not null
         group by date(gtf.created_time), gtf.user_id
@@ -205,8 +212,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from order_user ou
         left join (
             select user_id, count(1) as orderNumber,
-                   sum(case when status in ('2', 'completed', 'complete', 'success') then 1 else 0 end) as taskCompleteNumber
+                   count(1) as taskCompleteNumber
             from order_info
+            where status in ('0', 'completed', 'complete', 'success')
             group by user_id
         ) oi on ou.id = oi.user_id
         left join (
@@ -227,8 +235,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                    ifnull(sum(case when transaction_type in ('parentCommission', 'subRebate', 'upperRebate') then transaction_amount else 0 end), 0) as parentCommissionAmount,
                    sum(case when transaction_type in ('sign', 'signIn', 'qd') then 1 else 0 end) as signNumber,
                    ifnull(sum(case when transaction_type in ('sign', 'signIn', 'qd') then transaction_amount else 0 end), 0) as signAmount,
-                   sum(case when transaction_type in ('give', 'gift', 'bonus') then 1 else 0 end) as giveNumber,
-                   ifnull(sum(case when transaction_type in ('give', 'gift', 'bonus') then transaction_amount else 0 end), 0) as giveAmount
+                   sum(case when transaction_type in ('give', 'gift')
+                             or (transaction_type = 'bonus'
+                                 and (remark is null or remark not like 'manual-bonus:%'))
+                            then 1 else 0 end) as giveNumber,
+                   ifnull(sum(case when transaction_type in ('give', 'gift')
+                                    or (transaction_type = 'bonus'
+                                        and (remark is null or remark not like 'manual-bonus:%'))
+                                   then transaction_amount else 0 end), 0) as giveAmount
             from goods_transaction_flow
             group by user_id
         ) flow on ou.id = flow.user_id

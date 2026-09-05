@@ -667,7 +667,7 @@ public class H5OpenApiConfig {
     private static String idDescription(String operationId) {
         return switch (operationId) {
             case "get" -> "站内信 ID，且必须属于当前会员";
-            case "submit" -> "订单 ID，且必须属于当前会员";
+            case "order", "submit" -> "订单 ID，且必须属于当前会员";
             case "withdrawalAccount", "updateWithdrawalAccount", "deleteWithdrawalAccount" ->
                     "提现账户 ID，且必须属于当前会员";
             default -> "资源 ID";
@@ -785,6 +785,8 @@ public class H5OpenApiConfig {
                 "使用 Idempotency-Key 幂等创建订单；如当前有待领取彩金，则返回彩金而不是新订单。"));
         add(specs, "submit", ajax(OrderApiDtos.SubmitResponse.class, false, CodeGroup.ORDER,
                 "提交当前会员名下的待处理订单；重复提交已完成订单时返回幂等结果。"));
+        add(specs, "order", ajax(OrderApiDtos.OrderResponse.class, false, CodeGroup.ORDER,
+                "查询当前会员名下的指定订单详情。"));
         add(specs, "orders", page(OrderApiDtos.OrderResponse.class, CodeGroup.ORDER,
                 "分页查询当前会员的订单，可按订单状态筛选。"));
 
@@ -843,7 +845,7 @@ public class H5OpenApiConfig {
         descriptions.put("username", "会员用户名");
         descriptions.put("password", "登录密码；仅用于请求，不会在响应中返回");
         descriptions.put("oldPassword", "当前登录密码");
-        descriptions.put("newPassword", "新的登录密码，长度 8～64");
+        descriptions.put("newPassword", "新的登录密码，长度 6～64");
         descriptions.put("tradePassword", "交易密码；仅用于请求，不会在响应中返回");
         descriptions.put("oldTradePassword", "当前交易密码");
         descriptions.put("newTradePassword", "新的交易密码，长度 6～18");
@@ -922,6 +924,8 @@ public class H5OpenApiConfig {
         descriptions.put("tradeTimeRange", "允许接单的时间范围");
         descriptions.put("withdrawalTimeRange", "允许提现的时间范围");
         descriptions.put("orderExpireSeconds", "订单有效期，单位秒");
+        descriptions.put("startTaskDelayMs", "开始任务延迟，单位毫秒");
+        descriptions.put("submitTaskDelayMs", "提交任务延迟，单位毫秒");
         descriptions.put("requiredTaskGroupsForWithdrawal", "提现前必须完成的任务组数量");
         descriptions.put("allowModifyWithdrawalAddress", "是否允许会员修改提现账户");
         descriptions.put("fileName", "服务器保存的相对文件路径");
@@ -1032,6 +1036,7 @@ public class H5OpenApiConfig {
 
         // 同名字段必须优先按所属模型解释，避免把订单类型、提现类型和不同状态机混为一谈。
         descriptions.put("UserProfileResponse.id", "当前会员 ID");
+        descriptions.put("UserProfileResponse.luckyBonus", "累计已发放彩金金额；无已发放彩金时为 0");
         descriptions.put("CustomerServiceResponse.id", "客服入口 ID");
         descriptions.put("MemberLevelResponse.id", "会员等级 ID");
         descriptions.put("Goods.id", "商品 ID");

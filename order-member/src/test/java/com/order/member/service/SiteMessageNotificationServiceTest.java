@@ -136,4 +136,14 @@ class SiteMessageNotificationServiceTest {
         verify(messageService).insertOrderSiteMessage(captor.capture());
         assertEquals("Amount: 20.00", captor.getValue().getContent());
     }
+
+    @Test
+    void actualTransactionDictionaryCodesResolveToTheirNotificationTemplates() {
+        assertEquals("bonus", service.resolveTemplateKey("jj", BigDecimal.TEN));
+        assertEquals("bonus", service.resolveTemplateKey("bonus", BigDecimal.TEN));
+        assertEquals("deduction", service.resolveTemplateKey("kk", BigDecimal.TEN.negate()));
+        assertEquals("withdrawing", service.resolveTemplateKey("txz", BigDecimal.TEN));
+        assertEquals("withdrawalUnfreeze", service.resolveTemplateKey("txjd", BigDecimal.TEN));
+        assertEquals("withdrawal", service.resolveTemplateKey("tx", BigDecimal.TEN));
+    }
 }

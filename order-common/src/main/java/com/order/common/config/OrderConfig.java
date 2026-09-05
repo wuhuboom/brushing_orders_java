@@ -1,7 +1,11 @@
 package com.order.common.config;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 /**
  * 读取项目相关配置
@@ -17,6 +21,10 @@ public class OrderConfig
 
     /** 版本 */
     private String version;
+
+    /** Maven 构建时生成的版本信息，IDE 直接运行时可为空。 */
+    @Autowired(required = false)
+    private BuildProperties buildProperties;
 
     /** 版权年份 */
     private String copyrightYear;
@@ -48,6 +56,31 @@ public class OrderConfig
     public void setVersion(String version)
     {
         this.version = version;
+    }
+
+    @PostConstruct
+    void resolveApplicationVersion()
+    {
+        version = resolveApplicationVersion(version, buildProperties);
+    }
+
+    static String resolveApplicationVersion(String configuredVersion, BuildProperties buildProperties)
+    {
+        if (StringUtils.hasText(configuredVersion) && !isUnresolvedMavenToken(configuredVersion))
+        {
+            return configuredVersion;
+        }
+        if (buildProperties != null && StringUtils.hasText(buildProperties.getVersion()))
+        {
+            return buildProperties.getVersion();
+        }
+        return "development";
+    }
+
+    private static boolean isUnresolvedMavenToken(String value)
+    {
+        String trimmed = value.trim();
+        return trimmed.startsWith("@") && trimmed.endsWith("@");
     }
 
     public String getCopyrightYear()

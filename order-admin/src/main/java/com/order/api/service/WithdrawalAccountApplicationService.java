@@ -247,7 +247,7 @@ public class WithdrawalAccountApplicationService {
 
         if ("1".equals(type.getType())) {
             account.setAccountName(trimToNull(request.accountName()));
-            account.setWalletName(required(request.walletName(), "walletName"));
+            account.setWalletName(trimToNull(request.walletName()));
             account.setWalletAddress(required(request.walletAddress(), "walletAddress"));
             account.setAttachment(trimToNull(request.attachment()));
         } else {
@@ -354,7 +354,7 @@ public class WithdrawalAccountApplicationService {
     }
 
     private void ensureModificationAllowed() {
-        Object value = configService.getConfigValue("trade", "allowModifyWithdrawalAddress").orElse("0");
+        Object value = configService.getConfigValue("trade", "allowModifyWithdrawalAddress").orElse("1");
         if (!isEnabled(value)) {
             throw AccountApiException.forbidden(WITHDRAWAL_DISABLED, "Withdrawal account modification is disabled");
         }
@@ -407,7 +407,8 @@ public class WithdrawalAccountApplicationService {
 
     private boolean isEnabled(Object value) {
         String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
-        return "1".equals(normalized) || "yes".equals(normalized)
+        // Legacy trade-setting radios use 0 for enabled/yes and 1 for disabled/no.
+        return "0".equals(normalized) || "yes".equals(normalized)
                 || "true".equals(normalized) || "enabled".equals(normalized);
     }
 

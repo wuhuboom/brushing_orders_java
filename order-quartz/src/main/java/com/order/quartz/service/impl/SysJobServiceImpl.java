@@ -7,6 +7,7 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.order.common.constant.ScheduleConstants;
@@ -23,6 +24,7 @@ import com.order.quartz.util.ScheduleUtils;
  * @author order
  */
 @Service
+@DependsOnDatabaseInitialization
 public class SysJobServiceImpl implements ISysJobService
 {
     @Autowired

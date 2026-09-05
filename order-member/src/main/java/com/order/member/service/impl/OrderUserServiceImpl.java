@@ -2,15 +2,20 @@ package com.order.member.service.impl;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
+import com.order.common.exception.ServiceException;
 import com.order.common.utils.DateUtils;
 import com.order.common.utils.StringUtils;
 import com.order.member.domain.GoodsMemberLevel;
+import com.order.member.domain.OrderInfo;
 import com.order.member.mapper.GoodsMemberLevelMapper;
 import com.order.member.service.IGoodsMemberLevelService;
 import com.order.member.service.IOrderConfigService;
+import com.order.member.service.IOrderInfoService;
 import com.order.member.service.ITransactionService;
 import com.order.member.service.RegistrationResult;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +50,9 @@ public class OrderUserServiceImpl implements IOrderUserService
     @Autowired
     private ITransactionService transactionService;
 
+    @Autowired
+    private IOrderInfoService orderInfoService;
+
     /**
      * 查询订单用户
      * 
@@ -57,6 +65,15 @@ public class OrderUserServiceImpl implements IOrderUserService
         return orderUserMapper.selectOrderUserById(id);
     }
 
+    @Override
+    public List<String> selectUsernamesByIds(Collection<Long> userIds)
+    {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        return orderUserMapper.selectUsernamesByIds(userIds);
+    }
+
     /**
      * 查询订单用户列表
      * 
@@ -66,6 +83,10 @@ public class OrderUserServiceImpl implements IOrderUserService
     @Override
     public List<OrderUser> selectOrderUserList(OrderUser orderUser)
     {
+        if (orderUser != null)
+        {
+            orderUser.setKeyword(StringUtils.trim(orderUser.getKeyword()));
+        }
         return orderUserMapper.selectOrderUserList(orderUser);
     }
 
@@ -121,6 +142,88 @@ public class OrderUserServiceImpl implements IOrderUserService
     {
         orderUser.setUpdateTime(DateUtils.getNowDate());
         return orderUserMapper.updateOrderUser(orderUser);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int adjustTaskProgress(Long userId, Long taskProgress, Long expectedVersion)
+    {
+        if (userId == null || userId <= 0) {
+            throw new ServiceException("会员ID不能为空");
+        }
+        if (taskProgress == null || taskProgress < 0) {
+            throw new ServiceException("单数必须为不小于 0 的整数");
+        }
+        if (orderUserMapper.lockUserById(userId) == null) {
+            throw new ServiceException("会员不存在");
+        }
+
+        OrderUser current = orderUserMapper.selectOrderUserById(userId);
+        if (current == null) {
+            throw new ServiceException("会员不存在");
+        }
+        if (expectedVersion != null && !Objects.equals(expectedVersion, current.getVersion())) {
+            return 0;
+        }
+
+        GoodsMemberLevel level = current.getMemberLevel();
+        if (level == null || level.getOrderCountPerDay() == null) {
+            throw new ServiceException("会员等级单数配置不存在");
+        }
+        if (taskProgress > level.getOrderCountPerDay()) {
+            throw new ServiceException("单数不能超过当前等级上限 " + level.getOrderCountPerDay());
+        }
+        OrderInfo pendingOrder = orderInfoService.hasOpenOrders(userId);
+        if (pendingOrder != null) {
+            throw new ServiceException("会员存在待提交订单，请先完成或取消该订单后再修改单数");
+        }
+
+        if (orderInfoService.hasFrozenLinkedOrders(userId)) {
+            throw new ServiceException("会员存在未完成连单，请先完成当前连单后再修改单数");
+        }
+
+        if (Objects.equals(taskProgress, current.getTaskProgress())) {
+            return 1;
+        }
+
+        if (orderUserMapper.updateTaskProgress(userId, taskProgress) != 1) {
+            throw new ServiceException("修改单数失败，请刷新后重试");
+        }
+        return 1;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int resetTaskProgress(Long userId)
+    {
+        if (userId == null || userId <= 0) {
+            throw new ServiceException("会员ID不能为空");
+        }
+        if (orderUserMapper.lockUserById(userId) == null) {
+            throw new ServiceException("会员不存在");
+        }
+
+        OrderUser current = orderUserMapper.selectOrderUserById(userId);
+        if (current == null) {
+            throw new ServiceException("会员不存在");
+        }
+        GoodsMemberLevel level = current.getMemberLevel();
+        if (level == null || level.getOrderCountPerDay() == null) {
+            throw new ServiceException("会员等级单数配置不存在");
+        }
+        if (orderInfoService.hasOpenOrders(userId) != null) {
+            throw new ServiceException("会员存在待提交订单，请先完成或取消该订单后再重置单数");
+        }
+        if (orderInfoService.hasFrozenLinkedOrders(userId)) {
+            throw new ServiceException("会员存在未完成连单，请先完成当前连单后再重置单数");
+        }
+        if (!Objects.equals(current.getTaskProgress(), level.getOrderCountPerDay())) {
+            throw new ServiceException("需要完成全部任务");
+        }
+        if (orderUserMapper.resetTaskProgress(userId) != 1) {
+            throw new ServiceException("重置失败，请刷新后重试");
+        }
+        return 1;
     }
 
     /**
@@ -243,8 +346,8 @@ public class OrderUserServiceImpl implements IOrderUserService
         // 查询直属下级（用"direct"，递归处理多级）
         List<OrderUser> children = orderUserMapper.selectChildrenById(userId, "direct");
         for (OrderUser child : children) {
-            // 计算子级新路径：父新路径 + ',' + child.id
-            String childNewAncestors = newAncestors + "," + child.getId();
+            // 计算子级新路径：父新路径 + ',' + 父会员ID
+            String childNewAncestors = newAncestors + "," + userId;
             child.setAncestors(childNewAncestors);
             // 无需setVersion，XML会自动+1并校验
 

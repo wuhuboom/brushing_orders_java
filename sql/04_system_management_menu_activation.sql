@@ -39,7 +39,8 @@ UPDATE sys_menu SET menu_name='登录日志',parent_id=5001,order_num=2,path='us
 UPDATE sys_menu SET parent_id=5002,order_num=1,path='menu' WHERE menu_id=102;
 UPDATE sys_menu SET parent_id=5002,order_num=2,path='dict' WHERE menu_id=105;
 UPDATE sys_menu SET parent_id=5002,order_num=3,path='notice' WHERE menu_id=107;
-UPDATE sys_menu SET parent_id=5002,order_num=4,path='zone' WHERE menu_id=2093;
+-- 时区管理沿用生成配置中的原始归属：客户管理 > 网站管理。
+UPDATE sys_menu SET parent_id=2067,order_num=9,path='zone' WHERE menu_id=2093;
 UPDATE sys_menu SET parent_id=5002,order_num=5,path='config' WHERE menu_id=106;
 
 -- 清除旧的空日志父菜单，避免侧栏出现重复“操作日志”。

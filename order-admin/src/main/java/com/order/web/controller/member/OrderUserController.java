@@ -79,11 +79,14 @@ public class OrderUserController extends BaseController
         Set<String> onlineUsernames = new HashSet<>();
         collectOnlineMemberIds(redisCache.keys(FRONT_USER_TOKEN_PREFIX + "*"), onlineUserIds);
         collectOnlineMemberNames(redisCache.keys(LEGACY_USER_TOKEN_PREFIX + "*"), onlineUsernames);
-        collectOnlineMemberNames(onlineUserIds, onlineUsernames);
+        String onlineStatus = request.getParameter("isOnline");
+        if (StringUtils.isNotEmpty(onlineStatus)) {
+            collectOnlineMemberNames(onlineUserIds, onlineUsernames);
+        }
 
         if (!applyOnlineUsernameFilter(
                 orderUser,
-                request.getParameter("isOnline"),
+                onlineStatus,
                 onlineUsernames)) {
             return getDataTable(new ArrayList<>());
         }
@@ -128,12 +131,10 @@ public class OrderUserController extends BaseController
 
     private void collectOnlineMemberNames(Set<Long> onlineUserIds, Set<String> onlineUsernames)
     {
-        for (Long userId : onlineUserIds) {
-            OrderUser user = orderUserService.selectOrderUserById(userId);
-            if (user != null && StringUtils.isNotEmpty(user.getUsername())) {
-                onlineUsernames.add(user.getUsername());
-            }
+        if (onlineUserIds.isEmpty()) {
+            return;
         }
+        onlineUsernames.addAll(orderUserService.selectUsernamesByIds(onlineUserIds));
     }
 
     private boolean applyOnlineUsernameFilter(
@@ -217,11 +218,52 @@ public class OrderUserController extends BaseController
     /**
      * 获取订单用户详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:orderuser:query')")
+    @PreAuthorize("@ss.hasAnyPermi('member:orderuser:query,member:orderuser:edit')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
         return success(orderUserService.selectOrderUserById(id));
+    }
+
+    /**
+     * 附属操作抽屉只需要会员概览；不得复用包含身份、合同、IP 等敏感字段的完整详情。
+     */
+    @PreAuthorize("@ss.hasAnyPermi('member:orderlink:list,member:bonus:list,member:extracommission:list')")
+    @GetMapping(value = "/operationSummary/{id}")
+    public AjaxResult getOperationSummary(@PathVariable("id") Long id)
+    {
+        OrderUser user = orderUserService.selectOrderUserById(id);
+        if (user == null) {
+            return AjaxResult.error("会员不存在");
+        }
+        BigDecimal balance = Objects.requireNonNullElse(user.getBalance(), BigDecimal.ZERO);
+        BigDecimal frozenBalance = Objects.requireNonNullElse(user.getFrozenBalance(), BigDecimal.ZERO);
+        Long orderCountPerDay = user.getMemberLevel() == null
+                ? null
+                : user.getMemberLevel().getOrderCountPerDay();
+        return success(new MemberOperationSummary(
+                user.getId(),
+                user.getUsername(),
+                user.getPhoneNumber(),
+                balance,
+                frozenBalance,
+                balance.add(frozenBalance),
+                user.getTaskProgress(),
+                orderCountPerDay,
+                user.getLastLoginTime()));
+    }
+
+    private record MemberOperationSummary(
+            Long id,
+            String username,
+            String phoneNumber,
+            BigDecimal balance,
+            BigDecimal frozenBalance,
+            BigDecimal totalBalance,
+            Long taskProgress,
+            Long orderCountPerDay,
+            java.util.Date lastLoginTime)
+    {
     }
 
     /**
@@ -276,9 +318,18 @@ public class OrderUserController extends BaseController
     @Transactional(rollbackFor = Exception.class)
     public AjaxResult edit(@RequestBody OrderUser orderUser)
     {
+        // Backward compatibility for an administration page cached before the
+        // dedicated endpoint existed. Route before any non-locking read so the
+        // service can lock the member before checking for pending orders.
+        if (orderUser != null && orderUser.getTaskProgress() != null) {
+            return applyTaskProgressAdjustment(orderUser);
+        }
         OrderUser existing = orderUserService.selectOrderUserById(orderUser.getId());
         if (existing == null) {
             return AjaxResult.error("会员不存在");
+        }
+        if (orderUser.getVersion() != null && !Objects.equals(orderUser.getVersion(), existing.getVersion())) {
+            return AjaxResult.error("会员资料已变化，请刷新后重试");
         }
         String validationError = validateMemberControls(orderUser);
         if (validationError != null) {
@@ -321,6 +372,34 @@ public class OrderUserController extends BaseController
         return toAjax(updated);
     }
 
+    /**
+     * 调整会员已完成单数。会员存在待提交订单或未完成连单时拒绝修改，
+     * 避免订单快照与新进度不一致。
+     */
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
+    @Log(title = "修改会员单数", businessType = BusinessType.UPDATE)
+    @PutMapping("/taskProgress")
+    public AjaxResult adjustTaskProgress(@RequestBody OrderUser orderUser)
+    {
+        return applyTaskProgressAdjustment(orderUser);
+    }
+
+    private AjaxResult applyTaskProgressAdjustment(OrderUser orderUser)
+    {
+        if (orderUser == null || orderUser.getId() == null) {
+            return AjaxResult.error("会员ID不能为空");
+        }
+        if (orderUser.getTaskProgress() == null || orderUser.getTaskProgress() < 0) {
+            return AjaxResult.error("单数必须为不小于 0 的整数");
+        }
+        int updated = orderUserService.adjustTaskProgress(
+                orderUser.getId(), orderUser.getTaskProgress(), orderUser.getVersion());
+        if (updated == 0) {
+            return AjaxResult.error("会员资料已变化，请刷新后重试");
+        }
+        return AjaxResult.success("修改成功");
+    }
+
     private String validateMemberControls(OrderUser orderUser)
     {
         if (orderUser.getWithdrawalPasswordFailLimit() != null && orderUser.getWithdrawalPasswordFailLimit() < 0) {
@@ -359,10 +438,20 @@ public class OrderUserController extends BaseController
     @PutMapping("/editPassword")
     public AjaxResult editPassword(@RequestBody OrderUser orderUser)
     {
+        if (orderUser.getId() == null) {
+            return error("会员ID不能为空");
+        }
+        String normalizedPassword = StringUtils.trim(orderUser.getPassword());
+        if (normalizedPassword == null || normalizedPassword.length() < 6) {
+            return error("登录密码长度不能少于6位");
+        }
         OrderUser orderUser1 = orderUserService.selectOrderUserById(orderUser.getId());
+        if (orderUser1 == null) {
+            return error("会员不存在");
+        }
         orderUser.setVersion(orderUser1.getVersion());
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        orderUser.setPassword(encoder.encode(orderUser.getPassword()));
+        orderUser.setPassword(encoder.encode(normalizedPassword));
         return toAjax(orderUserService.updateOrderUser(orderUser));
     }
 
@@ -470,15 +559,10 @@ public class OrderUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @GetMapping("/resetOrder/{id}")
     public AjaxResult resetOrder(@PathVariable("id") Long id){
-        OrderUser orderUser = orderUserService.selectOrderUserById(id);
-        GoodsMemberLevel memberLevel = orderUser.getMemberLevel();
-        if (!orderUser.getTaskProgress().equals(memberLevel.getOrderCountPerDay())){
-            return AjaxResult.error("需要完成全部任务");
+        int updated = orderUserService.resetTaskProgress(id);
+        if (updated == 0) {
+            return AjaxResult.error("重置失败，请刷新后重试");
         }
-        orderUser.setTaskProgress(0L);
-        orderUser.setTodayRest(StringUtils.isNull(orderUser.getTodayRest()) ? 0 : orderUser.getTodayRest()+1);
-        orderUser.setTotalRest(StringUtils.isNull(orderUser.getTotalRest()) ? 0 : orderUser.getTotalRest()+1);
-        orderUserService.updateOrderUser(orderUser);
         return AjaxResult.success("重置成功");
     }
 

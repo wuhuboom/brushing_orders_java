@@ -107,6 +107,14 @@ public class GoodsRechargeRecordController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody GoodsRechargeRecord goodsRechargeRecord)
     {
+        if (goodsRechargeRecord.getId() == null) {
+            return AjaxResult.error(400, "充值记录ID不能为空");
+        }
+        if (goodsRechargeRecord.getIsHidden() != null
+                && !"0".equals(goodsRechargeRecord.getIsHidden())
+                && !"1".equals(goodsRechargeRecord.getIsHidden())) {
+            return AjaxResult.error(400, "只能修改显示/隐藏状态");
+        }
         GoodsRechargeRecord update = new GoodsRechargeRecord();
         update.setId(goodsRechargeRecord.getId());
         update.setRemark(goodsRechargeRecord.getRemark());

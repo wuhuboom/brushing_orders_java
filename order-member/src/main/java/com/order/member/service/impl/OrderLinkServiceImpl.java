@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderLinkServiceImpl implements IOrderLinkService 
 {
     private static final Logger log = LoggerFactory.getLogger(OrderLinkServiceImpl.class);
+    private static final String PENDING_STATUS = "1";
 
     @Autowired
     private OrderLinkMapper orderLinkMapper;
@@ -67,6 +68,9 @@ public class OrderLinkServiceImpl implements IOrderLinkService
     {
         // defensive checks
         if (orderLink == null) return 0;
+        if (orderLink.getStatus() == null || orderLink.getStatus().isBlank()) {
+            orderLink.setStatus(PENDING_STATUS);
+        }
 
         orderLink.setCreateTime(DateUtils.getNowDate());
         orderLink.setUpdateTime(orderLink.getCreateTime());

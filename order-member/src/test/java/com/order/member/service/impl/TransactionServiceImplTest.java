@@ -6,6 +6,7 @@ import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.IGoodsRechargeRecordService;
 import com.order.member.service.IGoodsTransactionFlowService;
+import com.order.member.service.IOrderConfigService;
 import com.order.member.service.IOrderSequenceManagerService;
 import com.order.member.service.SiteMessageNotificationService;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,6 +42,8 @@ class TransactionServiceImplTest {
     private IOrderSequenceManagerService sequenceService;
     @Mock
     private SiteMessageNotificationService siteMessageNotificationService;
+    @Mock
+    private IOrderConfigService orderConfigService;
     @InjectMocks
     private TransactionServiceImpl service;
 
@@ -55,6 +59,8 @@ class TransactionServiceImplTest {
         when(flowService.insertGoodsTransactionFlow(
                 any(GoodsTransactionFlow.class))).thenReturn(1);
         when(userMapper.creditBalance(7L, new BigDecimal("22.01"))).thenReturn(1);
+        when(orderConfigService.getConfigValue("trade", "rechargeBonusTradeType"))
+                .thenReturn(Optional.of("jj"));
 
         var result = service.recordRecharge(
                 7L,
@@ -82,6 +88,11 @@ class TransactionServiceImplTest {
                 flowCaptor.getAllValues().stream()
                         .map(GoodsTransactionFlow::getTransactionCode)
                         .toList());
+        assertEquals(
+                java.util.List.of("ck", "jj"),
+                flowCaptor.getAllValues().stream()
+                        .map(GoodsTransactionFlow::getTransactionType)
+                        .toList());
         verify(userMapper).creditBalance(7L, new BigDecimal("22.01"));
         verify(siteMessageNotificationService).createForTransaction(
                 7L,
@@ -91,7 +102,7 @@ class TransactionServiceImplTest {
                 new BigDecimal("122.01"));
         verify(siteMessageNotificationService).createForTransaction(
                 7L,
-                "bonus",
+                "jj",
                 new BigDecimal("2.00"),
                 new BigDecimal("120.01"),
                 new BigDecimal("122.01"));
@@ -145,6 +156,26 @@ class TransactionServiceImplTest {
 
         verify(userMapper, never()).lockUserById(any());
         verify(sequenceService, never()).generateCode(anyString());
+    }
+
+    @Test
+    void rechargeGiftTransactionTypeUsesTradeSettingAndNormalizesLegacyValue() {
+        when(orderConfigService.getConfigValue("trade", "rechargeBonusTradeType"))
+                .thenReturn(Optional.of("bonus"), Optional.of("rwjl"));
+
+        assertEquals("jj", service.resolveRechargeGiftTransactionType());
+        assertEquals("rwjl", service.resolveRechargeGiftTransactionType());
+    }
+
+    @Test
+    void rechargeGiftTransactionTypeFallsBackForMissingInvalidOrUnavailableConfig() {
+        when(orderConfigService.getConfigValue("trade", "rechargeBonusTradeType"))
+                .thenReturn(Optional.empty(), Optional.of("../../invalid"))
+                .thenThrow(new IllegalStateException("configuration unavailable"));
+
+        assertEquals("zs", service.resolveRechargeGiftTransactionType());
+        assertEquals("zs", service.resolveRechargeGiftTransactionType());
+        assertEquals("zs", service.resolveRechargeGiftTransactionType());
     }
 
     private OrderUser user(BigDecimal balance) {

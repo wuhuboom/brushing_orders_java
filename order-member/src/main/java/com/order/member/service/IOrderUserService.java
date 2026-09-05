@@ -1,5 +1,6 @@
 package com.order.member.service;
 
+import java.util.Collection;
 import java.util.List;
 import com.order.member.domain.OrderUser;
 import com.order.member.service.RegistrationResult;
@@ -19,6 +20,15 @@ public interface IOrderUserService
      * @return 订单用户
      */
     public OrderUser selectOrderUserById(Long id);
+
+    /**
+     * Batch-resolves usernames for the supplied member IDs using a lightweight
+     * projection query.
+     *
+     * @param userIds member IDs
+     * @return matching non-empty usernames
+     */
+    List<String> selectUsernamesByIds(Collection<Long> userIds);
 
     /**
      * 查询订单用户列表
@@ -43,6 +53,27 @@ public interface IOrderUserService
      * @return 结果
      */
     public int updateOrderUser(OrderUser orderUser);
+
+    /**
+     * Atomically adjusts the completed task progress. The adjustment is
+     * rejected while the member has a pending order or an unfinished linked
+     * order group.
+     *
+     * @param userId member id
+     * @param taskProgress completed task count
+     * @param expectedVersion version observed by the administration client
+     * @return 1 when applied (including an unchanged value), 0 on version conflict
+     */
+    int adjustTaskProgress(Long userId, Long taskProgress, Long expectedVersion);
+
+    /**
+     * Resets a completed task group and increments the reset counters. The
+     * reset is rejected while an order remains active.
+     *
+     * @param userId member id
+     * @return number of updated rows
+     */
+    int resetTaskProgress(Long userId);
 
     /**
      * 批量删除订单用户

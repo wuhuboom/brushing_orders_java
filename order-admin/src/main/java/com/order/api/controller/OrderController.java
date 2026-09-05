@@ -41,6 +41,14 @@ public class OrderController {
         return AjaxResult.success("Success", orderService.submit(userId, id));
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "查询当前用户订单详情")
+    public AjaxResult order(
+            @RequestAttribute("userId") Long userId,
+            @PathVariable Long id) {
+        return AjaxResult.success("Success", orderService.order(userId, id));
+    }
+
     @GetMapping
     @Operation(summary = "查询当前用户订单")
     public TableDataInfo orders(

@@ -1,10 +1,10 @@
 package com.order.member.service.impl;
 
+import java.util.Arrays;
 import java.util.List;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import com.order.common.utils.DateUtils;
-import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.ITransactionService;
@@ -24,6 +24,8 @@ import com.order.member.service.IOrderBonusTableService;
 @Service
 public class OrderBonusTableServiceImpl implements IOrderBonusTableService 
 {
+    private static final String TASK_REWARD_TRANSACTION_TYPE = "rwjl";
+
     @Autowired
     private OrderBonusTableMapper orderBonusTableMapper;
 
@@ -100,6 +102,13 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
         if (orderBonusTable == null || orderBonusTable.getId() == null) {
             throw new IllegalArgumentException("Bonus id is required");
         }
+        OrderBonusTable existing = orderBonusTableMapper.selectOrderBonusTableById(orderBonusTable.getId());
+        if (existing == null) {
+            throw new IllegalArgumentException("彩金记录不存在");
+        }
+        if (!"1".equals(existing.getIsReceived())) {
+            throw new IllegalStateException("已领取的彩金不能修改");
+        }
         validateEditableBonus(orderBonusTable);
         orderBonusTable.setAmount(
                 orderBonusTable.getAmount().setScale(2, RoundingMode.HALF_UP));
@@ -107,7 +116,11 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
         orderBonusTable.setIsDistributed(null);
         orderBonusTable.setReceivedTime(null);
         orderBonusTable.setDistributionTime(null);
-        return orderBonusTableMapper.updateOrderBonusTable(orderBonusTable);
+        int updated = orderBonusTableMapper.updateOrderBonusTable(orderBonusTable);
+        if (updated != 1) {
+            throw new IllegalStateException("彩金状态已变化，请刷新后重试");
+        }
+        return updated;
     }
 
     /**
@@ -117,9 +130,33 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deleteOrderBonusTableByIds(Long[] ids)
     {
-        return orderBonusTableMapper.deleteOrderBonusTableByIds(ids);
+        if (ids == null || ids.length == 0) {
+            throw new IllegalArgumentException("请选择要删除的彩金记录");
+        }
+        Long[] uniqueIds = Arrays.stream(ids)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toArray(Long[]::new);
+        if (uniqueIds.length == 0) {
+            throw new IllegalArgumentException("请选择要删除的彩金记录");
+        }
+        for (Long id : uniqueIds) {
+            OrderBonusTable existing = orderBonusTableMapper.selectOrderBonusTableById(id);
+            if (existing == null) {
+                throw new IllegalArgumentException("彩金记录不存在");
+            }
+            if (!"1".equals(existing.getIsReceived())) {
+                throw new IllegalStateException("已领取的彩金不能删除");
+            }
+        }
+        int deleted = orderBonusTableMapper.deleteOrderBonusTableByIds(uniqueIds);
+        if (deleted != uniqueIds.length) {
+            throw new IllegalStateException("彩金状态已变化，请刷新后重试");
+        }
+        return deleted;
     }
 
     /**
@@ -190,11 +227,6 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
         if ("0".equals(bonus.getIsDistributed())) {
             return 1;
         }
-        if ("2".equals(bonus.getDistributionType())) {
-            validateManualDistributionTiming(
-                    bonus,
-                    orderUserMapper.selectOrderTaskUserById(bonus.getUserId()));
-        }
         BigDecimal amount = bonus.getAmount().setScale(2, RoundingMode.HALF_UP);
         if (orderBonusTableMapper.distributeBonus(id) != 1
                 || orderUserMapper.creditBalance(bonus.getUserId(), amount) != 1) {
@@ -202,29 +234,11 @@ public class OrderBonusTableServiceImpl implements IOrderBonusTableService
         }
         transactionService.recordFlow(
                 bonus.getUserId(),
-                "bonus",
+                TASK_REWARD_TRANSACTION_TYPE,
                 amount,
                 user.getBalance(),
                 "manual-bonus:" + id);
         return 1;
-    }
-
-    private void validateManualDistributionTiming(
-            OrderBonusTable bonus, OrderUser taskUser) {
-        if (!"2".equals(bonus.getDistributionType())) {
-            return;
-        }
-        GoodsMemberLevel level = taskUser == null ? null : taskUser.getMemberLevel();
-        if (level == null || level.getOrderCountPerDay() == null) {
-            throw new IllegalStateException("Unable to verify the user's task progress");
-        }
-        long progress = taskUser.getTaskProgress() == null
-                ? 0L
-                : taskUser.getTaskProgress();
-        if (progress < level.getOrderCountPerDay()) {
-            throw new IllegalStateException(
-                    "The current task group must be completed before the bonus can be distributed");
-        }
     }
 
     private void validateEditableBonus(OrderBonusTable bonus) {

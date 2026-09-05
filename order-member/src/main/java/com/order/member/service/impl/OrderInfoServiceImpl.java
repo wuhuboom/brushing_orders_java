@@ -131,7 +131,7 @@ public class OrderInfoServiceImpl implements IOrderInfoService
             throw new ServiceException("订单状态已变更，请刷新后重试");
         }
 
-        long progressDelta = "0".equals(order.getType()) ? 1L : 0L;
+        long progressDelta = legacyPendingProgressDelta(order, user);
         if (orderUserMapper.releaseCancelledOrderFunds(
                 userId, order.getAmount(), progressDelta) != 1) {
             throw new ServiceException("订单冻结金额不一致，取消失败");
@@ -144,6 +144,24 @@ public class OrderInfoServiceImpl implements IOrderInfoService
                 user.getBalance(),
                 "order-cancel:" + order.getOrderNumber());
         return 1;
+    }
+
+    @Override
+    public boolean hasFrozenLinkedOrders(Long userId)
+    {
+        return userId != null && orderInfoMapper.hasFrozenLinkedOrders(userId);
+    }
+
+    private long legacyPendingProgressDelta(OrderInfo order, OrderUser user) {
+        if (!"0".equals(order.getType())
+                || order.getOrderCount() == null
+                || user.getTaskProgress() == null) {
+            return 0L;
+        }
+        // Legacy normal-order creation advanced progress before submission.
+        // Equality identifies that old pending shape without reducing a newer,
+        // legitimately higher completed progress value.
+        return order.getOrderCount().equals(user.getTaskProgress()) ? 1L : 0L;
     }
 
     private void releaseExtraCommission(Long userId, OrderInfo order) {

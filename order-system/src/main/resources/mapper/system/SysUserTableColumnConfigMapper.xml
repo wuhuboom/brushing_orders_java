@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.system.mapper.SysUserTableColumnConfigMapper">
+
+    <resultMap type="SysUserTableColumnConfig" id="SysUserTableColumnConfigResult">
+        <id property="configId" column="config_id" />
+        <result property="userId" column="user_id" />
+        <result property="tableKey" column="table_key" />
+        <result property="configContent" column="config_content" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <select id="selectByUserIdAndTableKey" resultMap="SysUserTableColumnConfigResult">
+        select config_id, user_id, table_key, config_content,
+               create_by, create_time, update_by, update_time
+        from sys_user_table_column_config
+        where user_id = #{userId}
+          and table_key = #{tableKey}
+        limit 1
+    </select>
+
+    <insert id="upsert" parameterType="SysUserTableColumnConfig">
+        insert into sys_user_table_column_config (
+            user_id, table_key, config_content,
+            create_by, create_time, update_by, update_time
+        ) values (
+            #{userId}, #{tableKey}, #{configContent},
+            #{createBy}, current_timestamp(3), #{updateBy}, current_timestamp(3)
+        )
+        on duplicate key update
+            config_content = values(config_content),
+            update_by = values(update_by),
+            update_time = current_timestamp(3)
+    </insert>
+
+    <delete id="deleteByUserIdAndTableKey">
+        delete from sys_user_table_column_config
+        where user_id = #{userId}
+          and table_key = #{tableKey}
+    </delete>
+
+</mapper>

@@ -75,6 +75,7 @@ public class SysTimeZoneController extends BaseController
     }
 
     //选择时区
+    @PreAuthorize("@ss.hasPermi('system:zone:active')")
     @PostMapping("/active/{id}")
     public AjaxResult setActive(@PathVariable Long id) {
 

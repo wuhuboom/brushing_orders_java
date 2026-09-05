@@ -82,6 +82,8 @@ class ConfigControllerContractTest {
                 List.of("00:00", "23:59"),
                 List.of("00:00", "23:59"),
                 300,
+                1500,
+                2500,
                 2,
                 true));
 
@@ -89,6 +91,8 @@ class ConfigControllerContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.registerBonusAmount").value(5))
                 .andExpect(jsonPath("$.data.orderExpireSeconds").value(300))
+                .andExpect(jsonPath("$.data.startTaskDelayMs").value(1500))
+                .andExpect(jsonPath("$.data.submitTaskDelayMs").value(2500))
                 .andExpect(jsonPath("$.data.matchDelaySeconds").doesNotExist())
                 .andExpect(jsonPath("$.data.passwordFailureThreshold").doesNotExist())
                 .andExpect(jsonPath("$.data.translations").doesNotExist())

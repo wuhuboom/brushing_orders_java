@@ -24,6 +24,7 @@ import org.mockito.InOrder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -55,6 +56,29 @@ class OrderApplicationServiceTest {
     @Mock ITransactionService transactionService;
 
     @Test
+    void returnsOwnedPublicOrderDetail() {
+        OrderInfo owned = order(20L, "1");
+        when(orderMapper.selectPublicOrderById(20L, 7L)).thenReturn(owned);
+
+        var result = service().order(7L, 20L);
+
+        assertEquals(20L, result.id());
+        assertEquals("O-20", result.orderNumber());
+        verify(orderMapper).selectPublicOrderById(20L, 7L);
+    }
+
+    @Test
+    void missingOrUnownedOrderDetailUsesNotFoundResponse() {
+        when(orderMapper.selectPublicOrderById(99L, 7L)).thenReturn(null);
+
+        OrderApiException error = assertThrows(
+                OrderApiException.class, () -> service().order(7L, 99L));
+
+        assertEquals(HttpStatus.NOT_FOUND, error.getHttpStatus());
+        assertEquals(INVALID_ORDER, error.getBusinessCode());
+    }
+
+    @Test
     void createsNormalOrderWithSnapshotsAndTwoDecimalMoney() {
         OrderUser user = user(new BigDecimal("100.00"), 1L);
         Goods goods = goods(31L, new BigDecimal("50.005"));
@@ -66,7 +90,7 @@ class OrderApplicationServiceTest {
             value.setId(100L);
             return 1;
         }).when(orderMapper).insertOrderInfo(any(OrderInfo.class));
-        when(userMapper.reserveOrderFunds(7L, new BigDecimal("50.01"), 1L, false)).thenReturn(1);
+        when(userMapper.reserveOrderFunds(7L, new BigDecimal("50.01"), 0L, false)).thenReturn(1);
 
         var result = service().create(7L);
 
@@ -75,6 +99,8 @@ class OrderApplicationServiceTest {
         assertEquals(new BigDecimal("0.51"), result.order().rebate());
         assertEquals("Product snapshot", result.order().productTitle());
         assertEquals("/snapshot.jpg", result.order().productImage());
+        verify(userMapper).reserveOrderFunds(
+                7L, new BigDecimal("50.01"), 0L, false);
         verify(transactionService).recordFlow(
                 7L, "rw", new BigDecimal("-50.01"), new BigDecimal("100.00"),
                 "order-reserve:O-100");
@@ -140,7 +166,7 @@ class OrderApplicationServiceTest {
             return 1;
         }).when(orderMapper).insertOrderInfo(any(OrderInfo.class));
         when(userMapper.reserveOrderFunds(
-                7L, new BigDecimal("50.00"), 1L, false)).thenReturn(1);
+                7L, new BigDecimal("50.00"), 0L, false)).thenReturn(1);
         when(requestMapper.insertOrderApiRequest(any(OrderApiRequest.class)))
                 .thenReturn(1);
 
@@ -246,7 +272,7 @@ class OrderApplicationServiceTest {
                 77L, 7L, 2L, new BigDecimal("50.00"));
         verify(orderMapper).insertOrderInfo(any());
         verify(userMapper).reserveOrderFunds(
-                7L, new BigDecimal("50.00"), 1L, false);
+                7L, new BigDecimal("50.00"), 0L, false);
         verify(extraCommissionMapper, never()).completeReserved(any(), any(), any(), any());
         verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
     }
@@ -292,7 +318,7 @@ class OrderApplicationServiceTest {
         var result = service().submit(7L, 20L);
 
         assertEquals("2", result.status());
-        verify(userMapper, never()).settleOrderFunds(any(), any(), any());
+        verify(userMapper, never()).settleOrderFunds(any(), any(), any(), any());
         verify(userMapper, never()).settleLinkedOrderGroup(any(), any(), any());
         verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
     }
@@ -397,7 +423,7 @@ class OrderApplicationServiceTest {
 
         assertEquals(INVALID_ORDER, error.getBusinessCode());
         verify(orderMapper, never()).transitionStatus(any(), any(), any(), any());
-        verify(userMapper, never()).settleOrderFunds(any(), any(), any());
+        verify(userMapper, never()).settleOrderFunds(any(), any(), any(), any());
     }
 
     @Test
@@ -408,7 +434,7 @@ class OrderApplicationServiceTest {
         var result = service().submit(7L, 20L);
 
         assertTrue(result.alreadyCompleted());
-        verify(userMapper, never()).settleOrderFunds(any(), any(), any());
+        verify(userMapper, never()).settleOrderFunds(any(), any(), any(), any());
         verify(extraCommissionMapper, never()).selectReservedForUpdate(any(), any(), any(), any());
         verify(userMapper, never()).creditBalance(any(), any());
     }
@@ -423,10 +449,12 @@ class OrderApplicationServiceTest {
         when(userMapper.selectOrderBalanceById(7L)).thenReturn(balance);
         when(orderMapper.transitionStatus(20L, 7L, "1", "0")).thenReturn(1);
         when(userMapper.settleOrderFunds(
-                7L, new BigDecimal("30.00"), new BigDecimal("0.30"))).thenReturn(1);
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"), 2L)).thenReturn(1);
 
         service().submit(7L, 20L);
 
+        verify(userMapper).settleOrderFunds(
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"), 2L);
         verify(transactionService).recordFlow(
                 7L, "bjfh", new BigDecimal("30.00"), new BigDecimal("50.00"),
                 "order-principal:O-20");
@@ -451,7 +479,7 @@ class OrderApplicationServiceTest {
                 77L, 7L, 2L, new BigDecimal("30.00"))).thenReturn(setting);
         when(orderMapper.transitionStatus(20L, 7L, "1", "0")).thenReturn(1);
         when(userMapper.settleOrderFunds(
-                7L, new BigDecimal("30.00"), new BigDecimal("0.30"))).thenReturn(1);
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"), 2L)).thenReturn(1);
         when(extraCommissionMapper.completeReserved(
                 77L, 7L, 2L, new BigDecimal("30.00"))).thenReturn(1);
         when(userMapper.creditBalance(7L, new BigDecimal("0.50"))).thenReturn(1);
@@ -478,7 +506,7 @@ class OrderApplicationServiceTest {
         when(userMapper.selectOrderBalanceById(7L)).thenReturn(before);
         when(orderMapper.transitionStatus(20L, 7L, "1", "0")).thenReturn(1);
         when(userMapper.settleOrderFunds(
-                7L, new BigDecimal("30.00"), new BigDecimal("0.30"))).thenReturn(1);
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"), 40L)).thenReturn(1);
 
         service().submit(7L, 20L);
 
@@ -502,7 +530,7 @@ class OrderApplicationServiceTest {
         assertThrows(OrderApiException.class, () -> service().submit(7L, 20L));
 
         verify(orderMapper, never()).transitionStatus(any(), any(), any(), any());
-        verify(userMapper, never()).settleOrderFunds(any(), any(), any());
+        verify(userMapper, never()).settleOrderFunds(any(), any(), any(), any());
     }
 
     @Test
@@ -522,7 +550,7 @@ class OrderApplicationServiceTest {
         when(userMapper.selectOrderBalanceById(8L)).thenReturn(parent);
         when(orderMapper.transitionStatus(20L, 7L, "1", "0")).thenReturn(1);
         when(userMapper.settleOrderFunds(
-                7L, new BigDecimal("30.00"), new BigDecimal("0.30")))
+                7L, new BigDecimal("30.00"), new BigDecimal("0.30"), 2L))
                 .thenReturn(1);
         when(userMapper.creditBalance(8L, new BigDecimal("0.10"))).thenReturn(1);
 
@@ -609,6 +637,7 @@ class OrderApplicationServiceTest {
         order.setUserId(7L);
         order.setOrderNumber("O-" + id);
         order.setStatus(status);
+        order.setOrderCount(2L);
         order.setAmount(new BigDecimal("30.00"));
         order.setRebate(new BigDecimal("0.30"));
         order.setUpperRebate(BigDecimal.ZERO);

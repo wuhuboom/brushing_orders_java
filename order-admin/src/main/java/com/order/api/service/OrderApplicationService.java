@@ -215,7 +215,10 @@ public class OrderApplicationService {
                     "The order status was updated concurrently");
         }
         if (userMapper.settleOrderFunds(
-                userId, order.getAmount(), order.getRebate()) != 1) {
+                userId,
+                order.getAmount(),
+                order.getRebate(),
+                order.getOrderCount()) != 1) {
             throw OrderApiException.conflict(
                     INSUFFICIENT_BALANCE,
                     "The balance is insufficient or frozen funds are inconsistent");
@@ -262,6 +265,19 @@ public class OrderApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public OrderResponse order(Long userId, Long orderId) {
+        requireUserId(userId);
+        if (orderId == null || orderId <= 0) {
+            throw OrderApiException.notFound(INVALID_ORDER, "Invalid orders");
+        }
+        OrderInfo order = orderMapper.selectPublicOrderById(orderId, userId);
+        if (order == null) {
+            throw OrderApiException.notFound(INVALID_ORDER, "Invalid orders");
+        }
+        return OrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
     public TableDataInfo orders(Long userId, String status, int pageNum, int pageSize) {
         requireUserId(userId);
         String normalizedStatus = normalizeStatus(status);
@@ -305,7 +321,7 @@ public class OrderApplicationService {
                         percentage(user.getMemberLevel().getMinCommissionRate()),
                         BigDecimal.ONE,
                         null),
-                1L,
+                0L,
                 false);
     }
 

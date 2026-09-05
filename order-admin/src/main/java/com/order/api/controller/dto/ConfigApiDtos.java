@@ -102,6 +102,8 @@ public final class ConfigApiDtos {
             Object tradeTimeRange,
             Object withdrawalTimeRange,
             Object orderExpireSeconds,
+            Object startTaskDelayMs,
+            Object submitTaskDelayMs,
             Object requiredTaskGroupsForWithdrawal,
             Object allowModifyWithdrawalAddress) {
     }

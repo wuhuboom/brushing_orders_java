@@ -40,7 +40,7 @@ class MemberSensitivePermissionContractTest
     {
         assertPermission(OrderLinkController.class, "list", "@ss.hasPermi('member:orderlink:list')");
         assertPermission(OrderLinkController.class, "export", "@ss.hasPermi('member:orderlink:export')");
-        assertPermission(OrderLinkController.class, "getInfo", "@ss.hasPermi('member:orderlink:query')");
+        assertPermission(OrderLinkController.class, "getInfo", "@ss.hasAnyPermi('member:orderlink:query,member:orderlink:edit')");
         assertPermission(OrderLinkController.class, "add", "@ss.hasPermi('member:orderlink:add')");
         assertPermission(OrderLinkController.class, "edit", "@ss.hasPermi('member:orderlink:edit')");
         assertPermission(OrderLinkController.class, "remove", "@ss.hasPermi('member:orderlink:remove')");
@@ -51,7 +51,7 @@ class MemberSensitivePermissionContractTest
     {
         assertPermission(OrderBonusTableController.class, "list", "@ss.hasPermi('member:bonus:list')");
         assertPermission(OrderBonusTableController.class, "export", "@ss.hasPermi('member:bonus:export')");
-        assertPermission(OrderBonusTableController.class, "getInfo", "@ss.hasPermi('member:bonus:query')");
+        assertPermission(OrderBonusTableController.class, "getInfo", "@ss.hasAnyPermi('member:bonus:query,member:bonus:add,member:bonus:edit')");
         assertPermission(OrderBonusTableController.class, "add", "@ss.hasPermi('member:bonus:add')");
         assertPermission(OrderBonusTableController.class, "edit", "@ss.hasPermi('member:bonus:edit')");
         assertPermission(OrderBonusTableController.class, "remove", "@ss.hasPermi('member:bonus:remove')");
@@ -64,7 +64,7 @@ class MemberSensitivePermissionContractTest
     {
         assertPermission(GoodsExtraCommissionSettingController.class, "list", "@ss.hasPermi('member:extracommission:list')");
         assertPermission(GoodsExtraCommissionSettingController.class, "export", "@ss.hasPermi('member:extracommission:export')");
-        assertPermission(GoodsExtraCommissionSettingController.class, "getInfo", "@ss.hasPermi('member:extracommission:query')");
+        assertPermission(GoodsExtraCommissionSettingController.class, "getInfo", "@ss.hasAnyPermi('member:extracommission:query,member:extracommission:edit')");
         assertPermission(GoodsExtraCommissionSettingController.class, "add", "@ss.hasPermi('member:extracommission:add')");
         assertPermission(GoodsExtraCommissionSettingController.class, "edit", "@ss.hasPermi('member:extracommission:edit')");
         assertPermission(GoodsExtraCommissionSettingController.class, "remove", "@ss.hasPermi('member:extracommission:remove')");

@@ -23,7 +23,12 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -84,11 +89,18 @@ class UserApiServiceTest {
         LoginUserDto request = login("unknown_1", "Password123");
         when(userMapper.selectAuthUserByName("unknown_1")).thenReturn(null);
         when(passwordEncoder.matches("Password123", "dummy-hash")).thenReturn(false);
+        when(geoIpService.queryByIp("127.0.0.1")).thenReturn("Local");
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(auditExecutor).execute(any(Runnable.class));
 
         UserApiException exception =
                 assertThrows(UserApiException.class, () -> service.login(request, servletRequest));
 
         assertEquals(601, exception.getCode());
+        verify(loginLogService).insertLoginAttempt(
+                isNull(), eq("127.0.0.1"), eq("Local"), eq("0"), anyString());
     }
 
     @Test

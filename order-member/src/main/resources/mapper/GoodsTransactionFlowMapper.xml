@@ -20,8 +20,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="username" column="username" />
     </resultMap>
 
+    <!--
+        Older administrator-issued bonuses were stored with the non-canonical type
+        "bonus". Manual-bonus records represent task rewards; other legacy bonus
+        records retain their original bonus meaning.
+    -->
+    <sql id="normalizedTransactionType">
+        case
+            when gtf.transaction_type = 'bonus'
+                and gtf.remark like 'manual-bonus:%'
+            then 'rwjl'
+            when gtf.transaction_type = 'bonus'
+            then 'jj'
+            else gtf.transaction_type
+        end
+    </sql>
+
     <sql id="selectGoodsTransactionFlowVo">
-        select gtf.id, gtf.serial_code, gtf.user_id, gtf.transaction_type, gtf.balance_before, gtf.transaction_amount, gtf.balance_after, gtf.is_hidden, gtf.transaction_code, gtf.created_time, gtf.remark,
+        select gtf.id, gtf.serial_code, gtf.user_id,
+               <include refid="normalizedTransactionType"/> as transaction_type,
+               gtf.balance_before, gtf.transaction_amount, gtf.balance_after, gtf.is_hidden, gtf.transaction_code, gtf.created_time, gtf.remark,
                ou.username as username
         from goods_transaction_flow gtf
         left join order_user ou on gtf.user_id = ou.id
@@ -33,7 +51,34 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="serialCode != null  and serialCode != ''"> and gtf.serial_code = #{serialCode}</if>
             <if test="userId != null "> and gtf.user_id = #{userId}</if>
             <if test="username != null and username != ''"> and ou.username = #{username}</if>
-            <if test="transactionType != null and transactionType != ''"> and gtf.transaction_type = #{transactionType}</if>
+            <if test="transactionType != null and transactionType != ''">
+                <choose>
+                    <when test="transactionType == 'rwjl'">
+                        and (
+                            gtf.transaction_type = 'rwjl'
+                            or (
+                                gtf.transaction_type = 'bonus'
+                                and gtf.remark like 'manual-bonus:%'
+                            )
+                        )
+                    </when>
+                    <when test="transactionType == 'jj'">
+                        and (
+                            gtf.transaction_type = 'jj'
+                            or (
+                                gtf.transaction_type = 'bonus'
+                                and (
+                                    gtf.remark is null
+                                    or gtf.remark not like 'manual-bonus:%'
+                                )
+                            )
+                        )
+                    </when>
+                    <otherwise>
+                        and gtf.transaction_type = #{transactionType}
+                    </otherwise>
+                </choose>
+            </if>
             <if test="isHidden != null and isHidden != ''"> and gtf.is_hidden = #{isHidden}</if>
             <if test="transactionCode != null and transactionCode != ''"> and gtf.transaction_code = #{transactionCode}</if>
             <if test="params.amountMin != null and params.amountMin != ''">
@@ -49,7 +94,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and gtf.created_time &lt;= #{params.endTime}
             </if>
         </where>
-        order by gtf.created_time desc
+        order by gtf.created_time desc, gtf.id desc
     </select>
     
     <select id="selectGoodsTransactionFlowById" parameterType="Long" resultMap="GoodsTransactionFlowResult">
@@ -114,11 +159,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <select id="selectPublicByUserId" parameterType="Long" resultMap="GoodsTransactionFlowResult">
-        select id, serial_code, user_id, transaction_type, balance_before,
-               transaction_amount, balance_after, is_hidden, transaction_code,
-               created_time, remark
-        from goods_transaction_flow
-        where user_id = #{userId} and COALESCE(is_hidden, '1') != '0'
-        order by created_time desc, id desc
+        select gtf.id, gtf.serial_code, gtf.user_id,
+               <include refid="normalizedTransactionType"/> as transaction_type,
+               gtf.balance_before, gtf.transaction_amount, gtf.balance_after,
+               gtf.is_hidden, gtf.transaction_code, gtf.created_time, gtf.remark
+        from goods_transaction_flow gtf
+        where gtf.user_id = #{userId} and COALESCE(gtf.is_hidden, '1') != '0'
+        order by gtf.created_time desc, gtf.id desc
     </select>
 </mapper>

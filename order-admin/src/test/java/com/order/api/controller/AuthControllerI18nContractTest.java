@@ -5,6 +5,7 @@ import com.order.api.service.UserApiService;
 import com.order.api.service.WithdrawalAccountAccessService;
 import com.order.common.i18n.SupportedLocale;
 import com.order.framework.config.ServerConfig;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,8 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -88,6 +91,19 @@ class AuthControllerI18nContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(601))
                 .andExpect(jsonPath("$.msg").value("Invalid username or password"));
+    }
+
+    @Test
+    void loginAcceptsUnicodeUsernameCreatedByAdministration() throws Exception {
+        mockMvc.perform(post("/api/user/login")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"厌赐\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(userApiService).login(
+                argThat(request -> "厌赐".equals(request.getUsername())),
+                any(HttpServletRequest.class));
     }
 
     @Test

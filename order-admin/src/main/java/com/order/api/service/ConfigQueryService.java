@@ -225,6 +225,8 @@ public class ConfigQueryService {
                 values.get("tradeTimeRange"),
                 values.get("withdrawalTimeRange"),
                 values.get("orderExpireSeconds"),
+                values.get("startTaskDelayMs"),
+                values.get("submitTaskDelayMs"),
                 values.get("requiredTaskGroupsForWithdrawal"),
                 values.get("allowModifyWithdrawalAddress"));
     }

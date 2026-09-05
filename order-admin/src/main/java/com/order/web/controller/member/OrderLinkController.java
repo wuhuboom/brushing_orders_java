@@ -59,7 +59,7 @@ public class OrderLinkController extends BaseController
     /**
      * 获取连单详细信息
      */
-    @PreAuthorize("@ss.hasPermi('member:orderlink:query')")
+    @PreAuthorize("@ss.hasAnyPermi('member:orderlink:query,member:orderlink:edit')")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {

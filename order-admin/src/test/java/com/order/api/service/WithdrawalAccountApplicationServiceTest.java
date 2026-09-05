@@ -93,7 +93,7 @@ class WithdrawalAccountApplicationServiceTest {
 
         var response = service().create(9L, new WithdrawalAccountRequest(
                 "3", true, null, null, null, null,
-                null, null, null, "USDT", "0x123456",
+                null, null, null, null, "0x123456",
                 "/profile/upload/wallet-proof.png"));
 
         assertEquals("/profile/upload/wallet-proof.png", saved.get().getAttachment());
@@ -321,7 +321,7 @@ class WithdrawalAccountApplicationServiceTest {
         account.setUserId(9L);
         account.setIsDefault("0");
         when(configService.getConfigValue("trade", "allowModifyWithdrawalAddress"))
-                .thenReturn(Optional.of("1"));
+                .thenReturn(Optional.of("0"));
         when(userMapper.lockUserById(9L)).thenReturn(9L);
         when(accountMapper.selectActiveByIdAndUserId(3L, 9L)).thenReturn(account);
         when(withdrawalMapper.existsPendingByAccountId(3L)).thenReturn(0);
@@ -335,7 +335,17 @@ class WithdrawalAccountApplicationServiceTest {
     @Test
     void configurationCanDisableExistingAccountChanges() {
         when(configService.getConfigValue("trade", "allowModifyWithdrawalAddress"))
-                .thenReturn(Optional.of("0"));
+                .thenReturn(Optional.of("1"));
+
+        assertThrows(AccountApiException.class, () -> service().delete(9L, 3L));
+
+        verify(userMapper, never()).lockUserById(9L);
+    }
+
+    @Test
+    void missingConfigurationDisablesExistingAccountChanges() {
+        when(configService.getConfigValue("trade", "allowModifyWithdrawalAddress"))
+                .thenReturn(Optional.empty());
 
         assertThrows(AccountApiException.class, () -> service().delete(9L, 3L));
 
