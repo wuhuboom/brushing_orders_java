@@ -18,7 +18,7 @@
         row-key="id"
         :row-selection="rowSelection"
         :pagination="{ current: queryParams.pageNum, pageSize: queryParams.pageSize, total }"
-        :scroll="{ x: 1692, y: 'calc(100vh - 440px)' }"
+        :scroll="{ x: 1732, y: 'calc(100vh - 440px)' }"
         @page-change="handleAntPageChange"
         @refresh="refreshAll()"
         @change="handleTableChange"
@@ -210,16 +210,28 @@
             {{ record.updateBy || "-" }}
           </template>
           <template v-else-if="column.key === 'operation'">
-            <a-button
-              type="link"
-              class="cell-action"
-              :disabled="!isEditableStatus(resolvedStatus(record)) || deleteSaving || editSaving"
-              :loading="editingRecordId === record.id"
-              @click="handleUpdate(record)"
-              v-hasPermi="['member:orderlink:edit']"
-            >
-              修改
-            </a-button>
+            <a-space :size="12">
+              <a-button
+                type="link"
+                class="cell-action"
+                :disabled="!isEditableStatus(resolvedStatus(record)) || deleteSaving || editSaving"
+                :loading="editingRecordId === record.id"
+                @click="handleUpdate(record)"
+                v-hasPermi="['member:orderlink:edit']"
+              >
+                修改
+              </a-button>
+              <a-button
+                type="link"
+                danger
+                class="cell-action"
+                :disabled="!isEditableStatus(resolvedStatus(record)) || deleteSaving || editSaving"
+                @click="handleDelete(record)"
+                v-hasPermi="['member:orderlink:remove']"
+              >
+                删除
+              </a-button>
+            </a-space>
           </template>
         </template>
       </ant-pro-table>
@@ -703,7 +715,7 @@ const orderlinkColumns = [
   { title: "创建时间", dataIndex: "createTime", key: "createTime", width: 170, sorter: true },
   { title: "最后修改人", dataIndex: "updateBy", key: "updateBy", width: 120 },
   { title: "最后修改时间", dataIndex: "updateTime", key: "updateTime", width: 170, sorter: true },
-  { title: "操作", key: "operation", width: 80, fixed: "right" },
+  { title: "操作", key: "operation", width: 120, fixed: "right" },
 ];
 
 const rowSelection = computed(() => ({
