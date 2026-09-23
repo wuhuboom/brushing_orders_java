@@ -84,12 +84,6 @@ public class UserApiService {
         String ipAddress = IpUtils.getIpAddr(servletRequest);
         Map<String, String> safeHeaders = safeHeaders(servletRequest);
 
-        if (rateLimitService.isLoginBlocked(username, ipAddress)) {
-            auditLogin(null, ipAddress, false, safeHeaders);
-            log.warn("event=front_login_blocked reason=rate_limit");
-            throw new UserApiException(622, "The account is temporarily locked, please try again later");
-        }
-
         OrderUser authUser = userMapper.selectAuthUserByName(username);
         boolean passwordMatches;
         if (authUser == null) {
@@ -99,20 +93,14 @@ public class UserApiService {
         }
 
         if (authUser == null || !passwordMatches || "1".equals(authUser.getAccountStatus())) {
-            boolean blocked = rateLimitService.recordLoginFailure(username, ipAddress);
             auditLogin(authUser == null ? null : authUser.getId(), ipAddress, false, safeHeaders);
             log.warn("event=front_login_failed reason=credentials_or_account");
-            if (blocked) {
-                throw new UserApiException(
-                        622, "The account is temporarily locked, please try again later");
-            }
             throw new UserApiException(601, "The account or password is incorrect");
         }
 
         UserProfileResponse profile = loadProfile(
                 authUser.getId(),
                 SupportedLocale.resolve(null, servletRequest.getHeader("Accept-Language")));
-        rateLimitService.clearLoginAccountFailures(username);
         String token = frontJwtUtil.generateToken(authUser);
         auditLogin(authUser.getId(), ipAddress, true, safeHeaders);
         log.info("event=front_login_succeeded userId={}", authUser.getId());

@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -104,14 +105,32 @@ class UserApiServiceTest {
     }
 
     @Test
-    void blockedIdentifierUsesSameResultWithoutAccountLookup() {
-        LoginUserDto request = login("unknown_1", "Password123");
-        when(rateLimitService.isLoginBlocked("unknown_1", "127.0.0.1")).thenReturn(true);
+    void repeatedWrongPasswordsAllowImmediateSuccessfulLogin() {
+        OrderUser user = authUser();
+        when(userMapper.selectAuthUserByName("member_1")).thenReturn(user);
+        when(passwordEncoder.matches("wrong", "stored-hash")).thenReturn(false);
+        for (int i = 0; i < 25; i++) {
+            UserApiException error = assertThrows(UserApiException.class,
+                    () -> service.login(login("member_1", "wrong"), servletRequest));
+            assertEquals(601, error.getCode());
+        }
+        when(passwordEncoder.matches("correct", "stored-hash")).thenReturn(true);
+        when(userMapper.selectUserProfileById(1L)).thenReturn(user);
+        when(frontJwtUtil.generateToken(user)).thenReturn("new-token");
+        assertEquals("new-token", service.login(login("member_1", "correct"), servletRequest).token());
+        verifyNoInteractions(rateLimitService);
+    }
 
-        UserApiException exception =
-                assertThrows(UserApiException.class, () -> service.login(request, servletRequest));
-
-        assertEquals(622, exception.getCode());
+    @Test
+    void repeatedUnknownAccountsDoNotBlockTheIp() {
+        for (int i = 0; i < 25; i++) {
+            final String username = "unknown_" + i;
+            UserApiException error = assertThrows(UserApiException.class,
+                    () -> service.login(login(username, "wrong"), servletRequest));
+            assertEquals(601, error.getCode());
+        }
+        verifyNoInteractions(rateLimitService);
+        verifyNoInteractions(frontJwtUtil);
     }
 
     private LoginUserDto login(String username, String password) {

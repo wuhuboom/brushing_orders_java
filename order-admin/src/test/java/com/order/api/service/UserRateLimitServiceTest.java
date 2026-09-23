@@ -27,16 +27,10 @@ class UserRateLimitServiceTest {
     }
 
     @Test
-    void fifthAccountFailureLocksTheIdentifier() {
+    void passwordChangeFailuresStillRespectTheirLimit() {
         when(redisCache.incrementWithExpire(anyString(), org.mockito.ArgumentMatchers.eq(10L),
-                org.mockito.ArgumentMatchers.eq(TimeUnit.MINUTES))).thenReturn(5L, 1L);
-        assertTrue(service.recordLoginFailure("member_1", "127.0.0.1"));
-    }
-
-    @Test
-    void failuresBelowBothThresholdsRemainAllowed() {
-        when(redisCache.incrementWithExpire(anyString(), org.mockito.ArgumentMatchers.eq(10L),
-                org.mockito.ArgumentMatchers.eq(TimeUnit.MINUTES))).thenReturn(4L, 19L);
-        assertFalse(service.recordLoginFailure("member_1", "127.0.0.1"));
+                org.mockito.ArgumentMatchers.eq(TimeUnit.MINUTES))).thenReturn(4L, 5L);
+        assertFalse(service.recordPasswordFailure(1L));
+        assertTrue(service.recordPasswordFailure(1L));
     }
 }
