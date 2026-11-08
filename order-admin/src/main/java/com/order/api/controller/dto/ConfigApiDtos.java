@@ -13,11 +13,15 @@ public final class ConfigApiDtos {
     public record LanguageOption(String code, String tag, String label, boolean h5Enabled) {
     }
 
+    public record CertificateConfigResponse(String certificateSwitch, String certificateTip) {
+    }
+
     public record GlobalContentResponse(
             String lang,
             String protocolContent,
             String aboutContent,
             String certificateContent,
+            String certificateTip,
             String helpContent,
             String termsContent,
             String eventContent,
@@ -37,6 +41,7 @@ public final class ConfigApiDtos {
             String h5BackgroundImage,
             String showLogo,
             String hideImage,
+            String certificateSwitch,
             List<String> imageShowTimeRange) {
     }
 

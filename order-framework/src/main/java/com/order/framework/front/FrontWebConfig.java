@@ -21,6 +21,7 @@ public class FrontWebConfig implements WebMvcConfigurer {
                         "/api/config/error-messages",
                         "/api/config/content",
                         "/api/config/website",
+                        "/api/config/certificate",
                         "/api/config/customer-services",
                         "/api/config/time-zone" );
     }

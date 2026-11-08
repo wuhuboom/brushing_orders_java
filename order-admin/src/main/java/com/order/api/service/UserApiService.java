@@ -19,6 +19,7 @@ import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.IOrderLoginLogService;
 import com.order.member.service.IOrderUserService;
 import com.order.member.service.RegistrationResult;
+import com.order.member.service.MemberDailyStatisticsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,7 @@ public class UserApiService {
 
     private final OrderUserMapper userMapper;
     private final IOrderUserService userService;
+    private final MemberDailyStatisticsService dailyStatisticsService;
     private final PasswordEncoder passwordEncoder;
     private final FrontJwtUtil frontJwtUtil;
     private final UserRateLimitService rateLimitService;
@@ -56,6 +58,7 @@ public class UserApiService {
     public UserApiService(
             OrderUserMapper userMapper,
             IOrderUserService userService,
+            MemberDailyStatisticsService dailyStatisticsService,
             PasswordEncoder passwordEncoder,
             FrontJwtUtil frontJwtUtil,
             UserRateLimitService rateLimitService,
@@ -67,6 +70,7 @@ public class UserApiService {
             ObjectProvider<ConfigQueryService> configQueryServiceProvider) {
         this.userMapper = userMapper;
         this.userService = userService;
+        this.dailyStatisticsService = dailyStatisticsService;
         this.passwordEncoder = passwordEncoder;
         this.frontJwtUtil = frontJwtUtil;
         this.rateLimitService = rateLimitService;
@@ -231,6 +235,7 @@ public class UserApiService {
         if (user == null) {
             throw new UserApiException(601, "User not found");
         }
+        dailyStatisticsService.populate(user);
         ConfigQueryService configQueryService = configQueryServiceProvider.getIfAvailable();
         if (configQueryService != null) {
             configQueryService.localizeMemberLevelInPlace(user.getMemberLevel(), locale);

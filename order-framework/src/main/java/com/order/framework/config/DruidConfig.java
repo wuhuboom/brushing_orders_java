@@ -54,6 +54,23 @@ public class DruidConfig
         return druidProperties.dataSource(dataSource);
     }
 
+    /** Independent, bounded pool: sequence allocation must not wait for a business connection. */
+    @Bean(name = "sequenceDataSource", destroyMethod = "close")
+    public DruidDataSource sequenceDataSource(
+            @Qualifier("masterDataSourceProperties") DataSourceProperties properties)
+    {
+        DruidDataSource source = properties.initializeDataSourceBuilder()
+                .type(DruidDataSource.class).build();
+        source.setInitialSize(0);
+        source.setMinIdle(0);
+        source.setMaxActive(2);
+        source.setMaxWait(3000);
+        source.setConnectTimeout(3000);
+        source.setSocketTimeout(5000);
+        source.setConnectionInitSqls(java.util.List.of("SET SESSION innodb_lock_wait_timeout = 3"));
+        return source;
+    }
+
     @Bean
     @FlywayDataSource
     public DataSource flywayDataSource(

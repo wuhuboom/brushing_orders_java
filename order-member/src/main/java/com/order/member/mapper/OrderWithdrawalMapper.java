@@ -24,6 +24,9 @@ public interface OrderWithdrawalMapper
      */
     public OrderWithdrawal selectOrderWithdrawalById(Long id);
 
+    /** Lightweight notification snapshot; excludes payout details. */
+    List<String> selectPendingNotificationIds();
+
     /**
      * 查询提现列表
      * 

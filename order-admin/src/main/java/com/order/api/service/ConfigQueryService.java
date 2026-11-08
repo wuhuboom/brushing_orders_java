@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class ConfigQueryService {
     private static final Logger log = LoggerFactory.getLogger(ConfigQueryService.class);
+    private static final String DEFAULT_CERTIFICATE_TIP = "非正式员工不可以查看证书";
     private static final Map<String, String> CONTENT_FIELDS = Map.ofEntries(
             Map.entry("register", "protocolContent"),
             Map.entry("about", "aboutContent"),
@@ -78,18 +80,24 @@ public class ConfigQueryService {
     }
 
     public ConfigApiDtos.GlobalContentResponse content(SupportedLocale locale) {
-        List<OrderConfig> configs = orderConfigService.selectOrderConfigByTypes(List.copyOf(CONTENT_FIELDS.keySet()));
+        List<String> types = new ArrayList<>(CONTENT_FIELDS.keySet());
+        types.add("website");
+        List<OrderConfig> configs = orderConfigService.selectOrderConfigByTypes(types);
         Map<String, OrderConfig> byType = new LinkedHashMap<>();
         for (OrderConfig config : configs) {
             byType.put(config.getType(), config);
         }
         Map<Long, Translations> translations = translationsFor(
                 configs.stream().map(OrderConfig::getTranslationsId).toList());
+        OrderConfig certificate = byType.get("certificate");
+        String certificateSwitch = certificateSwitch(certificate, byType.get("website"));
         return new ConfigApiDtos.GlobalContentResponse(
                 locale.getCode(),
                 configField(byType.get("register"), translations, locale, "protocolContent"),
                 configField(byType.get("about"), translations, locale, "aboutContent"),
-                configField(byType.get("certificate"), translations, locale, "certificateContent"),
+                "1".equals(certificateSwitch) ? ""
+                        : configField(certificate, translations, locale, "certificateContent"),
+                "1".equals(certificateSwitch) ? certificateTip(certificate, translations, locale) : "",
                 configField(byType.get("help"), translations, locale, "helpContent"),
                 configField(byType.get("terms"), translations, locale, "termsContent"),
                 configField(byType.get("event"), translations, locale, "eventContent"),
@@ -99,11 +107,13 @@ public class ConfigQueryService {
     }
 
     public ConfigApiDtos.WebsiteConfigResponse website() {
-        OrderConfig config = orderConfigService.selectOrderConfigByType("website");
-        Map<String, Object> values = parseMap(
-                config == null ? null : config.getContent(),
-                config == null ? null : config.getId(),
-                "website");
+        Map<String, OrderConfig> byType = new LinkedHashMap<>();
+        for (OrderConfig config : orderConfigService.selectOrderConfigByTypes(List.of("website", "certificate"))) {
+            byType.put(config.getType(), config);
+        }
+        OrderConfig config = byType.get("website");
+        OrderConfig certificate = byType.get("certificate");
+        Map<String, Object> values = websiteValues(config);
         return new ConfigApiDtos.WebsiteConfigResponse(
                 textValue(firstValue(values, "name", "siteName")),
                 textValue(values.get("currencyUnit")),
@@ -115,7 +125,50 @@ public class ConfigQueryService {
                 textValue(values.get("h5BackgroundImage")),
                 flagValue(values.get("showLogo"), "1"),
                 hideImageFlag(values),
+                certificateSwitch(certificate, config),
                 stringList(firstValue(values, "imageShowTimeRange", "imageDisplayTimeRange")));
+    }
+
+    public ConfigApiDtos.CertificateConfigResponse certificate(SupportedLocale locale) {
+        Map<String, OrderConfig> byType = new LinkedHashMap<>();
+        List<OrderConfig> configs = orderConfigService.selectOrderConfigByTypes(List.of("website", "certificate"));
+        for (OrderConfig config : configs) {
+            byType.put(config.getType(), config);
+        }
+        OrderConfig certificate = byType.get("certificate");
+        Map<Long, Translations> translations = translationsFor(
+                certificate == null || certificate.getTranslationsId() == null
+                        ? List.of() : List.of(certificate.getTranslationsId()));
+        return new ConfigApiDtos.CertificateConfigResponse(
+                certificateSwitch(certificate, byType.get("website")),
+                certificateTip(certificate, translations, locale));
+    }
+
+    private Map<String, Object> websiteValues(OrderConfig config) {
+        return parseMap(
+                config == null ? null : config.getContent(),
+                config == null ? null : config.getId(),
+                "website");
+    }
+
+    private String certificateSwitch(OrderConfig certificate, OrderConfig website) {
+        Map<String, Object> values = parseMap(
+                certificate == null ? null : certificate.getContent(),
+                certificate == null ? null : certificate.getId(),
+                "certificate");
+        // A saved certificate setting, including an explicit disabled value, overrides the old location.
+        Object raw = values.containsKey("certificateSwitch")
+                ? values.get("certificateSwitch") : websiteValues(website).get("certificateSwitch");
+        String value = textValue(raw);
+        return "1".equals(value) || "true".equalsIgnoreCase(value) ? "1" : "0";
+    }
+
+    private String certificateTip(
+            OrderConfig certificate,
+            Map<Long, Translations> translations,
+            SupportedLocale locale) {
+        String tip = configField(certificate, translations, locale, "certificateTip", false);
+        return TranslationResolver.hasText(tip) ? tip : DEFAULT_CERTIFICATE_TIP;
     }
 
     public List<ConfigApiDtos.CustomerServiceResponse> customerServices(SupportedLocale locale) {
@@ -267,19 +320,34 @@ public class ConfigQueryService {
             Map<Long, Translations> translationsById,
             SupportedLocale locale,
             String field) {
+        return configField(config, translationsById, locale, field, true);
+    }
+
+    private String configField(
+            OrderConfig config,
+            Map<Long, Translations> translationsById,
+            SupportedLocale locale,
+            String field,
+            boolean allowRaw) {
         if (config == null) {
             return null;
         }
-        Translations translations = translationsById.get(config.getTranslationsId());
+        Translations translations = config.getTranslationsId() == null
+                ? null : translationsById.get(config.getTranslationsId());
         List<String> candidates = TranslationResolver.candidates(translations, locale, config.getContent());
         for (int index = 0; index < candidates.size(); index++) {
+            String candidate = candidates.get(index);
+            // Legacy raw certificate HTML is valid content, but it must never become a notice.
+            if (!allowRaw && (candidate == null || !candidate.stripLeading().startsWith("{"))) {
+                continue;
+            }
             String candidateLanguage = index == 0
                     ? locale.getCode()
                     : index == candidates.size() - 1 ? "base" : SupportedLocale.EN_US.getCode();
             String value = extractField(
-                    candidates.get(index),
+                    candidate,
                     field,
-                    true,
+                    allowRaw,
                     "config:" + config.getId() + ":" + config.getType(),
                     candidateLanguage);
             if (TranslationResolver.hasText(value)) {
@@ -329,7 +397,8 @@ public class ConfigQueryService {
         try {
             JsonNode root = objectMapper.readTree(raw);
             if (root.isObject()) {
-                JsonNode value = root.get(field);
+                boolean certificateField = "certificateContent".equals(field) || "certificateTip".equals(field);
+                JsonNode value = certificateField ? certificateJsonValue(root, field) : root.get(field);
                 if (value == null || value.isNull()) {
                     return null;
                 }
@@ -351,6 +420,25 @@ public class ConfigQueryService {
                     language);
             return null;
         }
+    }
+
+    private JsonNode certificateJsonValue(JsonNode root, String field) {
+        List<JsonNode> containers = root.path("value").isObject()
+                ? List.of(root, root.get("value")) : List.of(root);
+        List<String> fields = "certificateContent".equals(field)
+                ? List.of(field, "certificate", "content") : List.of(field);
+        for (String candidateField : fields) {
+            for (JsonNode container : containers) {
+                JsonNode value = container.get(candidateField);
+                if (value == null || value.isNull()
+                        || (value.isTextual() && !TranslationResolver.hasText(value.asText()))
+                        || ("certificateTip".equals(field) && !value.isTextual())) {
+                    continue;
+                }
+                return value;
+            }
+        }
+        return null;
     }
 
     private Map<Long, Translations> translationsFor(Collection<Long> ids) {
@@ -419,7 +507,8 @@ public class ConfigQueryService {
             return Map.of();
         }
         try {
-            return objectMapper.readValue(content, LinkedHashMap.class);
+            Map<String, Object> values = objectMapper.readValue(content, LinkedHashMap.class);
+            return values == null ? Map.of() : values;
         } catch (Exception exception) {
             log.warn("event=config_json_invalid configId={} type={}", configId, type);
             return Map.of();

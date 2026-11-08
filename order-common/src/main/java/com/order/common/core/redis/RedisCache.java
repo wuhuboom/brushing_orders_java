@@ -1,6 +1,8 @@
 package com.order.common.core.redis;
 
 import java.util.Collection;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -102,6 +104,35 @@ public class RedisCache
     public Boolean hasKey(String key)
     {
         return redisTemplate.hasKey(key);
+    }
+
+    /** Checks a bounded batch of keys without scanning Redis or fetching token values. */
+    public Set<String> existingKeys(Collection<String> keys)
+    {
+        if (keys.isEmpty()) {
+            return Set.of();
+        }
+        if (keys.size() > 1000) {
+            throw new IllegalArgumentException("Redis key batch cannot exceed 1000 keys");
+        }
+        List<String> orderedKeys = new ArrayList<>(keys);
+        List<Object> results = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            for (String key : orderedKeys) {
+                connection.keyCommands().exists(redisTemplate.getKeySerializer().serialize(key));
+            }
+            return null;
+        });
+        if (results.size() != orderedKeys.size()) {
+            throw new IllegalStateException("读取会员在线状态失败，请重试导出");
+        }
+        Set<String> existing = new HashSet<>();
+        for (int i = 0; i < orderedKeys.size(); i++) {
+            Object result = results.get(i);
+            if (Boolean.TRUE.equals(result) || result instanceof Number number && number.longValue() > 0) {
+                existing.add(orderedKeys.get(i));
+            }
+        }
+        return existing;
     }
 
     /**

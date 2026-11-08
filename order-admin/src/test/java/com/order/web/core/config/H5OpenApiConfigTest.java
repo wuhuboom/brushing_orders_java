@@ -6,6 +6,7 @@ import com.order.api.controller.ConfigController;
 import com.order.api.controller.GoodsApiController;
 import com.order.api.controller.OrderController;
 import com.order.api.controller.SiteMessageController;
+import com.order.member.domain.Goods;
 import io.swagger.v3.core.converter.AnnotatedType;
 import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.core.converter.ResolvedSchema;
@@ -57,7 +58,7 @@ class H5OpenApiConfigTest {
     private static final Set<String> CURRENT_H5_OPERATIONS = Set.of(
             "login", "register", "logout", "userInfo", "uploadAvatar",
             "editPassword", "editTradePassword", "checkTradePassword",
-            "errorMessages", "content", "website", "customerServices",
+            "errorMessages", "content", "website", "certificate", "customerServices",
             "memberLevels", "timeZone", "trade", "upload",
             "getGoodsList",
             "create", "submit", "order", "orders",
@@ -218,6 +219,7 @@ class H5OpenApiConfigTest {
                 "data.protocolContent",
                 "data.aboutContent",
                 "data.certificateContent",
+                "data.certificateTip",
                 "data.helpContent",
                 "data.termsContent",
                 "data.eventContent",
@@ -289,6 +291,10 @@ class H5OpenApiConfigTest {
                 property(component(openApi, "UserProfileResponse"), "gender").getDescription());
         assertEquals("累计已发放彩金金额；无已发放彩金时为 0",
                 property(component(openApi, "UserProfileResponse"), "luckyBonus").getDescription());
+        assertEquals("累计已入账的本人订单佣金（fy），不限日期；不含下级返佣、奖金和充值；无佣金时为 0",
+                property(component(openApi, "UserProfileResponse"), "totalCommission").getDescription());
+        assertEquals("当前已触发且未发放的彩金金额；领取后保留至发放，不受后续任务进度或领取期限影响；未触发、未领取且已过期或已发放时为 0",
+                property(component(openApi, "UserProfileResponse"), "pendingBonusAmount").getDescription());
 
         Schema<?> withdrawalType = component(openApi, "WithdrawalTypeResponse");
         assertEquals("提现方式类别：0 银行卡，1 数字钱包",
@@ -324,6 +330,85 @@ class H5OpenApiConfigTest {
         assertTrue(msgDescription.contains("固定英文安全提示"));
         assertTrue(msgDescription.contains("同一 code"));
         assertFalse(msgDescription.contains("与 code 对应"));
+    }
+
+    @Test
+    void documentsPublicDatesWithTimestampCompanionsAndKeepsTimeRangesUnchanged() {
+        OpenAPI openApi = controllerOpenApi();
+        Map<String, Set<String>> dateTimeProperties = Map.ofEntries(
+                Map.entry("WithdrawalAccountResponse", Set.of("createTime", "updateTime")),
+                Map.entry("WithdrawalResponse", Set.of("createdAt")),
+                Map.entry("WithdrawalHistoryResponse", Set.of("createTime")),
+                Map.entry("DepositResponse", Set.of("createTime")),
+                Map.entry("TransactionResponse", Set.of("createdTime")),
+                Map.entry("NoticeSummaryResponse", Set.of("createTime")),
+                Map.entry("NoticeDetailResponse", Set.of("createTime")),
+                Map.entry("OrderResponse", Set.of("createTime", "expiryTime")),
+                Map.entry("BonusResponse", Set.of("expiryTime")),
+                Map.entry("UserProfileResponse", Set.of("birthday")),
+                Map.entry("PublicApiGoods", Set.of("createTime", "updateTime")));
+
+        dateTimeProperties.forEach((model, fields) -> fields.forEach(field -> {
+            String fieldPath = model + "." + field;
+            Schema<?> dateTime = property(component(openApi, model), field);
+            assertEquals("string", dateTime.getType(), fieldPath);
+            assertEquals("date-time", dateTime.getFormat(), fieldPath);
+            assertTrue(dateTime.getDescription().contains("按系统启用时区输出"), fieldPath);
+            assertTrue(dateTime.getDescription().contains("yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), fieldPath);
+            assertEquals("2026-11-08T08:00:00.123+08:00", dateTime.getExample(), fieldPath);
+            assertTrue(dateTime.getExample().toString().matches(dateTime.getPattern()), fieldPath);
+            assertTrue("2026-11-08T00:00:00.000+00:00".matches(dateTime.getPattern()), fieldPath);
+            assertTrue("2026-11-07T19:00:00.123-05:00".matches(dateTime.getPattern()), fieldPath);
+            for (String invalid : List.of("2026-11-08 08:00:00", "2026-11-08T08:00:00+08:00",
+                    "2026-11-08T08:00:00.123456+08:00", "2026-11-08T00:00:00.123Z",
+                    "2026-11-08T08:00:00.123+0800")) {
+                assertFalse(invalid.matches(dateTime.getPattern()), fieldPath + ": " + invalid);
+            }
+            assertTrue(Boolean.TRUE.equals(dateTime.getNullable()), fieldPath);
+
+            Schema<?> timestamp = property(component(openApi, model), field + "Timestamp");
+            assertEquals("integer", timestamp.getType(), fieldPath + "Timestamp");
+            assertEquals("int64", timestamp.getFormat(), fieldPath + "Timestamp");
+            assertTrue(timestamp.getDescription().contains("Unix 毫秒时间戳"), fieldPath + "Timestamp");
+            assertTrue(timestamp.getExample() instanceof Number, fieldPath + "Timestamp");
+            assertEquals(1794096000123L, ((Number) timestamp.getExample()).longValue(), fieldPath + "Timestamp");
+            assertTrue(Boolean.TRUE.equals(timestamp.getNullable()), fieldPath + "Timestamp");
+        }));
+
+        Schema<?> imageShowTimeRange = property(
+                component(openApi, "WebsiteConfigResponse"), "imageShowTimeRange");
+        assertEquals("array", imageShowTimeRange.getType());
+        assertEquals("string", imageShowTimeRange.getItems().getType());
+        assertFalse(imageShowTimeRange.getDescription().contains("Unix 毫秒时间戳"));
+
+        Schema<?> trade = component(openApi, "TradeConfigResponse");
+        for (String field : List.of("serviceTimeRange", "tradeTimeRange", "withdrawalTimeRange",
+                "orderExpireSeconds", "startTaskDelayMs", "submitTaskDelayMs")) {
+            Schema<?> config = property(trade, field);
+            assertFalse("int64".equals(config.getFormat()), field);
+            assertFalse(config.getDescription().contains("Unix 毫秒时间戳"), field);
+        }
+        assertEquals("string", property(component(openApi, "TimeZoneResponse"), "tzName").getType());
+    }
+
+    @Test
+    void publicGoodsDatesDoNotChangeTheExistingManagementGoodsSchema() {
+        ResolvedSchema resolved = ModelConverters.getInstance().resolveAsResolvedSchema(
+                new AnnotatedType(Goods.class).resolveAsRef(true));
+        Schema<?> managementGoods = resolved.referencedSchemas.get("Goods");
+        String managementDefinition = managementGoods.toString();
+        OpenAPI openApi = controllerOpenApi(new Components().addSchemas("Goods", managementGoods));
+
+        assertEquals(managementDefinition, component(openApi, "Goods").toString());
+        assertFalse(component(openApi, "Goods").getProperties().containsKey("createTimeTimestamp"));
+        assertFalse(component(openApi, "Goods").getProperties().containsKey("updateTimeTimestamp"));
+
+        Schema<?> goodsResponse = successSchema(
+                openApi.getPaths().get("/api/goods/getGoodsList").getGet());
+        assertEquals("#/components/schemas/PublicApiGoods",
+                property(goodsResponse, "data").getItems().get$ref());
+        assertEquals("string", property(component(openApi, "PublicApiGoods"), "createTime").getType());
+        assertEquals("int64", property(component(openApi, "PublicApiGoods"), "createTimeTimestamp").getFormat());
     }
 
     @Test
@@ -511,8 +596,12 @@ class H5OpenApiConfigTest {
     }
 
     private static OpenAPI controllerOpenApi() {
+        return controllerOpenApi(new Components());
+    }
+
+    private static OpenAPI controllerOpenApi(Components components) {
         OpenAPI openApi = new OpenAPI()
-                .components(new Components())
+                .components(components)
                 .paths(new Paths());
         ControllerMappingIntrospector mappings = new ControllerMappingIntrospector();
 

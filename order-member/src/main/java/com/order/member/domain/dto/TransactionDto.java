@@ -6,6 +6,11 @@ import java.math.BigDecimal;
  * 交易 DTO，用于接收前端传入的交易信息
  */
 public class TransactionDto {
+    /** Stable identifier for a single administrator intent, including retries. */
+    private String requestId;
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
+
 
     /** 用户ID */
     private Long userId;

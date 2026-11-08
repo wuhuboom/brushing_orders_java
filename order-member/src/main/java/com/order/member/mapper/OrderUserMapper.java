@@ -95,6 +95,15 @@ public interface OrderUserMapper
      */
     public List<OrderUser> selectOrderUserList(OrderUser orderUser);
 
+    /** Maximum ID gives a finite export boundary without loading member IDs. */
+    Long selectOrderUserExportMaxId();
+
+    /** Dedicated bounded projection; cursor and row limit are supplied in query.params. */
+    List<OrderUser> selectOrderUserExportBatch(OrderUser orderUser);
+
+    /** Cumulative commission and bonus figures for a bounded export batch. */
+    List<OrderUser> selectOrderUserExportStatistics(@Param("userIds") Collection<Long> userIds);
+
     /**
      * 新增订单用户
      * 

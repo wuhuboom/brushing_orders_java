@@ -20,6 +20,11 @@ public class OrderWithdrawalServiceImpl implements IOrderWithdrawalService
     @Autowired
     private OrderWithdrawalMapper orderWithdrawalMapper;
 
+    @Override
+    public List<String> selectPendingNotificationIds() {
+        return orderWithdrawalMapper.selectPendingNotificationIds();
+    }
+
     /**
      * 查询提现
      * 

@@ -44,12 +44,12 @@ public class PhoneMaskingResponseBodyAdvice implements ResponseBodyAdvice<Object
     public Object beforeBodyWrite(Object body, MethodParameter returnType, MediaType selectedContentType,
             Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request, ServerHttpResponse response)
     {
-        if (!(body instanceof AjaxResult) && !(body instanceof TableDataInfo)) return body;
+        if (!(body instanceof AjaxResult) && !(body instanceof TableDataInfo) && !(body instanceof JsonNode)) return body;
         Long userId;
         try { userId = SecurityUtils.getUserId(); }
         catch (Exception ignored) { return body; }
         if (!alignmentService.shouldHidePhone(userId)) return body;
-        JsonNode tree = objectMapper.valueToTree(body);
+        JsonNode tree = body instanceof JsonNode ? (JsonNode) body : objectMapper.valueToTree(body);
         mask(tree);
         return tree;
     }

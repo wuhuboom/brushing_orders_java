@@ -103,11 +103,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             g.description,
             g.create_by,
             g.create_time
-        from goods  g
-        WHERE g.id >= (
-            SELECT FLOOR(RAND() * (SELECT MAX(id) FROM goods))
-        )
-            LIMIT 8
+        from goods g
+        <!-- Sample existing IDs first: migrated IDs may start high and have gaps. -->
+        inner join (
+            select id, RAND() as random_order
+            from goods
+            where is_enabled = '0'
+              and price &lt;= 2000
+            order by random_order
+            limit 8
+        ) sampled on sampled.id = g.id
+        order by sampled.random_order
     </select>
 
     <select id="selectGoodsPage" resultMap="GoodsResult">

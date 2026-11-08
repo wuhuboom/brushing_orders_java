@@ -73,6 +73,15 @@ public class ConfigController {
         return canonical(success(locale, queryService.website()), locale);
     }
 
+    @GetMapping("/certificate")
+    @Operation(summary = "获取证书开关及本地化提示语")
+    public ResponseEntity<AjaxResult> certificate(
+            @RequestParam(required = false) String lang,
+            HttpServletRequest request) {
+        SupportedLocale locale = localeService.resolve(lang, request);
+        return canonical(success(locale, queryService.certificate(locale)), locale);
+    }
+
     @GetMapping("/customer-services")
     @Operation(summary = "获取本地化客服")
     public ResponseEntity<AjaxResult> customerServices(

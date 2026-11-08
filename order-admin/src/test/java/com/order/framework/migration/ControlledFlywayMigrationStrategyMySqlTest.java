@@ -94,7 +94,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
                 CREATE TABLE order_user (
                     id BIGINT NOT NULL, username VARCHAR(100), parent_id BIGINT, invite_code VARCHAR(50),
                     password VARCHAR(100), withdrawal_password_fail_count INT, max_single_withdrawal DECIMAL(20,2),
-                    identity_status CHAR(1), today_sign_count INT, PRIMARY KEY (id)
+                    identity_status CHAR(1), today_sign_count INT, product_matching CHAR(1) DEFAULT '1', PRIMARY KEY (id)
                 ) ENGINE=InnoDB
                 """,
                 """
@@ -103,6 +103,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
                     PRIMARY KEY (id)
                 ) ENGINE=InnoDB
                 """,
+                "INSERT INTO order_user (id, username, product_matching) VALUES (1, 'legacy-enabled', '0')",
                 "INSERT INTO sys_dept (dept_id, leader, email) VALUES (100, 'old', 'old@example.com')",
                 "INSERT INTO sys_role (role_id, role_key, status) VALUES (1, 'admin', '0')",
                 """
@@ -141,7 +142,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
                 "classpath:db/migration/mysql");
         previousRelease.baseline();
 
-        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.2");
+        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.4");
         IllegalStateException pendingLegacyData = assertThrows(IllegalStateException.class,
                 () -> current.migrate(previousRelease));
         assertTrue(pendingLegacyData.getMessage().contains("must not be auto-replayed"));
@@ -174,13 +175,20 @@ class ControlledFlywayMigrationStrategyMySqlTest
         Flyway flyway = flyway(BASELINE_03_DATABASE);
         current.migrate(flyway);
 
-        assertEquals(10, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(12, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(2, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
                 + "WHERE version IN ('2026.08.18.04', '2026.08.18.05') AND success = 1"));
-        assertEquals("1.2.2", text(BASELINE_03_DATABASE,
+        assertEquals("1.2.4", text(BASELINE_03_DATABASE,
                 "SELECT application_version FROM sys_application_version WHERE id = 1"));
-        assertEquals("2026.09.01.00", text(BASELINE_03_DATABASE,
+        assertEquals("2026.11.08.00", text(BASELINE_03_DATABASE,
                 "SELECT schema_version FROM sys_application_version WHERE id = 1"));
+        assertEquals(1, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM order_user "
+                + "WHERE id = 1 AND product_matching = '0' "
+                + "AND product_match_min IS NULL AND product_match_max IS NULL"));
+        assertEquals(2, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM information_schema.columns "
+                + "WHERE table_schema = DATABASE() AND table_name = 'order_user' "
+                + "AND column_name IN ('product_match_min', 'product_match_max') "
+                + "AND is_nullable = 'YES' AND numeric_precision = 5 AND numeric_scale = 2"));
         assertEquals(1, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM information_schema.key_column_usage "
                 + "WHERE table_schema = DATABASE() AND table_name = 'sys_application_version' "
                 + "AND constraint_name = 'PRIMARY' AND column_name = 'id'"));
@@ -246,10 +254,10 @@ class ControlledFlywayMigrationStrategyMySqlTest
     void baseline17AdoptionAndEarlyEnvironmentPreserveLegacyData() throws Exception
     {
         Flyway adoption = flyway(BASELINE_17_DATABASE);
-        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.2");
+        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.4");
         current.migrate(adoption);
 
-        assertEquals(8, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(10, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(1, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
                 + "WHERE type = 'BASELINE' AND version = '2026.08.17.0'"));
         assertEquals(0, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
@@ -262,6 +270,9 @@ class ControlledFlywayMigrationStrategyMySqlTest
         // Recreate the early 1.2.0 history shape observed in local environments.
         execute(BASELINE_17_DATABASE, "DROP TABLE flyway_schema_history");
         execute(BASELINE_17_DATABASE, "DROP TABLE sys_application_version");
+        execute(BASELINE_17_DATABASE, "DROP TABLE admin_transaction_request");
+        execute(BASELINE_17_DATABASE, "ALTER TABLE order_user DROP COLUMN product_match_min, "
+                + "DROP COLUMN product_match_max");
         Flyway earlyRelease = flyway(BASELINE_17_DATABASE, "2026.08.17.0", "2026.08.18.03",
                 "classpath:db/migration/mysql");
         earlyRelease.baseline();
@@ -279,13 +290,20 @@ class ControlledFlywayMigrationStrategyMySqlTest
         Flyway flyway = flyway(BASELINE_17_DATABASE);
         current.migrate(flyway);
 
-        assertEquals(8, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(10, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(2, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
                 + "WHERE version IN ('2026.08.18.04', '2026.08.18.05') AND success = 1"));
-        assertEquals("1.2.2", text(BASELINE_17_DATABASE,
+        assertEquals("1.2.4", text(BASELINE_17_DATABASE,
                 "SELECT application_version FROM sys_application_version WHERE id = 1"));
-        assertEquals("2026.09.01.00", text(BASELINE_17_DATABASE,
+        assertEquals("2026.11.08.00", text(BASELINE_17_DATABASE,
                 "SELECT schema_version FROM sys_application_version WHERE id = 1"));
+        assertEquals(1, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM order_user "
+                + "WHERE id = 1 AND product_matching = '0' "
+                + "AND product_match_min IS NULL AND product_match_max IS NULL"));
+        assertEquals(2, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM information_schema.columns "
+                + "WHERE table_schema = DATABASE() AND table_name = 'order_user' "
+                + "AND column_name IN ('product_match_min', 'product_match_max') "
+                + "AND is_nullable = 'YES' AND numeric_precision = 5 AND numeric_scale = 2"));
         assertEquals(1, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM sys_job WHERE job_id = 1"));
         assertEquals("old", text(BASELINE_17_DATABASE, "SELECT leader FROM sys_dept WHERE dept_id = 100"));
         assertEquals("old@example.com", text(BASELINE_17_DATABASE,
@@ -294,7 +312,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
         LocalDateTime migratedAt = timestamp(BASELINE_17_DATABASE,
                 "SELECT last_migrated_at FROM sys_application_version WHERE id = 1");
         current.migrate(flyway);
-        assertEquals(8, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(10, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(migratedAt, timestamp(BASELINE_17_DATABASE,
                 "SELECT last_migrated_at FROM sys_application_version WHERE id = 1"));
 

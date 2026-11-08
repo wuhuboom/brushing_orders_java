@@ -19,6 +19,8 @@ public interface IOrderWithdrawalService
      */
     public OrderWithdrawal selectOrderWithdrawalById(Long id);
 
+    List<String> selectPendingNotificationIds();
+
     /**
      * 查询提现列表
      * 

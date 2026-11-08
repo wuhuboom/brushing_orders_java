@@ -28,6 +28,8 @@
         <result property="workLimit"    column="work_limit"    />
         <result property="isWithdrawalNotification"    column="is_withdrawal_notification"    />
         <result property="productMatching"    column="product_matching"    />
+        <result property="productMatchMin" column="member_product_match_min" />
+        <result property="productMatchMax" column="member_product_match_max" />
         <result property="accountStatus"    column="account_status"    />
         <result property="transactionStatus"    column="transaction_status"    />
         <result property="withdrawalStatus"    column="withdrawal_status"    />
@@ -72,7 +74,9 @@
 
         <!-- 额外计算字段 -->
         <result property="todayCommission" column="today_commission"/>
+        <result property="totalCommission" column="total_commission"/>
         <result property="luckyBonus" column="lucky_bonus"/>
+        <result property="pendingBonusAmount" column="pending_bonus_amount"/>
         <result property="todayParentCommission" column="today_parent_commission"/>
         <result property="lastLoginIp" column="last_login_ip"/>
         <result property="lastLoginAddress" column="last_login_address"/>
@@ -115,6 +119,7 @@
       Front-end authentication and profile queries intentionally do not reuse
       selectOrderUserVo. The latter contains administration/reporting CTEs and
       is too expensive for every authenticated request.
+      Daily totals are populated by MemberDailyStatisticsService after retrieval.
     -->
     <select id="selectAuthUserByName" parameterType="String" resultMap="OrderUserResult">
         SELECT id, username, password, trade_password, account_status, version,
@@ -154,7 +159,9 @@
             ou.balance, ou.frozen_balance, ou.base_salary, ou.task_progress,
             ou.reputation_score, ou.work_limit,
             ou.is_enabled, ou.allow_invite, ou.is_frozen, ou.is_banned,
-            ou.is_withdrawal_notification, ou.product_matching, ou.account_status,
+            ou.is_withdrawal_notification, ou.product_matching,
+            ou.product_match_min AS member_product_match_min,
+            ou.product_match_max AS member_product_match_max, ou.account_status,
             ou.transaction_status, ou.withdrawal_status, ou.deposit_block_withdrawal,
             ou.assist_withdrawal_status,
             COALESCE((
@@ -162,15 +169,34 @@
                 FROM goods_transaction_flow gtf
                 WHERE gtf.user_id = ou.id
                   AND gtf.transaction_type = 'fy'
-                  AND gtf.created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
-                   AND gtf.created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
-            ), 0) AS today_commission,
+            ), 0) AS total_commission,
             COALESCE((
                 SELECT SUM(obt.amount)
                 FROM order_bonus_table obt
                 WHERE obt.user_id = ou.id
                   AND obt.is_distributed = '0'
             ), 0) AS lucky_bonus,
+            COALESCE((
+                SELECT obt.amount
+                FROM order_bonus_table obt
+                WHERE obt.user_id = ou.id
+                  AND obt.is_distributed = '1'
+                  AND (
+                      obt.is_received = '0'
+                      OR (
+                          obt.is_received = '1'
+                          AND obt.order_num = COALESCE(ou.task_progress, 0) + 1
+                          AND (obt.expiry_time IS NULL OR obt.expiry_time > NOW())
+                          AND NOT EXISTS (
+                              SELECT 1 FROM order_info oi
+                              WHERE oi.user_id = ou.id AND oi.status = '1'
+                          )
+                      )
+                  )
+                ORDER BY CASE WHEN obt.is_received = '0' THEN 0 ELSE 1 END,
+                         obt.expiry_time ASC, obt.create_time ASC, obt.id ASC
+                LIMIT 1
+            ), 0) AS pending_bonus_amount,
             gml.id AS member_level_id, gml.name, gml.level, gml.icon, gml.price,
             gml.min_balance, gml.invite_count, gml.order_count_per_day,
             gml.min_commission_rate, gml.max_commission_rate,
@@ -229,7 +255,9 @@
 
     <select id="selectOrderTaskUserById" parameterType="Long" resultMap="OrderUserResult">
         SELECT ou.id, ou.parent_id, ou.balance, ou.frozen_balance,
-               ou.task_progress, ou.is_banned,
+               ou.task_progress, ou.is_banned, ou.product_matching,
+               ou.product_match_min AS member_product_match_min,
+               ou.product_match_max AS member_product_match_max,
                gml.id AS member_level_id, gml.order_count_per_day,
                gml.min_commission_rate,
                gml.min_continuous_commission_rate,
@@ -303,53 +331,29 @@
     </update>
 
 
+    <!-- Daily totals are populated after pagination using the active business time zone. -->
     <sql id="selectOrderUserVo">
     <![CDATA[
         WITH
-            -- CTE1: 今日佣金（自身）
-            today_commissions AS (
-                SELECT
-                    user_id,
-                    IFNULL(SUM(CASE WHEN transaction_type = 'fy' THEN transaction_amount ELSE 0 END), 0) AS today_commission
-                FROM goods_transaction_flow
-                WHERE created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
-                  AND created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
-        GROUP BY user_id
-            ),
-            -- CTE2: 上级佣金（针对每个下级ou.id过滤；性能仍需表结构调整，假设remark包含下级ID）
-            parent_commissions AS (
-        SELECT
-            gtf.user_id AS parent_id,
-            gtf_child.id AS child_id,
-            IFNULL(SUM(gtf.transaction_amount), 0) AS today_parent_commission
-        FROM goods_transaction_flow gtf
-            JOIN order_user gtf_child ON gtf.remark LIKE CONCAT('%', gtf_child.id, '%')
-        WHERE gtf.created_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
-          AND gtf.created_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
-          AND gtf.transaction_type = 'fy'
-        GROUP BY gtf.user_id, gtf_child.id
-            ),
-            -- CTE3: 最后登录（窗口函数替换子查询）
+            -- 最后登录（窗口函数替换子查询）
             last_logins AS (
         SELECT
-            user_id, ip, address, create_time,
-            ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY create_time DESC) AS rn
-        FROM order_login_log
+            login_entry.user_id, login_entry.ip, login_entry.address, login_entry.create_time,
+            ROW_NUMBER() OVER (
+                PARTITION BY login_entry.user_id
+                ORDER BY login_entry.create_time DESC, login_entry.id DESC
+            ) AS rn
+        FROM order_login_log login_entry
             ),
-            -- CTE4: 提现统计
+            -- 累计提现统计
             withdrawal_stats AS (
         SELECT
             user_id,
-            COUNT(CASE
-                WHEN create_time >= DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) - INTERVAL 8 HOUR
-                 AND create_time < DATE(UTC_TIMESTAMP() + INTERVAL 8 HOUR) + INTERVAL 16 HOUR
-                THEN 1
-            END) AS today_withdrawal_count,
             IFNULL(SUM(amount), 0) AS total_withdrawal_amount
         FROM order_withdrawal
         GROUP BY user_id
             ),
-            -- CTE5: 充值统计
+            -- 累计充值统计
             recharge_stats AS (
         SELECT
             user_id,
@@ -357,7 +361,7 @@
         FROM goods_recharge_record
         GROUP BY user_id
             ),
-            -- CTE6: 直属下级数
+            -- 直属下级数
             children_stats AS (
         SELECT
             parent_id AS user_id,
@@ -371,6 +375,8 @@
             ou.balance, ou.frozen_balance, ou.base_salary, ou.task_progress, ou.reputation_score,
             ou.invite_code, ou.gender, ou.email, ou.birthday, ou.is_enabled, ou.allow_invite, ou.is_frozen,
             ou.is_fake, ou.is_banned, ou.work_limit, ou.is_withdrawal_notification, ou.product_matching,
+            ou.product_match_min AS member_product_match_min,
+            ou.product_match_max AS member_product_match_max,
             ou.account_status, ou.transaction_status, ou.withdrawal_status, ou.deposit_block_withdrawal,
             ou.remarks, ou.version, ou.create_time, ou.update_time, ou.password, ou.trade_password,
             ou.assist_withdrawal_status, ou.web3_auth_enabled, ou.is_invalid, ou.is_activity,
@@ -394,21 +400,16 @@
             pu.username AS parent_username, pu.invite_code AS parent_invite_code,
 
             -- 额外字段：从CTE JOIN
-            COALESCE(tc.today_commission, 0) AS today_commission,
-            COALESCE(pc.today_parent_commission, 0) AS today_parent_commission,
             ll.ip AS last_login_ip,
             ll.address AS last_login_address,
             ll.create_time AS last_login_time,
             COALESCE(cs.direct_children_count, 0) AS direct_children_count,
-            COALESCE(ws.today_withdrawal_count, 0) AS today_withdrawal_count,
             COALESCE(ws.total_withdrawal_amount, 0) AS total_withdrawal_amount,
             COALESCE(rs.total_recharge_amount, 0) AS total_recharge_amount
 
         FROM order_user ou
                  LEFT JOIN goods_member_level gml ON ou.vip_id = gml.id
                  LEFT JOIN order_user pu ON ou.parent_id = pu.id
-                 LEFT JOIN today_commissions tc ON ou.id = tc.user_id
-                 LEFT JOIN parent_commissions pc ON ou.parent_id = pc.parent_id AND ou.id = pc.child_id
                  LEFT JOIN last_logins ll ON ou.id = ll.user_id AND ll.rn = 1
                  LEFT JOIN withdrawal_stats ws ON ou.id = ws.user_id
                  LEFT JOIN recharge_stats rs ON ou.id = rs.user_id
@@ -418,9 +419,8 @@
 
 
 
-    <select id="selectOrderUserList" parameterType="OrderUser" resultMap="OrderUserResult">
-        <include refid="selectOrderUserVo"/>
-        <where>
+    <!-- Shared predicates keep list and batched export selection identical. -->
+    <sql id="orderUserListFilters">
             <if test="username != null  and username != ''"> and ou.username like concat('%', #{username}, '%')</if>
             <if test="phoneNumber != null  and phoneNumber != ''"> and ou.phone_number = #{phoneNumber}</if>
             <if test="keyword != null and keyword != ''">
@@ -521,8 +521,162 @@
             <if test="params.endTime != null and params.endTime != ''">
                 and ou.create_time &lt;= concat(#{params.endTime}, ' 23:59:59')
             </if>
+    </sql>
+
+    <select id="selectOrderUserList" parameterType="OrderUser" resultMap="OrderUserResult">
+        <include refid="selectOrderUserVo"/>
+        <where>
+            <include refid="orderUserListFilters"/>
         </where>
         order by ou.create_time desc
+    </select>
+
+    <select id="selectOrderUserExportMaxId" resultType="java.lang.Long" useCache="false" flushCache="true">
+        SELECT MAX(id) FROM order_user
+    </select>
+
+    <!-- Select only one ID range before calculating any export-only statistics. -->
+    <select id="selectOrderUserExportBatch" parameterType="OrderUser" resultMap="OrderUserResult"
+            useCache="false" flushCache="true" fetchSize="500">
+        WITH
+        <if test="keyword != null and keyword != ''">
+            <!-- Exact-match priority is global, not limited to the current cursor page. -->
+            last_logins AS (
+                SELECT login_entry.user_id, login_entry.ip, login_entry.address, login_entry.create_time,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY login_entry.user_id
+                           ORDER BY login_entry.create_time DESC, login_entry.id DESC
+                       ) AS rn
+                FROM order_login_log login_entry
+            ),
+        </if>
+        selected_users AS (
+            SELECT ou.id
+            FROM order_user ou
+            LEFT JOIN order_user pu ON ou.parent_id = pu.id
+            <if test="(keyword != null and keyword != '') or (lastLoginIp != null and lastLoginIp != '')">
+                LEFT JOIN order_login_log ll ON ll.id = (
+                    SELECT latest.id FROM order_login_log latest
+                    WHERE latest.user_id = ou.id
+                    ORDER BY latest.create_time DESC, latest.id DESC LIMIT 1
+                )
+            </if>
+            <where>
+                ou.id &gt; #{params.exportAfterId} AND ou.id &lt;= #{params.exportMaxId}
+                <include refid="orderUserListFilters"/>
+            </where>
+            ORDER BY ou.id ASC
+            LIMIT #{params.exportBatchSize}
+        ), batch_logins AS (
+            SELECT oll.user_id, oll.ip, oll.address, oll.create_time,
+                   ROW_NUMBER() OVER (PARTITION BY oll.user_id ORDER BY oll.create_time DESC, oll.id DESC) AS rn
+            FROM order_login_log oll
+            JOIN selected_users su ON su.id = oll.user_id
+        ), withdrawal_stats AS (
+            SELECT ow.user_id, SUM(ow.amount) AS total_withdrawal_amount
+            FROM order_withdrawal ow JOIN selected_users su ON su.id = ow.user_id
+            GROUP BY ow.user_id
+        ), recharge_stats AS (
+            SELECT grr.user_id, SUM(grr.amount) AS total_recharge_amount
+            FROM goods_recharge_record grr JOIN selected_users su ON su.id = grr.user_id
+            GROUP BY grr.user_id
+        ), children_stats AS (
+            SELECT child.parent_id AS user_id, COUNT(*) AS direct_children_count
+            FROM order_user child JOIN selected_users su ON su.id = child.parent_id
+            GROUP BY child.parent_id
+        )
+        SELECT ou.id, ou.username, ou.phone_number, ou.email, ou.gender, ou.birthday,
+               ou.vip_id, ou.parent_id, ou.invite_code, ou.create_time,
+               ou.balance, ou.frozen_balance, ou.base_salary, ou.max_single_withdrawal,
+               ou.task_progress, ou.today_rest, ou.total_rest, ou.work_limit,
+               ou.reputation_score, ou.sign_days, ou.today_sign_count, ou.total_sign_days,
+               ou.is_enabled, ou.allow_invite, ou.is_frozen, ou.is_fake, ou.is_banned,
+               ou.product_matching,
+               ou.product_match_min AS member_product_match_min,
+               ou.product_match_max AS member_product_match_max,
+               ou.account_status, ou.transaction_status, ou.withdrawal_status,
+               ou.assist_withdrawal_status, ou.deposit_block_withdrawal, ou.is_withdrawal_notification,
+               ou.web3_auth_enabled, ou.is_invalid, ou.is_activity, ou.verify_identity_before_task,
+               ou.user_contract_enabled, ou.user_contract_signed,
+               ou.formal_contract_enabled, ou.formal_contract_signed,
+               ou.withdrawal_block_remark, ou.remarks,
+               gml.id AS member_level_id, gml.name,
+               gml.order_count_per_day, gml.task_count_per_day,
+               gml.withdraw_limit_per_day, gml.withdraw_count_per_day,
+               pu.username AS parent_username, pu.invite_code AS parent_invite_code,
+               ll.ip AS last_login_ip, ll.address AS last_login_address,
+               ll.create_time AS last_login_time,
+               COALESCE(cs.direct_children_count, 0) AS direct_children_count,
+               COALESCE(ws.total_withdrawal_amount, 0) AS total_withdrawal_amount,
+               COALESCE(rs.total_recharge_amount, 0) AS total_recharge_amount
+        FROM selected_users su
+        JOIN order_user ou ON ou.id = su.id
+        LEFT JOIN goods_member_level gml ON gml.id = ou.vip_id
+        LEFT JOIN order_user pu ON pu.id = ou.parent_id
+        LEFT JOIN batch_logins ll ON ll.user_id = ou.id AND ll.rn = 1
+        LEFT JOIN withdrawal_stats ws ON ws.user_id = ou.id
+        LEFT JOIN recharge_stats rs ON rs.user_id = ou.id
+        LEFT JOIN children_stats cs ON cs.user_id = ou.id
+        ORDER BY ou.id ASC
+    </select>
+
+    <!-- Export-only aggregation keeps the regular member list query unchanged. -->
+    <select id="selectOrderUserExportStatistics" resultMap="OrderUserResult" useCache="false" flushCache="true">
+        WITH selected_users AS (
+            SELECT id, task_progress FROM order_user
+            WHERE
+            <choose>
+                <when test="userIds != null and !userIds.isEmpty()">
+                    id IN
+                    <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                        #{userId}
+                    </foreach>
+                </when>
+                <otherwise>1 = 0</otherwise>
+            </choose>
+        ), commissions AS (
+            SELECT gtf.user_id, SUM(gtf.transaction_amount) AS amount
+            FROM goods_transaction_flow gtf
+            JOIN selected_users su ON su.id = gtf.user_id
+            WHERE gtf.transaction_type = 'fy'
+            GROUP BY gtf.user_id
+        ), distributed_bonuses AS (
+            SELECT obt.user_id, SUM(obt.amount) AS amount
+            FROM order_bonus_table obt
+            JOIN selected_users su ON su.id = obt.user_id
+            WHERE obt.is_distributed = '0'
+            GROUP BY obt.user_id
+        ), pending_bonuses AS (
+            SELECT obt.user_id, obt.amount,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY obt.user_id
+                       ORDER BY CASE WHEN obt.is_received = '0' THEN 0 ELSE 1 END,
+                                obt.expiry_time ASC, obt.create_time ASC, obt.id ASC
+                   ) AS rn
+            FROM order_bonus_table obt
+            JOIN selected_users su ON su.id = obt.user_id
+            WHERE obt.is_distributed = '1'
+              AND (
+                  obt.is_received = '0'
+                  OR (
+                      obt.is_received = '1'
+                      AND obt.order_num = COALESCE(su.task_progress, 0) + 1
+                      AND (obt.expiry_time IS NULL OR obt.expiry_time &gt; NOW())
+                      AND NOT EXISTS (
+                          SELECT 1 FROM order_info oi
+                          WHERE oi.user_id = su.id AND oi.status = '1'
+                      )
+                  )
+              )
+        )
+        SELECT su.id,
+               COALESCE(c.amount, 0) AS total_commission,
+               COALESCE(db.amount, 0) AS lucky_bonus,
+               COALESCE(pb.amount, 0) AS pending_bonus_amount
+        FROM selected_users su
+        LEFT JOIN commissions c ON c.user_id = su.id
+        LEFT JOIN distributed_bonuses db ON db.user_id = su.id
+        LEFT JOIN pending_bonuses pb ON pb.user_id = su.id AND pb.rn = 1
     </select>
 
     <select id="selectOrderUserById" parameterType="Long" resultMap="OrderUserResult">
@@ -604,6 +758,8 @@
             <if test="workLimit != null">work_limit,</if>
             <if test="isWithdrawalNotification != null">is_withdrawal_notification,</if>
             <if test="productMatching != null">product_matching,</if>
+            <if test="productMatchMin != null">product_match_min,</if>
+            <if test="productMatchMax != null">product_match_max,</if>
             <if test="accountStatus != null">account_status,</if>
             <if test="transactionStatus != null">transaction_status,</if>
             <if test="withdrawalStatus != null">withdrawal_status,</if>
@@ -665,6 +821,8 @@
             <if test="workLimit != null">#{workLimit},</if>
             <if test="isWithdrawalNotification != null">#{isWithdrawalNotification},</if>
             <if test="productMatching != null">#{productMatching},</if>
+            <if test="productMatchMin != null">#{productMatchMin},</if>
+            <if test="productMatchMax != null">#{productMatchMax},</if>
             <if test="accountStatus != null">#{accountStatus},</if>
             <if test="transactionStatus != null">#{transactionStatus},</if>
             <if test="withdrawalStatus != null">#{withdrawalStatus},</if>
@@ -743,6 +901,8 @@
             <if test="workLimit != null">work_limit = #{workLimit},</if>
             <if test="isWithdrawalNotification != null">is_withdrawal_notification = #{isWithdrawalNotification},</if>
             <if test="productMatching != null">product_matching = #{productMatching},</if>
+            <if test="productMatchMin != null">product_match_min = #{productMatchMin},</if>
+            <if test="productMatchMax != null">product_match_max = #{productMatchMax},</if>
             <if test="accountStatus != null">account_status = #{accountStatus},</if>
             <if test="transactionStatus != null">transaction_status = #{transactionStatus},</if>
             <if test="withdrawalStatus != null">withdrawal_status = #{withdrawalStatus},</if>

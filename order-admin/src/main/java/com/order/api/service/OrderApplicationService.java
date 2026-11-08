@@ -299,7 +299,7 @@ public class OrderApplicationService {
             OrderUser user,
             OrderTradePolicyService.TradePolicy policy,
             long nextOrderIndex) {
-        BigDecimal percentage = randomPercentage(policy.matchRange());
+        BigDecimal percentage = randomPercentage(normalMatchRange(user, policy));
         BigDecimal targetPrice = user.getBalance()
                 .multiply(percentage)
                 .divide(ONE_HUNDRED, MONEY_SCALE, RoundingMode.DOWN);
@@ -691,6 +691,29 @@ public class OrderApplicationService {
             throw OrderApiException.unavailable(INVALID_CONFIG, "Invalid commission configuration");
         }
         return value.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private OrderTradePolicyService.PercentageRange normalMatchRange(
+            OrderUser user,
+            OrderTradePolicyService.TradePolicy policy) {
+        if (!"0".equals(user.getProductMatching())) {
+            return policy.matchRange();
+        }
+        BigDecimal minimum = user.getProductMatchMin();
+        BigDecimal maximum = user.getProductMatchMax();
+        // Existing enabled accounts predate personal ranges and retain the global rule.
+        if (minimum == null && maximum == null) {
+            return policy.matchRange();
+        }
+        if (minimum == null
+                || maximum == null
+                || minimum.compareTo(BigDecimal.ZERO) <= 0
+                || minimum.compareTo(maximum) > 0
+                || maximum.compareTo(ONE_HUNDRED) > 0) {
+            throw OrderApiException.unavailable(
+                    INVALID_CONFIG, "Invalid personal product match range configuration");
+        }
+        return new OrderTradePolicyService.PercentageRange(minimum, maximum);
     }
 
     private BigDecimal randomPercentage(OrderTradePolicyService.PercentageRange range) {

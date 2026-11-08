@@ -20,8 +20,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
@@ -58,7 +60,9 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellRangeAddressList;
+import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.util.IOUtils;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
 import org.apache.poi.xssf.usermodel.XSSFDataValidation;
@@ -140,6 +144,9 @@ public class ExcelUtil<T>
      * 导入导出数据列表
      */
     private List<T> list;
+
+    /** Only the batch-export path fails rather than swallowing cell conversion errors. */
+    private boolean failOnCellError;
 
     /**
      * 注解列表
@@ -624,6 +631,125 @@ public class ExcelUtil<T>
         response.setCharacterEncoding("utf-8");
         this.init(null, sheetName, title, Type.IMPORT);
         exportExcel(response);
+    }
+
+    /**
+     * Exports flat rows without retaining all source data or all workbook rows in memory.
+     * The supplier owns pagination and returns an empty batch when it reaches the end.
+     * Source/conversion errors propagate before response bytes are written; response I/O
+     * errors also propagate. POI temporary files are disposed on every exit path.
+     */
+    public void exportExcelInBatches(HttpServletResponse response, String sheetName,
+            Supplier<List<T>> nextBatch) throws IOException
+    {
+        Objects.requireNonNull(nextBatch, "nextBatch");
+        this.sheetName = WorkbookUtil.createSafeSheetName(sheetName);
+        this.type = Type.EXPORT;
+        this.title = StringUtils.EMPTY;
+        this.list = List.of();
+        this.rownum = 0;
+        this.subMethod = null;
+        this.subFields = null;
+        this.statistics.clear();
+        this.sysDictMap.clear();
+        createExcelField();
+        for (Object[] definition : fields) {
+            Field field = (Field) definition[0];
+            Excel excel = (Excel) definition[1];
+            if (Collection.class.isAssignableFrom(field.getType()) || excel.cellType() == ColumnType.IMAGE) {
+                throw new IllegalArgumentException("分批导出仅支持无图片的平面数据");
+            }
+        }
+
+        // Inline strings (the SXSSF default) avoid a shared-string table growing with row count.
+        SXSSFWorkbook streamingWorkbook = new SXSSFWorkbook(100);
+        streamingWorkbook.setCompressTempFiles(true);
+        this.wb = streamingWorkbook;
+        this.failOnCellError = true;
+        try (SXSSFWorkbook ownedWorkbook = streamingWorkbook) {
+            try {
+                this.styles = createStyles(streamingWorkbook);
+                int sheetNumber = 1;
+                createBatchSheet(sheetNumber);
+                int nextRow = 1;
+                int rowsInSheet = 0;
+                while (true) {
+                    List<T> batch = Objects.requireNonNull(nextBatch.get(), "nextBatch must return a list");
+                    if (batch.isEmpty()) {
+                        break;
+                    }
+                    for (T value : batch) {
+                        if (rowsInSheet == sheetSize) {
+                            addBatchStatisticsRow(nextRow);
+                            ((SXSSFSheet) sheet).flushRows(0);
+                            createBatchSheet(++sheetNumber);
+                            nextRow = 1;
+                            rowsInSheet = 0;
+                        }
+                        Row row = sheet.createRow(nextRow++);
+                        int column = 0;
+                        for (Object[] definition : fields) {
+                            addCell((Excel) definition[1], row, value, (Field) definition[0], column++);
+                        }
+                        rowsInSheet++;
+                    }
+                    // Release the whole row window, including windows on earlier sheets.
+                    ((SXSSFSheet) sheet).flushRows(0);
+                    this.sysDictMap.clear();
+                }
+                addBatchStatisticsRow(nextRow);
+                ((SXSSFSheet) sheet).flushRows(0);
+                response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                response.setCharacterEncoding("utf-8");
+                ownedWorkbook.write(response.getOutputStream());
+            }
+            finally {
+                // POI 4.1.x dispose flushes unfinished rows before deleting the sheet file.
+                // It must run while the writer is still open, including conversion failures.
+                if (!streamingWorkbook.dispose()) {
+                    log.warn("部分Excel导出临时文件未能删除");
+                }
+            }
+        }
+        finally {
+            this.failOnCellError = false;
+            this.wb = null;
+            this.sheet = null;
+            this.styles = null;
+            this.list = null;
+            this.statistics.clear();
+            this.sysDictMap.clear();
+        }
+    }
+
+    private void createBatchSheet(int sheetNumber)
+    {
+        String suffix = sheetNumber == 1 ? StringUtils.EMPTY : "_" + sheetNumber;
+        String baseName = sheetName.substring(0, Math.min(sheetName.length(), 31 - suffix.length()));
+        this.sheet = wb.createSheet(baseName + suffix);
+        Row header = sheet.createRow(0);
+        int column = 0;
+        for (Object[] definition : fields) {
+            createHeadCell((Excel) definition[1], header, column++);
+        }
+        sheet.createFreezePane(0, 1);
+    }
+
+    private void addBatchStatisticsRow(int nextRow)
+    {
+        if (statistics.isEmpty()) {
+            return;
+        }
+        Row row = sheet.createRow(nextRow);
+        Cell titleCell = row.createCell(0);
+        titleCell.setCellStyle(styles.get("total"));
+        titleCell.setCellValue("合计");
+        for (Map.Entry<Integer, Double> value : statistics.entrySet()) {
+            Cell cell = row.createCell(value.getKey());
+            cell.setCellStyle(styles.get("total"));
+            cell.setCellValue(value.getValue());
+        }
+        statistics.clear();
     }
 
     /**
@@ -1183,6 +1309,9 @@ public class ExcelUtil<T>
         }
         catch (Exception e)
         {
+            if (failOnCellError) {
+                throw new UtilException("导出Excel单元格失败：" + attr.name(), e);
+            }
             log.error("导出Excel失败{}", e);
         }
         return cell;
@@ -1394,6 +1523,9 @@ public class ExcelUtil<T>
         }
         catch (Exception e)
         {
+            if (failOnCellError) {
+                throw new UtilException("不能格式化导出数据：" + excel.name(), e);
+            }
             log.error("不能格式化数据 " + excel.handler(), e.getMessage());
         }
         return Convert.toStr(value);

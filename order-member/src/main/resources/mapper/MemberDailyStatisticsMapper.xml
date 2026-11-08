@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.MemberDailyStatisticsMapper">
+    <select id="selectActiveTimeZone" resultType="String">
+        SELECT tz_name FROM sys_time_zone WHERE status = 0 ORDER BY id LIMIT 1
+    </select>
+
+    <!-- Bounds are UTC datetimes calculated from the active IANA time zone in Java. -->
+    <select id="selectDailyStatistics" resultType="com.order.member.domain.MemberDailyStatistics">
+        WITH selected_users AS (
+            SELECT id FROM order_user
+            WHERE id IN
+            <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+                #{userId}
+            </foreach>
+        ), self_commissions AS (
+            SELECT gtf.user_id, SUM(gtf.transaction_amount) AS amount
+            FROM goods_transaction_flow gtf
+            JOIN selected_users su ON su.id = gtf.user_id
+            WHERE gtf.transaction_type = 'fy'
+              AND gtf.created_time &gt;= #{startUtc}
+              AND gtf.created_time &lt; #{endUtc}
+            GROUP BY gtf.user_id
+        ), parent_commissions AS (
+            SELECT oi.user_id, SUM(gtf.transaction_amount) AS amount
+            FROM goods_transaction_flow gtf
+            JOIN order_info oi
+              ON oi.order_number = SUBSTRING(gtf.remark, 20)
+            JOIN selected_users su ON su.id = oi.user_id
+            WHERE gtf.transaction_type = 'xjfy'
+              AND gtf.remark = CONCAT('child-order-rebate:', oi.order_number)
+              AND gtf.created_time &gt;= #{startUtc}
+              AND gtf.created_time &lt; #{endUtc}
+            GROUP BY oi.user_id
+        ), withdrawals AS (
+            SELECT ow.user_id, COUNT(*) AS total
+            FROM order_withdrawal ow
+            JOIN selected_users su ON su.id = ow.user_id
+            WHERE ow.create_time &gt;= #{startUtc}
+              AND ow.create_time &lt; #{endUtc}
+            GROUP BY ow.user_id
+        )
+        SELECT su.id AS userId,
+               COALESCE(sc.amount, 0) AS todayCommission,
+               COALESCE(pc.amount, 0) AS todayParentCommission,
+               COALESCE(w.total, 0) AS todayWithdrawalCount
+        FROM selected_users su
+        LEFT JOIN self_commissions sc ON sc.user_id = su.id
+        LEFT JOIN parent_commissions pc ON pc.user_id = su.id
+        LEFT JOIN withdrawals w ON w.user_id = su.id
+    </select>
+</mapper>

@@ -114,6 +114,12 @@ public class OrderUser extends BaseEntity
     @Excel(name = "产品匹配")
     private String productMatching;
 
+    /** 个人产品匹配最小比例（百分比）；null 表示历史未配置 */
+    private BigDecimal productMatchMin;
+
+    /** 个人产品匹配最大比例（百分比）；null 表示历史未配置 */
+    private BigDecimal productMatchMax;
+
     /** 账户状态 */
     @Excel(name = "账户状态")
     private String accountStatus;
@@ -216,7 +222,11 @@ public class OrderUser extends BaseEntity
 
     // 额外查询字段
     private java.math.BigDecimal todayCommission;
+    /** 累计已入账的本人订单佣金，不限日期 */
+    private java.math.BigDecimal totalCommission;
     private java.math.BigDecimal luckyBonus;
+    /** 当前已触发且未发放的彩金金额，已领取后保留至发放 */
+    private java.math.BigDecimal pendingBonusAmount;
     private java.math.BigDecimal todayParentCommission;
     private String lastLoginIp;
     private String lastLoginAddress;
@@ -310,12 +320,28 @@ public class OrderUser extends BaseEntity
         this.todayCommission = todayCommission;
     }
 
+    public java.math.BigDecimal getTotalCommission() {
+        return totalCommission;
+    }
+
+    public void setTotalCommission(java.math.BigDecimal totalCommission) {
+        this.totalCommission = totalCommission;
+    }
+
     public java.math.BigDecimal getLuckyBonus() {
         return luckyBonus;
     }
 
     public void setLuckyBonus(java.math.BigDecimal luckyBonus) {
         this.luckyBonus = luckyBonus;
+    }
+
+    public java.math.BigDecimal getPendingBonusAmount() {
+        return pendingBonusAmount;
+    }
+
+    public void setPendingBonusAmount(java.math.BigDecimal pendingBonusAmount) {
+        this.pendingBonusAmount = pendingBonusAmount;
     }
 
     public java.math.BigDecimal getTodayParentCommission() {
@@ -629,6 +655,11 @@ public class OrderUser extends BaseEntity
         return productMatching;
     }
 
+    public BigDecimal getProductMatchMin() { return productMatchMin; }
+    public void setProductMatchMin(BigDecimal productMatchMin) { this.productMatchMin = productMatchMin; }
+    public BigDecimal getProductMatchMax() { return productMatchMax; }
+    public void setProductMatchMax(BigDecimal productMatchMax) { this.productMatchMax = productMatchMax; }
+
     public void setAccountStatus(String accountStatus)
     {
         this.accountStatus = accountStatus;
@@ -776,6 +807,8 @@ public class OrderUser extends BaseEntity
                 .append("workLimit", getWorkLimit())
                 .append("isWithdrawalNotification", getIsWithdrawalNotification())
                 .append("productMatching", getProductMatching())
+                .append("productMatchMin", getProductMatchMin())
+                .append("productMatchMax", getProductMatchMax())
                 .append("accountStatus", getAccountStatus())
                 .append("transactionStatus", getTransactionStatus())
                 .append("withdrawalStatus", getWithdrawalStatus())

@@ -47,13 +47,26 @@ class MigrationResourceContractTest
                 "V2026_08_18_03__restore_timezone_management_menu.sql",
                 "V2026_08_18_04__remove_legacy_branding_compat.sql",
                 "V2026_08_18_05__member_sensitive_permissions_compat.sql",
-                "V2026_09_01_00__user_table_column_config.sql"), names);
+                "V2026_09_01_00__user_table_column_config.sql",
+                "V2026_10_27_00__admin_transaction_requests.sql",
+                "V2026_11_08_00__member_product_match_ratios.sql"), names);
         for (Resource resource : resources)
         {
             assertTrue(FILE_NAME.matcher(resource.getFilename()).matches(), resource.getFilename());
             String sql = resource.getContentAsString(StandardCharsets.UTF_8);
             assertFalse(DANGEROUS_SQL.matcher(stripComments(sql)).find(), resource.getFilename());
         }
+    }
+
+    @Test
+    void memberProductMatchMigrationAddsNullableRatiosWithoutActivatingHistoricalRules() throws IOException
+    {
+        String sql = stripComments(resourceText(
+                "db/migration/mysql/V2026_11_08_00__member_product_match_ratios.sql"));
+        assertTrue(sql.contains("ALTER TABLE ORDER_USER"));
+        assertTrue(sql.contains("ADD COLUMN PRODUCT_MATCH_MIN DECIMAL(5,2) NULL DEFAULT NULL"));
+        assertTrue(sql.contains("ADD COLUMN PRODUCT_MATCH_MAX DECIMAL(5,2) NULL DEFAULT NULL"));
+        assertFalse(Pattern.compile("(?i)\\b(?:UPDATE|DELETE|INSERT|DROP)\\b").matcher(sql).find());
     }
 
     @Test

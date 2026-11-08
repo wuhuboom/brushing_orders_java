@@ -38,6 +38,12 @@ public interface IOrderUserService
      */
     public List<OrderUser> selectOrderUserList(OrderUser orderUser);
 
+    /** Highest member ID at export start; new members above this boundary are excluded. */
+    Long selectOrderUserExportMaxId();
+
+    /** At most 500 members after the supplied ID, with all export statistics populated. */
+    List<OrderUser> selectOrderUserExportBatch(OrderUser orderUser, Long afterId, Long maxId, int batchSize);
+
     /**
      * 新增订单用户
      * 

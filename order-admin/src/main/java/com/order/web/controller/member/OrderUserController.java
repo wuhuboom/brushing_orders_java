@@ -1,5 +1,6 @@
 package com.order.web.controller.member;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -7,7 +8,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
+import java.util.function.Supplier;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.order.common.exception.ServiceException;
 import com.order.common.utils.StringUtils;
 import com.order.api.service.AdminMemberCredentialService;
 import com.order.member.domain.GoodsMemberLevel;
@@ -33,6 +38,7 @@ import com.order.common.core.domain.AjaxResult;
 import com.order.common.core.redis.RedisCache;
 import com.order.common.enums.BusinessType;
 import com.order.member.domain.OrderUser;
+import com.order.member.domain.dto.OrderUserExport;
 import com.order.member.service.IOrderUserService;
 import com.order.common.utils.poi.ExcelUtil;
 import com.order.common.core.page.TableDataInfo;
@@ -48,6 +54,9 @@ import com.order.member.domain.dto.TransactionDto;
 @RequestMapping("/member/orderuser")
 public class OrderUserController extends BaseController
 {
+    @Autowired
+    private com.order.member.service.AdminTransactionRequestService adminTransactionRequests;
+
     @Autowired
     private IOrderUserService orderUserService;
 
@@ -67,6 +76,9 @@ public class OrderUserController extends BaseController
     private static final String FRONT_USER_TOKEN_PREFIX = "front:user_tokens:";
     private static final String LEGACY_USER_TOKEN_PREFIX = "user:tokens:";
     private static final String EXCLUDE_USERNAMES_PREFIX = "__exclude__:";
+    private static final int MEMBER_EXPORT_BATCH_SIZE = 500;
+    // Avoid queuing large workbooks from multiple administrators on the same JVM.
+    private final Semaphore memberExportPermit = new Semaphore(1);
 
     /**
      * 查询订单用户列表
@@ -75,31 +87,40 @@ public class OrderUserController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(OrderUser orderUser, HttpServletRequest request)
     {
-        Set<Long> onlineUserIds = new HashSet<>();
-        Set<String> onlineUsernames = new HashSet<>();
-        collectOnlineMemberIds(redisCache.keys(FRONT_USER_TOKEN_PREFIX + "*"), onlineUserIds);
-        collectOnlineMemberNames(redisCache.keys(LEGACY_USER_TOKEN_PREFIX + "*"), onlineUsernames);
         String onlineStatus = request.getParameter("isOnline");
-        if (StringUtils.isNotEmpty(onlineStatus)) {
-            collectOnlineMemberNames(onlineUserIds, onlineUsernames);
-        }
-
-        if (!applyOnlineUsernameFilter(
-                orderUser,
-                onlineStatus,
-                onlineUsernames)) {
+        OnlineMembers onlineMembers = collectOnlineMembers(onlineStatus);
+        if (!applyOnlineUsernameFilter(orderUser, onlineStatus, onlineMembers.usernames())) {
             return getDataTable(new ArrayList<>());
         }
 
         startPage();
         List<OrderUser> list = orderUserService.selectOrderUserList(orderUser);
-        for (OrderUser user : list) {
-            boolean online = onlineUserIds.contains(user.getId())
-                    || onlineUsernames.contains(user.getUsername());
-            user.setIsOnline(online ? "1" : "0");
-        }
+        markOnlineMembers(list, onlineMembers);
         return getDataTable(list);
     }
+
+    private OnlineMembers collectOnlineMembers(String onlineStatus)
+    {
+        Set<Long> onlineUserIds = new HashSet<>();
+        Set<String> onlineUsernames = new HashSet<>();
+        collectOnlineMemberIds(redisCache.keys(FRONT_USER_TOKEN_PREFIX + "*"), onlineUserIds);
+        collectOnlineMemberNames(redisCache.keys(LEGACY_USER_TOKEN_PREFIX + "*"), onlineUsernames);
+        if (StringUtils.isNotEmpty(onlineStatus)) {
+            collectOnlineMemberNames(onlineUserIds, onlineUsernames);
+        }
+        return new OnlineMembers(onlineUserIds, onlineUsernames);
+    }
+
+    private void markOnlineMembers(List<OrderUser> list, OnlineMembers onlineMembers)
+    {
+        for (OrderUser user : list) {
+            boolean online = onlineMembers.ids().contains(user.getId())
+                    || onlineMembers.usernames().contains(user.getUsername());
+            user.setIsOnline(online ? "1" : "0");
+        }
+    }
+
+    private record OnlineMembers(Set<Long> ids, Set<String> usernames) {}
 
     private void collectOnlineMemberIds(Collection<String> keys, Set<Long> onlineUserIds)
     {
@@ -208,11 +229,74 @@ public class OrderUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:orderuser:export')")
     @Log(title = "订单用户", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, OrderUser orderUser)
+    public void export(HttpServletResponse response, OrderUser orderUser, HttpServletRequest request) throws IOException
     {
-        List<OrderUser> list = orderUserService.selectOrderUserList(orderUser);
-        ExcelUtil<OrderUser> util = new ExcelUtil<OrderUser>(OrderUser.class);
-        util.exportExcel(response, list, "订单用户数据");
+        if (!memberExportPermit.tryAcquire()) {
+            throw new ServiceException("正在导出会员数据，请稍后重试");
+        }
+        try {
+            String onlineStatus = request.getParameter("isOnline");
+            if (StringUtils.isNotEmpty(onlineStatus) && !"0".equals(onlineStatus) && !"1".equals(onlineStatus)) {
+                throw new ServiceException("在线状态无效");
+            }
+            Long maxId = orderUserService.selectOrderUserExportMaxId();
+            ExcelUtil<OrderUserExport> util = new ExcelUtil<>(OrderUserExport.class);
+            util.exportExcelInBatches(response, "会员核心数据", new Supplier<List<OrderUserExport>>() {
+                private long afterId;
+                private boolean finished = maxId == null || maxId <= 0;
+
+                @Override
+                public List<OrderUserExport> get() {
+                    // A batch can contain no matching online/offline members; keep scanning.
+                    while (!finished) {
+                        List<OrderUser> batch = orderUserService.selectOrderUserExportBatch(
+                                orderUser, afterId, maxId, MEMBER_EXPORT_BATCH_SIZE);
+                        if (batch.isEmpty()) {
+                            finished = true;
+                            break;
+                        }
+                        if (batch.size() > MEMBER_EXPORT_BATCH_SIZE) {
+                            throw new ServiceException("导出批次大小异常，请重试");
+                        }
+                        for (OrderUser user : batch) {
+                            if (user.getId() == null || user.getId() <= afterId || user.getId() > maxId) {
+                                throw new ServiceException("导出数据顺序异常，请重试");
+                            }
+                            afterId = user.getId();
+                        }
+                        finished = batch.size() < MEMBER_EXPORT_BATCH_SIZE || afterId >= maxId;
+                        markExportOnlineMembers(batch);
+                        List<OrderUserExport> rows = new ArrayList<>(batch.size());
+                        for (OrderUser user : batch) {
+                            if (StringUtils.isEmpty(onlineStatus) || onlineStatus.equals(user.getIsOnline())) {
+                                rows.add(OrderUserExport.from(user));
+                            }
+                        }
+                        if (!rows.isEmpty()) {
+                            return rows;
+                        }
+                    }
+                    return List.of();
+                }
+            });
+        } finally {
+            memberExportPermit.release();
+        }
+    }
+
+    private void markExportOnlineMembers(List<OrderUser> batch)
+    {
+        List<String> keys = new ArrayList<>(batch.size() * 2);
+        for (OrderUser user : batch) {
+            keys.add(FRONT_USER_TOKEN_PREFIX + user.getId());
+            keys.add(LEGACY_USER_TOKEN_PREFIX + user.getUsername());
+        }
+        Set<String> existing = redisCache.existingKeys(keys);
+        for (OrderUser user : batch) {
+            boolean online = existing.contains(FRONT_USER_TOKEN_PREFIX + user.getId())
+                    || existing.contains(LEGACY_USER_TOKEN_PREFIX + user.getUsername());
+            user.setIsOnline(online ? "1" : "0");
+        }
     }
 
     /**
@@ -275,6 +359,9 @@ public class OrderUserController extends BaseController
     public AjaxResult add(@RequestBody OrderUser orderUser)
     {
         String validationError = validateMemberControls(orderUser);
+        if (validationError == null) {
+            validationError = validateProductMatching(orderUser, null);
+        }
         if (validationError != null) {
             return AjaxResult.error(validationError);
         }
@@ -332,6 +419,9 @@ public class OrderUserController extends BaseController
             return AjaxResult.error("会员资料已变化，请刷新后重试");
         }
         String validationError = validateMemberControls(orderUser);
+        if (validationError == null) {
+            validationError = validateProductMatching(orderUser, existing);
+        }
         if (validationError != null) {
             return AjaxResult.error(validationError);
         }
@@ -400,6 +490,47 @@ public class OrderUserController extends BaseController
         return AjaxResult.success("修改成功");
     }
 
+    private String validateProductMatching(OrderUser incoming, OrderUser existing)
+    {
+        // Old members may have an enabled switch without personal ratios. Only
+        // validate this configuration when an administrator explicitly changes it.
+        if (incoming.getProductMatching() == null
+                && incoming.getProductMatchMin() == null
+                && incoming.getProductMatchMax() == null) {
+            return null;
+        }
+        String enabled = incoming.getProductMatching() != null
+                ? incoming.getProductMatching()
+                : existing == null ? "1" : existing.getProductMatching();
+        if (!"0".equals(enabled) && !"1".equals(enabled)) {
+            return "产品匹配状态无效";
+        }
+        BigDecimal min = incoming.getProductMatchMin() != null
+                ? incoming.getProductMatchMin()
+                : existing == null ? null : existing.getProductMatchMin();
+        BigDecimal max = incoming.getProductMatchMax() != null
+                ? incoming.getProductMatchMax()
+                : existing == null ? null : existing.getProductMatchMax();
+        if (!validProductMatchPercentage(min) || !validProductMatchPercentage(max)) {
+            return "产品匹配比例须在 0 到 100 之间，最多保留两位小数";
+        }
+        if (min != null && max != null && min.compareTo(max) > 0) {
+            return "最小匹配比例不能大于最大匹配比例";
+        }
+        if ("0".equals(enabled)
+                && (min == null || max == null || min.signum() <= 0 || max.signum() <= 0)) {
+            return "启用产品匹配时须设置大于 0 的最小和最大匹配比例";
+        }
+        return null;
+    }
+
+    private boolean validProductMatchPercentage(BigDecimal value)
+    {
+        return value == null || (value.signum() >= 0
+                && value.compareTo(BigDecimal.valueOf(100)) <= 0
+                && value.stripTrailingZeros().scale() <= 2);
+    }
+
     private String validateMemberControls(OrderUser orderUser)
     {
         if (orderUser.getWithdrawalPasswordFailLimit() != null && orderUser.getWithdrawalPasswordFailLimit() < 0) {
@@ -433,26 +564,31 @@ public class OrderUserController extends BaseController
         return AjaxResult.success("已解冻 " + unlocked + " 个会员");
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record LoginPasswordUpdateRequest(Long id, String password) {}
+
     //修改密码
     @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PutMapping("/editPassword")
-    public AjaxResult editPassword(@RequestBody OrderUser orderUser)
+    public AjaxResult editPassword(@RequestBody LoginPasswordUpdateRequest request)
     {
-        if (orderUser.getId() == null) {
+        if (request == null || request.id() == null) {
             return error("会员ID不能为空");
         }
-        String normalizedPassword = StringUtils.trim(orderUser.getPassword());
+        String normalizedPassword = StringUtils.trim(request.password());
         if (normalizedPassword == null || normalizedPassword.length() < 6) {
             return error("登录密码长度不能少于6位");
         }
-        OrderUser orderUser1 = orderUserService.selectOrderUserById(orderUser.getId());
-        if (orderUser1 == null) {
+        OrderUser existing = orderUserService.selectOrderUserById(request.id());
+        if (existing == null) {
             return error("会员不存在");
         }
-        orderUser.setVersion(orderUser1.getVersion());
+        OrderUser passwordUpdate = new OrderUser();
+        passwordUpdate.setId(request.id());
+        passwordUpdate.setVersion(existing.getVersion());
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        orderUser.setPassword(encoder.encode(normalizedPassword));
-        return toAjax(orderUserService.updateOrderUser(orderUser));
+        passwordUpdate.setPassword(encoder.encode(normalizedPassword));
+        return toAjax(orderUserService.updateOrderUser(passwordUpdate));
     }
 
     //修改交易密码
@@ -532,27 +668,13 @@ public class OrderUserController extends BaseController
     @PostMapping("/transaction")
     public AjaxResult transaction(@RequestBody TransactionDto dto)
     {
-        // 简单校验
-        if (dto == null) {
-            return AjaxResult.error("请求体不能为空");
-        }
-        if (dto.getAmount() == null) {
-            return AjaxResult.error("金额不能为空");
-        }
-        if (dto.getUserId() == null) {
-            return AjaxResult.error("userId 不能为空");
-        }
-        try {
-            // 始终通过服务的统一入口处理，服务内部会根据 operationType 调用 recordRecharge 或 recordFlow 等通用方法
-            boolean ok = transactionService.processTransaction(dto);
-            if (ok) {
-                return AjaxResult.success("处理成功");
-            } else {
-                return AjaxResult.error("处理失败");
-            }
-        } catch (Exception ex) {
-            return AjaxResult.error(ex.getMessage());
-        }
+        return success(adminTransactionRequests.submit(getUserId(), dto));
+    }
+
+    @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
+    @GetMapping("/transaction/status/{requestId}")
+    public AjaxResult transactionStatus(@PathVariable String requestId) {
+        return success(adminTransactionRequests.status(getUserId(), requestId));
     }
 
 

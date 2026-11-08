@@ -49,6 +49,14 @@ public class OrderWithdrawalController extends BaseController {
         return getDataTable(list);
     }
 
+    @PreAuthorize("@ss.hasPermi('member:withdrawal:list')")
+    @GetMapping("/notifications")
+    public org.springframework.http.ResponseEntity<AjaxResult> notifications() {
+        return org.springframework.http.ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(success(withdrawalQueryService.selectPendingNotificationIds()));
+    }
+
     @PreAuthorize("@ss.hasPermi('member:withdrawal:export')")
     @Log(title = "提现", businessType = BusinessType.EXPORT)
     @PostMapping("/export")

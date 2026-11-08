@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.Collection;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -18,12 +20,15 @@ import com.order.member.service.IOrderConfigService;
 import com.order.member.service.IOrderInfoService;
 import com.order.member.service.ITransactionService;
 import com.order.member.service.RegistrationResult;
+import com.order.member.service.MemberDailyStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.domain.OrderUser;
 import com.order.member.service.IOrderUserService;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.beans.BeanUtils;
 
 /**
  * 订单用户Service业务层处理
@@ -53,6 +58,9 @@ public class OrderUserServiceImpl implements IOrderUserService
     @Autowired
     private IOrderInfoService orderInfoService;
 
+    @Autowired
+    private MemberDailyStatisticsService dailyStatisticsService;
+
     /**
      * 查询订单用户
      * 
@@ -62,7 +70,9 @@ public class OrderUserServiceImpl implements IOrderUserService
     @Override
     public OrderUser selectOrderUserById(Long id)
     {
-        return orderUserMapper.selectOrderUserById(id);
+        OrderUser user = orderUserMapper.selectOrderUserById(id);
+        dailyStatisticsService.populate(user);
+        return user;
     }
 
     @Override
@@ -87,7 +97,63 @@ public class OrderUserServiceImpl implements IOrderUserService
         {
             orderUser.setKeyword(StringUtils.trim(orderUser.getKeyword()));
         }
-        return orderUserMapper.selectOrderUserList(orderUser);
+        List<OrderUser> users = orderUserMapper.selectOrderUserList(orderUser);
+        // Enrich after the paged query so the time-zone lookup cannot consume PageHelper's page.
+        dailyStatisticsService.populate(users);
+        return users;
+    }
+
+    @Override
+    public Long selectOrderUserExportMaxId()
+    {
+        return Objects.requireNonNullElse(orderUserMapper.selectOrderUserExportMaxId(), 0L);
+    }
+
+    @Override
+    @Transactional(readOnly = true, propagation = Propagation.REQUIRES_NEW)
+    public List<OrderUser> selectOrderUserExportBatch(OrderUser orderUser, Long afterId, Long maxId, int batchSize)
+    {
+        if (batchSize < 1 || batchSize > 500) {
+            throw new ServiceException("导出批次大小必须在1到500之间");
+        }
+        long cursor = afterId == null ? 0L : afterId;
+        if (cursor < 0) {
+            throw new ServiceException("导出游标无效");
+        }
+        if (maxId == null || maxId <= cursor) {
+            return List.of();
+        }
+        OrderUser batchQuery = new OrderUser();
+        if (orderUser != null) {
+            BeanUtils.copyProperties(orderUser, batchQuery);
+            batchQuery.setParams(new HashMap<>(orderUser.getParams()));
+        }
+        batchQuery.setKeyword(StringUtils.trim(batchQuery.getKeyword()));
+        batchQuery.getParams().put("exportAfterId", cursor);
+        batchQuery.getParams().put("exportMaxId", maxId);
+        batchQuery.getParams().put("exportBatchSize", batchSize);
+        List<OrderUser> users = orderUserMapper.selectOrderUserExportBatch(batchQuery);
+        if (users.isEmpty()) {
+            return users;
+        }
+        // The transaction and MyBatis session end after this batch, so their caches
+        // cannot retain members from previous batches of the same export.
+        dailyStatisticsService.populate(users);
+        List<Long> ids = users.stream().map(OrderUser::getId).toList();
+        Map<Long, OrderUser> statistics = new HashMap<>();
+        for (OrderUser row : orderUserMapper.selectOrderUserExportStatistics(ids)) {
+            statistics.put(row.getId(), row);
+        }
+        for (OrderUser user : users) {
+            OrderUser row = statistics.get(user.getId());
+            if (row == null) {
+                throw new ServiceException("会员资金统计缺失，请重试导出");
+            }
+            user.setTotalCommission(row.getTotalCommission());
+            user.setLuckyBonus(row.getLuckyBonus());
+            user.setPendingBonusAmount(row.getPendingBonusAmount());
+        }
+        return users;
     }
 
     /**
@@ -252,17 +318,23 @@ public class OrderUserServiceImpl implements IOrderUserService
 
     @Override
     public OrderUser selectOrderUserByName(String username) {
-        return orderUserMapper.selectOrderUserByName(username);
+        OrderUser user = orderUserMapper.selectOrderUserByName(username);
+        dailyStatisticsService.populate(user);
+        return user;
     }
 
     @Override
     public OrderUser selectOrderUserByInviteCode(String inviteCode) {
-        return orderUserMapper.selectOrderUserByInviteCode(inviteCode);
+        OrderUser user = orderUserMapper.selectOrderUserByInviteCode(inviteCode);
+        dailyStatisticsService.populate(user);
+        return user;
     }
 
     @Override
     public List<OrderUser> selectChildrenById(Long userId, String scope) {
-        return orderUserMapper.selectChildrenById(userId, scope);
+        List<OrderUser> users = orderUserMapper.selectChildrenById(userId, scope);
+        dailyStatisticsService.populate(users);
+        return users;
     }
 
     @Override
@@ -279,6 +351,19 @@ public class OrderUserServiceImpl implements IOrderUserService
         }
 
         user.setVipId(memberLevel.getId());
+        boolean registerFullOrder = configService.getConfigValue("website", "registerFullOrder")
+                .map(value -> "1".equals(String.valueOf(value))
+                        || "true".equalsIgnoreCase(String.valueOf(value)))
+                .orElse(false);
+        long initialTaskProgress = 0L;
+        if (registerFullOrder) {
+            Long orderLimit = memberLevel.getOrderCountPerDay();
+            if (orderLimit == null || orderLimit < 0) {
+                throw new IllegalStateException("Invalid member level order count configuration");
+            }
+            initialTaskProgress = orderLimit;
+        }
+        user.setTaskProgress(initialTaskProgress);
         user.setParentId(parent.getId());
         user.setInviteCode(inviteCodeGenerator());
         user.setAncestors(StringUtils.isEmpty(parent.getAncestors())

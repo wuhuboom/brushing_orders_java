@@ -2,12 +2,14 @@ package com.order.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.order.api.controller.dto.LoginUserDto;
+import com.order.api.controller.dto.UserProfileResponse;
 import com.order.framework.front.FrontJwtUtil;
 import com.order.framework.init.GeoIpQueryQueryService;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.IOrderLoginLogService;
 import com.order.member.service.IOrderUserService;
+import com.order.member.service.MemberDailyStatisticsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,7 @@ import static org.mockito.Mockito.when;
 class UserApiServiceTest {
     @Mock private OrderUserMapper userMapper;
     @Mock private IOrderUserService userService;
+    @Mock private MemberDailyStatisticsService dailyStatisticsService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private FrontJwtUtil frontJwtUtil;
     @Mock private UserRateLimitService rateLimitService;
@@ -51,10 +54,10 @@ class UserApiServiceTest {
     @BeforeEach
     void setUp() {
         when(passwordEncoder.encode(anyString())).thenReturn("dummy-hash");
-        when(servletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
         service = new UserApiService(
                 userMapper,
                 userService,
+                dailyStatisticsService,
                 passwordEncoder,
                 frontJwtUtil,
                 rateLimitService,
@@ -72,17 +75,42 @@ class UserApiServiceTest {
         OrderUser authUser = authUser();
         OrderUser profile = authUser();
         profile.setBalance(new BigDecimal("100.00"));
+        profile.setTotalCommission(new BigDecimal("1581.25"));
 
         when(userMapper.selectAuthUserByName("member_1")).thenReturn(authUser);
         when(passwordEncoder.matches("Password123", "stored-hash")).thenReturn(true);
         when(userMapper.selectUserProfileById(1L)).thenReturn(profile);
         when(frontJwtUtil.generateToken(authUser)).thenReturn("new-token");
+        doAnswer(invocation -> {
+            invocation.<OrderUser>getArgument(0).setTodayCommission(new BigDecimal("581.25"));
+            return null;
+        }).when(dailyStatisticsService).populate(profile);
 
         UserLoginResult result = service.login(request, servletRequest);
 
         assertEquals("new-token", result.token());
         assertNotNull(result.user());
         assertEquals("member_1", result.user().username());
+        assertEquals(new BigDecimal("581.25"), result.user().todayCommission());
+        assertEquals(new BigDecimal("1581.25"), result.user().totalCommission());
+        verify(dailyStatisticsService).populate(profile);
+    }
+
+    @Test
+    void userInfoReturnsCumulativeCommissionAlongsideDailyCommission() {
+        OrderUser profile = authUser();
+        profile.setTotalCommission(new BigDecimal("1581.25"));
+        when(userMapper.selectUserProfileById(1L)).thenReturn(profile);
+        doAnswer(invocation -> {
+            invocation.<OrderUser>getArgument(0).setTodayCommission(new BigDecimal("581.25"));
+            return null;
+        }).when(dailyStatisticsService).populate(profile);
+
+        UserProfileResponse result = service.userInfo(1L);
+
+        assertEquals(new BigDecimal("581.25"), result.todayCommission());
+        assertEquals(new BigDecimal("1581.25"), result.totalCommission());
+        verify(dailyStatisticsService).populate(profile);
     }
 
     @Test
@@ -134,6 +162,7 @@ class UserApiServiceTest {
     }
 
     private LoginUserDto login(String username, String password) {
+        when(servletRequest.getRemoteAddr()).thenReturn("127.0.0.1");
         LoginUserDto request = new LoginUserDto();
         request.setUsername(username);
         request.setPassword(password);

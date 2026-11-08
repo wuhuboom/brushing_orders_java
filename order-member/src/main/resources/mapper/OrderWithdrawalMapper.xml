@@ -3,6 +3,12 @@
 PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.order.member.mapper.OrderWithdrawalMapper">
+    <select id="selectPendingNotificationIds" resultType="java.lang.String">
+        SELECT CAST(id AS CHAR)
+        FROM order_withdrawal
+        WHERE status = '1'
+        ORDER BY id
+    </select>
     
     <!-- 使用已存在的 GoodsWithdrawalAccountResult（在 GoodsWithdrawalAccountMapper.xml 中定义）作为嵌套映射 -->
 

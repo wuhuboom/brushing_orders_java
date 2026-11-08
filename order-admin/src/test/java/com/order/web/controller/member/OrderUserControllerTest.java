@@ -42,8 +42,30 @@ class OrderUserControllerTest
     @Mock
     private RedisCache redisCache;
 
+    @Mock
+    private com.order.member.service.AdminTransactionRequestService adminTransactionRequests;
+
     @InjectMocks
     private OrderUserController controller;
+
+
+    @Test
+    void transactionEndpointsUseAuthenticatedOperatorAndRequireEditPermission() throws Exception {
+        var authenticated = org.mockito.Mockito.spy(controller);
+        org.mockito.Mockito.doReturn(9L).when(authenticated).getUserId();
+        var dto = new com.order.member.domain.dto.TransactionDto();
+        dto.setRequestId("request-000000001");
+        var result = new com.order.member.service.AdminTransactionRequestService.Result(
+                dto.getRequestId(), "SUCCEEDED", "操作成功");
+        when(adminTransactionRequests.submit(9L, dto)).thenReturn(result);
+        when(adminTransactionRequests.status(9L, dto.getRequestId())).thenReturn(result);
+        assertEquals(result, authenticated.transaction(dto).get("data"));
+        assertEquals(result, authenticated.transactionStatus(dto.getRequestId()).get("data"));
+        assertEquals("@ss.hasPermi('member:orderuser:edit')", OrderUserController.class
+                .getMethod("transactionStatus", String.class).getAnnotation(PreAuthorize.class).value());
+        verify(adminTransactionRequests).submit(9L, dto);
+        verify(adminTransactionRequests).status(9L, dto.getRequestId());
+    }
 
     @AfterEach
     void clearRequestState()
@@ -273,16 +295,14 @@ class OrderUserControllerTest
     @Test
     void loginPasswordRejectsWhitespaceBeforeHashingOrWriting()
     {
-        OrderUser incoming = new OrderUser();
-        incoming.setId(7L);
-        incoming.setPassword("      ");
+        var incoming = new OrderUserController.LoginPasswordUpdateRequest(7L, "      ");
 
         AjaxResult result = controller.editPassword(incoming);
 
         assertTrue(result.isError());
         assertEquals("登录密码长度不能少于6位", result.get(AjaxResult.MSG_TAG));
         verify(orderUserService, never()).selectOrderUserById(7L);
-        verify(orderUserService, never()).updateOrderUser(incoming);
+        verify(orderUserService, never()).updateOrderUser(any(OrderUser.class));
     }
 
     private static OrderUser completedUser()

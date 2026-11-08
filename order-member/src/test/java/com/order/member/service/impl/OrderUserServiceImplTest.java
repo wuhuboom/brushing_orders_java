@@ -9,6 +9,7 @@ import com.order.member.domain.OrderInfo;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.IOrderInfoService;
+import com.order.member.service.MemberDailyStatisticsService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,6 +31,9 @@ class OrderUserServiceImplTest
 
     @Mock
     private IOrderInfoService orderInfoService;
+
+    @Mock
+    private MemberDailyStatisticsService dailyStatisticsService;
 
     @InjectMocks
     private OrderUserServiceImpl orderUserService;

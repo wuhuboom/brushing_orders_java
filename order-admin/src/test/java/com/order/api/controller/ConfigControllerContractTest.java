@@ -112,15 +112,30 @@ class ConfigControllerContractTest {
                 "/profile/h5.jpg",
                 "1",
                 "0",
+                "1",
                 List.of("09:00", "22:00")));
 
         mockMvc.perform(get("/api/config/website"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("IRON"))
                 .andExpect(jsonPath("$.data.popUpImage").value("/profile/popup.png"))
+                .andExpect(jsonPath("$.data.certificateSwitch").value("1"))
                 .andExpect(jsonPath("$.data.redirectUrl").doesNotExist())
                 .andExpect(jsonPath("$.data.customServiceScript").doesNotExist())
                 .andExpect(jsonPath("$.data.domains").doesNotExist());
+    }
+
+    @Test
+    void suppressedCertificateIsSerializedAsAnEmptyString() throws Exception {
+        when(queryService.content(any())).thenReturn(new ConfigApiDtos.GlobalContentResponse(
+                "enUs", "Protocol", "About us", "", "Certificate unavailable", "Help", "Terms", "Event",
+                "Transactions", "Orders", "Usage"));
+
+        mockMvc.perform(get("/api/config/content"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.certificateContent").value(""))
+                .andExpect(jsonPath("$.data.certificateTip").value("Certificate unavailable"))
+                .andExpect(jsonPath("$.data.aboutContent").value("About us"));
     }
 
     @Test

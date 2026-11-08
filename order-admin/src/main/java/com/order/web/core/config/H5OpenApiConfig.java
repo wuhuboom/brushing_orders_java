@@ -130,7 +130,7 @@ public class H5OpenApiConfig {
 
     private static final Set<String> PUBLIC_OPERATIONS = Set.of(
             "login", "register", "logout",
-            "errorMessages", "content", "website", "customerServices", "timeZone");
+            "errorMessages", "content", "website", "certificate", "customerServices", "timeZone");
 
     private static final Map<String, ResponseSpec> RESPONSE_SPECS = responseSpecs();
 
@@ -155,6 +155,7 @@ public class H5OpenApiConfig {
             Map.entry("UserProfileResponse", "H5 当前会员资料"),
             Map.entry("MemberLevelResponse", "会员等级配置"),
             Map.entry("GlobalContentResponse", "当前语言的公共内容"),
+            Map.entry("CertificateConfigResponse", "证书开关及当前语言的提示语配置"),
             Map.entry("CustomerServiceResponse", "客服入口"),
             Map.entry("NoticeSummaryResponse", "公告或站内信摘要"),
             Map.entry("NoticeDetailResponse", "公告或站内信详情"),
@@ -173,9 +174,22 @@ public class H5OpenApiConfig {
             Map.entry("OrderResponse", "H5 订单"),
             Map.entry("BonusResponse", "待领取彩金"),
             Map.entry("SubmitResponse", "订单提交结果"),
-            Map.entry("Goods", "H5 商品信息"));
+            Map.entry("PublicApiGoods", "H5 商品信息"));
 
     private static final Map<String, String> PROPERTY_DESCRIPTIONS = propertyDescriptions();
+
+    private static final Map<String, Set<String>> DATE_TIME_PROPERTIES = Map.ofEntries(
+            Map.entry("WithdrawalAccountResponse", Set.of("createTime", "updateTime")),
+            Map.entry("WithdrawalResponse", Set.of("createdAt")),
+            Map.entry("WithdrawalHistoryResponse", Set.of("createTime")),
+            Map.entry("DepositResponse", Set.of("createTime")),
+            Map.entry("TransactionResponse", Set.of("createdTime")),
+            Map.entry("NoticeSummaryResponse", Set.of("createTime")),
+            Map.entry("NoticeDetailResponse", Set.of("createTime")),
+            Map.entry("OrderResponse", Set.of("createTime", "expiryTime")),
+            Map.entry("BonusResponse", Set.of("expiryTime")),
+            Map.entry("UserProfileResponse", Set.of("birthday")),
+            Map.entry("PublicApiGoods", Set.of("createTime", "updateTime")));
 
     @Bean
     public GlobalOpenApiCustomizer h5OpenApiCustomizer() {
@@ -612,8 +626,13 @@ public class H5OpenApiConfig {
     }
 
     private static Schema<?> componentSchema(OpenAPI openApi, Class<?> type) {
+        AnnotatedType annotatedType = new AnnotatedType(type).resolveAsRef(true);
+        if (type == Goods.class) {
+            // Goods is also exposed by management controllers; keep its schema separate.
+            annotatedType.name("PublicApiGoods");
+        }
         ResolvedSchema resolved = ModelConverters.getInstance()
-                .resolveAsResolvedSchema(new AnnotatedType(type).resolveAsRef(true));
+                .resolveAsResolvedSchema(annotatedType);
         if (resolved.referencedSchemas != null) {
             resolved.referencedSchemas.forEach(openApi.getComponents()::addSchemas);
         }
@@ -680,6 +699,9 @@ public class H5OpenApiConfig {
             return;
         }
         schemas.forEach((schemaName, schema) -> {
+            if ("Goods".equals(schemaName)) {
+                return;
+            }
             String modelDescription = MODEL_DESCRIPTIONS.get(schemaName);
             if (modelDescription != null) {
                 schema.setDescription(modelDescription);
@@ -689,6 +711,7 @@ public class H5OpenApiConfig {
             if (schema.getProperties() == null) {
                 return;
             }
+            Map<String, Schema> timestampProperties = new LinkedHashMap<>();
             schema.getProperties().replaceAll((propertyName, propertyValue) -> {
                 String name = String.valueOf(propertyName);
                 Schema<?> property = (Schema<?>) propertyValue;
@@ -699,13 +722,31 @@ public class H5OpenApiConfig {
                             PROPERTY_DESCRIPTIONS.getOrDefault(
                                     name, "H5 接口字段：" + name));
                 }
-                property = describedSchema(property, description);
+                if (DATE_TIME_PROPERTIES.getOrDefault(schemaName, Set.of()).contains(name)) {
+                    if (!description.contains("按系统启用时区输出")) {
+                        description += "，按系统启用时区输出，格式 yyyy-MM-dd'T'HH:mm:ss.SSSxxx，固定三位毫秒和 ±HH:mm 时区偏移（示例时区 Asia/Shanghai）";
+                    }
+                    property = new StringSchema()
+                            .format("date-time")
+                            .description(description)
+                            .pattern("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{2}:\\d{2}$")
+                            .example("2026-11-08T08:00:00.123+08:00")
+                            .nullable(true);
+                    timestampProperties.put(name + "Timestamp", new IntegerSchema()
+                            .format("int64")
+                            .description("与 " + name + " 对应的 Unix 毫秒时间戳，不随展示时区改变；原时间为空时为 null")
+                            .example(1794096000123L)
+                            .nullable(true));
+                } else {
+                    property = describedSchema(property, description);
+                }
                 Object example = propertyExample(name);
                 if (example != null && property.getExample() == null) {
                     property.setExample(example);
                 }
                 return property;
             });
+            schema.getProperties().putAll(timestampProperties);
         });
     }
 
@@ -778,7 +819,7 @@ public class H5OpenApiConfig {
 
         // 商品
         add(specs, "getGoodsList", ajax(Goods.class, true, CodeGroup.GOODS,
-                "随机获取可供 H5 展示或接单使用的商品列表。"));
+                "随机获取价格不超过 2000（含 2000）、不设最低价格限制的启用商品，最多 8 条；不足时返回全部符合条件的商品，无符合条件商品时返回空列表。"));
 
         // 订单
         add(specs, "create", creation(
@@ -797,6 +838,8 @@ public class H5OpenApiConfig {
                 "获取当前语言下的协议、帮助、条款和业务说明内容。"));
         add(specs, "website", ajax(ConfigApiDtos.WebsiteConfigResponse.class, false, CodeGroup.CONFIG,
                 "获取公开 H5 网站名称、货币单位、Logo、背景图及开屏弹窗等展示配置。"));
+        add(specs, "certificate", ajax(ConfigApiDtos.CertificateConfigResponse.class, false, CodeGroup.CONFIG,
+                "获取证书设置中的有效开关及当前语言提示语；无论开关是否开启均返回配置提示语，由前端根据开关决定是否展示；本接口不返回证书正文。"));
         add(specs, "customerServices", ajax(ConfigApiDtos.CustomerServiceResponse.class, true, CodeGroup.CONFIG,
                 "获取当前语言下已启用的客服入口。"));
         add(specs, "memberLevels", ajax(ConfigApiDtos.MemberLevelResponse.class, true, CodeGroup.CONFIG,
@@ -853,7 +896,7 @@ public class H5OpenApiConfig {
         descriptions.put("avatar", "头像相对路径或完整 URL");
         descriptions.put("gender", "性别：0 未知，1 男，2 女");
         descriptions.put("email", "电子邮箱");
-        descriptions.put("birthday", "生日，时间戳格式");
+        descriptions.put("birthday", "生日");
         descriptions.put("vipId", "当前会员等级 ID");
         descriptions.put("parentId", "上级会员 ID");
         descriptions.put("parentUsername", "上级会员用户名");
@@ -888,7 +931,8 @@ public class H5OpenApiConfig {
         descriptions.put("lang", "本次返回内容使用的语言代码");
         descriptions.put("protocolContent", "用户协议内容");
         descriptions.put("aboutContent", "关于我们内容");
-        descriptions.put("certificateContent", "资质证书内容");
+        descriptions.put("certificateContent", "资质证书内容；证书开关开启时返回空字符串");
+        descriptions.put("certificateTip", "本地化证书提示语，依次按请求语言、英语、基础配置回退，默认非正式员工不可以查看证书；独立证书配置接口始终返回提示语，公共内容接口关闭开关时返回空字符串");
         descriptions.put("helpContent", "帮助中心内容");
         descriptions.put("termsContent", "条款与条件内容");
         descriptions.put("eventContent", "活动说明内容");
@@ -905,6 +949,7 @@ public class H5OpenApiConfig {
         descriptions.put("h5BackgroundImage", "H5 背景图 URL 或相对路径");
         descriptions.put("showLogo", "是否显示 Logo：0 否，1 是");
         descriptions.put("hideImage", "是否隐藏 Logo 图片：0 否，1 是");
+        descriptions.put("certificateSwitch", "证书设置中的开关：0 关闭并正常返回证书内容（默认），1 开启并返回空证书内容及本地化提示语；兼容旧网站设置值");
         descriptions.put("imageShowTimeRange", "Logo 图片显示时间范围");
         descriptions.put("sortOrder", "展示排序值，数值越小越靠前");
         descriptions.put("image", "图片 URL 或相对路径");
@@ -993,7 +1038,7 @@ public class H5OpenApiConfig {
         descriptions.put("orderCount", "当前订单在任务组中的序号");
         descriptions.put("rebatePercentage", "订单佣金比例");
         descriptions.put("rebate", "订单佣金金额");
-        descriptions.put("expiryTime", "过期时间，Unix 毫秒时间戳");
+        descriptions.put("expiryTime", "过期时间");
         descriptions.put("productId", "商品 ID");
         descriptions.put("productImage", "商品图片 URL");
         descriptions.put("productTitle", "商品标题");
@@ -1036,10 +1081,12 @@ public class H5OpenApiConfig {
 
         // 同名字段必须优先按所属模型解释，避免把订单类型、提现类型和不同状态机混为一谈。
         descriptions.put("UserProfileResponse.id", "当前会员 ID");
+        descriptions.put("UserProfileResponse.totalCommission", "累计已入账的本人订单佣金（fy），不限日期；不含下级返佣、奖金和充值；无佣金时为 0");
         descriptions.put("UserProfileResponse.luckyBonus", "累计已发放彩金金额；无已发放彩金时为 0");
+        descriptions.put("UserProfileResponse.pendingBonusAmount", "当前已触发且未发放的彩金金额；领取后保留至发放，不受后续任务进度或领取期限影响；未触发、未领取且已过期或已发放时为 0");
         descriptions.put("CustomerServiceResponse.id", "客服入口 ID");
         descriptions.put("MemberLevelResponse.id", "会员等级 ID");
-        descriptions.put("Goods.id", "商品 ID");
+        descriptions.put("PublicApiGoods.id", "商品 ID");
         descriptions.put("OrderResponse.id", "订单 ID");
         descriptions.put("BonusResponse.id", "彩金 ID");
         descriptions.put("SubmitResponse.id", "订单 ID");
@@ -1077,13 +1124,13 @@ public class H5OpenApiConfig {
         descriptions.put("WebsiteConfigResponse.name", "网站展示名称");
         descriptions.put("CustomerServiceResponse.name", "客服入口显示名称");
         descriptions.put("MemberLevelResponse.name", "会员等级名称");
-        descriptions.put("Goods.description", "商品说明或详情");
+        descriptions.put("PublicApiGoods.description", "商品说明或详情");
         descriptions.put("MemberLevelResponse.description", "会员等级说明");
-        descriptions.put("Goods.isEnabled", "商品启用状态：0 启用，1 停用");
+        descriptions.put("PublicApiGoods.isEnabled", "商品启用状态：0 启用，1 停用");
         descriptions.put("UserProfileResponse.isEnabled", "会员启用状态：0 启用，1 停用");
 
-        descriptions.put("OrderResponse.expiryTime", "订单过期时间，Unix 毫秒时间戳");
-        descriptions.put("BonusResponse.expiryTime", "彩金领取截止时间，Unix 毫秒时间戳");
+        descriptions.put("OrderResponse.expiryTime", "订单过期时间");
+        descriptions.put("BonusResponse.expiryTime", "彩金领取截止时间");
         descriptions.put("BonusResponse.animationDuration", "彩金动画持续时间，单位秒");
         descriptions.put("BonusResponse.displayDuration", "彩金弹窗展示时间，单位秒");
         return Collections.unmodifiableMap(descriptions);

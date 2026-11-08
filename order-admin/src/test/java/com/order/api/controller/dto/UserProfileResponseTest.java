@@ -24,7 +24,9 @@ class UserProfileResponseTest {
         user.setWithdrawalPasswordFailCount(4);
         user.setBalance(new BigDecimal("12.50"));
         user.setTodayCommission(new BigDecimal("1.25"));
+        user.setTotalCommission(new BigDecimal("101.25"));
         user.setLuckyBonus(new BigDecimal("20.00"));
+        user.setPendingBonusAmount(new BigDecimal("35.50"));
 
         GoodsMemberLevel level = new GoodsMemberLevel();
         level.setId(2L);
@@ -35,7 +37,10 @@ class UserProfileResponseTest {
 
         assertTrue(json.contains("\"username\":\"member_1\""));
         assertTrue(json.contains("\"balance\":12.50"));
+        assertTrue(json.contains("\"todayCommission\":1.25"));
+        assertTrue(json.contains("\"totalCommission\":101.25"));
         assertTrue(json.contains("\"luckyBonus\":20.00"));
+        assertTrue(json.contains("\"pendingBonusAmount\":35.50"));
         assertTrue(json.contains("\"memberLevel\""));
         assertFalse(json.contains("login-hash"));
         assertFalse(json.contains("trade-hash"));
@@ -45,9 +50,11 @@ class UserProfileResponseTest {
     }
 
     @Test
-    void luckyBonusDefaultsToZeroWhenThereIsNoDistributedBonus() throws Exception {
+    void commissionAndBonusAmountsDefaultToZeroWhenThereAreNoRecords() throws Exception {
         String json = new ObjectMapper().writeValueAsString(UserProfileResponse.from(new OrderUser()));
 
         assertTrue(json.contains("\"luckyBonus\":0"));
+        assertTrue(json.contains("\"totalCommission\":0"));
+        assertTrue(json.contains("\"pendingBonusAmount\":0"));
     }
 }

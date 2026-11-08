@@ -20,6 +20,10 @@ import com.order.member.service.IOrderSequenceManagerService;
 import com.order.member.service.ITransactionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -31,6 +35,7 @@ import java.util.List;
 
 import static com.order.api.service.OrderErrorCodes.BONUS_UNAVAILABLE;
 import static com.order.api.service.OrderErrorCodes.INVALID_BONUS;
+import static com.order.api.service.OrderErrorCodes.INVALID_CONFIG;
 import static com.order.api.service.OrderErrorCodes.INVALID_ORDER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -110,9 +115,79 @@ class OrderApplicationServiceTest {
     }
 
     @Test
+    void enabledPersonalMatchRangeOverridesGlobalAndTierRanges() {
+        OrderUser user = user(new BigDecimal("1000.00"), 1L);
+        user.setProductMatching("0");
+        user.setProductMatchMin(new BigDecimal("35.55"));
+        user.setProductMatchMax(new BigDecimal("35.55"));
+        user.getMemberLevel().setProductMatchEnabled("0");
+        user.getMemberLevel().setProductMatchMin(new BigDecimal("90.00"));
+        user.getMemberLevel().setProductMatchMax(new BigDecimal("90.00"));
+        arrangeNormalCreation(user, new BigDecimal("355.50"));
+
+        var result = service().create(7L);
+
+        assertEquals(new BigDecimal("355.50"), result.order().amount());
+        verify(goodsMapper).selectNearestPriceGoods(new BigDecimal("355.50"));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "1")
+    void disabledOrUnsetPersonalMatchingUsesGlobalRangeAndIgnoresTierRange(String enabled) {
+        OrderUser user = user(new BigDecimal("100.00"), 1L);
+        user.setProductMatching(enabled);
+        user.setProductMatchMin(new BigDecimal("60.00"));
+        user.setProductMatchMax(new BigDecimal("30.00"));
+        user.getMemberLevel().setProductMatchEnabled("0");
+        user.getMemberLevel().setProductMatchMin(new BigDecimal("90.00"));
+        user.getMemberLevel().setProductMatchMax(new BigDecimal("90.00"));
+        arrangeNormalCreation(user, new BigDecimal("50.00"));
+
+        var result = service().create(7L);
+
+        assertEquals(new BigDecimal("50.00"), result.order().amount());
+        verify(goodsMapper).selectNearestPriceGoods(new BigDecimal("50.00"));
+    }
+
+    @Test
+    void legacyEnabledPersonalMatchingWithoutRangeRetainsGlobalRange() {
+        OrderUser user = user(new BigDecimal("100.00"), 1L);
+        user.setProductMatching("0");
+        arrangeNormalCreation(user, new BigDecimal("50.00"));
+
+        var result = service().create(7L);
+
+        assertEquals(new BigDecimal("50.00"), result.order().amount());
+        verify(goodsMapper).selectNearestPriceGoods(new BigDecimal("50.00"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({",40", "30,", "0,40", "-1,40", "60,30", "30,100.01"})
+    void invalidEnabledPersonalRangeFailsBeforeProductSelection(
+            BigDecimal minimum, BigDecimal maximum) {
+        OrderUser user = user(new BigDecimal("100.00"), 1L);
+        user.setProductMatching("0");
+        user.setProductMatchMin(minimum);
+        user.setProductMatchMax(maximum);
+        arrangeCreate(user);
+
+        OrderApiException error = assertThrows(
+                OrderApiException.class, () -> service().create(7L));
+
+        assertEquals(INVALID_CONFIG, error.getBusinessCode());
+        verify(goodsMapper, never()).selectNearestPriceGoods(any());
+        verify(orderMapper, never()).insertOrderInfo(any());
+        verify(userMapper, never()).reserveOrderFunds(any(), any(), any(Long.class), any(Boolean.class));
+    }
+
+    @Test
     void returnsExistingPendingOrderWithoutCreatingAnotherOne() {
         OrderUser user = user(new BigDecimal("-20.00"), 40L);
         user.setIsBanned("0");
+        user.setProductMatching("0");
+        user.setProductMatchMin(BigDecimal.ZERO);
+        user.setProductMatchMax(BigDecimal.ZERO);
         OrderInfo existing = order(20L, "1");
         when(userMapper.lockUserById(7L)).thenReturn(7L);
         when(userMapper.selectOrderTaskUserById(7L)).thenReturn(user);
@@ -198,6 +273,9 @@ class OrderApplicationServiceTest {
     @Test
     void linkedOrderMayReserveMoreThanCurrentBalance() {
         OrderUser user = user(new BigDecimal("20.00"), 1L);
+        user.setProductMatching("0");
+        user.setProductMatchMin(BigDecimal.ZERO);
+        user.setProductMatchMax(BigDecimal.ZERO);
         user.getMemberLevel().setMinContinuousCommissionRate(new BigDecimal("10.00"));
         OrderLink link = new OrderLink();
         link.setId(9L);
@@ -219,6 +297,7 @@ class OrderApplicationServiceTest {
         assertEquals(new BigDecimal("24.00"), result.order().rebate());
         assertEquals(2L, result.order().orderCount());
         verify(userMapper).reserveOrderFunds(7L, new BigDecimal("120.00"), 0L, true);
+        verify(goodsMapper, never()).selectNearestPriceGoods(any());
     }
 
     @Test
@@ -595,6 +674,14 @@ class OrderApplicationServiceTest {
         verify(bonusMapper, never()).distributeBonus(any());
         verify(userMapper, never()).creditBalance(any(), any());
         verify(transactionService, never()).recordFlow(any(), any(), any(), any(), any());
+    }
+
+    private void arrangeNormalCreation(OrderUser user, BigDecimal targetPrice) {
+        arrangeCreate(user);
+        when(goodsMapper.selectNearestPriceGoods(targetPrice)).thenReturn(goods(31L, targetPrice));
+        when(sequenceService.generateCode("TRADE_NO")).thenReturn("O-MATCH");
+        when(orderMapper.insertOrderInfo(any(OrderInfo.class))).thenReturn(1);
+        when(userMapper.reserveOrderFunds(7L, targetPrice, 0L, false)).thenReturn(1);
     }
 
     private void arrangeCreate(OrderUser user) {
