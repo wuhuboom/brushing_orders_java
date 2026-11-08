@@ -1,3 +1,1 @@
-window.APP_CONFIG = {
-  baseApiUrl: "https://api.dasadmin.cc",
-};
+window.APP_CONFIG = { baseApiUrl: "/dev-api" };
