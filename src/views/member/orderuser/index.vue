@@ -193,6 +193,12 @@
       </template>
 
       <template #toolbar>
+        <a-tooltip title="按当前筛选导出全部会员的用户信息、任务和资金数据">
+          <a-button :loading="exportLoading" @click="handleExport" v-hasPermi="['member:orderuser:export']">
+            <DownloadOutlined />
+            导出 Excel
+          </a-button>
+        </a-tooltip>
         <a-button type="primary" :disabled="multiple" @click="handleUnlock" v-hasPermi="['member:orderuser:unlock']">
           <UnlockOutlined />
           登录解冻
@@ -406,7 +412,7 @@
             v-if="hasPermission('member:orderuser:edit')"
             v-hasPermi="['member:orderuser:edit']"
             class="table-action-link"
-            @click="handleToggleProductMatching(record)"
+            @click="handleEditProductMatching(record)"
           >
             {{ dictText(sys_enabled, record.productMatching) }}
           </a>
@@ -789,6 +795,11 @@
       :user-id="identityUserId"
       @success="getList"
     />
+    <orderuser-product-match-modal
+      v-model="productMatchVisible"
+      :user-id="productMatchUserId"
+      @success="getList"
+    />
     <orderuser-contract-modal
       v-model="contractVisible"
       :user-id="contractUserId"
@@ -812,6 +823,7 @@ import {
 } from "@/api/member/orderuser";
 import {
   CopyOutlined,
+  DownloadOutlined,
   DownOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
@@ -829,6 +841,7 @@ import OrderuserExtracommissionDrawer from "./components/OrderuserExtracommissio
 import OrderuserOrderinfoDrawer from "./components/OrderuserOrderinfoDrawer.vue";
 import OrderuserIdentityModal from "./components/OrderuserIdentityModal.vue";
 import OrderuserContractModal from "./components/OrderuserContractModal.vue";
+import OrderuserProductMatchModal from "./components/OrderuserProductMatchModal.vue";
 import {
   buildFakeMemberToggle,
   buildCopyMemberForm,
@@ -842,6 +855,7 @@ import {
   yesNoBadgeStatus,
 } from "./memberCellPresentation";
 import { normalizeMemberIdQuery } from "./memberQueryValidation";
+import { buildMemberQueryParams } from "./memberQueryParams";
 import useUserStore from "@/store/modules/user";
 
 const { proxy } = getCurrentInstance();
@@ -872,6 +886,7 @@ const { user_yes_no, sys_user_sex, sys_enabled } = proxy.useDict(
 const orderuserList = ref([]);
 const open = ref(false);
 const loading = ref(true);
+const exportLoading = ref(false);
 const showSearch = ref(true);
 const ids = ref([]);
 const single = ref(true);
@@ -918,6 +933,8 @@ const giftVisible = ref(false);
 const giftUserId = ref(null);
 const identityVisible = ref(false);
 const identityUserId = ref(null);
+const productMatchVisible = ref(false);
+const productMatchUserId = ref(null);
 const contractVisible = ref(false);
 const contractUserId = ref(null);
 const advancedSearchVisible = ref(false);
@@ -1292,16 +1309,15 @@ function completeGroupText(record) {
 
 /** 查询订单用户列表 */
 function getList() {
+  let requestParams;
+  try {
+    requestParams = buildMemberQueryParams(queryParams.value);
+  } catch (error) {
+    proxy.$modal.msgWarning(error.message);
+    return;
+  }
   const requestSequence = ++listRequestSequence;
   loading.value = true;
-  const requestParams = {
-    ...queryParams.value,
-    params: {
-      beginTime: queryParams.value.createTimeRange?.[0] || null,
-      endTime: queryParams.value.createTimeRange?.[1] || null,
-    },
-  };
-  delete requestParams.createTimeRange;
   listOrderuser(requestParams)
     .then((response) => {
       if (requestSequence !== listRequestSequence) return;
@@ -1533,15 +1549,28 @@ function handleDelete(row = {}) {
     .catch(() => {});
 }
 
-/** 导出按钮操作 */
-function handleExport() {
-  proxy.download(
-    "member/orderuser/export",
-    {
-      ...queryParams.value,
-    },
-    `orderuser_${new Date().getTime()}.xlsx`
-  );
+/** 导出当前筛选的全部会员核心数据 */
+async function handleExport() {
+  if (exportLoading.value || !hasPermission("member:orderuser:export")) return;
+  let requestParams;
+  try {
+    requestParams = buildMemberQueryParams(queryParams.value, { paginated: false });
+  } catch (error) {
+    proxy.$modal.msgWarning(error.message);
+    return;
+  }
+  exportLoading.value = true;
+  try {
+    await proxy.download(
+      "member/orderuser/export",
+      requestParams,
+      `会员核心数据_${proxy.parseTime(new Date(), "{y}{m}{d}_{h}{i}{s}")}.xlsx`,
+      // 大批量导出需要分批生成文件，单独放宽下载等待时间。
+      { timeout: 600000 }
+    );
+  } finally {
+    exportLoading.value = false;
+  }
 }
 
 function isValueOne(value) {
@@ -1955,17 +1984,9 @@ async function handleToggleFake(row) {
   });
 }
 
-async function handleToggleProductMatching(row) {
-  const newValue = String(row.productMatching ?? "") === "0" ? "1" : "0";
-  const action = newValue === "0" ? "启用" : "禁用";
-  return runConfirmedMemberUpdate({
-    row,
-    field: "productMatching",
-    confirmText: `是否确认对会员“${memberTarget(row)}”${action}产品匹配？`,
-    payload: { id: row.id, version: row.version, productMatching: newValue },
-    successMessage: `${action}产品匹配成功`,
-    failureMessage: `${action}产品匹配失败`,
-  });
+function handleEditProductMatching(row) {
+  productMatchUserId.value = row.id;
+  productMatchVisible.value = true;
 }
 
 async function handleToggleAccountStatus(row) {

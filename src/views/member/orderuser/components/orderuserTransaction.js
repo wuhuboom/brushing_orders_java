@@ -48,6 +48,23 @@ export function isPositiveTransactionAmount(value) {
   return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) && Number(value) > 0;
 }
 
+export function isNonNegativeTransactionNumber(value) {
+  return value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) && Number(value) >= 0;
+}
+
+// Stored requests use the backend's 0/1 gift modes; the form uses 1/2.
+export function restoreTransactionForm(intent) {
+  return {
+    operationType: intent.operationType,
+    transactionType: intent.transactionType,
+    amount: intent.amount,
+    giftType: Number(intent.giftType) === BACKEND_GIFT_BY_AMOUNT ? GIFT_BY_AMOUNT : GIFT_BY_RATIO,
+    giftRatio: intent.giftRatio ?? 0,
+    giftAmount: intent.giftAmount ?? 0,
+    remark: intent.remark ?? null,
+  };
+}
+
 export function toBackendGiftType(giftType) {
   return Number(giftType) === GIFT_BY_AMOUNT ? BACKEND_GIFT_BY_AMOUNT : BACKEND_GIFT_BY_RATIO;
 }

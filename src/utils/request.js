@@ -131,6 +131,10 @@ service.interceptors.response.use(
       return Promise.reject("无效的会话，或者会话已过期，请重新登录。");
     }
 
+    if (code !== 200 && res.config?.silentError) {
+      return Promise.reject(new Error(msg));
+    }
+
     if (code === 500) {
       message.error(msg);
       return Promise.reject(new Error(msg));
@@ -149,6 +153,7 @@ service.interceptors.response.use(
     return Promise.resolve(res.data);
   },
   (error) => {
+    if (error.config?.silentError) return Promise.reject(error);
     console.log(`err${error}`);
     let { message: errorMessage } = error;
     if (errorMessage === "Network Error") {

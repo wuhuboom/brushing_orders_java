@@ -184,6 +184,7 @@ import {
   updateOrderconfig,
 } from "@/api/member/orderconfig";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
+import { normalizeCertificateSwitch, parseCertificateConfig } from "./certificateConfig";
 import {
   adminTranslationLanguageFields,
   createEmptyTranslations,
@@ -436,6 +437,32 @@ async function openSettingsDrawer(row, readonly) {
   const response = await getOrderconfig(row.id);
   Object.assign(form.value, response.data);
   currentType.value = response.data.type || row.type;
+  if (currentType.value === "certificate") {
+    const certificate = parseCertificateConfig(form.value.content);
+    if (!Object.hasOwn(certificate, "certificateSwitch")) {
+      try {
+        const websiteResponse = await listOrderconfig({ type: "website", pageNum: 1, pageSize: 1 });
+        if (!Array.isArray(websiteResponse.rows)) {
+          throw new Error("读取旧版证书开关失败");
+        }
+        const website = websiteResponse.rows.find((item) => item.type === "website");
+        let websiteContent = {};
+        try {
+          const parsed = website?.content ? JSON.parse(website.content) : {};
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            websiteContent = parsed;
+          }
+        } catch {
+          // Invalid legacy website JSON has always used the disabled default.
+        }
+        certificate.certificateSwitch = normalizeCertificateSwitch(websiteContent.certificateSwitch);
+        form.value.content = JSON.stringify(certificate);
+      } catch {
+        proxy.$modal.msgError("读取旧版证书开关失败，请重试");
+        return;
+      }
+    }
+  }
   if (!(await loadComponent(currentType.value))) {
     return;
   }

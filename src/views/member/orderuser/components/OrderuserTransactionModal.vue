@@ -5,16 +5,22 @@
     width="800px"
     :mask-closable="false"
     :confirm-loading="submitting"
-    ok-text="确定"
+    :closable="!submitting"
+    :keyboard="!submitting"
+    :ok-button-props="{ disabled: loadingUser || !!journalError || user.id == null }"
+    :ok-text="pending ? '查询 / 重试原请求' : '确定'"
     cancel-text="取消"
     @ok="handleConfirm"
     @cancel="handleCancel"
   >
+    <a-alert v-if="pending" type="warning" show-icon class="request-notice"
+      message="这笔操作的结果尚未确认，请勿另开页面重复上分。系统会查询结果，也可使用原请求安全重试。" />
+    <a-alert v-if="journalError" type="error" show-icon :message="journalError" />
     <div v-if="loadingUser" class="modal-loading">
       <a-spin />
     </div>
 
-    <a-form v-else ref="formRef" :model="form" :rules="rules" layout="vertical">
+    <a-form v-else ref="formRef" :model="form" :rules="rules" :disabled="submitting || !!pending || !!journalError" layout="vertical">
       <a-row :gutter="[20, 0]">
         <a-col :span="12">
           <a-form-item label="用户名">
@@ -80,7 +86,7 @@
               <a-input-number
                 v-model:value="form.giftRatio"
                 :min="0"
-                :disabled="form.giftType === GIFT_BY_AMOUNT"
+                :disabled="submitting || !!pending || !!journalError || form.giftType === GIFT_BY_AMOUNT"
                 placeholder="赠送比例"
                 addon-after="%"
                 class="full-width"
@@ -92,7 +98,7 @@
               <a-input-number
                 v-model:value="form.giftAmount"
                 :min="0"
-                :disabled="form.giftType === GIFT_BY_RATIO"
+                :disabled="submitting || !!pending || !!journalError || form.giftType === GIFT_BY_RATIO"
                 placeholder="赠送金额"
                 class="full-width"
               />
@@ -111,8 +117,8 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
-import { getOrderuser, transaction } from "@/api/member/orderuser";
+import { computed, getCurrentInstance, onBeforeUnmount, reactive, ref, watch } from "vue";
+import { getOrderuser, transaction, transactionStatus } from "@/api/member/orderuser";
 import {
   GIFT_BY_AMOUNT,
   GIFT_BY_RATIO,
@@ -123,10 +129,24 @@ import {
   createTransactionForm,
   isGiftTransaction,
   isPositiveTransactionAmount,
+  isNonNegativeTransactionNumber,
+  restoreTransactionForm,
   transactionTypeOptions,
 } from "./orderuserTransaction";
 
+import useUserStore from "@/store/modules/user";
+import { transactionStorageKey, loadTransaction, prepareTransaction, clearTransaction, terminalTransaction } from "./transactionRequest";
+
 const { proxy } = getCurrentInstance();
+const operator = useUserStore();
+const pending = ref(null);
+const journalError = ref("");
+let journalKey = null;
+let pollTimer;
+let generation = 0;
+function stopPolling() { clearTimeout(pollTimer); }
+onBeforeUnmount(() => { generation++; stopPolling(); });
+
 const props = defineProps({
   modelValue: {
     type: Boolean,
@@ -175,16 +195,16 @@ async function validatePositiveAmount(_rule, value) {
 
 async function validateGiftRatio(_rule, value) {
   if (!showGiftRow.value || form.giftType !== GIFT_BY_RATIO) return Promise.resolve();
-  return value === null || value === undefined || value === ""
-    ? Promise.reject("赠送比例是必填项！")
-    : Promise.resolve();
+  return isNonNegativeTransactionNumber(value)
+    ? Promise.resolve()
+    : Promise.reject("赠送比例必须是大于或等于0的有效数字！");
 }
 
 async function validateGiftAmount(_rule, value) {
   if (!showGiftRow.value || form.giftType !== GIFT_BY_AMOUNT) return Promise.resolve();
-  return value === null || value === undefined || value === ""
-    ? Promise.reject("赠送金额是必填项！")
-    : Promise.resolve();
+  return isNonNegativeTransactionNumber(value)
+    ? Promise.resolve()
+    : Promise.reject("赠送金额必须是大于或等于0的有效数字！");
 }
 
 const rules = {
@@ -216,29 +236,35 @@ watch(
 );
 
 watch(
-  () => props.userId,
-  (id) => {
-    if (id != null && visible.value) {
+  [() => props.modelValue, () => props.userId],
+  ([open, id]) => {
+    generation++;
+    stopPolling();
+    if (open && id != null) {
+      resetForm();
+      journalError.value = "";
+      try {
+        journalKey = transactionStorageKey(window.APP_CONFIG.baseApiUrl, operator.id, id);
+        pending.value = loadTransaction(localStorage, journalKey);
+        if (pending.value) Object.assign(form, restoreTransactionForm(pending.value));
+      } catch (error) {
+        journalError.value = error.message || "无法保存交易状态，请联系管理员";
+      }
       fetchUser(id);
-    }
-  }
-);
-
-watch(
-  () => props.modelValue,
-  (val) => {
-    if (val && props.userId != null) {
-      fetchUser(props.userId);
-    } else if (!val) {
+      if (pending.value) pollResult(generation);
+    } else {
       resetForm();
     }
-  }
+  },
+  { immediate: true }
 );
 
 async function fetchUser(id) {
+  const version = generation;
   loadingUser.value = true;
   try {
     const res = await getOrderuser(id);
+    if (version !== generation) return;
     const u = res.data || res;
     user.id = u.id;
     user.username = u.username;
@@ -248,11 +274,12 @@ async function fetchUser(id) {
   } catch (err) {
     console.error(err);
   } finally {
-    loadingUser.value = false;
+    if (version === generation) loadingUser.value = false;
   }
 }
 
 function resetForm() {
+  pending.value = null;
   Object.assign(form, createTransactionForm());
   submitting.value = false;
   formRef.value?.clearValidate?.();
@@ -270,30 +297,74 @@ function handleCancel() {
   visible.value = false;
 }
 
-async function handleConfirm() {
-  if (submitting.value || !formRef.value) return;
-  try {
-    await formRef.value.validate();
-  } catch {
-    return;
-  }
-
-  submitting.value = true;
-  try {
-    await transaction(buildTransactionPayload(user.id, form));
+function acceptResult(result, intent, key, version) {
+  if (!terminalTransaction(result, intent.requestId)) return false;
+  // Keep the saved intent if clearing storage fails, so replay remains safe.
+  clearTransaction(localStorage, key, intent.requestId);
+  if (version !== generation || pending.value?.requestId !== intent.requestId) return true;
+  pending.value = null;
+  stopPolling();
+  if (result.state === "SUCCEEDED") {
     emit("success");
     visible.value = false;
-    proxy?.$modal?.msgSuccess?.("操作成功");
-  } catch (err) {
-    proxy?.$modal?.msgError?.(err?.message || "操作失败");
-    console.error(err);
-  } finally {
-    submitting.value = false;
+    proxy?.$modal?.msgSuccess?.("操作成功，已确认入账");
+  } else {
+    proxy?.$modal?.msgError?.(result.message || "本次操作未入账");
+  }
+  return true;
+}
+
+async function pollResult(version, attempt = 0) {
+  if (version !== generation || !visible.value || !pending.value) return;
+  const intent = pending.value;
+  const key = journalKey;
+  try {
+    const response = await transactionStatus(intent.requestId);
+    if (acceptResult(response.data, intent, key, version)) return;
+  } catch { /* Keep the intent across network failures and page reloads. */ }
+  if (version === generation && pending.value?.requestId === intent.requestId && attempt < 30) {
+    pollTimer = setTimeout(() => pollResult(version, attempt + 1), 2000);
   }
 }
+
+async function handleConfirm() {
+  if (submitting.value || loadingUser.value || journalError.value || user.id == null || !formRef.value) return;
+  // Set before async validation to prevent two clicks from starting parallel submissions.
+  submitting.value = true;
+  const version = generation;
+  const key = journalKey;
+  stopPolling();
+  try {
+    if (!pending.value) {
+      await formRef.value.validate();
+      if (version !== generation) return;
+      pending.value = prepareTransaction(localStorage, key, buildTransactionPayload(user.id, form));
+    } else {
+      const intent = pending.value;
+      const status = await transactionStatus(intent.requestId);
+      if (acceptResult(status.data, intent, key, version)) return;
+    }
+    if (version !== generation || !pending.value) return;
+    const intent = pending.value;
+    const response = await transaction(intent);
+    if (!acceptResult(response.data, intent, key, version)) pollResult(version);
+  } catch (error) {
+    if (version !== generation) return;
+    if (pending.value) {
+      proxy?.$modal?.msgWarning?.("结果尚未确认，正在查询，请勿重复发起新交易");
+      pollResult(version);
+    } else if (!error?.errorFields) {
+      proxy?.$modal?.msgError?.(error?.message || "无法保存交易请求，未提交");
+    }
+  } finally {
+    if (version === generation) submitting.value = false;
+  }
+}
+
 </script>
 
 <style scoped>
+.request-notice { margin-bottom: 16px; }
 .modal-loading {
   padding: 24px;
   text-align: center;

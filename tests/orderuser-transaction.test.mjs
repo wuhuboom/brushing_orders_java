@@ -12,6 +12,8 @@ import {
   createTransactionForm,
   isGiftTransaction,
   isPositiveTransactionAmount,
+  isNonNegativeTransactionNumber,
+  restoreTransactionForm,
   toBackendGiftType,
   transactionTypeOptions,
 } from "../src/views/member/orderuser/components/orderuserTransaction.js";
@@ -94,4 +96,27 @@ test("gift mode changes trigger recalculation and only the active gift field is 
   );
   assert.match(transactionModalSource, /form\.giftType !== GIFT_BY_RATIO/);
   assert.match(transactionModalSource, /form\.giftType !== GIFT_BY_AMOUNT/);
+});
+
+
+test("restored pending gift preserves the UI mode and exact retry payload", () => {
+  for (const giftType of [GIFT_BY_RATIO, GIFT_BY_AMOUNT]) {
+    const originalForm = { ...createTransactionForm(), amount: 405, giftType, giftRatio: 10, giftAmount: giftType === GIFT_BY_AMOUNT ? 25 : 40.5 };
+    const payload = buildTransactionPayload(213, originalForm);
+    const pending = { ...payload, requestId: "saved-request-001" };
+    const restored = restoreTransactionForm(pending);
+    assert.equal(restored.giftType, giftType);
+    assert.equal(restored.giftAmount, originalForm.giftAmount);
+    assert.deepEqual(buildTransactionPayload(213, restored), payload);
+    assert.deepEqual(pending, { ...payload, requestId: "saved-request-001" });
+  }
+});
+
+test("gift numeric inputs reject negative, absent and nonfinite values", () => {
+  for (const value of [-1, "-0.01", null, undefined, "", "bad", NaN, Infinity, -Infinity]) {
+    assert.equal(isNonNegativeTransactionNumber(value), false, String(value));
+  }
+  for (const value of [0, "0", 1, "25.5"]) {
+    assert.equal(isNonNegativeTransactionNumber(value), true, String(value));
+  }
 });

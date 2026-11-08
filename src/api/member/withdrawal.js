@@ -1,3 +1,5 @@
+import axios from "axios";
+import { getToken } from "@/utils/auth";
 import request from '@/utils/request'
 
 // 查询提现列表
@@ -70,4 +72,20 @@ export function delWithdrawal(id) {
     url: '/member/withdrawal/' + id,
     method: 'delete'
   })
+}
+
+// Background checks stay quiet on transport errors; the reminder displays its own status.
+export async function getWithdrawalNotifications(signal) {
+  const response = await axios.get('/member/withdrawal/notifications', {
+    baseURL: window.APP_CONFIG.baseApiUrl,
+    headers: { Authorization: `Bearer ${getToken()}` },
+    timeout: 10000,
+    signal,
+  });
+  if (Number(response.data?.code) !== 200) {
+    const error = new Error('Withdrawal notification request failed');
+    error.status = Number(response.data?.code) || response.status;
+    throw error;
+  }
+  return response.data.data;
 }

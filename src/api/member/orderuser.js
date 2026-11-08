@@ -62,6 +62,8 @@ export function transaction(data) {
   return request({
     url: "/member/orderuser/transaction",
     method: "post",
+    silentError: true,
+    headers: { repeatSubmit: false },
     data: data,
   });
 }
@@ -125,5 +127,13 @@ export function selectChildrenById(query) {
     url: "/member/orderuser/selectChildrenById",
     method: "get",
     params: query,
+  });
+}
+
+export function transactionStatus(requestId) {
+  return request({
+    url: "/member/orderuser/transaction/status/" + encodeURIComponent(requestId),
+    method: "get",
+    silentError: true,
   });
 }

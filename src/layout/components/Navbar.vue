@@ -65,6 +65,7 @@
         <span class="quick-spacer" aria-hidden="true"></span>
       </div>
 
+      <withdrawal-reminder @pending-count="quickStats.totalWithdrawals = $event" />
       <div class="user-actions">
         <div class="account-menu" @click.stop>
           <button
@@ -130,6 +131,7 @@ import {
   TranslationOutlined,
 } from "@ant-design/icons-vue";
 import { Modal } from "ant-design-vue";
+import WithdrawalReminder from "@/components/WithdrawalReminder";
 import Breadcrumb from "@/components/Breadcrumb";
 import TopNav from "@/components/TopNav";
 import Hamburger from "@/components/Hamburger";

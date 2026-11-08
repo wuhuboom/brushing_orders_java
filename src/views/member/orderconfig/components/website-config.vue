@@ -147,6 +147,25 @@
         </a-form-item>
       </a-col>
       <a-col v-bind="quarterCol">
+        <a-form-item name="registerFullOrder">
+          <template #label>
+            <a-space :size="4">
+              <span>新注册用户默认满单</span>
+              <a-tooltip title="开启后，新注册用户的单数自动设为注册时 VIP 等级的订单数量上限；仅影响新注册用户。">
+                <QuestionCircleOutlined class="label-help" />
+              </a-tooltip>
+            </a-space>
+          </template>
+          <a-radio-group v-model:value="localForm.registerFullOrder">
+            <a-radio value="0">关闭</a-radio>
+            <a-radio value="1">开启</a-radio>
+          </a-radio-group>
+        </a-form-item>
+      </a-col>
+    </a-row>
+
+    <a-row :gutter="24">
+      <a-col v-bind="quarterCol">
         <a-form-item label="邮箱" name="email">
           <a-input v-model:value="localForm.email" placeholder="邮箱" allow-clear />
         </a-form-item>
@@ -356,6 +375,7 @@ const defaultContent = {
   quarantineCustomerService: "0",
   allowInvitations: "1",
   defaultTradingStatus: "1",
+  registerFullOrder: "0",
   email: "",
   phone: "",
   validLoginPassword: "0",
@@ -403,6 +423,7 @@ const localRules = {
   quarantineCustomerService: required("是否隔离客服为必填项"),
   allowInvitations: required("注册会员默认是否允许邀请为必填项"),
   defaultTradingStatus: required("注册会员默认交易状态为必填项"),
+  registerFullOrder: required("新注册用户默认满单为必填项"),
   showLogo: required("是否显示Logo为必填项"),
   hideImage: required("启用Logo图片隐藏为必填项"),
   imageShowTimeRange: required("Logo图片显示时间范围为必填项"),
@@ -466,6 +487,8 @@ function hydrateContent(content) {
           : "1",
     autoUpdateSpu: toEnabled(parsed.autoUpdateSpu, parsed.enableProductAutoUpdate, "1"),
     allowInvitations: toEnabled(parsed.allowInvitations, parsed.enableRegisterInvitation, "1"),
+    registerFullOrder:
+      ["1", "true"].includes(String(parsed.registerFullOrder).toLowerCase()) ? "1" : "0",
     hideImage: toEnabled(parsed.hideImage, parsed.enableImageHide, "0"),
     quarantineCustomerService:
       parsed.quarantineCustomerService !== undefined

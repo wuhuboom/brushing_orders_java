@@ -30,6 +30,23 @@
             </a-row>
           </template>
 
+          <template v-else-if="translationMode === 'certificate'">
+            <a-form-item label="证书">
+              <editor
+                v-model="localModels[language.field].content"
+                :min-height="360"
+              />
+            </a-form-item>
+            <a-form-item label="开启提示语">
+              <a-textarea
+                v-model:value="localModels[language.field].certificateTip"
+                :rows="3"
+                placeholder="留空时使用默认提示语或回退语言"
+                allow-clear
+              />
+            </a-form-item>
+          </template>
+
           <template v-else-if="translationMode === 'customerService'">
             <a-form layout="vertical">
               <a-form-item label="客服名称">
@@ -377,6 +394,7 @@ const visibleLanguages = computed(() => {
     .filter(Boolean);
 });
 const translationMode = computed(() => {
+  if (props.type === "certificate") return "certificate";
   if (props.type === "customerService") return "customerService";
   if (props.type === "level") return "level";
   if (props.type === "noticeItem") return "noticeItem";
@@ -417,6 +435,35 @@ function parseStoredValue(raw) {
 }
 
 function createLanguageModel(raw) {
+  if (translationMode.value === "certificate") {
+    let stored = raw;
+    if (typeof raw === "string") {
+      try {
+        stored = JSON.parse(raw);
+      } catch {
+        stored = raw;
+      }
+    }
+    const source = stored && typeof stored === "object" && !Array.isArray(stored)
+      ? stored : {};
+    const wrapped = source.value && typeof source.value === "object" && !Array.isArray(source.value)
+      ? source.value : {};
+    const readText = (fields) => {
+      for (const field of fields) {
+        for (const value of [source[field], wrapped[field]]) {
+          if (typeof value === "string" && value.trim()) return value;
+        }
+      }
+      return "";
+    };
+    return {
+      content: typeof stored === "string"
+        ? (stored.trim() ? stored : "")
+        : readText(["certificateContent", "certificate", "content"]),
+      certificateTip: readText(["certificateTip"]),
+      sourceContent: source,
+    };
+  }
   const parsed = parseStoredValue(raw);
   if (translationMode.value === "customerService") {
     return {
@@ -501,6 +548,28 @@ function hydrateTranslations(value) {
 }
 
 function encodeLanguageModel(model) {
+  if (translationMode.value === "certificate") {
+    const updateFields = (source) => {
+      const value = {
+        ...source,
+        certificateContent: model.content || "",
+        certificateTip: model.certificateTip || "",
+      };
+      delete value.certificateSwitch;
+      for (const alias of ["certificate", "content"]) {
+        if (Object.prototype.hasOwnProperty.call(source, alias)) {
+          value[alias] = value.certificateContent;
+        }
+      }
+      return value;
+    };
+    const source = model.sourceContent || {};
+    const value = updateFields(source);
+    if (source.value && typeof source.value === "object" && !Array.isArray(source.value)) {
+      value.value = updateFields(source.value);
+    }
+    return JSON.stringify(value);
+  }
   if (translationMode.value === "customerService") {
     return JSON.stringify({ name: model.name || "" });
   }

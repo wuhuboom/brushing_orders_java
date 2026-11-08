@@ -30,6 +30,9 @@ const sensitiveSnapshot = {
   identityNumber: "secret-number",
   userContractEnabled: "0",
   formalContractSigned: "0",
+  productMatching: "0",
+  productMatchMin: 70,
+  productMatchMax: 90,
 };
 
 test("member edit payload only contains fields that the generic edit drawer exposes", () => {
@@ -48,6 +51,7 @@ test("member edit payload only contains fields that the generic edit drawer expo
     "username", "password", "tradePassword", "balance", "frozenBalance", "baseSalary",
     "taskProgress", "signDays", "todaySignCount", "totalSignDays", "identityName",
     "identityNumber", "userContractEnabled", "formalContractSigned",
+    "productMatching", "productMatchMin", "productMatchMax",
   ]) {
     assert.equal(Object.hasOwn(payload, forbidden), false, `${forbidden} must not leak into edit payload`);
   }
@@ -71,6 +75,7 @@ test("copy keeps visible source defaults but resets credentials and all hidden b
   for (const forbidden of [
     "frozenBalance", "baseSalary", "signDays", "todaySignCount", "totalSignDays",
     "identityName", "identityNumber", "userContractEnabled", "formalContractSigned",
+    "productMatching", "productMatchMin", "productMatchMax",
   ]) {
     assert.equal(Object.hasOwn(copied, forbidden), false, `${forbidden} must not be cloned`);
   }

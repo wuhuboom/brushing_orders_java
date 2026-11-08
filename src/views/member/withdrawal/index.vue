@@ -552,6 +552,21 @@ const data = reactive({
 });
 
 const { queryParams, form, rules } = toRefs(data);
+const withdrawalRoute = useRoute();
+watch(() => [withdrawalRoute.query.status, withdrawalRoute.query.reminder], ([status, reminder]) => {
+  if (withdrawalRoute.path !== '/members/transaction/withdrawal') return;
+  if (['1', '2', '3'].includes(String(status))) {
+    if (reminder) {
+      clearQueryFilters();
+      tableResetKey.value += 1;
+    }
+    queryParams.value.status = String(status);
+    handleQuery();
+  }
+});
+if (['1', '2', '3'].includes(String(withdrawalRoute.query.status))) {
+  queryParams.value.status = String(withdrawalRoute.query.status);
+}
 
 function dictText(options, value) {
   const values = Array.isArray(options) ? options : options?.value;
@@ -661,7 +676,7 @@ function handleQuery() {
 }
 
 /** 閲嶇疆鎸夐挳鎿嶄綔 */
-function resetQuery() {
+function clearQueryFilters() {
   queryParams.value.username = null;
   queryParams.value.phoneNumber = null;
   queryParams.value.parentUsername = null;
@@ -676,6 +691,10 @@ function resetQuery() {
   queryParams.value.orderByColumn = "ow.order_number";
   queryParams.value.isAsc = "desc";
   dateRange.value = [];
+}
+
+function resetQuery() {
+  clearQueryFilters();
   tableResetKey.value += 1;
   handleQuery();
 }

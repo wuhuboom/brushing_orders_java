@@ -73,7 +73,7 @@ test('member list fits the viewport and status prompts describe the target state
   assert.match(member, /border-bottom: 1px solid #f0f0f0 !important;/)
   assert.equal(
     (member.match(/const action = newValue === "0" \? "启用" : "禁用";/g) || []).length,
-    5
+    4
   )
 })
 
@@ -154,7 +154,7 @@ test('member management keeps root-member hierarchy and legacy actions aligned',
   assert.match(member, /column\.key === 'id'[\s\S]*?@click="handleView\(record\)"/)
   assert.match(member, /@click="handleModifySignDays\(record\)"/)
   assert.match(member, /@click="handleModifyReputation\(record\)"/)
-  assert.match(member, /@click="handleToggleProductMatching\(record\)"/)
+  assert.match(member, /@click="handleEditProductMatching\(record\)"/)
   assert.match(member, /String\(tradeForm\.tradePassword \|\| ""\)\.trim\(\)/)
   assert.match(member, /tradePassword:\s*String\(tradeForm\.tradePassword \|\| ""\)\.trim\(\)/)
   assert.match(form, /:disabled="readonly"/)
