@@ -118,6 +118,8 @@ export function giftAmount(data) {
   return request({
     url: "/member/orderuser/giftAmount",
     method: "post",
+    silentError: true,
+    headers: { repeatSubmit: false },
     data: data,
   });
 }

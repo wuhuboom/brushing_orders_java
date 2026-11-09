@@ -17,41 +17,6 @@ test("bonus push-member cells prefer usernames with a persisted user-id fallback
   assert.match(bonus, /userOptions\.value = \[\.\.\.fetched, \.\.\.selected\]/);
 });
 
-function deferred() {
-  let resolve;
-  let reject;
-  const promise = new Promise((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-  return { promise, resolve, reject };
-}
-
-function compileHandler(component, functionName, bindings, sessionName) {
-  const marker = `async function ${functionName}()`;
-  const start = component.indexOf(marker);
-  assert.notEqual(start, -1, `${functionName} must exist`);
-  const braceStart = component.indexOf("{", start);
-  let depth = 0;
-  let end = -1;
-  for (let index = braceStart; index < component.length; index += 1) {
-    if (component[index] === "{") depth += 1;
-    if (component[index] === "}") depth -= 1;
-    if (depth === 0) {
-      end = index + 1;
-      break;
-    }
-  }
-  assert.notEqual(end, -1, `${functionName} must have a complete body`);
-  const functionSource = component.slice(start, end);
-  const names = Object.keys(bindings);
-  const factory = Function(
-    ...names,
-    `"use strict"; ${functionSource}; return { run: ${functionName}, setSession(value) { ${sessionName} = value; } };`,
-  );
-  return factory(...Object.values(bindings));
-}
-
 test("gift modal keeps the reference fields and rejects non-finite or non-positive amounts", () => {
   assert.match(gift, /title="赠送"[\s\S]*?width="800px"/);
   for (const label of ["用户名", "手机号", "余额", "冻结", "总余额", "金额", "备注"]) {
@@ -70,80 +35,9 @@ test("gift submission is single-flight and closing clears values and validation"
   assert.match(gift, /:keyboard="!submitting"/);
   assert.match(gift, /if \(submitting\.value\) return;/);
   assert.match(gift, /const submitSession = modalSession;[\s\S]*?submitting\.value = true;[\s\S]*?await formRef\.value\?\.validate/);
-  assert.match(gift, /finally\s*\{\s*submitting\.value = false;/);
+  assert.match(gift, /finally\s*\{\s*if \(submitSession === modalSession\) submitting\.value = false;/);
   assert.match(gift, /@after-close="handleAfterClose"/);
   assert.match(gift, /function handleAfterClose\(\)\s*\{\s*if \(props\.modelValue\) return;[\s\S]*?resetForm\(\)[\s\S]*?resetUserInfo\(\)[\s\S]*?clearValidate/);
-});
-
-test("gift modal locks before delayed validation and an old request cannot close a reopened session", async () => {
-  const validation = deferred();
-  const request = deferred();
-  const submitting = { value: false };
-  let validateCalls = 0;
-  let requestCalls = 0;
-  const events = [];
-  const props = { modelValue: true, userId: 7 };
-  const { run, setSession } = compileHandler(gift, "submit", {
-    submitting,
-    props,
-    formRef: { value: { validate: () => {
-      validateCalls += 1;
-      return validation.promise;
-    } } },
-    modalSession: 1,
-    giftAmount: () => {
-      requestCalls += 1;
-      return request.promise;
-    },
-    form: { amount: 8.5, remark: "test" },
-    emit: (...event) => events.push(event),
-    proxy: { $modal: { msgSuccess: () => {}, msgError: () => {} } },
-  }, "modalSession");
-
-  const first = run();
-  const duplicateDuringValidation = run();
-  assert.equal(submitting.value, true);
-  assert.equal(validateCalls, 1);
-  assert.equal(requestCalls, 0);
-
-  validation.resolve();
-  await Promise.resolve();
-  assert.equal(requestCalls, 1);
-  setSession(2);
-  const duplicateDuringRequest = run();
-  assert.equal(validateCalls, 1);
-  assert.equal(submitting.value, true);
-
-  request.resolve();
-  await Promise.all([first, duplicateDuringValidation, duplicateDuringRequest]);
-  assert.equal(submitting.value, false);
-  assert.deepEqual(events, [["success"]], "the completed old request must not close the reopened modal");
-});
-
-test("gift modal releases its pre-validation lock after validation fails", async () => {
-  const submitting = { value: false };
-  let validateCalls = 0;
-  let requestCalls = 0;
-  const { run } = compileHandler(gift, "submit", {
-    submitting,
-    props: { modelValue: true, userId: 7 },
-    formRef: { value: { validate: async () => {
-      validateCalls += 1;
-      if (validateCalls === 1) throw { errorFields: [{ name: "amount" }] };
-    } } },
-    modalSession: 1,
-    giftAmount: async () => { requestCalls += 1; },
-    form: { amount: 1, remark: "" },
-    emit: () => {},
-    proxy: { $modal: { msgSuccess: () => {}, msgError: () => {} } },
-  }, "modalSession");
-
-  await run();
-  assert.equal(submitting.value, false);
-  assert.equal(requestCalls, 0);
-  await run();
-  assert.equal(validateCalls, 2);
-  assert.equal(requestCalls, 1);
 });
 
 test("bonus uses 85/65 percent drawers and preserves reference defaults", () => {

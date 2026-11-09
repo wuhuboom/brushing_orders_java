@@ -8,13 +8,18 @@
     :closable="!submitting"
     :keyboard="!submitting"
     :cancel-button-props="{ disabled: submitting }"
-    ok-text="确定"
+    :ok-button-props="{ disabled: !!journalError || (!pending && (loadingUser || !userLoaded)) }"
+    :ok-text="pending ? '查询 / 重试原请求' : '确定'"
     cancel-text="取消"
     @ok="submit"
     @cancel="cancel"
     @after-close="handleAfterClose"
   >
-    <a-form ref="formRef" :model="form" layout="vertical" :rules="rules">
+    <a-alert v-if="pending" type="warning" show-icon class="request-notice"
+      message="这笔赠送的结果尚未确认，请勿重复赠送。系统会查询结果，也可使用原请求安全重试。" />
+    <a-alert v-if="journalError" type="error" show-icon class="request-notice" :message="journalError" />
+    <a-form ref="formRef" :model="form" layout="vertical" :rules="rules"
+      :disabled="submitting || !!pending || !!journalError || loadingUser || !userLoaded">
       <a-row :gutter="[20, 0]">
         <a-col :span="12">
           <a-form-item label="用户名">
@@ -63,8 +68,10 @@
 </template>
 
 <script setup name="OrderuserGiftModal">
-import { computed, getCurrentInstance, reactive, ref, watch } from "vue";
-import { getOrderuser, giftAmount } from "@/api/member/orderuser";
+import { computed, getCurrentInstance, onBeforeUnmount, reactive, ref, watch } from "vue";
+import { getOrderuser, giftAmount, transactionStatus } from "@/api/member/orderuser";
+import useUserStore from "@/store/modules/user";
+import { transactionStorageKey, loadTransaction, prepareTransaction, clearTransaction, terminalTransaction } from "./transactionRequest";
 
 const props = defineProps({
   modelValue: Boolean,
@@ -72,11 +79,28 @@ const props = defineProps({
 });
 const emit = defineEmits(["update:modelValue", "success"]);
 const proxy = getCurrentInstance().proxy;
+const operator = useUserStore();
 
 const formRef = ref();
 const submitting = ref(false);
+const loadingUser = ref(false);
+const userLoaded = ref(false);
+const pending = ref(null);
+const journalError = ref("");
+let journalKey = null;
+let pollTimer;
+let pollSequence = 0;
 let userRequestSequence = 0;
 let modalSession = 0;
+function stopPolling() {
+  clearTimeout(pollTimer);
+  pollSequence += 1;
+}
+onBeforeUnmount(() => {
+  modalSession += 1;
+  userRequestSequence += 1;
+  stopPolling();
+});
 const visible = computed({
   get: () => props.modelValue,
   set: (val) => emit("update:modelValue", val),
@@ -103,23 +127,42 @@ const rules = reactive({
 });
 
 watch(
-  () => [props.modelValue, props.userId],
+  () => [props.modelValue, props.userId, operator.id],
   ([open, userId]) => {
     modalSession += 1;
     const requestSequence = ++userRequestSequence;
-    if (open) {
-      resetForm();
-      resetUserInfo();
+    stopPolling();
+    resetForm();
+    resetUserInfo();
+    submitting.value = false;
+    pending.value = null;
+    journalKey = null;
+    journalError.value = "";
+    if (open && userId != null) {
+      try {
+        // Keep gifts separate from the general balance-adjustment journal.
+        journalKey = transactionStorageKey(`${window.APP_CONFIG.baseApiUrl}/member/orderuser/giftAmount`, operator.id, userId);
+        pending.value = loadTransaction(localStorage, journalKey);
+        if (pending.value) {
+          if (String(pending.value.userId) !== String(userId)) {
+            throw new Error("待确认赠送记录与当前会员不一致，请联系管理员核对流水");
+          }
+          form.amount = pending.value.amount;
+          form.remark = pending.value.remark ?? "";
+        }
+      } catch (error) {
+        journalError.value = error.message || "无法读取赠送状态，请联系管理员";
+      }
       loadUserInfo(userId, requestSequence);
-    } else {
-      resetForm();
-      resetUserInfo();
+      if (pending.value && !journalError.value) pollResult(modalSession);
     }
-  }
+  },
+  { immediate: true }
 );
 
 async function loadUserInfo(userId, requestSequence) {
-  if (!userId) return;
+  if (userId == null) return;
+  loadingUser.value = true;
   try {
     const res = await getOrderuser(userId);
     if (
@@ -135,10 +178,13 @@ async function loadUserInfo(userId, requestSequence) {
     form.balance = balance;
     form.frozenBalance = frozenBalance;
     form.totalBalance = finiteNumber(data.totalBalance, balance + frozenBalance);
+    userLoaded.value = true;
   } catch (error) {
     if (requestSequence === userRequestSequence && props.modelValue) {
       proxy.$modal.msgError(error?.message || "加载会员信息失败");
     }
+  } finally {
+    if (requestSequence === userRequestSequence) loadingUser.value = false;
   }
 }
 
@@ -153,6 +199,8 @@ function isFinitePositiveAmount(value) {
 }
 
 function resetUserInfo() {
+  loadingUser.value = false;
+  userLoaded.value = false;
   Object.assign(form, {
     username: "",
     phoneNumber: "",
@@ -165,46 +213,93 @@ function resetUserInfo() {
 function resetForm() {
   form.amount = null;
   form.remark = "";
+  formRef.value?.clearValidate?.();
+}
+
+function acceptResult(result, intent, key, submitSession) {
+  if (!terminalTransaction(result, intent.requestId)) return false;
+  // A late response may only clear its own journal entry, never a newer intent.
+  clearTransaction(localStorage, key, intent.requestId);
+  if (submitSession !== modalSession || key !== journalKey
+      || pending.value?.requestId !== intent.requestId) return true;
+  pending.value = null;
+  stopPolling();
+  if (result.state === "SUCCEEDED") {
+    emit("success");
+    visible.value = false;
+    proxy.$modal.msgSuccess("赠送成功，已确认入账");
+  } else {
+    proxy.$modal.msgError(result.message || "本次赠送未入账");
+  }
+  return true;
+}
+
+async function pollResult(submitSession, attempt = 0, sequence = pollSequence) {
+  if (submitSession !== modalSession || sequence !== pollSequence
+      || !props.modelValue || !pending.value || journalError.value) return;
+  const intent = pending.value;
+  const key = journalKey;
+  try {
+    const response = await transactionStatus(intent.requestId);
+    if (sequence !== pollSequence) return;
+    if (acceptResult(response.data, intent, key, submitSession)) return;
+  } catch { /* Retain the original intent through network errors and refreshes. */ }
+  if (submitSession === modalSession && sequence === pollSequence
+      && pending.value?.requestId === intent.requestId && attempt < 30) {
+    pollTimer = setTimeout(() => pollResult(submitSession, attempt + 1, sequence), 2000);
+  }
 }
 
 async function submit() {
   if (submitting.value) return;
+  if (!props.modelValue || props.userId == null || journalError.value
+      || (!pending.value && (loadingUser.value || !userLoaded.value))) return;
   const submitSession = modalSession;
   const targetUserId = props.userId;
+  const key = journalKey;
   submitting.value = true;
+  stopPolling();
   try {
-    try {
-      await formRef.value?.validate?.();
-    } catch (validationError) {
-      if (!validationError?.errorFields) {
-        proxy.$modal.msgError(validationError?.message || "赠送金额校验失败");
+    if (!pending.value) {
+      try {
+        await formRef.value?.validate?.();
+      } catch (validationError) {
+        if (!validationError?.errorFields && submitSession === modalSession) {
+          proxy.$modal.msgError(validationError?.message || "赠送金额校验失败");
+        }
+        return;
       }
-      return;
+      if (submitSession !== modalSession || !props.modelValue
+          || String(props.userId) !== String(targetUserId)) return;
+      pending.value = prepareTransaction(localStorage, key, {
+        userId: targetUserId,
+        amount: Number(form.amount),
+        remark: form.remark,
+      });
+      form.amount = pending.value.amount;
+      form.remark = pending.value.remark ?? "";
+    } else {
+      const intent = pending.value;
+      try {
+        const response = await transactionStatus(intent.requestId);
+        if (acceptResult(response.data, intent, key, submitSession)) return;
+      } catch { /* Replaying the same saved request is safe when status lookup fails. */ }
     }
-    if (
-      submitSession !== modalSession
-      || !props.modelValue
-      || String(props.userId) !== String(targetUserId)
-    ) return;
-
-    await giftAmount({
-      userId: targetUserId,
-      amount: Number(form.amount),
-      remark: form.remark,
-    });
-    if (
-      submitSession === modalSession
-      && props.modelValue
-      && String(props.userId) === String(targetUserId)
-    ) {
-      emit("update:modelValue", false);
-    }
-    emit("success");
-    proxy.$modal.msgSuccess("赠送成功");
+    if (submitSession !== modalSession || !props.modelValue
+        || String(props.userId) !== String(targetUserId) || !pending.value) return;
+    const intent = pending.value;
+    const response = await giftAmount(intent);
+    if (!acceptResult(response.data, intent, key, submitSession)) pollResult(submitSession);
   } catch (error) {
-    proxy.$modal.msgError(error?.message || "赠送失败");
+    if (submitSession !== modalSession) return;
+    if (pending.value) {
+      proxy.$modal.msgWarning("赠送结果尚未确认，正在查询，请勿重复赠送");
+      pollResult(submitSession);
+    } else {
+      proxy.$modal.msgError(error?.message || "无法保存赠送请求，未提交");
+    }
   } finally {
-    submitting.value = false;
+    if (submitSession === modalSession) submitting.value = false;
   }
 }
 
@@ -222,6 +317,10 @@ function handleAfterClose() {
 </script>
 
 <style scoped>
+.request-notice {
+  margin-bottom: 16px;
+}
+
 .full-width {
   width: 100%;
 }
