@@ -6,6 +6,7 @@ import com.order.framework.datasource.DynamicDataSource;
 import com.order.member.domain.dto.TransactionDto;
 import com.order.member.mapper.*;
 import com.order.member.service.impl.*;
+import com.order.web.controller.member.OrderUserController;
 import org.junit.jupiter.api.*;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
@@ -13,9 +14,11 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -25,6 +28,7 @@ import java.net.URI;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -108,7 +112,11 @@ class AdminTransactionRealMoneyMySqlTest {
             assertTrue(ddl.find(), "Missing baseline DDL: " + table);
             jdbc.execute(ddl.group());
         }
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/mysql/V2026_10_27_00__admin_transaction_requests.sql")).execute(dynamic);
+        // Build the legacy snapshot forward with the same migrations used by the application.
+        new ResourceDatabasePopulator(
+                new ClassPathResource("db/migration/mysql/V2026_10_27_00__admin_transaction_requests.sql"),
+                new ClassPathResource("db/migration/mysql/V2026_11_08_00__member_product_match_ratios.sql"))
+                .execute(dynamic);
     }
 
     @AfterEach void cleanup() {
@@ -172,6 +180,133 @@ class AdminTransactionRealMoneyMySqlTest {
         assertEquals(2L, jdbc.queryForObject("SELECT COUNT(*) FROM goods_transaction_flow f JOIN goods_recharge_record r ON f.transaction_code=r.order_number",Long.class));
         assertEquals(List.of(new BigDecimal("100.00"),new BigDecimal("505.00")),jdbc.queryForList("SELECT balance_before FROM goods_transaction_flow ORDER BY id",BigDecimal.class));
         assertEquals(List.of(new BigDecimal("505.00"),new BigDecimal("512.50")),jdbc.queryForList("SELECT balance_after FROM goods_transaction_flow ORDER BY id",BigDecimal.class));
+    }
+
+    @Test void eightConcurrentGiftControllerRetriesCreditOnceAndRejectChangedAmount() throws Exception {
+        OrderUserController controller = new OrderUserController() {
+            @Override public Long getUserId() { return 1L; }
+        };
+        ReflectionTestUtils.setField(controller, "adminTransactionRequests", requests);
+        TransactionDto gift = intent("real-gift-request-01", 7, 1, "12.50", "999");
+        CountDownLatch ready = new CountDownLatch(8), start = new CountDownLatch(1);
+        List<Future<AdminTransactionRequestService.Result>> tasks = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            tasks.add(workers.submit(() -> {
+                ready.countDown();
+                assertTrue(start.await(5, TimeUnit.SECONDS));
+                var response = controller.giftAmount(gift);
+                assertEquals(200, response.get("code"));
+                return assertInstanceOf(AdminTransactionRequestService.Result.class, response.get("data"));
+            }));
+        }
+        assertTrue(ready.await(5, TimeUnit.SECONDS));
+        start.countDown();
+        var expected = tasks.get(0).get(15, TimeUnit.SECONDS);
+        assertEquals(gift.getRequestId(), expected.requestId());
+        assertEquals("SUCCEEDED", expected.state());
+        for (var task : tasks) assertEquals(expected, task.get(15, TimeUnit.SECONDS));
+        assertEquals(expected, controller.giftAmount(gift).get("data"));
+        assertEquals(expected, requests.status(1L, gift.getRequestId()));
+
+        gift.setAmount(new BigDecimal("13.50"));
+        assertThrows(IllegalArgumentException.class, () -> controller.giftAmount(gift));
+        assertEquals(new BigDecimal("112.50"), balance(7));
+        assertEquals(1, count("admin_transaction_request"));
+        assertEquals(1, count("goods_recharge_record"));
+        assertEquals(1, count("goods_transaction_flow"));
+        assertEquals(new BigDecimal("12.50"), jdbc.queryForObject(
+                "SELECT received_amount FROM goods_recharge_record", BigDecimal.class));
+        assertEquals(1L, jdbc.queryForObject("""
+                SELECT COUNT(*) FROM goods_transaction_flow f
+                JOIN goods_recharge_record r ON f.transaction_code = r.order_number
+                WHERE f.user_id = 7 AND f.transaction_type = 'zs'
+                  AND r.transaction_type = 'zs' AND r.gift_amount = 0
+                  AND f.transaction_amount = 12.50
+                  AND f.balance_before = 100 AND f.balance_after = 112.50
+                """, Long.class));
+    }
+
+    @Test void lockFailureAfterMoneyWritesRollsBackBeforeRetryingTheSameRequest() {
+        AtomicInteger attempts = new AtomicInteger();
+        doAnswer(invocation -> {
+            // The actual transaction has written money before the simulated lock failure.
+            // Seeing the same balance/ledger on the next attempt proves the first was rolled back.
+            assertEquals(new BigDecimal("112.50"), balance(7));
+            assertEquals(1, count("goods_recharge_record"));
+            assertEquals(1, count("goods_transaction_flow"));
+            assertEquals(new BigDecimal("100.00"), jdbc.queryForObject(
+                    "SELECT balance_before FROM goods_transaction_flow", BigDecimal.class));
+            if (attempts.incrementAndGet() == 1) {
+                throw new CannotAcquireLockException("simulated lock failure after real money writes");
+            }
+            return null;
+        }).when(notification).createForTransaction(anyLong(), anyString(), any(), any(), any());
+        TransactionDto dto = intent("real-retry-after-writes", 7, 0, "12.50", "0");
+
+        var result = requests.submit(1L, dto);
+
+        assertEquals("SUCCEEDED", result.state());
+        assertEquals(2, attempts.get());
+        assertEquals(result, requests.status(1L, dto.getRequestId()));
+        assertEquals(result, requests.submit(1L, dto));
+        assertEquals(2, attempts.get(), "A committed replay must not execute money again");
+        assertEquals(new BigDecimal("112.50"), balance(7));
+        assertEquals(1, count("admin_transaction_request"));
+        assertEquals(1, count("goods_recharge_record"));
+        assertEquals(1, count("goods_transaction_flow"));
+    }
+
+    @Test void exhaustedLockRetriesLeaveNoFailedResultAndOriginalRequestCanStillSucceed() {
+        doThrow(new CannotAcquireLockException("simulated persistent lock conflict"))
+                .when(notification).createForTransaction(anyLong(), anyString(), any(), any(), any());
+        TransactionDto dto = intent("real-retry-unconfirmed", 7, 0, "12.50", "0");
+
+        assertThrows(CannotAcquireLockException.class, () -> requests.submit(1L, dto));
+
+        verify(notification, times(5)).createForTransaction(anyLong(), anyString(), any(), any(), any());
+        assertEquals("UNKNOWN", requests.status(1L, dto.getRequestId()).state());
+        assertEquals(new BigDecimal("100.00"), balance(7));
+        assertEquals(0, count("admin_transaction_request"));
+        assertEquals(0, count("goods_recharge_record"));
+        assertEquals(0, count("goods_transaction_flow"));
+
+        reset(notification);
+        var result = requests.submit(1L, dto);
+        assertEquals("SUCCEEDED", result.state());
+        assertEquals(result, requests.submit(1L, dto));
+        verify(notification, times(1)).createForTransaction(anyLong(), anyString(), any(), any(), any());
+        assertEquals(new BigDecimal("112.50"), balance(7));
+        assertEquals(1, count("admin_transaction_request"));
+        assertEquals(1, count("goods_recharge_record"));
+        assertEquals(1, count("goods_transaction_flow"));
+    }
+
+    @Test void lockFailureWhileSavingBusinessRejectionRetriesOnlyTheFailedResult() {
+        TransactionDto dto = intent("real-failed-save-retry", 7, 0, "12.50", "0");
+        doThrow(new IllegalStateException("simulated business rejection after money writes"))
+                .when(notification).createForTransaction(anyLong(), anyString(), any(), any(), any());
+        JdbcTemplate requestJdbc = spy(new JdbcTemplate(dynamic));
+        AtomicInteger failureSaves = new AtomicInteger();
+        doAnswer(invocation -> {
+            if (failureSaves.incrementAndGet() == 1) {
+                throw new CannotAcquireLockException("simulated lock failure while saving rejection");
+            }
+            return invocation.callRealMethod();
+        }).when(requestJdbc).update(contains("UPDATE admin_transaction_request"),
+                eq("FAILED"), anyString(), eq(1L), eq(dto.getRequestId()));
+        ReflectionTestUtils.setField(requests, "jdbc", requestJdbc);
+
+        var result = requests.submit(1L, dto);
+
+        assertEquals("FAILED", result.state());
+        assertEquals(2, failureSaves.get());
+        assertEquals(result, requests.status(1L, dto.getRequestId()));
+        assertEquals(result, requests.submit(1L, dto));
+        verify(notification, times(1)).createForTransaction(anyLong(), anyString(), any(), any(), any());
+        assertEquals(new BigDecimal("100.00"), balance(7));
+        assertEquals(1, count("admin_transaction_request"));
+        assertEquals(0, count("goods_recharge_record"));
+        assertEquals(0, count("goods_transaction_flow"));
     }
 
     @Test void distinctConcurrentCreditsAndDebitsKeepAnUnbrokenBalanceLedger() throws Exception {

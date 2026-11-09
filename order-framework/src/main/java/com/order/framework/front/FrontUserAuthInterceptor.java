@@ -26,7 +26,7 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
         request.setAttribute(START_TIME, started);
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith(TOKEN_PREFIX)) {
-            return writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
+            return writeUnauthorizedResponse(request, response,
                     "Please access after authorization");
         }
 
@@ -43,7 +43,7 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
                     "Authentication temporarily unavailable, please retry");
         }
         if (principal == null) {
-            return writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
+            return writeUnauthorizedResponse(request, response,
                     "Invalid or expired token");
         }
 
@@ -56,6 +56,10 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
             Object handler, Exception exception) {
+        logSlowRequest(request, response);
+    }
+
+    private void logSlowRequest(HttpServletRequest request, HttpServletResponse response) {
         Object start = request.getAttribute(START_TIME);
         if (start instanceof Long started) {
             long elapsedMs = (System.nanoTime() - started) / 1_000_000;
@@ -65,6 +69,14 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
                         request.getAttribute("userId"), elapsedMs);
             }
         }
+    }
+
+    private boolean writeUnauthorizedResponse(HttpServletRequest request,
+            HttpServletResponse response, String message) throws IOException {
+        writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED, message);
+        // Spring does not invoke afterCompletion when this interceptor rejects preHandle.
+        logSlowRequest(request, response);
+        return false;
     }
 
     private boolean writeJsonResponse(HttpServletResponse response, int code, String message) throws IOException {

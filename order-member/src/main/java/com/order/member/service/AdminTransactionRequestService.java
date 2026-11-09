@@ -7,21 +7,26 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /** A terminal result and its money movement commit together, under a database unique key. */
 @Service
 public class AdminTransactionRequestService {
     private static final Logger log = LoggerFactory.getLogger(AdminTransactionRequestService.class);
+    private static final int MAX_LOCK_ATTEMPTS = 5;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transaction;
     private final ITransactionService money;
@@ -48,7 +53,7 @@ public class AdminTransactionRequestService {
         Saved saved = find(operator, dto.getRequestId());
         if (saved != null) return replay(saved, hash);
         try {
-            return transaction.execute(status -> {
+            return executeWithLockRetry(operator, dto.getRequestId(), status -> {
                 claim(operator, dto, hash);
                 // Persist a terminal rejection too: the browser has already saved this request.
                 // Claim first so a changed invalid payload cannot overwrite an existing result.
@@ -58,19 +63,45 @@ public class AdminTransactionRequestService {
             });
         } catch (ExistingRequest duplicate) {
             return replayRequired(operator, dto.getRequestId(), hash);
+        } catch (PessimisticLockingFailureException busy) {
+            // A rolled-back deadlock/lock timeout says nothing about the business outcome.
+            // Never let a losing retry claim the request key with a false terminal failure.
+            throw busy;
         } catch (RuntimeException failure) {
             // The money transaction has rolled back before a terminal failure is recorded.
             // A concurrent retry may win the unique key; in that case return its committed result.
             log.warn("Administrator transaction rolled back: operator={} request={} user={}",
                     operator, dto.getRequestId(), dto.getUserId(), failure);
             try {
-                return transaction.execute(status -> {
+                return executeWithLockRetry(operator, dto.getRequestId(), status -> {
                     claim(operator, dto, hash);
                     return finish(operator, dto.getRequestId(), "FAILED",
                             "本次操作未入账，请核对金额及余额后重新提交；若再次失败请联系管理员");
                 });
             } catch (ExistingRequest duplicate) {
                 return replayRequired(operator, dto.getRequestId(), hash);
+            }
+        }
+    }
+
+    private Result executeWithLockRetry(Long operator, String requestId, TransactionCallback<Result> action) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return transaction.execute(action);
+            } catch (PessimisticLockingFailureException conflict) {
+                // TransactionTemplate has already rolled back; retry the whole transaction,
+                // retaining the unique request key and its atomic money/result commit.
+                if (attempt >= MAX_LOCK_ATTEMPTS) {
+                    throw new CannotAcquireLockException("交易暂时繁忙，请使用原请求编号查询或重试", conflict);
+                }
+                log.warn("Administrator transaction lock retry: operator={} request={} attempt={}",
+                        operator, requestId, attempt);
+                try {
+                    Thread.sleep(ThreadLocalRandom.current().nextLong(10, 31) * attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new CannotAcquireLockException("交易结果尚未确认，请使用原请求编号查询或重试", interrupted);
+                }
             }
         }
     }

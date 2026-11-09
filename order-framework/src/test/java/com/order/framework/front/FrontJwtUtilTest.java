@@ -29,6 +29,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class FrontJwtUtilTest {
+    private static final long VALID_TOKEN_LIFETIME_MS = TimeUnit.DAYS.toMillis(3);
+
     private static final String SECRET =
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ab";
 
@@ -62,7 +64,7 @@ class FrontJwtUtilTest {
     void legacyTokenRemainsValidDuringCompatibilityWindow() {
         String token = Jwts.builder()
                 .setSubject("member_1")
-                .setExpiration(new Date(System.currentTimeMillis() + 60_000L))
+                .setExpiration(new Date(System.currentTimeMillis() + VALID_TOKEN_LIFETIME_MS))
                 .signWith(SignatureAlgorithm.HS512, SECRET)
                 .compact();
         when(redisCache.hasKey("token:valid:" + token)).thenReturn(true);
@@ -81,7 +83,7 @@ class FrontJwtUtilTest {
         when(redisCache.getCacheObject("front:token:probe"))
                 .thenThrow(new IllegalStateException("redis unavailable"));
         assertThrows(FrontAuthenticationUnavailableException.class,
-                () -> jwtUtil.authenticate(memberToken(60_000)));
+                () -> jwtUtil.authenticate(memberToken(VALID_TOKEN_LIFETIME_MS)));
         verifyNoInteractions(userMapper);
     }
 
@@ -90,7 +92,7 @@ class FrontJwtUtilTest {
         when(redisCache.getCacheObject("front:token:probe")).thenReturn("1:member_1");
         when(userMapper.selectAuthUserById(1L)).thenThrow(new IllegalStateException("database unavailable"));
         assertThrows(FrontAuthenticationUnavailableException.class,
-                () -> jwtUtil.authenticate(memberToken(60_000)));
+                () -> jwtUtil.authenticate(memberToken(VALID_TOKEN_LIFETIME_MS)));
     }
 
     @Test
@@ -101,7 +103,7 @@ class FrontJwtUtilTest {
 
     @Test
     void removedSessionRemainsUnauthorized() {
-        assertNull(jwtUtil.authenticate(memberToken(60_000)));
+        assertNull(jwtUtil.authenticate(memberToken(VALID_TOKEN_LIFETIME_MS)));
         verifyNoInteractions(userMapper);
     }
 
@@ -109,7 +111,7 @@ class FrontJwtUtilTest {
     void validMemberStillAuthenticates() {
         when(redisCache.getCacheObject("front:token:probe")).thenReturn("1:member_1");
         when(userMapper.selectAuthUserById(1L)).thenReturn(activeUser());
-        assertEquals(1L, jwtUtil.authenticate(memberToken(60_000)).userId());
+        assertEquals(1L, jwtUtil.authenticate(memberToken(VALID_TOKEN_LIFETIME_MS)).userId());
     }
 
     private String memberToken(long lifetimeMs) {
