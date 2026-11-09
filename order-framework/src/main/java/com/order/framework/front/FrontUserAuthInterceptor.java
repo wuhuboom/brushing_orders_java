@@ -5,11 +5,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 @Component
 public class FrontUserAuthInterceptor implements HandlerInterceptor {
+    private static final Logger log = LoggerFactory.getLogger(FrontUserAuthInterceptor.class);
+    private static final String START_TIME = FrontUserAuthInterceptor.class.getName() + ".start";
 
     private static final String TOKEN_PREFIX = "Bearer ";
 
@@ -18,6 +22,8 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        long started = System.nanoTime();
+        request.setAttribute(START_TIME, started);
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith(TOKEN_PREFIX)) {
             return writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
@@ -26,7 +32,16 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
 
         String token = authHeader.substring(TOKEN_PREFIX.length());
 
-        FrontJwtUtil.FrontPrincipal principal = frontJwtUtil.authenticate(token);
+        FrontJwtUtil.FrontPrincipal principal;
+        try {
+            principal = frontJwtUtil.authenticate(token);
+        } catch (FrontAuthenticationUnavailableException ex) {
+            log.error("event=front_auth_unavailable path={} elapsedMs={}",
+                    request.getRequestURI(), (System.nanoTime() - started) / 1_000_000, ex);
+            response.setHeader("Retry-After", "3");
+            return writeJsonResponse(response, HttpServletResponse.SC_SERVICE_UNAVAILABLE,
+                    "Authentication temporarily unavailable, please retry");
+        }
         if (principal == null) {
             return writeJsonResponse(response, HttpServletResponse.SC_UNAUTHORIZED,
                     "Invalid or expired token");
@@ -36,6 +51,20 @@ public class FrontUserAuthInterceptor implements HandlerInterceptor {
         request.setAttribute("username", principal.username());
 
         return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+            Object handler, Exception exception) {
+        Object start = request.getAttribute(START_TIME);
+        if (start instanceof Long started) {
+            long elapsedMs = (System.nanoTime() - started) / 1_000_000;
+            if (elapsedMs >= 1000) {
+                log.warn("event=front_api_slow path={} status={} userId={} elapsedMs={}",
+                        request.getRequestURI(), response.getStatus(),
+                        request.getAttribute("userId"), elapsedMs);
+            }
+        }
     }
 
     private boolean writeJsonResponse(HttpServletResponse response, int code, String message) throws IOException {

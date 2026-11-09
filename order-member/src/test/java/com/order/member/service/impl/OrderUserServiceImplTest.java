@@ -85,6 +85,28 @@ class OrderUserServiceImplTest
     }
 
     @Test
+    void descendantConflictAbortsTheWholeParentChange() {
+        OrderUser parent = user(10L, "0,2");
+        OrderUser child = user(20L, "0,5,10");
+        when(orderUserMapper.updateParentIdAndAncestors(10L, 2L, 7L)).thenReturn(1);
+        when(orderUserMapper.selectOrderUserById(10L)).thenReturn(parent);
+        when(orderUserMapper.selectChildrenById(10L, "direct")).thenReturn(List.of(child));
+        when(orderUserMapper.updateOrderUser(child)).thenReturn(0);
+        assertThrows(ServiceException.class, () -> orderUserService.updateParentIdAndAncestors(10L, 2L, 7L));
+        verify(orderUserMapper, never()).selectChildrenById(20L, "direct");
+    }
+
+    @Test
+    void cycleAbortsInsteadOfRecursingForever() {
+        OrderUser parent = user(10L, "0,2");
+        when(orderUserMapper.updateParentIdAndAncestors(10L, 2L, 7L)).thenReturn(1);
+        when(orderUserMapper.selectOrderUserById(10L)).thenReturn(parent);
+        when(orderUserMapper.selectChildrenById(10L, "direct")).thenReturn(List.of(parent));
+        assertThrows(ServiceException.class, () -> orderUserService.updateParentIdAndAncestors(10L, 2L, 7L));
+        verify(orderUserMapper, never()).updateOrderUser(any());
+    }
+
+    @Test
     void adjustingProgressAppliesTheNewValueWhenThereAreNoActiveOrders()
     {
         OrderUser current = progressUser(12L, 4L, 40L);

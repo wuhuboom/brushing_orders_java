@@ -21,6 +21,23 @@ public class SequenceAllocator {
         transaction.setTimeout(5);
     }
 
+    public long allocateLinkBatch() {
+        return transaction.execute(status -> {
+            if (jdbc.update("""
+                    UPDATE order_link_batch_sequence SET current_value = current_value + 1
+                    WHERE id = 1 AND current_value < 9223372036854775807
+                    """) != 1) {
+                throw new IllegalStateException("Link batch sequence is missing or exhausted");
+            }
+            Long value = jdbc.queryForObject(
+                    "SELECT current_value FROM order_link_batch_sequence WHERE id = 1", Long.class);
+            if (value == null || value <= 0) {
+                throw new IllegalStateException("Invalid link batch sequence");
+            }
+            return value;
+        });
+    }
+
     public long allocate(String type, String date, String time) {
         if (type == null || type.isBlank() || date == null || !date.matches("[0-9]{8}")
                 || time == null || !time.matches("[0-9]{4}")) {

@@ -38,7 +38,7 @@ class FlywayConfigurationContractTest
         String yaml = classpathText("application.yml").replace("\r\n", "\n");
 
         assertTrue(yaml.matches("(?s).*\\n  version: \\\"\\$\\{APP_VERSION:(?!@project\\.version@)[^}\\r\\n]+}\\\".*"));
-        assertTrue(yaml.contains("  migration-version: 1.2.4"));
+        assertTrue(yaml.contains("  migration-version: 1.2.5"));
         Value migrationVersionValue = ControlledFlywayMigrationStrategy.class
                 .getConstructor(String.class)
                 .getParameters()[0]

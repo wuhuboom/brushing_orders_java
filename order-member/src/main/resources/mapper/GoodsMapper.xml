@@ -74,8 +74,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         SELECT g.id, g.title, g.price, g.image
         FROM goods g
         WHERE g.is_enabled = '0'
-          AND g.price &lt;= #{price}
-        ORDER BY g.price DESC, g.id ASC
+          AND g.price = (
+              SELECT MAX(price) FROM goods
+              WHERE is_enabled = '0' AND price &lt;= #{price}
+          )
+        ORDER BY g.id ASC
         LIMIT 1
     </select>
 

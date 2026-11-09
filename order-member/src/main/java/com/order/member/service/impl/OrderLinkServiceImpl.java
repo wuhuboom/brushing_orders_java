@@ -1,7 +1,6 @@
 package com.order.member.service.impl;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.order.member.domain.dto.GoodsDetails;
 import com.order.common.utils.DateUtils;
@@ -30,8 +29,8 @@ public class OrderLinkServiceImpl implements IOrderLinkService
     @Autowired
     private OrderLinkMapper orderLinkMapper;
 
-    // JVM 层的简单锁，针对 linkOrderId 的生成
-    private static final ConcurrentHashMap<String, Object> linkIdLocks = new ConcurrentHashMap<>();
+    @Autowired
+    private SequenceAllocator sequenceAllocator;
 
     /**
      * 查询连单
@@ -76,17 +75,9 @@ public class OrderLinkServiceImpl implements IOrderLinkService
         orderLink.setUpdateTime(orderLink.getCreateTime());
         List<GoodsDetails> details = orderLink.getDetails();
 
-        // generate a batch-level linkOrderId: if details are created in the same call they share the same id
-        // strategy: obtain a JVM lock and query the DB for current max linkOrderId, then +1
-        String lockKey = "ORDER_LINK_BATCH";
-        Object lock = linkIdLocks.computeIfAbsent(lockKey, k -> new Object());
-        Long batchLinkOrderId;
-        synchronized (lock) {
-            Long maxId = orderLinkMapper.selectMaxLinkOrderId();
-            if (maxId == null) maxId = 0L;
-            batchLinkOrderId = maxId + 1L;
-            log.debug("Generated batchLinkOrderId={}", batchLinkOrderId);
-        }
+        // A separately committed database allocation works across JVMs and rollbacks.
+        Long batchLinkOrderId = sequenceAllocator.allocateLinkBatch();
+        log.debug("Generated batchLinkOrderId={}", batchLinkOrderId);
 
         int inserted = 0;
         if (details != null && !details.isEmpty()) {

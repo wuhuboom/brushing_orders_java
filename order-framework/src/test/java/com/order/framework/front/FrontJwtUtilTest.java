@@ -20,9 +20,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class FrontJwtUtilTest {
@@ -71,6 +74,48 @@ class FrontJwtUtilTest {
         assertEquals(1L, principal.userId());
         assertEquals("member_1", principal.username());
         assertTrue(principal.legacy());
+    }
+
+    @Test
+    void redisFailureIsUnavailableRatherThanInvalidToken() {
+        when(redisCache.getCacheObject("front:token:probe"))
+                .thenThrow(new IllegalStateException("redis unavailable"));
+        assertThrows(FrontAuthenticationUnavailableException.class,
+                () -> jwtUtil.authenticate(memberToken(60_000)));
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    void databaseFailureIsUnavailableRatherThanInvalidToken() {
+        when(redisCache.getCacheObject("front:token:probe")).thenReturn("1:member_1");
+        when(userMapper.selectAuthUserById(1L)).thenThrow(new IllegalStateException("database unavailable"));
+        assertThrows(FrontAuthenticationUnavailableException.class,
+                () -> jwtUtil.authenticate(memberToken(60_000)));
+    }
+
+    @Test
+    void expiredTokenNeverAccessesDependencies() {
+        assertNull(jwtUtil.authenticate(memberToken(-60_000)));
+        verifyNoInteractions(redisCache, userMapper);
+    }
+
+    @Test
+    void removedSessionRemainsUnauthorized() {
+        assertNull(jwtUtil.authenticate(memberToken(60_000)));
+        verifyNoInteractions(userMapper);
+    }
+
+    @Test
+    void validMemberStillAuthenticates() {
+        when(redisCache.getCacheObject("front:token:probe")).thenReturn("1:member_1");
+        when(userMapper.selectAuthUserById(1L)).thenReturn(activeUser());
+        assertEquals(1L, jwtUtil.authenticate(memberToken(60_000)).userId());
+    }
+
+    private String memberToken(long lifetimeMs) {
+        return Jwts.builder().setId("probe").setSubject("member_1").claim("uid", 1L)
+                .setExpiration(new Date(System.currentTimeMillis() + lifetimeMs))
+                .signWith(SignatureAlgorithm.HS512, SECRET).compact();
     }
 
     private OrderUser activeUser() {

@@ -5,6 +5,7 @@ import com.order.common.utils.DateUtils;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.slf4j.Logger;
@@ -89,12 +90,24 @@ public class FrontJwtUtil {
      * Parse, validate and resolve a token exactly once.
      */
     public FrontPrincipal authenticate(String token) {
+        Claims claims;
+        String username;
+        String jti;
+        Number uidClaim;
         try {
-            Claims claims = parseClaims(token);
-            String username = claims.getSubject();
-            String jti = claims.getId();
-            Number uidClaim = claims.get("uid", Number.class);
+            claims = parseClaims(token);
+            username = claims.getSubject();
+            jti = claims.getId();
+            uidClaim = claims.get("uid", Number.class);
+            if (username == null || username.isBlank()) {
+                return null;
+            }
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.warn("event=front_token_rejected reason=invalid_or_expired");
+            return null;
+        }
 
+        try {
             if (jti != null && uidClaim != null) {
                 Long userId = uidClaim.longValue();
                 String storedIdentity = redisCache.getCacheObject(TOKEN_KEY_PREFIX + jti);
@@ -125,9 +138,9 @@ public class FrontJwtUtil {
                 return null;
             }
             return new FrontPrincipal(user.getId(), username, null, true);
-        } catch (Exception ex) {
-            log.warn("event=front_token_rejected reason=invalid_or_expired");
-            return null;
+        } catch (RuntimeException ex) {
+            // Dependency failures must not turn a valid session into an HTTP 401.
+            throw new FrontAuthenticationUnavailableException(ex);
         }
     }
 

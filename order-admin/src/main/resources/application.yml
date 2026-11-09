@@ -5,7 +5,7 @@ order:
   # 版本：发布构建默认使用 Maven project.version，可通过 APP_VERSION 覆盖
   version: "${APP_VERSION:@project.version@}"
   # 数据库迁移发布号（与展示版本分离）
-  migration-version: 1.2.4
+  migration-version: 1.2.5
   # 版权年份
   copyrightYear: 2025
   # 文件路径 示例（ Windows配置D:/order/uploadPath，Linux配置 /home/order/uploadPath）

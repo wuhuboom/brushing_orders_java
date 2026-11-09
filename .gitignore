@@ -49,3 +49,6 @@ sql/migration_*/**/*verification*.png
 sql/delivery_*/
 sql/backend_database_upgrade_*.zip
 sql/2026-07-11_h5_e2e_data.sql
+
+# Local Windows runtime and build tools
+.local/

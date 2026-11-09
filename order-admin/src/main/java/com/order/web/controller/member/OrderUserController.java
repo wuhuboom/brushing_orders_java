@@ -691,21 +691,18 @@ public class OrderUserController extends BaseController
     @PreAuthorize("@ss.hasPermi('member:orderuser:edit')")
     @PostMapping("/giftAmount")
     public AjaxResult giftAmount(@RequestBody TransactionDto dto) {
-        OrderUser orderUser = orderUserService.selectOrderUserById(dto.getUserId());
-        if (orderUser == null) {
-            return AjaxResult.error("用户不存在");
-        }
-        try {
-            transactionService.recordRecharge(
-                    dto.getUserId(),
-                    dto.getAmount(),
-                    BigDecimal.ZERO,
-                    "zs",
-                    dto.getRemark());
-            return AjaxResult.success("赠送成功");
-        } catch (Exception ex) {
-            return AjaxResult.error(ex.getMessage());
-        }
+        // Use the same durable request key as /transaction; never generate a key
+        // on the server, because a network retry must replay the original intent.
+        TransactionDto gift = new TransactionDto();
+        gift.setRequestId(dto.getRequestId());
+        gift.setUserId(dto.getUserId());
+        gift.setOperationType(0);
+        gift.setTransactionType("zs");
+        gift.setAmount(dto.getAmount());
+        gift.setGiftAmount(BigDecimal.ZERO);
+        gift.setRemark(dto.getRemark());
+        var result = adminTransactionRequests.submit(getUserId(), gift);
+        return AjaxResult.success("SUCCEEDED".equals(result.state()) ? "赠送成功" : result.message(), result);
     }
 
 

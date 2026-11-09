@@ -28,6 +28,14 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter
     private TokenService tokenService;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        // Member API sessions are authenticated by FrontUserAuthInterceptor.
+        // Do not parse them as administrator JWTs or query login_tokens:null first.
+        String path = request.getServletPath();
+        return path != null && (path.equals("/api") || path.startsWith("/api/"));
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException
     {

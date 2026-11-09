@@ -26,6 +26,9 @@ class OrderLinkServiceImplTest
     @Mock
     private OrderLinkMapper orderLinkMapper;
 
+    @Mock
+    private SequenceAllocator sequenceAllocator;
+
     @InjectMocks
     private OrderLinkServiceImpl orderLinkService;
 
@@ -35,7 +38,7 @@ class OrderLinkServiceImplTest
         OrderLink orderLink = new OrderLink();
         orderLink.setUserId(7L);
         orderLink.setDetails(List.of(detail(101L), detail(102L)));
-        when(orderLinkMapper.selectMaxLinkOrderId()).thenReturn(40L);
+        when(sequenceAllocator.allocateLinkBatch()).thenReturn(41L);
         when(orderLinkMapper.insertOrderLink(any(OrderLink.class))).thenReturn(1);
 
         assertEquals(2, orderLinkService.insertOrderLink(orderLink));
@@ -54,7 +57,7 @@ class OrderLinkServiceImplTest
     {
         OrderLink orderLink = new OrderLink();
         orderLink.setStatus("  ");
-        when(orderLinkMapper.selectMaxLinkOrderId()).thenReturn(null);
+        when(sequenceAllocator.allocateLinkBatch()).thenReturn(1L);
         when(orderLinkMapper.insertOrderLink(orderLink)).thenReturn(1);
 
         assertEquals(1, orderLinkService.insertOrderLink(orderLink));

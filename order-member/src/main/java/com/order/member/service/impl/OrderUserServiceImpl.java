@@ -8,6 +8,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.order.common.exception.ServiceException;
 import com.order.common.utils.DateUtils;
@@ -421,29 +424,27 @@ public class OrderUserServiceImpl implements IOrderUserService
      * 级联更新下级ancestors（使用BFS队列，避免递归栈溢出）
      */
     private void updateDescendantsAncestors(Long userId) {
-        // 查询当前用户的新 ancestors
-        OrderUser current = orderUserMapper.selectOrderUserById(userId);
-        if (current == null) {
-            return;
-        }
-        String newAncestors = current.getAncestors() != null ? current.getAncestors() : "0";
-
-        // 查询直属下级（用"direct"，递归处理多级）
-        List<OrderUser> children = orderUserMapper.selectChildrenById(userId, "direct");
-        for (OrderUser child : children) {
-            // 计算子级新路径：父新路径 + ',' + 父会员ID
-            String childNewAncestors = newAncestors + "," + userId;
-            child.setAncestors(childNewAncestors);
-            // 无需setVersion，XML会自动+1并校验
-
-            // 执行更新（如果失败，事务会回滚）
-            int updated = orderUserMapper.updateOrderUser(child);
-            if (updated == 0) {
-                // 可抛异常中断，但事务会回滚整个操作
-            } else {
+        ArrayDeque<Long> pending = new ArrayDeque<>();
+        Set<Long> visited = new HashSet<>();
+        pending.add(userId);
+        visited.add(userId);
+        while (!pending.isEmpty()) {
+            Long parentId = pending.removeFirst();
+            OrderUser current = orderUserMapper.selectOrderUserById(parentId);
+            if (current == null) {
+                throw new ServiceException("会员层级已变化，请刷新后重试");
             }
-            // 递归子子级
-            updateDescendantsAncestors(child.getId());
+            String ancestors = StringUtils.defaultString(current.getAncestors(), "0");
+            for (OrderUser child : orderUserMapper.selectChildrenById(parentId, "direct")) {
+                if (child.getId() == null || !visited.add(child.getId())) {
+                    throw new ServiceException("会员层级存在循环，请先修复层级数据");
+                }
+                child.setAncestors(ancestors + "," + parentId);
+                if (orderUserMapper.updateOrderUser(child) != 1) {
+                    throw new ServiceException("下级会员已被其他请求修改，请刷新后重试");
+                }
+                pending.addLast(child.getId());
+            }
         }
     }
 }
