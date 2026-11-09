@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { prepareTransaction, clearTransaction, terminalTransaction } from "../src/views/member/orderuser/components/transactionRequest.js";
 
 const source = (name) => readFileSync(
   new URL(`../src/views/member/orderuser/components/${name}`, import.meta.url),
@@ -27,10 +28,9 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function compileHandler(component, functionName, bindings, sessionName) {
-  const marker = `async function ${functionName}()`;
+function extractFunction(component, marker) {
   const start = component.indexOf(marker);
-  assert.notEqual(start, -1, `${functionName} must exist`);
+  assert.notEqual(start, -1, `${marker} must exist`);
   const braceStart = component.indexOf("{", start);
   let depth = 0;
   let end = -1;
@@ -42,8 +42,21 @@ function compileHandler(component, functionName, bindings, sessionName) {
       break;
     }
   }
-  assert.notEqual(end, -1, `${functionName} must have a complete body`);
-  const functionSource = component.slice(start, end);
+  assert.notEqual(end, -1, `${marker} must have a complete body`);
+  return component.slice(start, end);
+}
+
+function compileHandler(component, functionName, bindings, sessionName) {
+  const data = new Map();
+  bindings = {
+    journalError: { value: "" }, pending: { value: null }, journalKey: "gift-test",
+    localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) },
+    prepareTransaction, clearTransaction, terminalTransaction,
+    transactionStatus: async () => ({ data: { state: "UNKNOWN" } }),
+    ...bindings,
+  };
+  const functionSource = extractFunction(component, `async function ${functionName}()`)
+    + extractFunction(component, "function acceptResult(");
   const names = Object.keys(bindings);
   const factory = Function(
     ...names,
@@ -82,6 +95,7 @@ test("gift modal locks before delayed validation and an old request cannot close
   let validateCalls = 0;
   let requestCalls = 0;
   const events = [];
+  let sentIntent;
   const props = { modelValue: true, userId: 7 };
   const { run, setSession } = compileHandler(gift, "submit", {
     submitting,
@@ -91,8 +105,9 @@ test("gift modal locks before delayed validation and an old request cannot close
       return validation.promise;
     } } },
     modalSession: 1,
-    giftAmount: () => {
+    giftAmount: (intent) => {
       requestCalls += 1;
+      sentIntent = intent;
       return request.promise;
     },
     form: { amount: 8.5, remark: "test" },
@@ -114,10 +129,10 @@ test("gift modal locks before delayed validation and an old request cannot close
   assert.equal(validateCalls, 1);
   assert.equal(submitting.value, true);
 
-  request.resolve();
+  request.resolve({ data: { requestId: sentIntent.requestId, state: "SUCCEEDED" } });
   await Promise.all([first, duplicateDuringValidation, duplicateDuringRequest]);
   assert.equal(submitting.value, false);
-  assert.deepEqual(events, [["success"]], "the completed old request must not close the reopened modal");
+  assert.deepEqual(events, [], "the completed old request must not mutate the reopened modal");
 });
 
 test("gift modal releases its pre-validation lock after validation fails", async () => {
@@ -144,6 +159,33 @@ test("gift modal releases its pre-validation lock after validation fails", async
   await run();
   assert.equal(validateCalls, 2);
   assert.equal(requestCalls, 1);
+});
+
+test("gift timeout retries the exact persisted intent and confirms only a matching terminal result", async () => {
+  const pending = { value: null };
+  const form = { amount: 8.5, remark: "original gift" };
+  const submitted = [];
+  const events = [];
+  const { run } = compileHandler(gift, "submit", {
+    pending, form, submitting: { value: false }, modalSession: 1,
+    props: { modelValue: true, userId: 7 },
+    formRef: { value: { validate: async () => {} } },
+    giftAmount: async intent => {
+      submitted.push({ ...intent });
+      if (submitted.length === 1) throw new Error("timeout");
+      return { data: { requestId: intent.requestId, state: "SUCCEEDED" } };
+    },
+    emit: (...event) => events.push(event),
+    proxy: { $modal: { msgSuccess() {}, msgError() {}, msgWarning() {} } },
+  }, "modalSession");
+  await run();
+  assert.ok(pending.value?.requestId);
+  form.amount = 999;
+  form.remark = "changed form must not change the retry";
+  await run();
+  assert.deepEqual(submitted[1], submitted[0]);
+  assert.equal(pending.value, null);
+  assert.equal(events.filter(event => event[0] === "success").length, 1);
 });
 
 test("bonus uses 85/65 percent drawers and preserves reference defaults", () => {
