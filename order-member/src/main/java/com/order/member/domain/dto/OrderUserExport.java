@@ -250,7 +250,7 @@ public final class OrderUserExport
         this.maxSingleWithdrawal = user.getMaxSingleWithdrawal();
         this.withdrawLimitPerDay = level == null ? null : level.getWithdrawLimitPerDay();
         this.withdrawCountPerDay = level == null ? null : level.getWithdrawCountPerDay();
-        this.taskProgress = user.getTaskProgress();
+        this.taskProgress = user.getDisplayTaskProgress();
         this.orderCountPerDay = level == null ? null : level.getOrderCountPerDay();
         this.taskCountPerDay = level == null ? null : level.getTaskCountPerDay();
         this.todayRest = user.getTodayRest();

@@ -33,9 +33,8 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import com.order.testsupport.IsolatedMySqlDatabase;
 
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -64,13 +63,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@Testcontainers(disabledWithoutDocker = true)
 class OrderConcurrencyMySqlTest {
-    @Container
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0.42")
-            .withDatabaseName("order_api_test")
-            .withUsername("order")
-            .withPassword("order");
+    @RegisterExtension
+    static final IsolatedMySqlDatabase MYSQL = new IsolatedMySqlDatabase(
+            "order.concurrent.jdbcUrl", "codex_order_concurrency_test");
 
     @BeforeEach
     void createLegacySchemaAndMigrate() throws Exception {

@@ -8,8 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.ArrayList;
@@ -26,20 +24,34 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers(disabledWithoutDocker = true)
 class RedisAtomicCounterTest {
-    @Container
-    static final GenericContainer<?> REDIS =
-            new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
-                    .withExposedPorts(6379);
+    private static GenericContainer<?> redis;
 
     private static LettuceConnectionFactory connectionFactory;
     private static RedisCache redisCache;
 
     @BeforeAll
     static void createClient() {
-        connectionFactory = new LettuceConnectionFactory(
-                REDIS.getHost(), REDIS.getMappedPort(6379));
+        String host;
+        int port;
+        String override = System.getProperty("redis.atomic.port");
+        if (override != null) {
+            host = "127.0.0.1";
+            port = Integer.parseInt(override);
+            assertTrue(port > 0 && port <= 65535 && port != 6379,
+                    "An explicit nonstandard test port is required");
+        } else {
+            org.junit.jupiter.api.Assumptions.assumeTrue(
+                    org.testcontainers.DockerClientFactory.instance().isDockerAvailable(),
+                    "Docker unavailable; set redis.atomic.port for isolated local Redis");
+            redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
+                    .withExposedPorts(6379);
+            redis.start();
+            host = redis.getHost();
+            port = redis.getMappedPort(6379);
+        }
+        connectionFactory = new LettuceConnectionFactory(host, port);
+        connectionFactory.setDatabase(14);
         connectionFactory.afterPropertiesSet();
 
         RedisTemplate<Object, Object> template =
@@ -54,6 +66,7 @@ class RedisAtomicCounterTest {
         if (connectionFactory != null) {
             connectionFactory.destroy();
         }
+        if (redis != null) redis.stop();
     }
 
     @Test

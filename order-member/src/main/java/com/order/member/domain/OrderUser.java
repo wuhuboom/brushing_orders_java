@@ -58,6 +58,10 @@ public class OrderUser extends BaseEntity
     @Excel(name = "任务进度")
     private Long taskProgress;
 
+    /** 只读展示进度；已完成进度仍由 taskProgress 保存。 */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Long displayTaskProgress;
+
     /** 信誉分 */
     @Excel(name = "信誉分")
     private Long reputationScore;
@@ -523,6 +527,16 @@ public class OrderUser extends BaseEntity
     public Long getTaskProgress()
     {
         return taskProgress;
+    }
+
+    public Long getDisplayTaskProgress()
+    {
+        return displayTaskProgress == null ? taskProgress : displayTaskProgress;
+    }
+
+    public void setDisplayTaskProgress(Long displayTaskProgress)
+    {
+        this.displayTaskProgress = displayTaskProgress;
     }
 
     public void setReputationScore(Long reputationScore)

@@ -96,6 +96,17 @@ public class GoodsMemberLevel extends BaseEntity
     @Excel(name = "描述")
     private String description;
 
+    /** Automatically derived rich text with relative image paths. */
+    private String descriptionRelative;
+
+    public String getDescriptionRelative() {
+        return descriptionRelative;
+    }
+
+    public void setDescriptionRelative(String descriptionRelative) {
+        this.descriptionRelative = descriptionRelative;
+    }
+
     /** 产品匹配状态 */
     @Excel(name = "产品匹配状态")
     private String productMatchEnabled;

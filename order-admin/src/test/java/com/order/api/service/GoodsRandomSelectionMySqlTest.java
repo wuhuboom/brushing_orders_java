@@ -91,7 +91,7 @@ class GoodsRandomSelectionMySqlTest {
                     is_enabled CHAR(1), price DECIMAL(20,2), serial_number BIGINT,
                     image VARCHAR(500), sub_title VARCHAR(255), unit_price DECIMAL(20,2),
                     quantity INT, star_rating DECIMAL(10,2), rating DECIMAL(10,2),
-                    description TEXT, create_by VARCHAR(64), create_time DATETIME
+                    description TEXT, description_relative LONGTEXT, create_by VARCHAR(64), create_time DATETIME
                 ) ENGINE=InnoDB
                 """);
     }

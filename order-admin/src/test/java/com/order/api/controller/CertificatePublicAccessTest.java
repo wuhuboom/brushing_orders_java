@@ -27,6 +27,7 @@ class CertificatePublicAccessTest {
         for (Map.Entry<String, Boolean> entry : Map.of(
                 "/api/config/certificate", false,
                 "/api/config/content", false,
+                "/api/config/content-relative", false,
                 "/api/config/website", false,
                 "/api/user/getInfo", true,
                 "/api/order", true).entrySet()) {

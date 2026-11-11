@@ -3,6 +3,7 @@ package com.order.api.controller.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderUser;
+import com.order.common.utils.html.RichTextRelativeValues;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -69,7 +70,7 @@ public record UserProfileResponse(
                 user.getBalance(),
                 user.getFrozenBalance(),
                 user.getBaseSalary(),
-                user.getTaskProgress(),
+                user.getDisplayTaskProgress(),
                 user.getReputationScore(),
                 user.getTodayCommission(),
                 user.getTotalCommission() == null ? BigDecimal.ZERO : user.getTotalCommission(),
@@ -113,7 +114,8 @@ public record UserProfileResponse(
             String description,
             String productMatchEnabled,
             BigDecimal productMatchMin,
-            BigDecimal productMatchMax) {
+            BigDecimal productMatchMax,
+            String descriptionRelative) {
 
         static MemberLevelResponse from(GoodsMemberLevel level) {
             if (level == null || level.getId() == null) {
@@ -142,7 +144,8 @@ public record UserProfileResponse(
                     level.getDescription(),
                     level.getProductMatchEnabled(),
                     level.getProductMatchMin(),
-                    level.getProductMatchMax());
+                    level.getProductMatchMax(),
+                    RichTextRelativeValues.storedOrDerived(level.getDescriptionRelative(), level.getDescription()));
         }
     }
 }

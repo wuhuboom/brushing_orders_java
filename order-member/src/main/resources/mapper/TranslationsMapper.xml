@@ -27,11 +27,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="csCz"    column="cs_CZ"    />
         <result property="ptBr"    column="pt_BR"    />
         <result property="hiIn"    column="hi_IN"    />
+        <result property="relativeContent" column="relative_content" />
     </resultMap>
 
     <sql id="selectTranslationsVo">
         select id, zh_CN, zh_TW, ko_KR, th_TH, ja_JP, pt_PT, en_US, ar_SA, es_ES, sv_SE,
-        it_IT, de_DE, no_NO, ru_RU, hu_HU, pl_PL, sk_SK, fr_FR, cs_CZ, pt_BR, hi_IN from translations
+        it_IT, de_DE, no_NO, ru_RU, hu_HU, pl_PL, sk_SK, fr_FR, cs_CZ, pt_BR, hi_IN, relative_content from translations
     </sql>
 
     <select id="selectTranslationsList" parameterType="com.order.common.i18n.Translations" resultMap="TranslationsResult">
@@ -66,6 +67,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where id = #{id}
     </select>
 
+    <select id="selectTranslationsByIdForUpdate" parameterType="Long" resultMap="TranslationsResult">
+        <include refid="selectTranslationsVo"/>
+        where id = #{id}
+        for update
+    </select>
+
     <select id="selectTranslationsByIds" resultMap="TranslationsResult">
         <include refid="selectTranslationsVo"/>
         where id in
@@ -98,6 +105,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="csCz != null">cs_CZ,</if>
             <if test="ptBr != null">pt_BR,</if>
             <if test="hiIn != null">hi_IN,</if>
+            <if test="relativeContent != null">relative_content,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="zhCn != null">#{zhCn},</if>
@@ -121,6 +129,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="csCz != null">#{csCz},</if>
             <if test="ptBr != null">#{ptBr},</if>
             <if test="hiIn != null">#{hiIn},</if>
+            <if test="relativeContent != null">#{relativeContent},</if>
          </trim>
     </insert>
 
@@ -148,6 +157,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="csCz != null">cs_CZ = #{csCz},</if>
             <if test="ptBr != null">pt_BR = #{ptBr},</if>
             <if test="hiIn != null">hi_IN = #{hiIn},</if>
+            <if test="relativeContent != null">relative_content = #{relativeContent},</if>
         </trim>
         where id = #{id}
     </update>

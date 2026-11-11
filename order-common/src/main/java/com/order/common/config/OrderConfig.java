@@ -32,6 +32,9 @@ public class OrderConfig
     /** 上传路径 */
     private static String profile;
 
+    /** 对外图片资源根地址，可包含反代前缀。为空时沿用当前请求地址。 */
+    private static String resourceBaseUrl;
+
     /** 获取地址开关 */
     private static boolean addressEnabled;
 
@@ -101,6 +104,16 @@ public class OrderConfig
     public void setProfile(String profile)
     {
         OrderConfig.profile = profile;
+    }
+
+    public static String getResourceBaseUrl()
+    {
+        return resourceBaseUrl;
+    }
+
+    public void setResourceBaseUrl(String resourceBaseUrl)
+    {
+        OrderConfig.resourceBaseUrl = resourceBaseUrl;
     }
 
     public static boolean isAddressEnabled()

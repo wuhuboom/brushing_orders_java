@@ -118,7 +118,7 @@ class OrderUserRegistrationMySqlTest {
                     max_continuous_commission_rate DECIMAL(20,2), task_count_per_day BIGINT,
                     withdraw_count_per_day BIGINT, withdraw_fee_rate DECIMAL(20,2),
                     min_withdraw_amount DECIMAL(20,2), withdraw_limit_per_day DECIMAL(20,2),
-                    min_withdraw DECIMAL(20,2), max_withdraw DECIMAL(20,2), description VARCHAR(255),
+                    min_withdraw DECIMAL(20,2), max_withdraw DECIMAL(20,2), description VARCHAR(255), description_relative LONGTEXT,
                     create_time DATETIME, product_match_enabled CHAR(1),
                     product_match_min DECIMAL(20,2), product_match_max DECIMAL(20,2), translations_id BIGINT
                 ) ENGINE=InnoDB
@@ -126,7 +126,7 @@ class OrderUserRegistrationMySqlTest {
         jdbc.execute("""
                 CREATE TABLE order_config (
                     id BIGINT AUTO_INCREMENT PRIMARY KEY, type VARCHAR(64) UNIQUE,
-                    sort BIGINT, name VARCHAR(64), content LONGTEXT, translations_id BIGINT,
+                    sort BIGINT, name VARCHAR(64), content LONGTEXT, content_relative LONGTEXT, translations_id BIGINT,
                     create_time DATETIME, update_time DATETIME
                 ) ENGINE=InnoDB
                 """);

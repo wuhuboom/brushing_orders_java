@@ -10,6 +10,7 @@ import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.IOrderLoginLogService;
 import com.order.member.service.IOrderUserService;
 import com.order.member.service.MemberDailyStatisticsService;
+import com.order.member.service.MemberTaskProgressService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,8 @@ class UserApiServiceTest {
     @Mock private HttpServletRequest servletRequest;
     @Mock private ObjectProvider<ConfigQueryService> configQueryServiceProvider;
 
+    @Mock private MemberTaskProgressService taskProgressService;
+
     private UserApiService service;
 
     @BeforeEach
@@ -58,6 +61,7 @@ class UserApiServiceTest {
                 userMapper,
                 userService,
                 dailyStatisticsService,
+                taskProgressService,
                 passwordEncoder,
                 frontJwtUtil,
                 rateLimitService,
@@ -111,6 +115,23 @@ class UserApiServiceTest {
         assertEquals(new BigDecimal("581.25"), result.todayCommission());
         assertEquals(new BigDecimal("1581.25"), result.totalCommission());
         verify(dailyStatisticsService).populate(profile);
+    }
+
+    @Test
+    void userInfoProjectsLinkedProgressWithoutChangingCompletedProgress() {
+        OrderUser profile = authUser();
+        profile.setTaskProgress(1L);
+        when(userMapper.selectUserProfileById(1L)).thenReturn(profile);
+        doAnswer(invocation -> {
+            invocation.<OrderUser>getArgument(0).setDisplayTaskProgress(2L);
+            return null;
+        }).when(taskProgressService).populate(profile);
+
+        UserProfileResponse result = service.userInfo(1L);
+
+        assertEquals(2L, result.taskProgress());
+        assertEquals(1L, profile.getTaskProgress());
+        verify(taskProgressService).populate(profile);
     }
 
     @Test

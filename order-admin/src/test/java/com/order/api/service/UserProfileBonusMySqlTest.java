@@ -117,7 +117,7 @@ class UserProfileBonusMySqlTest {
                     max_continuous_commission_rate DECIMAL(20,2), task_count_per_day BIGINT,
                     withdraw_count_per_day BIGINT, withdraw_fee_rate DECIMAL(20,2),
                     min_withdraw_amount DECIMAL(20,2), withdraw_limit_per_day DECIMAL(20,2),
-                    min_withdraw DECIMAL(20,2), max_withdraw DECIMAL(20,2), description VARCHAR(255),
+                    min_withdraw DECIMAL(20,2), max_withdraw DECIMAL(20,2), description VARCHAR(255), description_relative LONGTEXT,
                     product_match_enabled CHAR(1), product_match_min DECIMAL(20,2),
                     product_match_max DECIMAL(20,2)
                 ) ENGINE=InnoDB

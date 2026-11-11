@@ -2,6 +2,7 @@ package com.order.member.service.impl;
 
 import java.util.List;
 import com.order.common.utils.DateUtils;
+import com.order.common.utils.html.RichTextImagePaths;
 import com.order.common.i18n.ITranslationsService;
 import com.order.common.i18n.Translations;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,6 +74,8 @@ public class GoodsMemberLevelServiceImpl implements IGoodsMemberLevelService
         }
 
         goodsMemberLevel.setCreateTime(DateUtils.getNowDate());
+        goodsMemberLevel.setDescription(RichTextStorageSupport.absolute(goodsMemberLevel.getDescription()));
+        goodsMemberLevel.setDescriptionRelative(RichTextImagePaths.toRelative(goodsMemberLevel.getDescription()));
         return goodsMemberLevelMapper.insertGoodsMemberLevel(goodsMemberLevel);
     }
 
@@ -97,6 +100,8 @@ public class GoodsMemberLevelServiceImpl implements IGoodsMemberLevelService
             }
         }
 
+        goodsMemberLevel.setDescription(RichTextStorageSupport.absolute(goodsMemberLevel.getDescription()));
+        goodsMemberLevel.setDescriptionRelative(RichTextImagePaths.toRelative(goodsMemberLevel.getDescription()));
         return goodsMemberLevelMapper.updateGoodsMemberLevel(goodsMemberLevel);
     }
 

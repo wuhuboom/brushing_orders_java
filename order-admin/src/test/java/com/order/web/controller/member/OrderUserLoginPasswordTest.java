@@ -4,6 +4,7 @@ import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.MemberDailyStatisticsService;
+import com.order.member.service.MemberTaskProgressService;
 import com.order.member.service.impl.OrderUserServiceImpl;
 import org.apache.ibatis.builder.xml.XMLMapperBuilder;
 import org.apache.ibatis.session.Configuration;
@@ -42,11 +43,14 @@ class OrderUserLoginPasswordTest {
 
     private MockMvc mockMvc;
 
+    @Mock private MemberTaskProgressService taskProgressService;
+
     @BeforeEach
     void setUp() {
         OrderUserServiceImpl service = new OrderUserServiceImpl();
         ReflectionTestUtils.setField(service, "orderUserMapper", userMapper);
         ReflectionTestUtils.setField(service, "dailyStatisticsService", dailyStatistics);
+        ReflectionTestUtils.setField(service, "taskProgressService", taskProgressService);
         OrderUserController controller = new OrderUserController();
         ReflectionTestUtils.setField(controller, "orderUserService", service);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();

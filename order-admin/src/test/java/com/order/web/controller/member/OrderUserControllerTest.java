@@ -202,6 +202,8 @@ class OrderUserControllerTest
         user.setPhoneNumber("123");
         user.setBalance(java.math.BigDecimal.TEN);
         user.setFrozenBalance(java.math.BigDecimal.ONE);
+        user.setTaskProgress(1L);
+        user.setDisplayTaskProgress(2L);
         user.setIdentityNumber("secret-id");
         user.setLastLoginIp("127.0.0.1");
         when(orderUserService.selectOrderUserById(7L)).thenReturn(user);
@@ -215,9 +217,12 @@ class OrderUserControllerTest
                 .collect(Collectors.toSet());
         assertEquals(Set.of(
                 "id", "username", "phoneNumber", "balance", "frozenBalance",
-                "totalBalance", "taskProgress", "orderCountPerDay", "lastLoginTime"), fields);
+                "totalBalance", "taskProgress", "displayTaskProgress", "orderCountPerDay", "lastLoginTime"), fields);
         assertTrue(!fields.contains("identityNumber"));
         assertTrue(!fields.contains("lastLoginIp"));
+        var json = new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(summary);
+        assertEquals(1L, json.get("taskProgress").longValue());
+        assertEquals(2L, json.get("displayTaskProgress").longValue());
 
         Method method = OrderUserController.class.getDeclaredMethod("getOperationSummary", Long.class);
         assertEquals(

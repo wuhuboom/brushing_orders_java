@@ -117,6 +117,8 @@ class AdminTransactionRealMoneyMySqlTest {
                 new ClassPathResource("db/migration/mysql/V2026_10_27_00__admin_transaction_requests.sql"),
                 new ClassPathResource("db/migration/mysql/V2026_11_08_00__member_product_match_ratios.sql"))
                 .execute(dynamic);
+        // Current member queries read the stored relative copy added in release 1.2.6.
+        jdbc.execute("ALTER TABLE goods_member_level ADD COLUMN description_relative LONGTEXT NULL");
     }
 
     @AfterEach void cleanup() {

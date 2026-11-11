@@ -5,11 +5,13 @@ order:
   # 版本：发布构建默认使用 Maven project.version，可通过 APP_VERSION 覆盖
   version: "${APP_VERSION:@project.version@}"
   # 数据库迁移发布号（与展示版本分离）
-  migration-version: 1.2.5
+  migration-version: 1.2.6
   # 版权年份
   copyrightYear: 2025
   # 文件路径 示例（ Windows配置D:/order/uploadPath，Linux配置 /home/order/uploadPath）
   profile: E:/order/uploadPath
+  # 保存相对图片时补全绝对版本使用的公开根地址，可包含反代前缀
+  resource-base-url: ${RESOURCE_BASE_URL:}
   # 获取ip地址开关
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证

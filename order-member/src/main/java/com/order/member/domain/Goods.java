@@ -70,6 +70,17 @@ public class Goods extends BaseEntity
     @Excel(name = "说明")
     private String description;
 
+    /** Automatically derived rich text with relative image paths. */
+    private String descriptionRelative;
+
+    public String getDescriptionRelative() {
+        return descriptionRelative;
+    }
+
+    public void setDescriptionRelative(String descriptionRelative) {
+        this.descriptionRelative = descriptionRelative;
+    }
+
     public String getTypeTitle() {
         return typeTitle;
     }

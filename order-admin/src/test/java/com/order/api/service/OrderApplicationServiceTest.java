@@ -273,6 +273,7 @@ class OrderApplicationServiceTest {
     @Test
     void linkedOrderMayReserveMoreThanCurrentBalance() {
         OrderUser user = user(new BigDecimal("20.00"), 1L);
+        user.setDisplayTaskProgress(2L);
         user.setProductMatching("0");
         user.setProductMatchMin(BigDecimal.ZERO);
         user.setProductMatchMax(BigDecimal.ZERO);
@@ -296,6 +297,8 @@ class OrderApplicationServiceTest {
         assertEquals(new BigDecimal("120.00"), result.order().amount());
         assertEquals(new BigDecimal("24.00"), result.order().rebate());
         assertEquals(2L, result.order().orderCount());
+        assertEquals(1L, user.getTaskProgress());
+        verify(linkMapper).selectNextOrderLink(7L, 2L);
         verify(userMapper).reserveOrderFunds(7L, new BigDecimal("120.00"), 0L, true);
         verify(goodsMapper, never()).selectNearestPriceGoods(any());
     }

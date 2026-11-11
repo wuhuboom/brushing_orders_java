@@ -3,6 +3,7 @@ package com.order.member.service.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import com.order.common.utils.DateUtils;
+import com.order.common.utils.html.RichTextImagePaths;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.order.member.mapper.GoodsMapper;
@@ -60,6 +61,8 @@ public class GoodsServiceImpl implements IGoodsService
     public int insertGoods(Goods goods)
     {
         goods.setCreateTime(DateUtils.getNowDate());
+        goods.setDescription(RichTextStorageSupport.absolute(goods.getDescription()));
+        goods.setDescriptionRelative(RichTextImagePaths.toRelative(goods.getDescription()));
         return goodsMapper.insertGoods(goods);
     }
 
@@ -72,6 +75,8 @@ public class GoodsServiceImpl implements IGoodsService
     @Override
     public int updateGoods(Goods goods)
     {
+        goods.setDescription(RichTextStorageSupport.absolute(goods.getDescription()));
+        goods.setDescriptionRelative(RichTextImagePaths.toRelative(goods.getDescription()));
         return goodsMapper.updateGoods(goods);
     }
 

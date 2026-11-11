@@ -2,9 +2,8 @@ package com.order.api.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import com.order.testsupport.IsolatedMySqlDatabase;
 
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -24,13 +23,10 @@ import java.util.concurrent.Future;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers(disabledWithoutDocker = true)
 class WithdrawalConcurrencyMySqlTest {
-    @Container
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0.42")
-            .withDatabaseName("order_test")
-            .withUsername("order")
-            .withPassword("order");
+    @RegisterExtension
+    static final IsolatedMySqlDatabase MYSQL = new IsolatedMySqlDatabase(
+            "withdrawal.concurrent.jdbcUrl", "codex_withdrawal_concurrency_test");
 
     @BeforeEach
     void createSchema() throws Exception {

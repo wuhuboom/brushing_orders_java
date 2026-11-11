@@ -9,6 +9,8 @@ import com.order.common.i18n.ITranslationsService;
 import com.order.common.i18n.SupportedLocale;
 import com.order.common.i18n.TranslationResolver;
 import com.order.common.i18n.Translations;
+import com.order.common.utils.html.RichTextImagePaths;
+import com.order.common.utils.html.RichTextRelativeValues;
 import com.order.member.domain.GoodsCustomerService;
 import com.order.member.domain.GoodsMemberLevel;
 import com.order.member.domain.OrderConfig;
@@ -80,6 +82,14 @@ public class ConfigQueryService {
     }
 
     public ConfigApiDtos.GlobalContentResponse content(SupportedLocale locale) {
+        return content(locale, false);
+    }
+
+    public ConfigApiDtos.GlobalContentResponse contentRelative(SupportedLocale locale) {
+        return content(locale, true);
+    }
+
+    private ConfigApiDtos.GlobalContentResponse content(SupportedLocale locale, boolean relative) {
         List<String> types = new ArrayList<>(CONTENT_FIELDS.keySet());
         types.add("website");
         List<OrderConfig> configs = orderConfigService.selectOrderConfigByTypes(types);
@@ -93,17 +103,17 @@ public class ConfigQueryService {
         String certificateSwitch = certificateSwitch(certificate, byType.get("website"));
         return new ConfigApiDtos.GlobalContentResponse(
                 locale.getCode(),
-                configField(byType.get("register"), translations, locale, "protocolContent"),
-                configField(byType.get("about"), translations, locale, "aboutContent"),
+                configField(byType.get("register"), translations, locale, "protocolContent", true, relative),
+                configField(byType.get("about"), translations, locale, "aboutContent", true, relative),
                 "1".equals(certificateSwitch) ? ""
-                        : configField(certificate, translations, locale, "certificateContent"),
+                        : configField(certificate, translations, locale, "certificateContent", true, relative),
                 "1".equals(certificateSwitch) ? certificateTip(certificate, translations, locale) : "",
-                configField(byType.get("help"), translations, locale, "helpContent"),
-                configField(byType.get("terms"), translations, locale, "termsContent"),
-                configField(byType.get("event"), translations, locale, "eventContent"),
-                configField(byType.get("transaction"), translations, locale, "transactionDescription"),
-                configField(byType.get("order"), translations, locale, "orderDescription"),
-                configField(byType.get("usage"), translations, locale, "usageDescription"));
+                configField(byType.get("help"), translations, locale, "helpContent", true, relative),
+                configField(byType.get("terms"), translations, locale, "termsContent", true, relative),
+                configField(byType.get("event"), translations, locale, "eventContent", true, relative),
+                configField(byType.get("transaction"), translations, locale, "transactionDescription", true, relative),
+                configField(byType.get("order"), translations, locale, "orderDescription", true, relative),
+                configField(byType.get("usage"), translations, locale, "usageDescription", true, relative));
     }
 
     public ConfigApiDtos.WebsiteConfigResponse website() {
@@ -213,6 +223,7 @@ public class ConfigQueryService {
         if (localized != null) {
             level.setName(localized.name());
             level.setDescription(localized.description());
+            level.setDescriptionRelative(localized.descriptionRelative());
         }
     }
 
@@ -312,15 +323,9 @@ public class ConfigQueryService {
                 localizedEntityField(translations, locale, "description", level.getDescription(), true, reference),
                 level.getProductMatchEnabled(),
                 level.getProductMatchMin(),
-                level.getProductMatchMax());
-    }
-
-    private String configField(
-            OrderConfig config,
-            Map<Long, Translations> translationsById,
-            SupportedLocale locale,
-            String field) {
-        return configField(config, translationsById, locale, field, true);
+                level.getProductMatchMax(),
+                localizedEntityField(translations, locale, "description", level.getDescription(), true,
+                        reference, level.getDescriptionRelative(), true));
     }
 
     private String configField(
@@ -329,29 +334,43 @@ public class ConfigQueryService {
             SupportedLocale locale,
             String field,
             boolean allowRaw) {
+        return configField(config, translationsById, locale, field, allowRaw, false);
+    }
+
+    private String configField(
+            OrderConfig config,
+            Map<Long, Translations> translationsById,
+            SupportedLocale locale,
+            String field,
+            boolean allowRaw,
+            boolean relative) {
         if (config == null) {
             return null;
         }
         Translations translations = config.getTranslationsId() == null
                 ? null : translationsById.get(config.getTranslationsId());
         List<String> candidates = TranslationResolver.candidates(translations, locale, config.getContent());
+        String reference = "config:" + config.getId() + ":" + config.getType();
         for (int index = 0; index < candidates.size(); index++) {
             String candidate = candidates.get(index);
             // Legacy raw certificate HTML is valid content, but it must never become a notice.
             if (!allowRaw && (candidate == null || !candidate.stripLeading().startsWith("{"))) {
                 continue;
             }
-            String candidateLanguage = index == 0
-                    ? locale.getCode()
-                    : index == candidates.size() - 1 ? "base" : SupportedLocale.EN_US.getCode();
-            String value = extractField(
-                    candidate,
-                    field,
-                    allowRaw,
-                    "config:" + config.getId() + ":" + config.getType(),
-                    candidateLanguage);
+            boolean base = index == candidates.size() - 1;
+            SupportedLocale candidateLocale = index == 0 ? locale : SupportedLocale.EN_US;
+            String language = base ? "base" : candidateLocale.getCode();
+            String value = extractField(candidate, field, allowRaw, reference, language);
             if (TranslationResolver.hasText(value)) {
-                return value;
+                if (!relative) {
+                    return value;
+                }
+                String relativeCandidate = base
+                        ? RichTextRelativeValues.storedOrDerived(config.getContentRelative(), config.getContent())
+                        : RichTextRelativeValues.translation(translations, candidateLocale);
+                String relativeValue = extractField(relativeCandidate, field, allowRaw, reference, language);
+                return RichTextImagePaths.toRelative(
+                        TranslationResolver.hasText(relativeValue) ? relativeValue : value);
             }
         }
         return null;
@@ -364,25 +383,40 @@ public class ConfigQueryService {
             String baseValue,
             boolean legacyRawValue,
             String reference) {
+        return localizedEntityField(translations, locale, field, baseValue, legacyRawValue,
+                reference, null, false);
+    }
+
+    private String localizedEntityField(
+            Translations translations,
+            SupportedLocale locale,
+            String field,
+            String baseValue,
+            boolean legacyRawValue,
+            String reference,
+            String baseRelative,
+            boolean relative) {
         if (translations != null) {
-            String requested = extractField(
-                    locale.read(translations), field, legacyRawValue, reference, locale.getCode());
-            if (TranslationResolver.hasText(requested)) {
-                return requested;
-            }
-            if (locale != SupportedLocale.EN_US) {
-                String english = extractField(
-                        SupportedLocale.EN_US.read(translations),
-                        field,
-                        legacyRawValue,
-                        reference,
-                        SupportedLocale.EN_US.getCode());
-                if (TranslationResolver.hasText(english)) {
-                    return english;
+            List<SupportedLocale> locales = locale == SupportedLocale.EN_US
+                    ? List.of(locale) : List.of(locale, SupportedLocale.EN_US);
+            for (SupportedLocale candidateLocale : locales) {
+                String value = extractField(candidateLocale.read(translations), field, legacyRawValue,
+                        reference, candidateLocale.getCode());
+                if (TranslationResolver.hasText(value)) {
+                    if (!relative) {
+                        return value;
+                    }
+                    String relativeValue = extractField(
+                            RichTextRelativeValues.translation(translations, candidateLocale),
+                            field, legacyRawValue, reference, candidateLocale.getCode());
+                    return RichTextImagePaths.toRelative(
+                            TranslationResolver.hasText(relativeValue) ? relativeValue : value);
                 }
             }
         }
-        return baseValue;
+        return relative
+                ? RichTextRelativeValues.storedOrDerived(baseRelative, baseValue)
+                : baseValue;
     }
 
     private String extractField(

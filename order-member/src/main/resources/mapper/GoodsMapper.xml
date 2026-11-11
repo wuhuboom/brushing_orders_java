@@ -19,6 +19,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="starRating"    column="star_rating"    />
         <result property="rating"    column="rating"    />
         <result property="description"    column="description"    />
+        <result property="descriptionRelative" column="description_relative" />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
     </resultMap>
@@ -39,6 +40,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         g.star_rating,
         g.rating,
         g.description,
+        g.description_relative,
         g.create_by,
         g.create_time
         from goods  g
@@ -104,6 +106,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             g.star_rating,
             g.rating,
             g.description,
+        g.description_relative,
             g.create_by,
             g.create_time
         from goods g
@@ -134,6 +137,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             g.star_rating,
             g.rating,
             g.description,
+        g.description_relative,
             g.create_by,
             g.create_time
         from goods g
@@ -155,6 +159,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="starRating != null">star_rating,</if>
             <if test="rating != null">rating,</if>
             <if test="description != null">description,</if>
+            <if test="descriptionRelative != null">description_relative,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
          </trim>
@@ -171,6 +176,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="starRating != null">#{starRating},</if>
             <if test="rating != null">#{rating},</if>
             <if test="description != null">#{description},</if>
+            <if test="descriptionRelative != null">#{descriptionRelative},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
          </trim>
@@ -191,6 +197,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="starRating != null">star_rating = #{starRating},</if>
             <if test="rating != null">rating = #{rating},</if>
             <if test="description != null">description = #{description},</if>
+            <if test="descriptionRelative != null">description_relative = #{descriptionRelative},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
         </trim>

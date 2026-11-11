@@ -54,11 +54,11 @@ class H5OpenApiConfigTest {
     private static final Pattern INLINE_RESPONSE_FIELD = Pattern.compile(
             "(?m)^- `([^`]+)` \\(`[^`]+`\\)：(.+)$");
 
-    // Mirrors the calls exported by iron-h5/src/api/client.ts.
+    // Covers the current H5 calls and the relative-content API offered to new skins.
     private static final Set<String> CURRENT_H5_OPERATIONS = Set.of(
             "login", "register", "logout", "userInfo", "uploadAvatar",
             "editPassword", "editTradePassword", "checkTradePassword",
-            "errorMessages", "content", "website", "certificate", "customerServices",
+            "errorMessages", "content", "contentRelative", "website", "certificate", "customerServices",
             "memberLevels", "timeZone", "trade", "upload",
             "getGoodsList",
             "create", "submit", "order", "orders",
@@ -90,7 +90,7 @@ class H5OpenApiConfigTest {
     }
 
     @Test
-    void exposesOnlyOperationsUsedByTheCurrentH5Client() {
+    void exposesTheCurrentH5OperationsAndTheNewSkinContentEndpoint() {
         assertEquals(CURRENT_H5_OPERATIONS, H5OpenApiConfig.documentedOperationIds());
     }
 

@@ -19,6 +19,8 @@ public interface TranslationsMapper
      */
     public Translations selectTranslationsById(Long id);
 
+    public Translations selectTranslationsByIdForUpdate(Long id);
+
     public List<Translations> selectTranslationsByIds(List<Long> ids);
 
     /**

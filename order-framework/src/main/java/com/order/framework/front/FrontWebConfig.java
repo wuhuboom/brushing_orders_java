@@ -20,6 +20,7 @@ public class FrontWebConfig implements WebMvcConfigurer {
                         "/api/user/logout",
                         "/api/config/error-messages",
                         "/api/config/content",
+                        "/api/config/content-relative",
                         "/api/config/website",
                         "/api/config/certificate",
                         "/api/config/customer-services",

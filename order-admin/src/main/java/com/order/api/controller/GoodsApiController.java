@@ -3,6 +3,7 @@ package com.order.api.controller;
 
 import com.order.common.core.controller.BaseController;
 import com.order.common.core.domain.AjaxResult;
+import com.order.common.utils.html.RichTextRelativeValues;
 import com.order.member.domain.Goods;
 import com.order.member.service.IGoodsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,10 +39,15 @@ public class GoodsApiController extends BaseController {
                     "    - quantity: 数量\n" +
                     "    - starRating: 星级\n" +
                     "    - rating: 评分\n" +
-                    "    - description: 说明/详情\n"
+                    "    - description: 说明/详情（原有绝对图片地址版本）\n" +
+                    "    - descriptionRelative: 图片为相对路径的完整说明/详情富文本\n"
     )
     public AjaxResult getGoodsList(){
         List<Goods> goods = goodsService.selectRandomGoods();
+        for (Goods item : goods) {
+            item.setDescriptionRelative(RichTextRelativeValues.storedOrDerived(
+                    item.getDescriptionRelative(), item.getDescription()));
+        }
         return AjaxResult.success("Success", goods);
     }
 }

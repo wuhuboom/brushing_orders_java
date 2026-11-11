@@ -7,6 +7,8 @@ import com.order.common.i18n.ITranslationsService;
 import com.order.common.i18n.SupportedLocale;
 import com.order.common.i18n.TranslationResolver;
 import com.order.common.i18n.Translations;
+import com.order.common.utils.html.RichTextImagePaths;
+import com.order.common.utils.html.RichTextRelativeValues;
 import com.order.member.domain.OrderSiteMessage;
 import com.order.member.mapper.OrderSiteMessageMapper;
 import org.springframework.http.HttpStatus;
@@ -68,7 +70,8 @@ public class SiteMessageQueryService {
                 message.getId(),
                 localized.title(),
                 localized.content(),
-                message.getCreateTime());
+                message.getCreateTime(),
+                localized.contentRelative());
     }
 
     private LocalizedMessage localized(OrderSiteMessage message, SupportedLocale locale) {
@@ -76,7 +79,11 @@ public class SiteMessageQueryService {
                 ? null : translationsService.selectTranslationsById(message.getTranslationsId());
         String title = null;
         String content = null;
-        for (String candidate : TranslationResolver.candidates(translations, locale, null)) {
+        String contentRelative = null;
+        List<SupportedLocale> locales = locale == SupportedLocale.EN_US
+                ? List.of(locale) : List.of(locale, SupportedLocale.EN_US);
+        for (SupportedLocale candidateLocale : locales) {
+            String candidate = candidateLocale.read(translations);
             if (!TranslationResolver.hasText(candidate)) {
                 continue;
             }
@@ -87,16 +94,36 @@ public class SiteMessageQueryService {
                 }
                 if (content == null && TranslationResolver.hasText(json.path("content").asText(""))) {
                     content = json.path("content").asText();
+                    contentRelative = relativeTranslationContent(translations, candidateLocale, content, true);
                 }
             } catch (Exception ignored) {
                 if (content == null) {
                     content = candidate;
+                    contentRelative = relativeTranslationContent(translations, candidateLocale, content, false);
                 }
             }
         }
         return new LocalizedMessage(
                 title == null ? message.getTitle() : title,
-                content == null ? message.getContent() : content);
+                content == null ? message.getContent() : content,
+                content == null
+                        ? RichTextRelativeValues.storedOrDerived(message.getContentRelative(), message.getContent())
+                        : contentRelative);
+    }
+
+    private String relativeTranslationContent(
+            Translations translations, SupportedLocale locale, String fallback, boolean jsonContent) {
+        String relative = RichTextRelativeValues.translation(translations, locale);
+        if (jsonContent) {
+            try {
+                JsonNode node = objectMapper.readTree(relative).path("content");
+                return node.isTextual() && TranslationResolver.hasText(node.textValue())
+                        ? RichTextImagePaths.toRelative(node.textValue()) : RichTextImagePaths.toRelative(fallback);
+            } catch (Exception ignored) {
+                return RichTextImagePaths.toRelative(fallback);
+            }
+        }
+        return RichTextRelativeValues.storedOrDerived(relative, fallback);
     }
 
     private void validatePage(int pageNum, int pageSize) {
@@ -105,6 +132,6 @@ public class SiteMessageQueryService {
         }
     }
 
-    private record LocalizedMessage(String title, String content) {
+    private record LocalizedMessage(String title, String content, String contentRelative) {
     }
 }

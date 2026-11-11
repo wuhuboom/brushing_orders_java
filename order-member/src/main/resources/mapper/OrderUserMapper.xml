@@ -110,6 +110,7 @@
         <result property="minWithdraw" column="min_withdraw" />
         <result property="maxWithdraw" column="max_withdraw" />
         <result property="description" column="description" />
+        <result property="descriptionRelative" column="description_relative" />
         <result property="productMatchEnabled" column="product_match_enabled" />
         <result property="productMatchMin" column="product_match_min" />
         <result property="productMatchMax" column="product_match_max" />
@@ -203,7 +204,7 @@
             gml.min_continuous_commission_rate, gml.max_continuous_commission_rate,
             gml.task_count_per_day, gml.withdraw_count_per_day, gml.withdraw_fee_rate,
             gml.min_withdraw_amount, gml.withdraw_limit_per_day, gml.min_withdraw,
-            gml.max_withdraw, gml.description, gml.product_match_enabled,
+            gml.max_withdraw, gml.description, gml.description_relative, gml.product_match_enabled,
             gml.product_match_min, gml.product_match_max
         FROM order_user ou
         LEFT JOIN goods_member_level gml ON gml.id = ou.vip_id
@@ -394,7 +395,7 @@
             gml.invite_count, gml.order_count_per_day, gml.min_commission_rate, gml.max_commission_rate,
             gml.min_continuous_commission_rate, gml.max_continuous_commission_rate, gml.task_count_per_day,
             gml.withdraw_count_per_day, gml.withdraw_fee_rate, gml.min_withdraw_amount,
-            gml.withdraw_limit_per_day, gml.min_withdraw, gml.max_withdraw, gml.description,
+            gml.withdraw_limit_per_day, gml.min_withdraw, gml.max_withdraw, gml.description, gml.description_relative,
             gml.product_match_enabled, gml.product_match_min, gml.product_match_max,
 
             pu.username AS parent_username, pu.invite_code AS parent_invite_code,

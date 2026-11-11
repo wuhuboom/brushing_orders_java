@@ -2,6 +2,7 @@ package com.order.member.service.impl;
 
 import java.util.List;
 import com.order.common.utils.DateUtils;
+import com.order.common.utils.html.RichTextImagePaths;
 import com.order.common.i18n.ITranslationsService;
 import com.order.common.i18n.Translations;
 import org.springframework.stereotype.Service;
@@ -70,6 +71,8 @@ public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService
         normalizeMemberList(orderSiteMessage);
         orderSiteMessage.setCreateTime(DateUtils.getNowDate());
         saveTranslations(orderSiteMessage);
+        orderSiteMessage.setContent(RichTextStorageSupport.absolute(orderSiteMessage.getContent()));
+        orderSiteMessage.setContentRelative(RichTextImagePaths.toRelative(orderSiteMessage.getContent()));
         return orderSiteMessageMapper.insertOrderSiteMessage(orderSiteMessage);
     }
 
@@ -84,6 +87,8 @@ public class OrderSiteMessageServiceImpl implements IOrderSiteMessageService
     {
         normalizeMemberList(orderSiteMessage);
         saveTranslations(orderSiteMessage);
+        orderSiteMessage.setContent(RichTextStorageSupport.absolute(orderSiteMessage.getContent()));
+        orderSiteMessage.setContentRelative(RichTextImagePaths.toRelative(orderSiteMessage.getContent()));
         return orderSiteMessageMapper.updateOrderSiteMessage(orderSiteMessage);
     }
 

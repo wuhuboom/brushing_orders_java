@@ -1,6 +1,7 @@
 package com.order.api.controller.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.order.common.utils.html.RichTextImagePaths;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -76,7 +77,8 @@ public final class ConfigApiDtos {
             String description,
             String productMatchEnabled,
             BigDecimal productMatchMin,
-            BigDecimal productMatchMax) {
+            BigDecimal productMatchMax,
+            String descriptionRelative) {
     }
 
     public record NoticeSummaryResponse(
@@ -89,7 +91,11 @@ public final class ConfigApiDtos {
             Long noticeId,
             String noticeTitle,
             String noticeContent,
-            @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date createTime) {
+            @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date createTime,
+            String noticeContentRelative) {
+        public NoticeDetailResponse(Long noticeId, String noticeTitle, String noticeContent, Date createTime) {
+            this(noticeId, noticeTitle, noticeContent, createTime, RichTextImagePaths.toRelative(noticeContent));
+        }
     }
 
     public record TimeZoneResponse(String tzName) {

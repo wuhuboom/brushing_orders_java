@@ -130,7 +130,7 @@ public class H5OpenApiConfig {
 
     private static final Set<String> PUBLIC_OPERATIONS = Set.of(
             "login", "register", "logout",
-            "errorMessages", "content", "website", "certificate", "customerServices", "timeZone");
+            "errorMessages", "content", "contentRelative", "website", "certificate", "customerServices", "timeZone");
 
     private static final Map<String, ResponseSpec> RESPONSE_SPECS = responseSpecs();
 
@@ -836,6 +836,8 @@ public class H5OpenApiConfig {
                 "获取当前语言下的业务状态码提示文案，data 的键为 code 字符串。"));
         add(specs, "content", ajax(ConfigApiDtos.GlobalContentResponse.class, false, CodeGroup.CONFIG,
                 "获取当前语言下的协议、帮助、条款和业务说明内容。"));
+        add(specs, "contentRelative", ajax(ConfigApiDtos.GlobalContentResponse.class, false, CodeGroup.CONFIG,
+                "获取当前语言下的完整公共富文本，字段结构与 /api/config/content 相同，站内图片使用 /profile/ 相对路径；保留证书开关及语言回退规则。"));
         add(specs, "website", ajax(ConfigApiDtos.WebsiteConfigResponse.class, false, CodeGroup.CONFIG,
                 "获取公开 H5 网站名称、货币单位、Logo、背景图及开屏弹窗等展示配置。"));
         add(specs, "certificate", ajax(ConfigApiDtos.CertificateConfigResponse.class, false, CodeGroup.CONFIG,
@@ -907,7 +909,7 @@ public class H5OpenApiConfig {
         descriptions.put("balance", "可用余额");
         descriptions.put("frozenBalance", "冻结余额");
         descriptions.put("baseSalary", "基础薪资金额");
-        descriptions.put("taskProgress", "当前任务完成进度");
+        descriptions.put("taskProgress", "当前任务进度；开启连单首笔待提交计数后，进行中的整组连单按配置单数展示");
         descriptions.put("reputationScore", "会员信用分");
         descriptions.put("todayCommission", "今日累计佣金");
         descriptions.put("workLimit", "可接任务或工作额度");
@@ -956,7 +958,8 @@ public class H5OpenApiConfig {
         descriptions.put("link", "跳转链接或客服会话地址");
         descriptions.put("noticeId", "公告或站内信 ID");
         descriptions.put("noticeTitle", "公告或站内信标题");
-        descriptions.put("noticeContent", "公告或站内信正文");
+        descriptions.put("noticeContent", "公告或站内信完整富文本正文，保留原有图片地址");
+        descriptions.put("noticeContentRelative", "图片为 /profile/ 相对路径的完整公告或站内信富文本正文");
         descriptions.put("tzName", "IANA 时区名称，例如 Asia/Shanghai");
         descriptions.put("registerBonusAmount", "注册赠送金额");
         descriptions.put("minTradeBalance", "开始接单所需最低余额");
@@ -994,6 +997,7 @@ public class H5OpenApiConfig {
         descriptions.put("minWithdraw", "会员等级单笔最低提现金额");
         descriptions.put("maxWithdraw", "会员等级单笔最高提现金额");
         descriptions.put("description", "说明或详情");
+        descriptions.put("descriptionRelative", "图片为 /profile/ 相对路径的完整说明或详情富文本");
         descriptions.put("productMatchEnabled", "该等级是否启用商品金额匹配");
         descriptions.put("productMatchMin", "商品匹配最低金额");
         descriptions.put("productMatchMax", "商品匹配最高金额");
@@ -1126,6 +1130,8 @@ public class H5OpenApiConfig {
         descriptions.put("MemberLevelResponse.name", "会员等级名称");
         descriptions.put("PublicApiGoods.description", "商品说明或详情");
         descriptions.put("MemberLevelResponse.description", "会员等级说明");
+        descriptions.put("PublicApiGoods.descriptionRelative", "图片为 /profile/ 相对路径的完整商品详情富文本");
+        descriptions.put("MemberLevelResponse.descriptionRelative", "图片为 /profile/ 相对路径的完整会员等级说明富文本");
         descriptions.put("PublicApiGoods.isEnabled", "商品启用状态：0 启用，1 停用");
         descriptions.put("UserProfileResponse.isEnabled", "会员启用状态：0 启用，1 停用");
 

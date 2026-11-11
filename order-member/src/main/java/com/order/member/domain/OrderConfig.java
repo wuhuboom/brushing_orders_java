@@ -35,6 +35,17 @@ public class OrderConfig extends BaseEntity
     @Excel(name = "配置内容")
     private String content;
 
+    /** Automatically derived rich text with relative image paths. */
+    private String contentRelative;
+
+    public String getContentRelative() {
+        return contentRelative;
+    }
+
+    public void setContentRelative(String contentRelative) {
+        this.contentRelative = contentRelative;
+    }
+
     private Long translationsId;
 
     private Translations translations;

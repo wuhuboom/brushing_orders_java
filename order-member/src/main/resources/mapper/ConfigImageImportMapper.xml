@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.order.member.mapper.ConfigImageImportMapper">
+    <select id="selectByTypeForUpdate" parameterType="String"
+            resultMap="com.order.member.mapper.OrderConfigMapper.OrderConfigResult">
+        select id, type, sort, name, content, translations_id, create_time, update_time
+        from order_config
+        where type = #{type}
+        for update
+    </select>
+</mapper>

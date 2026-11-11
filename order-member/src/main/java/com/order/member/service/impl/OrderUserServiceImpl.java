@@ -24,6 +24,7 @@ import com.order.member.service.IOrderInfoService;
 import com.order.member.service.ITransactionService;
 import com.order.member.service.RegistrationResult;
 import com.order.member.service.MemberDailyStatisticsService;
+import com.order.member.service.MemberTaskProgressService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.order.member.mapper.OrderUserMapper;
@@ -64,6 +65,9 @@ public class OrderUserServiceImpl implements IOrderUserService
     @Autowired
     private MemberDailyStatisticsService dailyStatisticsService;
 
+    @Autowired
+    private MemberTaskProgressService taskProgressService;
+
     /**
      * 查询订单用户
      * 
@@ -75,6 +79,7 @@ public class OrderUserServiceImpl implements IOrderUserService
     {
         OrderUser user = orderUserMapper.selectOrderUserById(id);
         dailyStatisticsService.populate(user);
+        taskProgressService.populate(user);
         return user;
     }
 
@@ -103,6 +108,7 @@ public class OrderUserServiceImpl implements IOrderUserService
         List<OrderUser> users = orderUserMapper.selectOrderUserList(orderUser);
         // Enrich after the paged query so the time-zone lookup cannot consume PageHelper's page.
         dailyStatisticsService.populate(users);
+        taskProgressService.populate(users);
         return users;
     }
 
@@ -142,6 +148,7 @@ public class OrderUserServiceImpl implements IOrderUserService
         // The transaction and MyBatis session end after this batch, so their caches
         // cannot retain members from previous batches of the same export.
         dailyStatisticsService.populate(users);
+        taskProgressService.populate(users);
         List<Long> ids = users.stream().map(OrderUser::getId).toList();
         Map<Long, OrderUser> statistics = new HashMap<>();
         for (OrderUser row : orderUserMapper.selectOrderUserExportStatistics(ids)) {
@@ -323,6 +330,7 @@ public class OrderUserServiceImpl implements IOrderUserService
     public OrderUser selectOrderUserByName(String username) {
         OrderUser user = orderUserMapper.selectOrderUserByName(username);
         dailyStatisticsService.populate(user);
+        taskProgressService.populate(user);
         return user;
     }
 
@@ -330,6 +338,7 @@ public class OrderUserServiceImpl implements IOrderUserService
     public OrderUser selectOrderUserByInviteCode(String inviteCode) {
         OrderUser user = orderUserMapper.selectOrderUserByInviteCode(inviteCode);
         dailyStatisticsService.populate(user);
+        taskProgressService.populate(user);
         return user;
     }
 
@@ -337,6 +346,7 @@ public class OrderUserServiceImpl implements IOrderUserService
     public List<OrderUser> selectChildrenById(Long userId, String scope) {
         List<OrderUser> users = orderUserMapper.selectChildrenById(userId, scope);
         dailyStatisticsService.populate(users);
+        taskProgressService.populate(users);
         return users;
     }
 

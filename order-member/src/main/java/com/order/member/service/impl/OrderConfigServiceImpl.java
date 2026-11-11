@@ -7,6 +7,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.order.common.utils.DateUtils;
+import com.order.common.utils.html.RichTextImagePaths;
 import com.order.common.i18n.ITranslationsService;
 import com.order.common.i18n.Translations;
 import org.springframework.stereotype.Service;
@@ -86,6 +87,8 @@ public class OrderConfigServiceImpl implements IOrderConfigService
             orderConfig.setUpdateTime(DateUtils.getNowDate());
         }
         saveTranslations(orderConfig);
+        orderConfig.setContent(RichTextStorageSupport.absolute(orderConfig.getContent()));
+        orderConfig.setContentRelative(RichTextImagePaths.toRelative(orderConfig.getContent()));
         return orderConfigMapper.insertOrderConfig(orderConfig);
     }
 
@@ -120,7 +123,9 @@ public class OrderConfigServiceImpl implements IOrderConfigService
             }
         }
         saveTranslations(orderConfig);
-       return orderConfigMapper.updateOrderConfig(orderConfig);
+       orderConfig.setContent(RichTextStorageSupport.absolute(orderConfig.getContent()));
+        orderConfig.setContentRelative(RichTextImagePaths.toRelative(orderConfig.getContent()));
+        return orderConfigMapper.updateOrderConfig(orderConfig);
 
     }
 

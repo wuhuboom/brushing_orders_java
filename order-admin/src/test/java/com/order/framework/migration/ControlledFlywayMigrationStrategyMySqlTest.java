@@ -11,28 +11,22 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import com.order.testsupport.IsolatedMySqlDatabase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Testcontainers(disabledWithoutDocker = true)
 class ControlledFlywayMigrationStrategyMySqlTest
 {
-    @Container
-    static final MySQLContainer BASELINE_03_DATABASE = new MySQLContainer("mysql:8.0.42")
-            .withDatabaseName("flyway_baseline_03_test")
-            .withUsername("order")
-            .withPassword("order");
+    @RegisterExtension
+    static final IsolatedMySqlDatabase BASELINE_03_DATABASE = new IsolatedMySqlDatabase(
+            "flyway.baseline.03.jdbcUrl", "codex_flyway_baseline_03_test");
 
-    @Container
-    static final MySQLContainer BASELINE_17_DATABASE = new MySQLContainer("mysql:8.0.42")
-            .withDatabaseName("flyway_baseline_17_test")
-            .withUsername("order")
-            .withPassword("order");
+    @RegisterExtension
+    static final IsolatedMySqlDatabase BASELINE_17_DATABASE = new IsolatedMySqlDatabase(
+            "flyway.baseline.17.jdbcUrl", "codex_flyway_baseline_17_test");
 
     @BeforeAll
     static void createControlledLegacySchema() throws Exception
@@ -41,7 +35,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
         createControlledLegacySchema(BASELINE_17_DATABASE);
     }
 
-    private static void createControlledLegacySchema(MySQLContainer database) throws Exception
+    private static void createControlledLegacySchema(IsolatedMySqlDatabase database) throws Exception
     {
         List<String> statements = List.of(
                 """
@@ -132,6 +126,20 @@ class ControlledFlywayMigrationStrategyMySqlTest
                 statement.execute("CREATE TABLE IF NOT EXISTS `" + table
                         + "` (id BIGINT NOT NULL, PRIMARY KEY (id)) ENGINE=InnoDB");
             }
+            // Model the old business columns required by the latest production migrations.
+            statement.execute("ALTER TABLE order_user ADD phone_number VARCHAR(64)");
+            statement.execute("ALTER TABLE order_login_log ADD create_time DATETIME(3)");
+            for (String table : List.of("order_info", "order_withdrawal")) {
+                statement.execute("ALTER TABLE " + table + " ADD user_id BIGINT, ADD create_time DATETIME(3)");
+            }
+            statement.execute("ALTER TABLE order_link ADD link_order_id BIGINT");
+            statement.execute("ALTER TABLE order_config ADD content LONGTEXT");
+            statement.execute("ALTER TABLE goods ADD description LONGTEXT");
+            statement.execute("ALTER TABLE goods_member_level ADD description LONGTEXT");
+            statement.execute("ALTER TABLE order_site_message ADD content LONGTEXT");
+            for (var locale : com.order.common.i18n.SupportedLocale.all()) {
+                statement.execute("ALTER TABLE translations ADD " + locale.getCode() + " LONGTEXT");
+            }
         }
     }
 
@@ -142,7 +150,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
                 "classpath:db/migration/mysql");
         previousRelease.baseline();
 
-        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.4");
+        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.6");
         IllegalStateException pendingLegacyData = assertThrows(IllegalStateException.class,
                 () -> current.migrate(previousRelease));
         assertTrue(pendingLegacyData.getMessage().contains("must not be auto-replayed"));
@@ -175,12 +183,12 @@ class ControlledFlywayMigrationStrategyMySqlTest
         Flyway flyway = flyway(BASELINE_03_DATABASE);
         current.migrate(flyway);
 
-        assertEquals(12, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(14, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(2, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
                 + "WHERE version IN ('2026.08.18.04', '2026.08.18.05') AND success = 1"));
-        assertEquals("1.2.4", text(BASELINE_03_DATABASE,
+        assertEquals("1.2.6", text(BASELINE_03_DATABASE,
                 "SELECT application_version FROM sys_application_version WHERE id = 1"));
-        assertEquals("2026.11.08.00", text(BASELINE_03_DATABASE,
+        assertEquals("2026.11.10.00", text(BASELINE_03_DATABASE,
                 "SELECT schema_version FROM sys_application_version WHERE id = 1"));
         assertEquals(1, number(BASELINE_03_DATABASE, "SELECT COUNT(*) FROM order_user "
                 + "WHERE id = 1 AND product_matching = '0' "
@@ -254,10 +262,10 @@ class ControlledFlywayMigrationStrategyMySqlTest
     void baseline17AdoptionAndEarlyEnvironmentPreserveLegacyData() throws Exception
     {
         Flyway adoption = flyway(BASELINE_17_DATABASE);
-        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.4");
+        ControlledFlywayMigrationStrategy current = new ControlledFlywayMigrationStrategy("1.2.6");
         current.migrate(adoption);
 
-        assertEquals(10, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(12, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(1, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
                 + "WHERE type = 'BASELINE' AND version = '2026.08.17.0'"));
         assertEquals(0, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
@@ -290,12 +298,12 @@ class ControlledFlywayMigrationStrategyMySqlTest
         Flyway flyway = flyway(BASELINE_17_DATABASE);
         current.migrate(flyway);
 
-        assertEquals(10, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(12, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(2, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history "
                 + "WHERE version IN ('2026.08.18.04', '2026.08.18.05') AND success = 1"));
-        assertEquals("1.2.4", text(BASELINE_17_DATABASE,
+        assertEquals("1.2.6", text(BASELINE_17_DATABASE,
                 "SELECT application_version FROM sys_application_version WHERE id = 1"));
-        assertEquals("2026.11.08.00", text(BASELINE_17_DATABASE,
+        assertEquals("2026.11.10.00", text(BASELINE_17_DATABASE,
                 "SELECT schema_version FROM sys_application_version WHERE id = 1"));
         assertEquals(1, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM order_user "
                 + "WHERE id = 1 AND product_matching = '0' "
@@ -312,7 +320,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
         LocalDateTime migratedAt = timestamp(BASELINE_17_DATABASE,
                 "SELECT last_migrated_at FROM sys_application_version WHERE id = 1");
         current.migrate(flyway);
-        assertEquals(10, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
+        assertEquals(12, number(BASELINE_17_DATABASE, "SELECT COUNT(*) FROM flyway_schema_history"));
         assertEquals(migratedAt, timestamp(BASELINE_17_DATABASE,
                 "SELECT last_migrated_at FROM sys_application_version WHERE id = 1"));
 
@@ -323,12 +331,12 @@ class ControlledFlywayMigrationStrategyMySqlTest
         assertTrue(rejected.getMessage().contains("would be ignored"));
     }
 
-    private static Flyway flyway(MySQLContainer database)
+    private static Flyway flyway(IsolatedMySqlDatabase database)
     {
         return flyway(database, "2026.08.17.0", null, "classpath:db/migration/mysql");
     }
 
-    private static Flyway flyway(MySQLContainer database, String baselineVersion, String target,
+    private static Flyway flyway(IsolatedMySqlDatabase database, String baselineVersion, String target,
             String... locations)
     {
         FluentConfiguration configuration = Flyway.configure()
@@ -354,7 +362,7 @@ class ControlledFlywayMigrationStrategyMySqlTest
         return configuration.load();
     }
 
-    private static void execute(MySQLContainer database, String sql) throws Exception
+    private static void execute(IsolatedMySqlDatabase database, String sql) throws Exception
     {
         try (Connection connection = connection(database); Statement statement = connection.createStatement())
         {
@@ -362,28 +370,28 @@ class ControlledFlywayMigrationStrategyMySqlTest
         }
     }
 
-    private static Connection connection(MySQLContainer database) throws Exception
+    private static Connection connection(IsolatedMySqlDatabase database) throws Exception
     {
         return DriverManager.getConnection(database.getJdbcUrl(), database.getUsername(), database.getPassword());
     }
 
-    private static int number(MySQLContainer database, String sql) throws Exception
+    private static int number(IsolatedMySqlDatabase database, String sql) throws Exception
     {
         return ((Number) scalar(database, sql)).intValue();
     }
 
-    private static String text(MySQLContainer database, String sql) throws Exception
+    private static String text(IsolatedMySqlDatabase database, String sql) throws Exception
     {
         Object value = scalar(database, sql);
         return value == null ? null : value.toString();
     }
 
-    private static LocalDateTime timestamp(MySQLContainer database, String sql) throws Exception
+    private static LocalDateTime timestamp(IsolatedMySqlDatabase database, String sql) throws Exception
     {
         return (LocalDateTime) scalar(database, sql);
     }
 
-    private static Object scalar(MySQLContainer database, String sql) throws Exception
+    private static Object scalar(IsolatedMySqlDatabase database, String sql) throws Exception
     {
         try (Connection connection = connection(database);
                 Statement statement = connection.createStatement();

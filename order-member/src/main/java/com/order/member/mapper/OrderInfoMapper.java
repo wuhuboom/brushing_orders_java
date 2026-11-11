@@ -1,7 +1,9 @@
 package com.order.member.mapper;
 
+import java.util.Collection;
 import java.util.List;
 import com.order.member.domain.OrderInfo;
+import com.order.member.domain.OrderUser;
 import org.apache.ibatis.annotations.Param;
 
 /**
@@ -63,6 +65,8 @@ public interface OrderInfoMapper
     public OrderInfo hasOpenOrders(Long userId);
 
     boolean hasFrozenLinkedOrders(Long userId);
+
+    List<OrderUser> selectActiveLinkedTaskProgress(@Param("userIds") Collection<Long> userIds);
 
     OrderInfo selectOwnedOrderForUpdate(@Param("id") Long id, @Param("userId") Long userId);
 

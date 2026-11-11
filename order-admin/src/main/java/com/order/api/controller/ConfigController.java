@@ -64,6 +64,15 @@ public class ConfigController {
         return canonical(success(locale, queryService.content(locale)), locale);
     }
 
+    @GetMapping("/content-relative")
+    @Operation(summary = "获取图片使用相对路径的本地化完整富文本内容")
+    public ResponseEntity<AjaxResult> contentRelative(
+            @RequestParam(required = false) String lang,
+            HttpServletRequest request) {
+        SupportedLocale locale = localeService.resolve(lang, request);
+        return canonical(success(locale, queryService.contentRelative(locale)), locale);
+    }
+
     @GetMapping("/website")
     @Operation(summary = "获取公开 H5 网站展示配置")
     public ResponseEntity<AjaxResult> website(

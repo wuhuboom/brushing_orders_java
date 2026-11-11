@@ -38,6 +38,17 @@ public class OrderSiteMessage extends BaseEntity
     @Excel(name = "内容")
     private String content;
 
+    /** Automatically derived rich text with relative image paths. */
+    private String contentRelative;
+
+    public String getContentRelative() {
+        return contentRelative;
+    }
+
+    public void setContentRelative(String contentRelative) {
+        this.contentRelative = contentRelative;
+    }
+
     /** 多语言翻译ID */
     private Long translationsId;
 

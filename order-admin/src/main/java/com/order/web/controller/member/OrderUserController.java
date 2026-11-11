@@ -333,6 +333,7 @@ public class OrderUserController extends BaseController
                 frozenBalance,
                 balance.add(frozenBalance),
                 user.getTaskProgress(),
+                user.getDisplayTaskProgress(),
                 orderCountPerDay,
                 user.getLastLoginTime()));
     }
@@ -345,6 +346,7 @@ public class OrderUserController extends BaseController
             BigDecimal frozenBalance,
             BigDecimal totalBalance,
             Long taskProgress,
+            Long displayTaskProgress,
             Long orderCountPerDay,
             java.util.Date lastLoginTime)
     {

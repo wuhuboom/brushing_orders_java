@@ -10,13 +10,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="sort"    column="sort"    />
         <result property="name"    column="name"    />
         <result property="content"    column="content"    />
+        <result property="contentRelative" column="content_relative" />
         <result property="translationsId" column="translations_id" />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
     </resultMap>
 
     <sql id="selectOrderConfigVo">
-        select id, type, sort, name, content, translations_id, create_time, update_time from order_config
+        select id, type, sort, name, content, content_relative, translations_id, create_time, update_time from order_config
     </sql>
 
     <select id="selectOrderConfigList" parameterType="OrderConfig" resultMap="OrderConfigResult">
@@ -56,6 +57,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sort != null">sort,</if>
             <if test="name != null and name != ''">name,</if>
             <if test="content != null">content,</if>
+            <if test="contentRelative != null">content_relative,</if>
             <if test="translationsId != null">translations_id,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
@@ -65,6 +67,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sort != null">#{sort},</if>
             <if test="name != null and name != ''">#{name},</if>
             <if test="content != null">#{content},</if>
+            <if test="contentRelative != null">#{contentRelative},</if>
             <if test="translationsId != null">#{translationsId},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateTime != null">#{updateTime},</if>
@@ -78,6 +81,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sort != null">sort = #{sort},</if>
             <if test="name != null and name != ''">name = #{name},</if>
             <if test="content != null">content = #{content},</if>
+            <if test="contentRelative != null">content_relative = #{contentRelative},</if>
             <if test="translationsId != null">translations_id = #{translationsId},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>

@@ -120,6 +120,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         )
     </select>
 
+    <!-- A linked group contributes its configured sequence once, regardless of detail count. -->
+    <select id="selectActiveLinkedTaskProgress" resultType="com.order.member.domain.OrderUser">
+        SELECT user_id AS id, MAX(order_count) AS taskProgress
+        FROM order_info
+        WHERE type = '1'
+          AND link_id IS NOT NULL
+          AND status IN ('1', '2')
+          AND user_id IN
+          <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+              #{userId}
+          </foreach>
+        GROUP BY user_id
+    </select>
+
     <select id="selectOwnedOrderForUpdate" resultMap="OrderInfoResult">
         SELECT id, order_number, type, order_count, amount, rebate, upper_rebate,
                status, extra_commission_id, link_id

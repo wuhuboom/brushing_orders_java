@@ -4,6 +4,7 @@ import com.order.common.exception.ServiceException;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.MemberDailyStatisticsService;
+import com.order.member.service.MemberTaskProgressService;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.*;
 class OrderUserExportServiceTest {
     @Mock private OrderUserMapper mapper;
     @Mock private MemberDailyStatisticsService dailyStatistics;
+    @Mock private MemberTaskProgressService taskProgressService;
     @InjectMocks private OrderUserServiceImpl service;
 
     @Test

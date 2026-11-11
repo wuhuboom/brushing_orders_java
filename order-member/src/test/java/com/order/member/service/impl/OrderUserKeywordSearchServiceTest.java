@@ -3,6 +3,7 @@ package com.order.member.service.impl;
 import com.order.member.domain.OrderUser;
 import com.order.member.mapper.OrderUserMapper;
 import com.order.member.service.MemberDailyStatisticsService;
+import com.order.member.service.MemberTaskProgressService;
 import com.github.pagehelper.Page;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,8 @@ class OrderUserKeywordSearchServiceTest
 
     @Mock
     private MemberDailyStatisticsService dailyStatisticsService;
+
+    @Mock private MemberTaskProgressService taskProgressService;
 
     @InjectMocks
     private OrderUserServiceImpl orderUserService;
@@ -71,6 +74,7 @@ class OrderUserKeywordSearchServiceTest
         var calls = inOrder(orderUserMapper, dailyStatisticsService);
         calls.verify(orderUserMapper).selectOrderUserList(query);
         calls.verify(dailyStatisticsService).populate(page);
+        verify(taskProgressService).populate(page);
     }
 
     @Test
@@ -90,5 +94,7 @@ class OrderUserKeywordSearchServiceTest
 
         verify(dailyStatisticsService, org.mockito.Mockito.times(3)).populate(user);
         verify(dailyStatisticsService).populate(children);
+        verify(taskProgressService, org.mockito.Mockito.times(3)).populate(user);
+        verify(taskProgressService).populate(children);
     }
 }

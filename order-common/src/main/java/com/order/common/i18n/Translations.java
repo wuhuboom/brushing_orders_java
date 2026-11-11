@@ -88,6 +88,17 @@ public class Translations extends BaseEntity
     @Excel(name = "印地语")
     private String hiIn;
 
+    /** Automatically derived rich text with relative image paths. */
+    private String relativeContent;
+
+    public String getRelativeContent() {
+        return relativeContent;
+    }
+
+    public void setRelativeContent(String relativeContent) {
+        this.relativeContent = relativeContent;
+    }
+
     public void setId(Long id) 
     {
         this.id = id;

@@ -2,9 +2,8 @@ package com.order.api.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import com.order.testsupport.IsolatedMySqlDatabase;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,13 +14,10 @@ import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Testcontainers(disabledWithoutDocker = true)
 class TranslationMigrationMySqlTest {
-    @Container
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.0.42")
-            .withDatabaseName("translation_test")
-            .withUsername("order")
-            .withPassword("order");
+    @RegisterExtension
+    static final IsolatedMySqlDatabase MYSQL = new IsolatedMySqlDatabase(
+            "translation.migration.jdbcUrl", "codex_translation_migration_test");
 
     @BeforeEach
     void createLegacySchema() throws Exception {
