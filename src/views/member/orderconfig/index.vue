@@ -52,6 +52,16 @@
         </a-form>
       </template>
 
+      <template #toolbar>
+        <a-button
+          type="primary"
+          v-hasPermi="['member:level:edit', 'member:orderconfig:edit']"
+          @click="imageImportOpen = true"
+        >
+          批量导入图片
+        </a-button>
+      </template>
+
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'name'">
           <a class="settings-kind-link" @click="openSettingsDrawer(record, true)">
@@ -164,6 +174,8 @@
       </template>
     </a-drawer>
 
+    <batch-image-import v-model:open="imageImportOpen" @success="getList" />
+
     <translation-dialog
       v-model="translationOpen"
       :title="translationTitle"
@@ -184,6 +196,7 @@ import {
   updateOrderconfig,
 } from "@/api/member/orderconfig";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
+import BatchImageImport from "@/components/BatchImageImport/index.vue";
 import { normalizeCertificateSwitch, parseCertificateConfig } from "./certificateConfig";
 import {
   adminTranslationLanguageFields,
@@ -191,6 +204,7 @@ import {
 } from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
+const imageImportOpen = ref(false);
 const websiteTranslationLanguageFields = [...adminTranslationLanguageFields];
 
 const typeDefinitions = [

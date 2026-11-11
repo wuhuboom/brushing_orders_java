@@ -47,6 +47,12 @@
       </template>
 
       <template #toolbar>
+        <a-button
+          v-hasPermi="['member:level:edit', 'member:orderconfig:edit']"
+          @click="imageImportOpen = true"
+        >
+          批量导入图片
+        </a-button>
         <a-button type="primary" :disabled="multiple" @click="handleDelete()" v-hasPermi="['member:level:remove']">
           <DeleteOutlined />
           删除
@@ -188,6 +194,8 @@
       </a-form>
     </a-modal>
 
+    <batch-image-import v-model:open="imageImportOpen" @success="getList" />
+
     <translation-dialog
       v-model="translationOpen"
       :title="translationTitle"
@@ -209,12 +217,14 @@ import {
 } from "@/api/member/level";
 import { CopyOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons-vue";
 import TranslationDialog from "@/views/member/components/TranslationDrawer.vue";
+import BatchImageImport from "@/components/BatchImageImport/index.vue";
 import {
   adminTranslationLanguageFields,
   createEmptyTranslations,
 } from "@/views/member/components/translationLanguages";
 
 const { proxy } = getCurrentInstance();
+const imageImportOpen = ref(false);
 
 const levelList = ref([]);
 const open = ref(false);

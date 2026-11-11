@@ -223,11 +223,12 @@ const user = reactive({
   frozenBalance: 0,
   totalBalance: 0,
   taskProgress: 0,
+  displayTaskProgress: null,
   memberOrderCountPerDay: null,
 });
 
 const taskProgressDisplay = computed(() => {
-  return `${user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? "-"}`;
+  return `${user.displayTaskProgress ?? user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? "-"}`;
 });
 
 async function fetchUser(id) {
@@ -257,6 +258,7 @@ async function fetchUser(id) {
       frozenBalance,
       totalBalance: finiteNumber(u.totalBalance, balance + frozenBalance),
       taskProgress: u.taskProgress ?? 0,
+      displayTaskProgress: u.displayTaskProgress ?? null,
       memberOrderCountPerDay: u.orderCountPerDay ?? null,
     });
   } catch (error) {
@@ -277,6 +279,7 @@ function resetUser() {
     frozenBalance: 0,
     totalBalance: 0,
     taskProgress: 0,
+    displayTaskProgress: null,
     memberOrderCountPerDay: null,
   });
 }

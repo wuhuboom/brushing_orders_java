@@ -42,3 +42,24 @@ export function delOrderconfig(id) {
     method: 'delete'
   })
 }
+
+function configurationImageRequest(action, file, richTextMode) {
+  const data = new FormData()
+  data.append('file', file)
+  data.append('richTextMode', richTextMode)
+  return request({
+    url: `/member/orderconfig/images/${action}`,
+    method: 'post',
+    data,
+    timeout: 180000,
+    headers: { 'Content-Type': 'multipart/form-data', repeatSubmit: false }
+  })
+}
+
+export function previewConfigurationImages(file, richTextMode = 'append') {
+  return configurationImageRequest('preview', file, richTextMode)
+}
+
+export function importConfigurationImages(file, richTextMode = 'append') {
+  return configurationImageRequest('import', file, richTextMode)
+}

@@ -45,7 +45,7 @@
             {{ record.memberLevel?.name || '-' }}
           </template>
           <template v-else-if="column.dataIndex === 'taskProgressText'">
-            {{ record.taskProgress }} / {{ record.memberLevel?.orderCountPerDay ?? 0 }}
+            {{ record.displayTaskProgress ?? record.taskProgress ?? 0 }} / {{ record.memberLevel?.orderCountPerDay ?? 0 }}
           </template>
           <template v-else-if="column.dataIndex === 'isEnabled'">
             <dict-tag :options="sys_enabled" :value="record[column.dataIndex]" />

@@ -738,6 +738,7 @@ const user = reactive({
   frozenBalance: 0,
   totalBalance: 0,
   taskProgress: 0,
+  displayTaskProgress: null,
   memberOrderCountPerDay: null,
   lastLoginTime: null,
 });
@@ -751,13 +752,14 @@ function resetUser() {
     frozenBalance: 0,
     totalBalance: 0,
     taskProgress: 0,
+    displayTaskProgress: null,
     memberOrderCountPerDay: null,
     lastLoginTime: null,
   });
 }
 
 const taskProgressDisplay = computed(
-  () => `${user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? 0}`,
+  () => `${user.displayTaskProgress ?? user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? 0}`,
 );
 
 function priceTypeLabel(value) {
@@ -854,6 +856,7 @@ async function fetchUser(id, session = drawerSession) {
       frozenBalance,
       totalBalance: Number(record.totalBalance ?? balance + frozenBalance),
       taskProgress: record.taskProgress ?? record.orderSeq ?? 0,
+      displayTaskProgress: record.displayTaskProgress ?? null,
       memberOrderCountPerDay:
         record.orderCountPerDay
         ?? record.orderLimit

@@ -509,6 +509,7 @@ const user = reactive({
   frozenBalance: 0,
   totalBalance: 0,
   taskProgress: 0,
+  displayTaskProgress: null,
   memberOrderCountPerDay: null,
   lastLoginTime: null,
 });
@@ -558,7 +559,7 @@ const rowSelection = computed(() => ({
   },
 }));
 const taskProgressDisplay = computed(
-  () => `${user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? "-"}`
+  () => `${user.displayTaskProgress ?? user.taskProgress ?? 0} / ${user.memberOrderCountPerDay ?? "-"}`
 );
 const tableScrollY = computed(
   () => `max(240px, calc(100vh - ${searchExpanded.value ? 496 : 440}px))`,
@@ -619,6 +620,7 @@ function resetUser() {
     frozenBalance: 0,
     totalBalance: 0,
     taskProgress: 0,
+    displayTaskProgress: null,
     memberOrderCountPerDay: null,
     lastLoginTime: null,
   });
@@ -679,6 +681,7 @@ async function fetchUser(id) {
       frozenBalance: value.frozenBalance ?? value.freezeBalance ?? 0,
       totalBalance: value.totalBalance ?? balance + frozenBalance,
       taskProgress: value.taskProgress ?? 0,
+      displayTaskProgress: value.displayTaskProgress ?? null,
       memberOrderCountPerDay: value.orderCountPerDay ?? null,
       lastLoginTime: value.lastLoginTime,
     });

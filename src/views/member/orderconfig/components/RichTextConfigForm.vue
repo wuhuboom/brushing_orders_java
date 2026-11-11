@@ -21,8 +21,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue"
-import { message } from "ant-design-vue"
+import { computed, nextTick, reactive, ref, watch } from "vue"
 
 const props = defineProps({
   form: {
@@ -50,6 +49,7 @@ const props = defineProps({
 
 const emit = defineEmits(["update:form", "submit", "cancel"])
 const configFormRef = ref()
+const sourceContent = ref({})
 const localForm = reactive({
   sort: props.form.sort,
   [props.field]: ""
@@ -74,38 +74,68 @@ watch(
 watch(
   () => props.form.content,
   newContent => {
-    if (!newContent) {
-      return
+    let parsed = newContent
+    if (typeof newContent === "string" && newContent.trim()) {
+      try {
+        parsed = JSON.parse(newContent)
+      } catch {
+        // Older settings may contain the HTML body directly.
+      }
     }
-    try {
-      const parsed = JSON.parse(newContent)
-      localForm[props.field] = parsed[props.field] || ""
-    } catch (e) {
-      message.error("解析配置失败")
-      localForm[props.field] = ""
+    sourceContent.value = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? { ...parsed }
+      : {}
+    localForm[props.field] = typeof parsed === "string"
+      ? parsed
+      : sourceContent.value[props.field] || ""
+    if (props.field === "eventContent" && typeof parsed !== "string") {
+      const containers = [sourceContent.value]
+      if (sourceContent.value.value && typeof sourceContent.value.value === "object" && !Array.isArray(sourceContent.value.value)) {
+        containers.push(sourceContent.value.value)
+      }
+      localForm.eventContent = ["eventContent", "event", "content", "value"]
+        .flatMap(key => containers.map(container => container[key]))
+        .find(value => typeof value === "string" && value.trim()) ?? ""
     }
   },
   { immediate: true }
 )
 
-watch(
-  localForm,
-  () => {
-    emit("update:form", {
-      ...props.form,
-      ...(props.showSort ? { sort: localForm.sort } : {}),
-      content: JSON.stringify({
-        [props.field]: localForm[props.field]
-      })
-    })
-  },
-  { deep: true }
-)
+function syncForm() {
+  const content = {
+    ...sourceContent.value,
+    [props.field]: localForm[props.field]
+  }
+  if (props.field === "eventContent") {
+    const containers = [content]
+    if (content.value && typeof content.value === "object" && !Array.isArray(content.value)) {
+      content.value = { ...content.value, eventContent: localForm.eventContent }
+      containers.push(content.value)
+    }
+    for (const container of containers) {
+      for (const key of ["event", "content", "value"]) {
+        if (typeof container[key] === "string") container[key] = localForm.eventContent
+      }
+    }
+  }
+  emit("update:form", {
+    ...props.form,
+    ...(props.showSort ? { sort: localForm.sort } : {}),
+    content: JSON.stringify(content)
+  })
+}
 
-function handleSubmit() {
-  configFormRef.value?.validate?.().then(() => {
+watch(localForm, syncForm, { deep: true })
+
+async function handleSubmit() {
+  try {
+    await configFormRef.value?.validate?.()
+    syncForm()
+    await nextTick()
     emit("submit")
-  }).catch(() => {})
+  } catch {
+    // The form displays validation errors beside the corresponding field.
+  }
 }
 
 function handleCancel() {

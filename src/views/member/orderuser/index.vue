@@ -277,9 +277,9 @@
             class="table-action-link"
             @click="openModifyCount(record)"
           >
-            {{ record.taskProgress || 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}
+            {{ record.displayTaskProgress ?? record.taskProgress ?? 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}
           </a>
-          <span v-else>{{ record.taskProgress || 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}</span>
+          <span v-else>{{ record.displayTaskProgress ?? record.taskProgress ?? 0 }} / {{ record.memberLevel?.orderCountPerDay || 0 }}</span>
         </template>
         <template v-else-if="column.key === 'completeGroupNum'">
           {{ completeGroupText(record) }}

@@ -16,7 +16,7 @@
         :lg="8"
         :xl="item.span || 6"
       >
-        <a-form-item :label="item.label" :name="item.prop">
+        <a-form-item :label="item.label" :name="item.prop" :extra="item.description">
           <a-input-number
             v-if="item.type === 'number'"
             v-model:value="localForm[item.prop]"
@@ -137,11 +137,13 @@ const formItems = [
   { prop: "rechargeBonusTradeType", label: "充值赠送交易类型", type: "select", options: tradeTypeOptions, placeholder: "请选择交易类型" },
   { prop: "includeContinuousOrderInTaskProgress", label: "任务进度是否计算连单明细", type: "radio", options: yesNoOptions },
   { prop: "includePendingTasksInProgress", label: "任务进度是否包含待提交任务", type: "radio", options: yesNoOptions },
+  { prop: "includePendingLinkedOrderInTaskProgress", label: "连单首笔待提交时计入订单数", type: "radio", options: enabledOptions, description: "开启后，整组连单从首笔待提交起按配置单数显示，组内明细不重复计数。" },
   { prop: "maxPasswordFailuresForWithdrawal", label: "禁止客户提现所需交易密码失败次数(0-不限制)", type: "number", required: false, placeholder: "请输入失败次数" }
 ]
 
 const tradeFieldDefaults = {
-  allowMultiplePendingWithdrawals: "1"
+  allowMultiplePendingWithdrawals: "1",
+  includePendingLinkedOrderInTaskProgress: "1"
 }
 const formFieldKeys = formItems.map(item => item.prop)
 const tradeFormRef = ref()
